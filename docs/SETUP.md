@@ -125,15 +125,6 @@ Open that link in your browser — you should see the default React + TypeScript
 
 ---
 
-## 🧠 7. Next Steps
-
-Once everyone has the environment running:
-
-- Commit your `.nvmrc`, `.npmrc`, and `docs/SETUP.md`
-- Push changes to GitHub
-- Each teammate should clone the repo and follow this same guide
-
----
 
 ### ✅ Quick Recap
 
