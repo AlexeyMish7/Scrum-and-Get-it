@@ -20,9 +20,6 @@ Establish the foundational infrastructure for the ATS for Candidates platform by
 **Sprint Duration:** October 14 – October 28
 **Sprint 1 Demo:** October 28
 **Instructor:** Prof. Bill McCann
-
-📄 **Full Sprint Requirements:** See [`docs/Sprint1PRD.md`](./docs/Sprint1PRD.md)
-
 ---
 
 ## 👥 Team Members
