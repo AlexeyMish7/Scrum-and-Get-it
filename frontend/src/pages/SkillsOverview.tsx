@@ -67,7 +67,7 @@ const initialCategories: Category[] = [
   },
 ];
 
-const SkillsOrganizer: React.FC = () => {
+const SkillsOverview: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [search, setSearch] = useState("");
 
@@ -216,4 +216,4 @@ const SkillsOrganizer: React.FC = () => {
   );
 };
 
-export default SkillsOrganizer;
+export default SkillsOverview;

@@ -67,7 +67,7 @@ const initialEducation: EducationEntry[] = [
   },
 ];
 
-const EducationTimeline: React.FC = () => {
+const EducationOverview: React.FC = () => {
   const [education, setEducation] = useState<EducationEntry[]>(
     initialEducation.sort(
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
@@ -270,4 +270,4 @@ const EducationTimeline: React.FC = () => {
   );
 };
 
-export default EducationTimeline;
+export default EducationOverview;
