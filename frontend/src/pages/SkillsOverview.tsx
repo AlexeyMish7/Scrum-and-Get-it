@@ -87,8 +87,12 @@ const SkillsOverview: React.FC = () => {
     if (!result.destination) return;
 
     const { source, destination } = result;
-    const sourceCatIndex = categories.findIndex((c) => c.id === source.droppableId);
-    const destCatIndex = categories.findIndex((c) => c.id === destination.droppableId);
+    const sourceCatIndex = categories.findIndex(
+      (c) => c.id === source.droppableId
+    );
+    const destCatIndex = categories.findIndex(
+      (c) => c.id === destination.droppableId
+    );
 
     const sourceCat = { ...categories[sourceCatIndex] };
     const destCat = { ...categories[destCatIndex] };
@@ -180,7 +184,11 @@ const SkillsOverview: React.FC = () => {
                         </Typography>
                       )}
                       {category.skills.map((skill, index) => (
-                        <Draggable key={skill.id} draggableId={skill.id} index={index}>
+                        <Draggable
+                          key={skill.id}
+                          draggableId={skill.id}
+                          index={index}
+                        >
                           {(provided) => (
                             <Box
                               ref={provided.innerRef}
@@ -196,7 +204,10 @@ const SkillsOverview: React.FC = () => {
                               }}
                             >
                               <Typography>{skill.name}</Typography>
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Level: {skill.level}
                               </Typography>
                             </Box>
