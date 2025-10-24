@@ -1,3 +1,13 @@
+/**
+ * Register form
+ * - Local state for user input
+ * - Client-side validation
+ * - Calls Supabase auth.signUp
+ * - Handles both flows:
+ *    A) Email confirmation required  -> show "check your email" notice
+ *    B) Session returned immediately -> navigate and (optionally) create profile
+ */
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
@@ -10,9 +20,10 @@ type RegisterForm = {
   confirmPassword: string;
 };
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
 
+  // Form and UI states
   const [form, setForm] = useState<RegisterForm>({
     firstName: "",
     lastName: "",
@@ -20,17 +31,18 @@ const Register = () => {
     password: "",
     confirmPassword: "",
   });
-
   const [error, setError] = useState<string>("");
   const [info, setInfo] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Keep form state in sync with inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
     setInfo("");
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Minimal but useful client-side validation
   const validate = () => {
     const email = form.email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -43,6 +55,7 @@ const Register = () => {
     return "";
   };
 
+  // Main submit handler: sign up via Supabase and branch on session presence
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -60,14 +73,12 @@ const Register = () => {
 
     setLoading(true);
     try {
-      // Kick off Supabase sign up
+      // Create auth user; metadata lives on auth.users
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password: form.password,
         options: {
-          // metadata is stored on auth.users
           data: { first_name: firstName, last_name: lastName },
-          // If you are using email confirmations, set a redirect:
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -77,8 +88,8 @@ const Register = () => {
         return;
       }
 
-      // If your project requires email confirmation, session will be null here.
-      // Tell user to check their email; do not try to insert profile yet.
+      // If email confirmations are ON (default), no session yet.
+      // Tell the user to confirm before signing in.
       if (!data.session) {
         setInfo(
           "Check your email to confirm your account. You can sign in after confirming."
@@ -86,26 +97,25 @@ const Register = () => {
         return;
       }
 
-      // If session exists (email auto-confirm disabled or admin invites), create a profiles row.
-      // Assumes a 'profiles' table with RLS allowing insert for auth.uid() = id.
+      // If a session exists now, you may create a profiles row (optional best practice).
       const userId = data.user?.id;
       if (userId) {
         const { error: profileError } = await supabase.from("profiles").insert([
           {
-            id: userId, // keep this equal to auth.uid()
+            id: userId, // must equal auth.uid()
             first_name: firstName,
             last_name: lastName,
             full_name: `${firstName} ${lastName}`.trim(),
-            email, // optional duplication for convenience
+            email,
           },
         ]);
 
-        if (profileError) {
-          // Not fatal to sign up, but useful to surface
-          setInfo("Account created, but profile setup will retry later.");
-        }
+        // Profile insert failure is non-fatal to signup; surface a gentle note.
+        if (profileError)
+          setInfo("Account created; profile will complete later.");
       }
 
+      // Done: go to dashboard
       navigate("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
@@ -200,6 +210,4 @@ const Register = () => {
       {info && <p style={{ color: "green" }}>{info}</p>}
     </div>
   );
-};
-
-export default Register;
+}

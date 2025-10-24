@@ -1,4 +1,10 @@
-// src/context/AuthContext.tsx
+/**
+ * AuthContext
+ * - Holds the current auth session (or null)
+ * - Exposes helpers: signUpNewUser, signIn, signOut
+ * - Initializes session once and stays in sync via onAuthStateChange
+ */
+
 import {
   createContext,
   useContext,
@@ -9,6 +15,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
 
+// Shape of the context value available to consumers
 type AuthContextValue = {
   session: Session | null;
   signUpNewUser: (params: {
@@ -24,13 +31,22 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
+// Create the context; undefined by default to enforce provider usage
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Props for the provider (typed children prevents "implicitly any" errors)
 type ProviderProps = { children: ReactNode };
 
 export function AuthContextProvider({ children }: ProviderProps) {
+  // The live Supabase session; null means "no user"
   const [session, setSession] = useState<Session | null>(null);
 
+  /**
+   * On mount:
+   * 1) Seed state with current session (if any)
+   * 2) Subscribe to auth changes (login/logout/token refresh)
+   * 3) Unsubscribe on unmount to avoid leaks
+   */
   useEffect(() => {
     let mounted = true;
 
@@ -38,16 +54,24 @@ export function AuthContextProvider({ children }: ProviderProps) {
       if (mounted) setSession(data.session ?? null);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
     });
 
     return () => {
       mounted = false;
-      data.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
+  /**
+   * Sign up a new user.
+   * - Normalizes email
+   * - Stores first/last name in auth metadata
+   * - If email confirm is enabled, Supabase will NOT return a session
+   */
   const signUpNewUser: AuthContextValue["signUpNewUser"] = async ({
     email,
     password,
@@ -63,6 +87,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
             first_name: firstName ?? null,
             last_name: lastName ?? null,
           },
+          // If using confirm emails, this is where Supabase will send users back
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -74,6 +99,9 @@ export function AuthContextProvider({ children }: ProviderProps) {
     }
   };
 
+  /**
+   * Sign in with password.
+   */
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -88,6 +116,9 @@ export function AuthContextProvider({ children }: ProviderProps) {
     }
   };
 
+  /**
+   * Sign out current user.
+   */
   const signOut: AuthContextValue["signOut"] = async () => {
     await supabase.auth.signOut();
   };
@@ -99,8 +130,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
   );
 }
 
-// If your linter complains about “Fast refresh only works when a file only exports components”,
-// either move this hook to a separate file OR disable the rule on the next line.
+// Convenience hook for consumers; forces usage under the provider
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
