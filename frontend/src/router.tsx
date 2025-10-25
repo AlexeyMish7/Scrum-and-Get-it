@@ -8,14 +8,22 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   { path: "/", element: <App /> },
   { path: "/register", element: <Register /> },
-  { path: "/profile", element: <ProfilePage /> },
+  {
+    path: "/profile",
+    element: (
+      <ProtectedRoute>
+        <ProfilePage />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/educationOverview", element: <EducationOverview /> },
   { path: "/skillsOverview", element: <SkillsOverview /> },
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
-  { path: "/reset-password", element: <ResetPassword /> }
+  { path: "/reset-password", element: <ResetPassword /> },
 ]);
