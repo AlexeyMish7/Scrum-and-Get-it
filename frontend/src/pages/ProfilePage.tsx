@@ -19,68 +19,7 @@ import ProfileStrengthTips from "../components/ProfileDashboard/ProfileStrengthT
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
 
-// --- Dummy Data (replace with API or Supabase later)
-const dummyActivities = [
-  {
-    id: "1",
-    date: "2025-10-22T10:00:00Z",
-    description: "Applied for Frontend Developer position at Acme Corp",
-  },
-  {
-    id: "2",
-    date: "2025-10-21T14:30:00Z",
-    description: "Added new skill: TypeScript",
-  },
-  {
-    id: "3",
-    date: "2025-10-20T09:00:00Z",
-    description: "Updated project portfolio",
-  },
-];
-
-const dummyProfile = {
-  employmentCount: 1,
-  skillsCount: 3,
-  educationCount: 1,
-  projectsCount: 2,
-};
-
-const dummySkills = [
-  { name: "Technical", value: 5 },
-  { name: "Soft skills", value: 3 },
-  { name: "Language", value: 2 },
-  { name: "Other", value: 4 },
-];
-
-const dummyCareerEvents = [
-  {
-    id: "1",
-    title: "Frontend Developer",
-    company: "Acme Corp",
-    startDate: "Jan 2023",
-    endDate: "Present",
-    description:
-      "Building React-based dashboards and improving user interfaces.",
-  },
-  {
-    id: "2",
-    title: "Software Engineer Intern",
-    company: "TechNova",
-    startDate: "May 2022",
-    endDate: "Aug 2022",
-    description: "Developed internal tools and automated testing pipelines.",
-  },
-  {
-    id: "3",
-    title: "CS Student",
-    company: "State University",
-    startDate: "Sep 2019",
-    endDate: "May 2023",
-    description:
-      "Studied software engineering, algorithms, and full-stack development.",
-  },
-];
-
+// We'll compute counts and charts from live data below; fallbacks kept minimal
 const profileStrength = 85;
 const profileRecommendations = [
   "Add more details to your recent job description",
@@ -93,6 +32,30 @@ const ProfilePage: React.FC = () => {
   const { user, loading } = useAuth();
   const [displayName, setDisplayName] = useState<string>("Your Name");
   const [displayEmail, setDisplayEmail] = useState<string>("");
+  // Live UI state
+  const [activities, setActivities] = useState<
+    Array<{ id: string; date: string; description: string }>
+  >([]);
+  const [counts, setCounts] = useState({
+    employmentCount: 0,
+    skillsCount: 0,
+    educationCount: 0,
+    projectsCount: 0,
+  });
+  const [skills, setSkills] = useState<Array<{ name: string; value: number }>>(
+    []
+  );
+  // Career event shape used by CareerTimeline component
+  interface CareerEvent {
+    id: string;
+    title: string;
+    company: string;
+    startDate: string;
+    endDate?: string;
+    description?: string;
+  }
+
+  const [careerEvents, setCareerEvents] = useState<CareerEvent[]>([]);
 
   // Quick Add Handlers
   const handleAddEmployment = () => console.log("➕ Add Employment clicked");
@@ -103,10 +66,10 @@ const ProfilePage: React.FC = () => {
   // Export Handler
   const handleExport = () => {
     const data = {
-      profile: dummyProfile,
-      activities: dummyActivities,
-      skills: dummySkills,
-      career: dummyCareerEvents,
+      profile: counts,
+      activities,
+      skills,
+      career: careerEvents,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -138,9 +101,17 @@ const ProfilePage: React.FC = () => {
           .single();
         if (!mounted) return;
         if (error || !data) {
-          const meta = user.user_metadata as any;
-          const first = meta?.first_name ?? "";
-          const last = meta?.last_name ?? "";
+          const meta = user.user_metadata as unknown as
+            | Record<string, unknown>
+            | undefined;
+          const first =
+            meta && typeof meta["first_name"] === "string"
+              ? (meta["first_name"] as string)
+              : "";
+          const last =
+            meta && typeof meta["last_name"] === "string"
+              ? (meta["last_name"] as string)
+              : "";
           setDisplayName(
             first || last ? `${first} ${last}`.trim() : "Your Name"
           );
@@ -158,6 +129,48 @@ const ProfilePage: React.FC = () => {
     };
 
     loadHeader();
+    return () => {
+      mounted = false;
+    };
+  }, [user, loading]);
+
+  // Load documents and other simple profile-related data
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    let mounted = true;
+    const loadExtras = async () => {
+      try {
+        // Documents (resumes, cover letters, etc.)
+        const { data: docs } = await supabase
+          .from("documents")
+          .select("id, file_name, uploaded_at, kind")
+          .eq("user_id", user.id)
+          .order("uploaded_at", { ascending: false });
+
+        if (!mounted) return;
+
+        const docsList = docs ?? [];
+        // Build activities from recent documents
+        const docActivities = docsList.map((d: Record<string, unknown>) => ({
+          id: (d.id as string) ?? Math.random().toString(36).slice(2),
+          date: (d.uploaded_at as string) ?? new Date().toISOString(),
+          description: `Uploaded ${(d.file_name as string) ?? "file"}`,
+        }));
+
+        setActivities(docActivities);
+        setCounts((c) => ({ ...c, projectsCount: docsList.length }));
+
+        // For Sprint 1 we don't yet have skills/employment tables wired; keep defaults
+        setSkills([]);
+        setCareerEvents([]);
+      } catch (err) {
+        console.error("Failed to load profile extras", err);
+      }
+    };
+
+    loadExtras();
     return () => {
       mounted = false;
     };
@@ -185,13 +198,15 @@ const ProfilePage: React.FC = () => {
         }}
       >
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>J</Avatar>
+          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+            {displayName ? displayName.charAt(0).toUpperCase() : "U"}
+          </Avatar>
           <Box>
             <Typography variant="h6" fontWeight={700}>
-              John Doe
+              {displayName}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              john.doe@example.com
+              {displayEmail}
             </Typography>
           </Box>
         </Box>
@@ -214,7 +229,7 @@ const ProfilePage: React.FC = () => {
 
         {/* Summary cards */}
         <SummaryCards
-          counts={dummyProfile}
+          counts={counts}
           onAddEmployment={handleAddEmployment}
           onAddSkill={handleAddSkill}
           onAddEducation={handleAddEducation}
@@ -231,7 +246,7 @@ const ProfilePage: React.FC = () => {
           }}
         >
           <Box sx={{ flex: "1 1 300px" }}>
-            <ProfileCompletion profile={dummyProfile} />
+            <ProfileCompletion profile={counts} />
           </Box>
           <Box sx={{ flex: "1 1 300px" }}>
             <ProfileStrengthTips
@@ -251,17 +266,17 @@ const ProfilePage: React.FC = () => {
           }}
         >
           <Box sx={{ flex: "1 1 400px" }}>
-            <SkillsDistributionChart skills={dummySkills} />
+            <SkillsDistributionChart skills={skills} />
           </Box>
           <Box sx={{ flex: "1 1 400px" }}>
-            <RecentActivityTimeline activities={dummyActivities} />
+            <RecentActivityTimeline activities={activities} />
           </Box>
         </Box>
 
         {/* Career Timeline */}
         <Box mt={4}>
           <Divider sx={{ mb: 3 }} />
-          <CareerTimeline events={dummyCareerEvents} />
+          <CareerTimeline events={careerEvents} />
         </Box>
       </Box>
     </Box>

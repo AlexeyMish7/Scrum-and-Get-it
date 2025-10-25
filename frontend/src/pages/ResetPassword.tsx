@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import {
   Button,
-  Input,
+  TextField,
   Card,
   CardContent,
   Typography,
   Alert,
+  Link as MuiLink,
 } from "@mui/material";
 
 export default function ResetPassword() {
@@ -22,7 +23,8 @@ export default function ResetPassword() {
   useEffect(() => {
     // When the user clicks the link in email, Supabase automatically sets the session in URL
     const hash = window.location.hash;
-    if (!hash.includes("type=recovery")) {
+    // Check for either a recovery type or tokens in the fragment
+    if (!hash.includes("type=recovery") && !hash.includes("access_token")) {
       setError("Invalid or expired password reset link.");
     }
   }, []);
@@ -45,17 +47,17 @@ export default function ResetPassword() {
     setLoading(true);
 
     // Supabase handles validation of the recovery token internally
-    const { data, error } = await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
     if (error) {
       setError("Reset link expired or invalid. Please request again.");
-      console.error(error);
+      console.error("updateUser error:", error);
     } else {
-      setMessage("Password reset successful! Redirecting to dashboard...");
-      // Supabase automatically signs the user in after password reset
-      setTimeout(() => navigate("/register"), 2000);
+      setMessage("Password reset successful! Redirecting to sign in...");
+      // Give user a short moment to read the message, then send to login
+      setTimeout(() => navigate("/login"), 2000);
     }
 
     setLoading(false);
@@ -80,22 +82,26 @@ export default function ResetPassword() {
         )}
 
         <form onSubmit={handlePasswordReset}>
-          <Input
+          <TextField
             fullWidth
+            label="New Password"
             type="password"
-            placeholder="New Password"
             required
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setNewPassword(e.target.value)
+            }
             sx={{ mb: 2 }}
           />
-          <Input
+          <TextField
             fullWidth
+            label="Confirm New Password"
             type="password"
-            placeholder="Confirm New Password"
             required
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setConfirmPassword(e.target.value)
+            }
             sx={{ mb: 2 }}
           />
           <Button
@@ -108,6 +114,13 @@ export default function ResetPassword() {
             {loading ? "Updating..." : "Reset Password"}
           </Button>
         </form>
+      </CardContent>
+      <CardContent>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          <MuiLink component={Link} to="/login">
+            Back to sign in
+          </MuiLink>
+        </Typography>
       </CardContent>
     </Card>
   );

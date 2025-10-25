@@ -1,5 +1,5 @@
 /**
- * Register form
+ * Register/SignUp form
  * - Local state for user input
  * - Client-side validation
  * - Calls Supabase auth.signUp
@@ -202,7 +202,7 @@ export default function Register() {
         </button>
 
         <p>
-          Already have an account? <Link to="/signin">Sign in</Link>
+          Already have an account? <Link to="/Login">Sign in</Link>
         </p>
       </form>
 
