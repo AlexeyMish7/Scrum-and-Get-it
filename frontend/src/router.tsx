@@ -32,6 +32,6 @@ export const router = createBrowserRouter([
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
   { path: "/employment-history", element: <EmploymentHistoryList /> },
-  { path: "/add-projects", element: <AddProjectForm /> }
+  { path: "/add-projects", element: <AddProjectForm /> },
   { path: "/certifications", element: <Certifications /> }
 ]);
