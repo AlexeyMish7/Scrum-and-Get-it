@@ -1,5 +1,5 @@
 /**
- * Register form
+ * Register/SignUp form
  * - Local state for user input
  * - Client-side validation
  * - Calls Supabase auth.signUp
