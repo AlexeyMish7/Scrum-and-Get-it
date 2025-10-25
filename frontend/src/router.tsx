@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
 import EmploymentHistoryList from "./pages/EmployementHistoryList";
+import AddProjectForm from "./pages/AddProjectForm";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -30,4 +31,5 @@ export const router = createBrowserRouter([
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
   { path: "/employment-history", element: <EmploymentHistoryList /> },
+  { path: "/add-projects", element: <AddProjectForm /> }
 ]);
