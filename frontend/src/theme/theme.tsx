@@ -59,8 +59,86 @@ const theme = createTheme({
       secondary: '#6C757D',
     },
   },
+  typography: {
+    fontFamily: `'Inter', sans-serif`,
+
+    h1: {
+      fontFamily: `'Playfair Display', serif`,
+      fontSize: "3rem",
+      fontWeight: 600,
+      lineHeight: 1.2,
+      letterSpacing: "-0.5px",
+      color: "#1a1a1a",
+    },
+    h2: {
+      fontFamily: `'Playfair Display', serif`,
+      fontSize: "2.25rem",
+      fontWeight: 500,
+      lineHeight: 1.25,
+      color: "#1c1c1c",
+    },
+    h3: {
+      fontFamily: `'Playfair Display', serif`,
+      fontSize: "1.75rem",
+      fontWeight: 500,
+      lineHeight: 1.3,
+      color: "#202020",
+    },
+    h4: {
+      fontSize: "1.5rem",
+      fontWeight: 500,
+      lineHeight: 1.4,
+      color: "#222",
+    },
+    h5: {
+      fontSize: "1.25rem",
+      fontWeight: 500,
+      lineHeight: 1.45,
+      color: "#2a2a2a",
+    },
+    h6: {
+      fontSize: "1.05rem",
+      fontWeight: 500,
+      lineHeight: 1.5,
+      color: "#333",
+    },
+
+    body1: {
+      fontSize: "1rem",
+      fontWeight: 400,
+      lineHeight: 1.7,
+      color: "#444",
+    },
+    body2: {
+      fontSize: "0.9rem",
+      fontWeight: 300,
+      lineHeight: 1.6,
+      color: "#555",
+    },
+
+    caption: {
+      fontSize: "0.75rem",
+      fontWeight: 300,
+      letterSpacing: "0.4px",
+      textTransform: "uppercase",
+      color: "#777",
+    },
+  },
+
+  
 
   components: {
+      MuiCssBaseline: {
+    styleOverrides: (themeParam) => ({
+      "h1": { ...themeParam.typography.h1 },
+      "h2": { ...themeParam.typography.h2 },
+      "h3": { ...themeParam.typography.h3 },
+      "h4": { ...themeParam.typography.h4 },
+      "h5": { ...themeParam.typography.h5 },
+      "h6": { ...themeParam.typography.h6 },
+      "p": { ...themeParam.typography.body1 },
+    }),
+  },
     // ---- Button variants ----
     MuiButton: {
       styleOverrides: {
