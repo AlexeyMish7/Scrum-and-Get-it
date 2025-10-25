@@ -18,17 +18,14 @@ export default function EmploymentHistoryList() {
   const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(null);
 
   const fetchEntries = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data, error } = await supabase
       .from("employment_history")
       .select("*")
       .eq("user_id", user.id)
-      .order("start_date", { ascending: false }); // reverse chronological
+      .order("start_date", { ascending: false });
 
     if (error) console.error(error);
     else setEntries(data || []);
@@ -38,10 +35,27 @@ export default function EmploymentHistoryList() {
     fetchEntries();
   }, []);
 
+  const handleDelete = async (entryId: string) => {
+    const confirmed = window.confirm("Are you sure you want to delete this entry?");
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("employment_history")
+      .delete()
+      .eq("id", entryId);
+
+    if (error) {
+      console.error(error);
+      alert("Something went wrong. Please try again.");
+    } else {
+      alert("Employment entry deleted successfully!");
+      fetchEntries(); // refresh list immediately
+    }
+  };
+
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Employment History</h2>
-
       {entries.length === 0 && <p>No employment entries yet.</p>}
 
       <ul className="space-y-4">
@@ -56,19 +70,28 @@ export default function EmploymentHistoryList() {
                   {entry.job_title} @ {entry.company_name}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {entry.location} •{" "}
-                  {entry.is_current
-                    ? "Present"
-                    : `${entry.start_date} – ${entry.end_date}`}
+                  {entry.location} • {entry.is_current ? "Present" : `${entry.start_date} – ${entry.end_date}`}
                 </p>
               </div>
 
-              <button
-                onClick={() => setEditingEntry(entry)}
-                className="text-blue-600 hover:underline"
-              >
-                Edit
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingEntry(entry)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+
+                {/* Only show delete if more than one entry */}
+                {entries.length > 1 && (
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
 
             {entry.description && (
