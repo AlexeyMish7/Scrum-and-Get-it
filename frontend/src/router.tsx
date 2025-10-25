@@ -3,6 +3,7 @@ import App from "./App";
 import Register from "./pages/Register";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
+import Certifications from "./pages/Certifications";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgetPassword";
@@ -30,4 +31,5 @@ export const router = createBrowserRouter([
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
   { path: "/employment-history", element: <EmploymentHistoryList /> },
+  { path: "/certifications", element: <Certifications /> }
 ]);

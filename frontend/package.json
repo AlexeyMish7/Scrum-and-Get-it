@@ -17,6 +17,7 @@
     "@mui/lab": "^7.0.1-beta.18",
     "@mui/material": "^7.3.4",
     "@supabase/supabase-js": "^2.76.1",
+    "dayjs": "^1.11.18",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.546.0",
