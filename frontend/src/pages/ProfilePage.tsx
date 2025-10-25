@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, type FC } from "react";
 import {
   Box,
   Typography,
@@ -27,7 +27,7 @@ const profileRecommendations = [
   "List at least 3 soft skills",
 ];
 
-const ProfilePage: React.FC = () => {
+const ProfilePage: FC = () => {
   const theme = useTheme();
   const { user, loading } = useAuth();
   const [displayName, setDisplayName] = useState<string>("Your Name");

@@ -23,7 +23,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session, User, Provider } from "@supabase/supabase-js";
+// Avoid importing runtime types from the supabase package here because some
+// editors/TS servers may fail to resolve the package types in certain
+// workspaces (causing "Cannot find module '@supabase/supabase-js'" errors).
+// Define the minimal shapes we need locally — this keeps strict typing for
+// our context without requiring the external type resolution.
+type User = {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
+type Session = { user: User } | null;
+
+type Provider = string;
 import { supabase } from "../supabaseClient";
 
 // Shape of the context value available to consumers
@@ -73,7 +86,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
 
     supabase.auth
       .getSession()
-      .then(({ data }) => {
+      .then(({ data }: { data: { session: Session | null } }) => {
         if (mounted) setSession(data.session ?? null);
       })
       .finally(() => {
@@ -82,10 +95,12 @@ export function AuthContextProvider({ children }: ProviderProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setLoading(false);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: string, newSession: Session | null) => {
+        setSession(newSession);
+        setLoading(false);
+      }
+    );
 
     return () => {
       mounted = false;
