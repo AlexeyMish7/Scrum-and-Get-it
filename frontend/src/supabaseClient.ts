@@ -2,8 +2,8 @@
  * Creates a single Supabase client for the whole app.
  * - Reads Vite env vars (declared in src/vite-env.d.ts)
  * - Throws early if env vars are missing (helps catch misconfig)
- */
-
+ 
+*/
 import { createClient } from "@supabase/supabase-js";
 
 // Vite injects these at build/dev time. The .d.ts tells TS they exist.

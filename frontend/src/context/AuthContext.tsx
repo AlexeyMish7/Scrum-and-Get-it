@@ -1,3 +1,4 @@
+
 /**
  * AuthContext
  * - Holds the current auth session (or null)
