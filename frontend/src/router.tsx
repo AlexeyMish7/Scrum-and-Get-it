@@ -4,11 +4,13 @@ import Register from "./pages/Register";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
 import SkillsOverview from "./pages/SkillsOverview";
+import Login from "./pages/Login";
 
 export const router = createBrowserRouter([
   { path: "/", element: <App /> },
   { path: "/register", element: <Register /> },
   { path: "/profile", element: <ProfilePage /> },
   { path: "/educationOverview", element: <EducationOverview /> },
-  { path: "/skillsOverview", element: <SkillsOverview /> }
+  { path: "/skillsOverview", element: <SkillsOverview /> },
+  { path: "/login", element: <Login /> }
 ]);
