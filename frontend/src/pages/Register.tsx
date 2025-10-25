@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
 type RegisterForm = {
   firstName: string;
@@ -22,6 +23,7 @@ type RegisterForm = {
 
 export default function Register() {
   const navigate = useNavigate();
+  const { signUpNewUser } = useAuth();
 
   // Form and UI states
   const [form, setForm] = useState<RegisterForm>({
@@ -73,50 +75,48 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // Create auth user; metadata lives on auth.users
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      // Use the central Auth provider helper so behavior is consistent across the app.
+      const res = await signUpNewUser({
         email,
         password: form.password,
-        options: {
-          data: { first_name: firstName, last_name: lastName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        firstName,
+        lastName,
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
+      if (!res.ok) {
+        setError(res.message);
         return;
       }
 
-      // If email confirmations are ON (default), no session yet.
-      // Tell the user to confirm before signing in.
-      if (!data.session) {
+      // If email confirmation is required, tell the user and stop here.
+      if ("requiresConfirmation" in res && res.requiresConfirmation) {
         setInfo(
           "Check your email to confirm your account. You can sign in after confirming."
         );
         return;
       }
 
-      // If a session exists now, you may create a profiles row (optional best practice).
-      const userId = data.user?.id;
+      // Otherwise, a session should now exist. Get the signed-in user and upsert profile row.
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
       if (userId) {
-        const { error: profileError } = await supabase.from("profiles").insert([
-          {
-            id: userId, // must equal auth.uid()
-            first_name: firstName,
-            last_name: lastName,
-            full_name: `${firstName} ${lastName}`.trim(),
-            email,
-          },
-        ]);
-
-        // Profile insert failure is non-fatal to signup; surface a gentle note.
-        if (profileError)
+        const { error: upsertError } = await supabase.from("profiles").upsert(
+          [
+            {
+              id: userId,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              full_name: `${firstName} ${lastName}`.trim(),
+              email,
+            },
+          ],
+          { onConflict: "id" }
+        );
+        if (upsertError)
           setInfo("Account created; profile will complete later.");
       }
 
-      // Done: go to dashboard
-      navigate("/dashboard");
+      navigate("/profile");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {

@@ -1,6 +1,5 @@
-
 // src/pages/ProfilePage.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -15,8 +14,10 @@ import RecentActivityTimeline from "../components/ProfileDashboard/RecentActivit
 import ProfileCompletion from "../components/ProfileDashboard/ProfileCompletion";
 import SkillsDistributionChart from "../components/ProfileDashboard/SkillsDistributionChart";
 import CareerTimeline from "../components/ProfileDashboard/CareerTimeline";
-import ExportProfileButton from "../components/ProfileDashboard/ExportProfileButton";
+// import ExportProfileButton from "../components/ProfileDashboard/ExportProfileButton";
 import ProfileStrengthTips from "../components/ProfileDashboard/ProfileStrengthTips";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabaseClient";
 
 // --- Dummy Data (replace with API or Supabase later)
 const dummyActivities = [
@@ -89,6 +90,9 @@ const profileRecommendations = [
 
 const ProfilePage: React.FC = () => {
   const theme = useTheme();
+  const { user, loading } = useAuth();
+  const [displayName, setDisplayName] = useState<string>("Your Name");
+  const [displayEmail, setDisplayEmail] = useState<string>("");
 
   // Quick Add Handlers
   const handleAddEmployment = () => console.log("➕ Add Employment clicked");
@@ -115,6 +119,49 @@ const ProfilePage: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  useEffect(() => {
+    let mounted = true;
+    if (loading) return;
+    if (!user) {
+      setDisplayName("Guest");
+      setDisplayEmail("");
+      return;
+    }
+
+    const loadHeader = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, full_name, email")
+          .eq("id", user.id)
+          .single();
+        if (!mounted) return;
+        if (error || !data) {
+          const meta = user.user_metadata as any;
+          const first = meta?.first_name ?? "";
+          const last = meta?.last_name ?? "";
+          setDisplayName(
+            first || last ? `${first} ${last}`.trim() : "Your Name"
+          );
+          setDisplayEmail(user.email ?? "");
+        } else {
+          const full = data.full_name ?? "";
+          const first = data.first_name ?? "";
+          const last = data.last_name ?? "";
+          setDisplayName(full || `${first} ${last}`.trim() || "Your Name");
+          setDisplayEmail(data.email ?? user.email ?? "");
+        }
+      } catch (err) {
+        console.error("Failed to load profile header", err);
+      }
+    };
+
+    loadHeader();
+    return () => {
+      mounted = false;
+    };
+  }, [user, loading]);
 
   return (
     <Box
