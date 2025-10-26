@@ -46,9 +46,9 @@ const NavBar: React.FC = () => {
     { label: "Dashboard", path: "/profile" },
     { label: "Education", path: "/educationOverview" },
     { label: "Skills", path: "/skillsOverview" },
-    { label: "Employment", path: "/EmployementHistoryList" },
-    { label: "Projects", path: "/AddProjectForm" },
-    { label: "Certifications", path: "/Certifications" }
+    { label: "Employment", path: "/employment-history" },
+    { label: "Projects", path: "/add-projects" },
+    { label: "Certifications", path: "/certifications" }
   ];
 
   return (
@@ -133,7 +133,7 @@ const NavBar: React.FC = () => {
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    navigate("/profile");
+                    navigate("/profile-details");
                   }}
                 >
                   Profile
