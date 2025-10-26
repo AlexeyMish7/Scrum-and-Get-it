@@ -1,3 +1,4 @@
+import { useAuth } from "../../context/AuthContext";
 import React, { useState } from "react";
 import {
   AppBar,
@@ -24,6 +25,9 @@ const NavBar: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -135,15 +139,16 @@ const NavBar: React.FC = () => {
                   Profile
                 </MenuItem>
 
-                <MenuItem
-                  onClick={() => {
-                    handleMenuClose();
-                    localStorage.removeItem("authToken"); // example logout
-                    navigate("/login");
-                  }}
-                >
-                  Logout
-                </MenuItem>
+<MenuItem
+  onClick={async () => {
+    handleMenuClose();
+    await signOut();             
+    navigate("/login", { replace: true });
+  }}
+>
+  Logout
+</MenuItem>
+
               </Menu>
             </Box>
           )}
@@ -204,15 +209,16 @@ const NavBar: React.FC = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>
-                <ListItemButton
-                  onClick={() => {
-                    toggleDrawer(false)();
-                    localStorage.removeItem("authToken");
-                    navigate("/login");
-                  }}
-                >
-                  <ListItemText primary="Logout" />
-                </ListItemButton>
+<ListItemButton
+  onClick={async () => {
+    toggleDrawer(false)();
+    await signOut();                // ✅ important!
+    navigate("/login", { replace: true });
+  }}
+>
+  <ListItemText primary="Logout" />
+</ListItemButton>
+
               </ListItem>
             </List>
           </Box>
