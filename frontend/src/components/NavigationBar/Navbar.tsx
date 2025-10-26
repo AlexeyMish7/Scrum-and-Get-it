@@ -42,6 +42,9 @@ const NavBar: React.FC = () => {
     { label: "Dashboard", path: "/profile" },
     { label: "Education", path: "/educationOverview" },
     { label: "Skills", path: "/skillsOverview" },
+    { label: "Employment", path: "/EmployementHistoryList" },
+    { label: "Projects", path: "/AddProjectForm" },
+    { label: "Certifications", path: "/Certifications" }
   ];
 
   return (

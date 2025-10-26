@@ -50,7 +50,31 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
-  { path: "/employment-history", element: <EmploymentHistoryList /> },
-  { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/certifications", element: <Certifications /> }
+  { path: "/employment-history", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <EmploymentHistoryList />
+      </>
+    ),
+  },
+  { path: "/add-projects", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <AddProjectForm />
+      </>
+    ),  
+  },
+  { path: "/certifications", 
+     element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <Certifications />
+      </>
+    ), 
+  }
 ]);
