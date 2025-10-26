@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
+import HomePage from "./pages/HomePage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
@@ -23,7 +24,7 @@ import Settings from "./pages/Settings";
 
 
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/login" replace /> },
+  { path: "/", element: <HomePage /> },
   { path: "/register", element: <Register /> },
   {
     path: "/profile",
