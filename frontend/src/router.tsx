@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import App from "./App";
+import AddSkills from "./pages/AddSkills";
 import Register from "./pages/Register";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
@@ -56,7 +57,8 @@ export const router = createBrowserRouter([
   { path: "/add-projects", element: <AddProjectForm /> },
   { path: "/certifications", element: <Certifications /> },
   { path: "/portfolio", element: <ProjectPortfolio /> },
-  { path: "/projects/:id", element: <ProjectDetails /> }
+  { path: "/projects/:id", element: <ProjectDetails /> },
+  { path: "/skills/manage", element: <AddSkills /> },
   { path: "/employment-history", 
     element: (
       <>
