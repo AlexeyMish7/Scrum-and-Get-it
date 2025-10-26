@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -87,6 +87,8 @@ const ProjectPortfolio: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
+  const navigate = useNavigate(); // added navigation
+
   useEffect(() => {
     setProjects(dummyProjects);
   }, []);
@@ -112,7 +114,12 @@ const ProjectPortfolio: React.FC = () => {
   const handleCopyLink = (projectId: string) => {
     const url = `${window.location.origin}/projects/${projectId}`;
     navigator.clipboard.writeText(url);
-    alert("✅ Project link copied to clipboard!");
+    alert("Project link copied to clipboard!");
+  };
+
+  // navigate to add project page
+  const handleAddProject = () => {
+    navigate("/add-projects");
   };
 
   return (
@@ -120,6 +127,17 @@ const ProjectPortfolio: React.FC = () => {
       <Typography variant="h4" textAlign="center" mb={2}>
         My Projects Portfolio
       </Typography>
+
+      {/*Add Project Button */}
+      <Box textAlign="center" mb={4}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleAddProject}
+        >
+          Add Project
+        </Button>
+      </Box>
 
       {/* Info Note */}
       <Typography variant="body2" color="text.secondary" textAlign="center" mb={4}>
