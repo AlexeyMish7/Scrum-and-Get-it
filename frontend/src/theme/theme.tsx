@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
 // 👉 Module augmentation to let MUI know about @mui/lab's LoadingButton
 declare module '@mui/material/styles' {
@@ -23,7 +23,7 @@ declare module '@mui/lab/LoadingButton' {
   }
 }
 
-const theme = createTheme({
+let theme = createTheme({
   palette: {
     primary: {
       main: '#1976D2', // Blue
@@ -59,6 +59,7 @@ const theme = createTheme({
       secondary: '#6C757D',
     },
   },
+
   typography: {
     fontFamily: `'Inter', sans-serif`,
 
@@ -102,7 +103,6 @@ const theme = createTheme({
       lineHeight: 1.5,
       color: "#333",
     },
-
     body1: {
       fontSize: "1rem",
       fontWeight: 400,
@@ -115,7 +115,6 @@ const theme = createTheme({
       lineHeight: 1.6,
       color: "#555",
     },
-
     caption: {
       fontSize: "0.75rem",
       fontWeight: 300,
@@ -125,20 +124,49 @@ const theme = createTheme({
     },
   },
 
-  
-
   components: {
-      MuiCssBaseline: {
-    styleOverrides: (themeParam) => ({
-      "h1": { ...themeParam.typography.h1 },
-      "h2": { ...themeParam.typography.h2 },
-      "h3": { ...themeParam.typography.h3 },
-      "h4": { ...themeParam.typography.h4 },
-      "h5": { ...themeParam.typography.h5 },
-      "h6": { ...themeParam.typography.h6 },
-      "p": { ...themeParam.typography.body1 },
-    }),
-  },
+    // ✅ GLOBAL resets, page layout, responsive typography + padding
+    MuiCssBaseline: {
+      styleOverrides: (themeParam) => ({
+        "h1": { ...themeParam.typography.h1 },
+        "h2": { ...themeParam.typography.h2 },
+        "h3": { ...themeParam.typography.h3 },
+        "h4": { ...themeParam.typography.h4 },
+        "h5": { ...themeParam.typography.h5 },
+        "h6": { ...themeParam.typography.h6 },
+        "p": { ...themeParam.typography.body1 },
+
+        // ✅ Base universal page layout adjustments
+        body: {
+          margin: 0,
+          padding: 0,
+          backgroundColor: '#F8F9FA',
+          fontFamily: "'Inter', sans-serif",
+          overflowX: 'hidden', // prevent horizontal scrolling on small screens
+        },
+        '#root': {
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+          padding: '16px',
+          '@media (min-width:600px)': { padding: '24px' },
+          '@media (min-width:900px)': { padding: '32px' },
+        },
+        button: {
+          minHeight: '48px',
+          minWidth: '48px', // ensure touch accessibility
+        },
+        input: {
+          fontSize: '16px', // prevent zoom on iOS
+          boxSizing: 'border-box',
+        },
+        textarea: {
+          fontSize: '16px',
+        },
+      }),
+    },
+
     // ---- Button variants ----
     MuiButton: {
       styleOverrides: {
@@ -252,5 +280,8 @@ const theme = createTheme({
     },
   },
 });
+
+// ✅ Make font sizes responsive globally (no page edits needed)
+theme = responsiveFontSizes(theme);
 
 export default theme;
