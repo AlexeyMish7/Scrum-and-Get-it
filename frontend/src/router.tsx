@@ -15,6 +15,8 @@ import EmploymentHistoryList from "./pages/EmployementHistoryList";
 import AddProjectForm from "./pages/AddProjectForm";
 import ProjectPortfolio from "./pages/ProjectPortfolio";
 import ProjectDetails from "./pages/ProjectDetails";
+import NavBar from "./components/NavigationBar/Navbar";
+import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -23,12 +25,29 @@ export const router = createBrowserRouter([
     path: "/profile",
     element: (
       <ProtectedRoute>
+        <NavBar />
+        <BreadcrumbsBar /> 
         <ProfilePage />
       </ProtectedRoute>
     ),
   },
-  { path: "/educationOverview", element: <EducationOverview /> },
-  { path: "/skillsOverview", element: <SkillsOverview /> },
+  { path: "/educationOverview", 
+   element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <EducationOverview />
+      </>
+    ), 
+  },
+  { path: "/skillsOverview", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <SkillsOverview />
+      </>
+    ),},
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
@@ -38,4 +57,31 @@ export const router = createBrowserRouter([
   { path: "/certifications", element: <Certifications /> },
   { path: "/portfolio", element: <ProjectPortfolio /> },
   { path: "/projects/:id", element: <ProjectDetails /> }
+  { path: "/employment-history", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <EmploymentHistoryList />
+      </>
+    ),
+  },
+  { path: "/add-projects", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <AddProjectForm />
+      </>
+    ),  
+  },
+  { path: "/certifications", 
+     element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <Certifications />
+      </>
+    ), 
+  }
 ]);
