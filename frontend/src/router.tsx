@@ -5,7 +5,7 @@ import EducationOverview from "./pages/EducationOverview";
 import Certifications from "./pages/Certifications";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
-import AddEducation from "./pages/AddEducation";
+// import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -57,14 +57,6 @@ export const router = createBrowserRouter([
   { path: "/add-employment", element: <AddEmployment /> },
   {
     path: "/employment-history",
-  { path: "/employment-history", element: <EmploymentHistoryList /> },
-  { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/certifications", element: <Certifications /> },
-  { path: "/portfolio", element: <ProjectPortfolio /> },
-  { path: "/projects/:id", element: <ProjectDetails /> },
-  { path: "/skills/manage", element: <AddSkills /> },
-  {
-    path: "/employment-history",
     element: (
       <>
         <NavBar />
@@ -93,4 +85,6 @@ export const router = createBrowserRouter([
       </>
     ),
   },
+  { path: "/portfolio", element: <ProjectPortfolio /> },
+  { path: "/projects/:id", element: <ProjectDetails /> },
 ]);

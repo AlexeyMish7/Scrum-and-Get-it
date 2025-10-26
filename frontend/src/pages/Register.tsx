@@ -1,18 +1,14 @@
-/**
- * Register/SignUp form
- * - Local state for user input
- * - Client-side validation
- * - Calls Supabase auth.signUp
- * - Handles both flows:
- *    A) Email confirmation required  -> show "check your email" notice
- *    B) Session returned immediately -> navigate and (optionally) create profile
- */
-
+// React state + router imports
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+// Supabase client instance (handles all database/auth requests)
 import { supabase } from "../supabaseClient";
+
+// Custom authentication context for managing session + signup logic
 import { useAuth } from "../context/AuthContext";
 
+//Type for our registration form fields
 type RegisterForm = {
   firstName: string;
   lastName: string;
@@ -22,10 +18,14 @@ type RegisterForm = {
 };
 
 export default function Register() {
+  // React Router hook for programmatic navigation
   const navigate = useNavigate();
+
+  // Pull signup method from global Auth context (handles Supabase auth)
   const { signUpNewUser } = useAuth();
 
-  // Form and UI states
+  // --- UI + Form state ---
+  // Stores all input values for the registration form
   const [form, setForm] = useState<RegisterForm>({
     firstName: "",
     lastName: "",
@@ -33,8 +33,14 @@ export default function Register() {
     password: "",
     confirmPassword: "",
   });
+
+  // Error message displayed to the user (for validation or Supabase errors)
   const [error, setError] = useState<string>("");
+
+  // Informational message (like “Check your email for confirmation”)
   const [info, setInfo] = useState<string>("");
+
+  // Loading flag to disable form and show progress while submitting
   const [loading, setLoading] = useState<boolean>(false);
 
   // Keep form state in sync with inputs
@@ -44,38 +50,54 @@ export default function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Minimal but useful client-side validation
-  const validate = () => {
+  // Validation that collects ALL errors instead of returning early
+  const validate = (): string => {
+    const errors: string[] = []; // store all error messages here
+
+    // Normalize email: trim spaces + lowercase
     const email = form.email.trim().toLowerCase();
+
+    // Email must look like "something@something.com"
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      return "Invalid email format";
-    if (form.password.length < 8) return "Password too short";
-    if (!/[A-Z]/.test(form.password)) return "Need uppercase letter";
-    if (!/[a-z]/.test(form.password)) return "Need lowercase letter";
-    if (!/[0-9]/.test(form.password)) return "Need a number";
-    if (form.password !== form.confirmPassword) return "Passwords do not match";
-    return "";
+      errors.push("Invalid email format");
+
+    // Password rules
+    if (form.password.length < 8) errors.push("Password too short");
+    if (!/[A-Z]/.test(form.password)) errors.push("Need uppercase letter");
+    if (!/[a-z]/.test(form.password)) errors.push("Need lowercase letter");
+    if (!/[0-9]/.test(form.password)) errors.push("Need a number");
+
+    // Confirm password must match
+    if (form.password !== form.confirmPassword)
+      errors.push("Passwords do not match");
+
+    // Join errors with commas (or newline) if any exist
+    return errors.join(", ");
   };
 
   // Main submit handler: sign up via Supabase and branch on session presence
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault(); // Stop default page reload on form submit
+
+    // Reset any previous error/info messages
     setError("");
     setInfo("");
 
+    // Run validation checks
     const v = validate();
     if (v) {
-      setError(v);
-      return;
+      setError(v); // Show validation error to user
+      return; // Stop submission process
     }
 
-    const email = form.email.trim().toLowerCase();
-    const firstName = form.firstName.trim();
-    const lastName = form.lastName.trim();
+    // Normalize inputs for consistency
+    const email = form.email.trim().toLowerCase(); // clean + lowercase email
+    const firstName = form.firstName.trim(); // remove extra spaces
+    const lastName = form.lastName.trim(); // remove extra spaces
 
-    setLoading(true);
+    setLoading(true); // show loading state (e.g., disable button/spinner)
     try {
-      // Use the central Auth provider helper so behavior is consistent across the app.
+      // Delegate signup to the shared Auth helper for consistency
       const res = await signUpNewUser({
         email,
         password: form.password,
@@ -84,42 +106,50 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        setError(res.message);
-        return;
+        setError(res.message); // show error to user
+        setLoading(false); //reset loading if failed
+        return; // stop execution
       }
 
-      // If email confirmation is required, tell the user and stop here.
+      // If signup requires email confirmation, inform the user and exit
       if ("requiresConfirmation" in res && res.requiresConfirmation) {
         setInfo(
           "Check your email to confirm your account. You can sign in after confirming."
         );
-        return;
+        return; // stop flow here until email is confirmed
       }
 
-      // Otherwise, a session should now exist. Get the signed-in user and upsert profile row.
+      // Session exists → fetch signed-in user
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
+
       if (userId) {
+        // Insert or update profile row linked to auth.users.id
         const { error: upsertError } = await supabase.from("profiles").upsert(
           [
             {
               id: userId,
               first_name: firstName || null,
               last_name: lastName || null,
-              full_name: `${firstName} ${lastName}`.trim(),
+              full_name: `${firstName ?? ""} ${lastName ?? ""}`.trim(),
               email,
             },
           ],
-          { onConflict: "id" }
+          { onConflict: "id" } // ensures unique per user
         );
-        if (upsertError)
+
+        if (upsertError) {
+          // If profile save fails, let user know but don’t block account creation
           setInfo("Account created; profile will complete later.");
+        }
       }
 
-      navigate("/profile");
+      navigate("/profile"); // redirect user after successful signup
     } catch (err) {
+      // Show error message (fallback if err isn't a standard Error)
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
+      // Always reset loading so UI recovers
       setLoading(false);
     }
   };
@@ -128,11 +158,13 @@ export default function Register() {
     <div>
       <h1>Register</h1>
 
+      {/* Registration form with controlled inputs */}
       <form onSubmit={handleSubmit} noValidate>
         <label>
           First Name
           <input
             name="firstName"
+            type="text"
             placeholder="First Name"
             autoComplete="given-name"
             onChange={handleChange}
@@ -146,6 +178,7 @@ export default function Register() {
           Last Name
           <input
             name="lastName"
+            type="text"
             placeholder="Last Name"
             autoComplete="family-name"
             onChange={handleChange}
@@ -197,15 +230,18 @@ export default function Register() {
         </label>
         <br />
 
+        {/* Disable submit button while loading */}
         <button type="submit" disabled={loading}>
           {loading ? "Creating..." : "Create Account"}
         </button>
 
+        {/* Link to login for existing users */}
         <p>
           Already have an account? <Link to="/Login">Sign in</Link>
         </p>
       </form>
 
+      {/* Show messages if present */}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {info && <p style={{ color: "green" }}>{info}</p>}
     </div>
