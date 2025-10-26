@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -16,68 +16,85 @@ import {
   ListItemText,
   useTheme,
   useMediaQuery,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import { Link, useLocation } from 'react-router-dom';
-
-const navItems = [
-  { label: 'Education Overview', path: "../../pages/EducationOverview" }
-];
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import { NavLink, useNavigate } from "react-router-dom";
 
 const NavBar: React.FC = () => {
   const theme = useTheme();
-  const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const navigate = useNavigate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+  // --- Avatar dropdown handlers ---
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget); // Anchor to Avatar button clicked
+  };
   const handleMenuClose = () => setAnchorEl(null);
 
-  const isActive = (path: string) => location.pathname === path;
+  // --- Drawer toggle handlers (for mobile) ---
+  const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
+
+  // --- Main navigation links ---
+  const navItems = [
+    { label: "Dashboard", path: "/profile" },
+    { label: "Education", path: "/educationOverview" },
+    { label: "Skills", path: "/skillsOverview" },
+  ];
 
   return (
     <>
       <AppBar position="static" color="primary" elevation={0}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* Logo / Brand */}
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          {/* ---- Left: Logo / Brand ---- */}
           <Typography
             variant="h6"
-            component={Link}
-            to="/"
-            sx={{ textDecoration: 'none', color: theme.palette.common.white, fontWeight: 600 }}
+            component={NavLink}
+            to="/profile"
+            sx={{
+              textDecoration: "none",
+              color: theme.palette.common.white,
+              fontWeight: 600,
+            }}
           >
-            AppName
+            MyApp
           </Typography>
 
-          {/* Desktop Menu */}
+          {/* ---- Desktop Menu (regular nav items + avatar) ---- */}
           {!isMobile && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               {navItems.map((item) => (
                 <Button
                   key={item.path}
-                  component={Link}
+                  component={NavLink}
                   to={item.path}
                   color="inherit"
                   sx={{
-                    position: 'relative',
-                    fontWeight: isActive(item.path) ? 700 : 500,
-                    '&:after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: 0,
-                      bottom: -4,
-                      height: 2,
-                      width: '100%',
-                      backgroundColor: isActive(item.path)
-                        ? theme.palette.secondary.main
-                        : 'transparent',
-                      transition: '0.3s',
+                    position: "relative",
+                    textTransform: "none",
+                    fontWeight: 500,
+                    "&.active": {
+                      fontWeight: 700,
+                      "&::after": {
+                        content: '""',
+                        position: "absolute",
+                        bottom: -4,
+                        left: 0,
+                        height: 2,
+                        width: "100%",
+                        backgroundColor: theme.palette.secondary.main,
+                      },
                     },
-                    '&:hover:after': {
-                      backgroundColor: theme.palette.secondary.main,
+                    "&:hover::after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: -4,
+                      left: 0,
+                      height: 2,
+                      width: "100%",
+                      backgroundColor: theme.palette.secondary.light,
                     },
                   }}
                 >
@@ -85,52 +102,117 @@ const NavBar: React.FC = () => {
                 </Button>
               ))}
 
-              {/* User Menu */}
-              <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-                <Avatar alt="User Profile" src="/static/images/avatar/1.jpg" />
+              {/* --- Profile Avatar Menu Trigger --- */}
+              <IconButton
+                onClick={handleMenuOpen}
+                sx={{ p: 0, ml: 1 }}
+                aria-controls={anchorEl ? "profile-menu" : undefined}
+                aria-haspopup="true"
+              >
+                {/* 👇 Avatar = User Profile Picture */}
+                <Avatar
+                  alt="User Profile"
+                  src="/static/images/avatar/1.jpg"
+                />
               </IconButton>
-              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
-                <MenuItem onClick={handleMenuClose}>Logout</MenuItem>
+
+              {/* --- Avatar Drop-Down Menu --- */}
+              <Menu
+                id="profile-menu"
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+              >
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    navigate("/profile");
+                  }}
+                >
+                  Profile
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    localStorage.removeItem("authToken"); // example logout
+                    navigate("/login");
+                  }}
+                >
+                  Logout
+                </MenuItem>
               </Menu>
             </Box>
           )}
 
-          {/* Mobile Menu */}
+          {/* ---- Mobile Menu (hamburger) ---- */}
           {isMobile && (
-            <IconButton color="inherit" onClick={handleDrawerToggle}>
+            <IconButton color="inherit" onClick={toggleDrawer(true)}>
               <MenuIcon />
             </IconButton>
           )}
         </Toolbar>
       </AppBar>
 
-      {/* Drawer for Mobile */}
-      <Drawer anchor="left" open={drawerOpen} onClose={handleDrawerToggle}>
-        <Box sx={{ width: 250 }} onClick={handleDrawerToggle}>
-          <List>
-            {navItems.map((item) => (
-              <ListItem key={item.path} disablePadding>
+      {/* ---- Drawer (for Mobile Responsive Navigation) ---- */}
+      <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
+        <Box
+          sx={{
+            width: 250,
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Drawer Links */}
+          <Box>
+            <List>
+              {navItems.map((item) => (
+                <ListItem key={item.path} disablePadding>
+                  <ListItemButton
+                    component={NavLink}
+                    to={item.path}
+                    onClick={toggleDrawer(false)}
+                    sx={{
+                      "&.active": {
+                        backgroundColor: theme.palette.action.selected,
+                      },
+                    }}
+                  >
+                    <ListItemText primary={item.label} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+
+          {/* Drawer Footer for Profile/Logout */}
+          <Box>
+            <List>
+              <ListItem disablePadding>
                 <ListItemButton
-                  component={Link}
-                  to={item.path}
-                  sx={{
-                    backgroundColor: isActive(item.path)
-                      ? theme.palette.action.selected
-                      : 'transparent',
+                  onClick={() => {
+                    toggleDrawer(false)();
+                    navigate("/profile");
                   }}
                 >
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary="Profile" />
                 </ListItemButton>
               </ListItem>
-            ))}
-            <ListItemButton>
-              <ListItemText primary="Profile" />
-            </ListItemButton>
-            <ListItemButton>
-              <ListItemText primary="Logout" />
-            </ListItemButton>
-          </List>
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    toggleDrawer(false)();
+                    localStorage.removeItem("authToken");
+                    navigate("/login");
+                  }}
+                >
+                  <ListItemText primary="Logout" />
+                </ListItemButton>
+              </ListItem>
+            </List>
+          </Box>
         </Box>
       </Drawer>
     </>

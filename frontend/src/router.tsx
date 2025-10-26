@@ -13,6 +13,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
 import EmploymentHistoryList from "./pages/EmployementHistoryList";
 import AddProjectForm from "./pages/AddProjectForm";
+import NavBar from "./components/NavigationBar/Navbar";
+import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -21,17 +23,34 @@ export const router = createBrowserRouter([
     path: "/profile",
     element: (
       <ProtectedRoute>
+        <NavBar />
+        <BreadcrumbsBar /> 
         <ProfilePage />
       </ProtectedRoute>
     ),
   },
-  { path: "/educationOverview", element: <EducationOverview /> },
-  { path: "/skillsOverview", element: <SkillsOverview /> },
+  { path: "/educationOverview", 
+   element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <EducationOverview />
+      </>
+    ), 
+  },
+  { path: "/skillsOverview", 
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar /> 
+        <SkillsOverview />
+      </>
+    ),},
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
   { path: "/employment-history", element: <EmploymentHistoryList /> },
-  { path: "/add-projects", element: <AddProjectForm /> }
+  { path: "/add-projects", element: <AddProjectForm /> },
   { path: "/certifications", element: <Certifications /> }
 ]);
