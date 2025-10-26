@@ -1,5 +1,6 @@
-// src/pages/ProfilePage.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, type FC } from "react";
+
+// MUI UI primitives + theming hook
 import {
   Box,
   Typography,
@@ -8,16 +9,103 @@ import {
   useTheme,
   Divider,
 } from "@mui/material";
+
+// Single icon import (good for tree-shaking)
 import { Download } from "@mui/icons-material";
+
+// App widgets for the dashboard layout/visuals
 import SummaryCards from "../components/ProfileDashboard/SummaryCards";
 import RecentActivityTimeline from "../components/ProfileDashboard/RecentActivityTimeline";
 import ProfileCompletion from "../components/ProfileDashboard/ProfileCompletion";
 import SkillsDistributionChart from "../components/ProfileDashboard/SkillsDistributionChart";
 import CareerTimeline from "../components/ProfileDashboard/CareerTimeline";
-// import ExportProfileButton from "../components/ProfileDashboard/ExportProfileButton";
 import ProfileStrengthTips from "../components/ProfileDashboard/ProfileStrengthTips";
+// TODO: Remove or restore when used
+// import ExportProfileButton from "../components/ProfileDashboard/ExportProfileButton";
+
+// Auth context: current user + loading state
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../supabaseClient";
+import { getProfile } from "../services/profileService";
+import * as crud from "../services/crud";
+import { useList } from "../hooks/useList";
+import type {
+  DocumentRow,
+  Profile,
+  CareerEvent as CareerEventType,
+} from "../types";
+
+/*
+  ProfilePage
+  - Dashboard-style profile overview for the currently authenticated user.
+  - Responsibilities:
+    * Load profile row from `profiles` (via `profileService`).
+    * Load documents and employment history (using generic `crud` helpers).
+    * Compose lightweight view models for the UI widgets (summary cards,
+      activity timeline, skills chart, career timeline).
+  - Goals for this refactor: clearer, better-commented logic and reuse of
+    `crud` + `useList` instead of inline supabase calls.
+*/
+
+// Local UI-friendly activity shape used in the RecentActivityTimeline
+interface Activity {
+  id: string;
+  date: string;
+  description: string;
+}
+
+/**
+ * Safely read a string field from auth user_metadata (it can be unknown)
+ * Keeps the loadHeader code concise and easier to follow.
+ */
+function readMetaString(meta: unknown, key: string): string {
+  // Auth metadata can be any shape (unknown). Guard for safety and only
+  // return strings — this keeps the display logic simple.
+  if (!meta || typeof meta !== "object") return "";
+  const v = (meta as Record<string, unknown>)[key];
+  return typeof v === "string" ? v : "";
+}
+
+/**
+ * Build a display name and email for the header.
+ * Priority: profiles.full_name -> profiles.first/last -> auth metadata -> fallback
+ */
+function buildDisplayHeader(
+  profile: Profile | null,
+  authUser: { email?: string | null; user_metadata?: unknown } | null
+) {
+  // Prefer explicitly-saved profile (profiles table). Fall back to auth
+  // metadata (OAuth providers often populate these fields), then a
+  // deterministic placeholder.
+  if (profile) {
+    const full = profile.full_name ?? "";
+    const first = profile.first_name ?? "";
+    const last = profile.last_name ?? "";
+    const name = full || `${first} ${last}`.trim() || "Your Name";
+    const email = profile.email ?? authUser?.email ?? "";
+    return { name, email };
+  }
+
+  const meta = authUser?.user_metadata;
+  const firstMeta = readMetaString(meta, "first_name");
+  const lastMeta = readMetaString(meta, "last_name");
+  const name =
+    firstMeta || lastMeta ? `${firstMeta} ${lastMeta}`.trim() : "Your Name";
+  const email = authUser?.email ?? "";
+  return { name, email };
+}
+
+/**
+ * Convert document rows into Activity items for the RecentActivityTimeline.
+ * Keeps the mapping logic in one place and simplifies the effect body.
+ */
+function docsToActivities(docs: DocumentRow[] | null): Activity[] {
+  if (!docs) return [];
+  return docs.map((d) => ({
+    id: d.id,
+    date: d.uploaded_at ?? new Date().toISOString(),
+    description: `Uploaded ${d.file_name ?? "file"}`,
+  }));
+}
 
 // We'll compute counts and charts from live data below; fallbacks kept minimal
 const profileStrength = 85;
@@ -27,7 +115,7 @@ const profileRecommendations = [
   "List at least 3 soft skills",
 ];
 
-const ProfilePage: React.FC = () => {
+const ProfilePage: FC = () => {
   const theme = useTheme();
   const { user, loading } = useAuth();
   const [displayName, setDisplayName] = useState<string>("Your Name");
@@ -36,26 +124,23 @@ const ProfilePage: React.FC = () => {
   const [activities, setActivities] = useState<
     Array<{ id: string; date: string; description: string }>
   >([]);
+  // Counts shown in the summary cards. We'll compute these from live data
+  // below rather than mutating them ad-hoc in multiple places.
   const [counts, setCounts] = useState({
     employmentCount: 0,
     skillsCount: 0,
     educationCount: 0,
     projectsCount: 0,
   });
+
+  // Shape expected by SkillsDistributionChart: [{ name, value }]
   const [skills, setSkills] = useState<Array<{ name: string; value: number }>>(
     []
   );
   // Career event shape used by CareerTimeline component
-  interface CareerEvent {
-    id: string;
-    title: string;
-    company: string;
-    startDate: string;
-    endDate?: string;
-    description?: string;
-  }
-
-  const [careerEvents, setCareerEvents] = useState<CareerEvent[]>([]);
+  // Reuse the shared CareerEvent type (declared in src/types.ts) for
+  // consistency across components.
+  const [careerEvents, setCareerEvents] = useState<CareerEventType[]>([]);
 
   // Quick Add Handlers
   const handleAddEmployment = () => console.log("➕ Add Employment clicked");
@@ -91,38 +176,17 @@ const ProfilePage: React.FC = () => {
       setDisplayEmail("");
       return;
     }
-
+    // Load the profiles row (if present) and derive a friendly header.
     const loadHeader = async () => {
       try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, full_name, email")
-          .eq("id", user.id)
-          .single();
+        const { data, error } = await getProfile(user.id);
         if (!mounted) return;
-        if (error || !data) {
-          const meta = user.user_metadata as unknown as
-            | Record<string, unknown>
-            | undefined;
-          const first =
-            meta && typeof meta["first_name"] === "string"
-              ? (meta["first_name"] as string)
-              : "";
-          const last =
-            meta && typeof meta["last_name"] === "string"
-              ? (meta["last_name"] as string)
-              : "";
-          setDisplayName(
-            first || last ? `${first} ${last}`.trim() : "Your Name"
-          );
-          setDisplayEmail(user.email ?? "");
-        } else {
-          const full = data.full_name ?? "";
-          const first = data.first_name ?? "";
-          const last = data.last_name ?? "";
-          setDisplayName(full || `${first} ${last}`.trim() || "Your Name");
-          setDisplayEmail(data.email ?? user.email ?? "");
-        }
+        const { name, email } = buildDisplayHeader(
+          error ? null : data ?? null,
+          user
+        );
+        setDisplayName(name);
+        setDisplayEmail(email);
       } catch (err) {
         console.error("Failed to load profile header", err);
       }
@@ -134,47 +198,99 @@ const ProfilePage: React.FC = () => {
     };
   }, [user, loading]);
 
-  // Load documents and other simple profile-related data
-  useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+  // ---- Data loaders using the reusable crud + useList pattern ----
 
-    let mounted = true;
-    const loadExtras = async () => {
-      try {
-        // Documents (resumes, cover letters, etc.)
-        const { data: docs } = await supabase
-          .from("documents")
-          .select("id, file_name, uploaded_at, kind")
-          .eq("user_id", user.id)
-          .order("uploaded_at", { ascending: false });
-
-        if (!mounted) return;
-
-        const docsList = docs ?? [];
-        // Build activities from recent documents
-        const docActivities = docsList.map((d: Record<string, unknown>) => ({
-          id: (d.id as string) ?? Math.random().toString(36).slice(2),
-          date: (d.uploaded_at as string) ?? new Date().toISOString(),
-          description: `Uploaded ${(d.file_name as string) ?? "file"}`,
-        }));
-
-        setActivities(docActivities);
-        setCounts((c) => ({ ...c, projectsCount: docsList.length }));
-
-        // For Sprint 1 we don't yet have skills/employment tables wired; keep defaults
-        setSkills([]);
-        setCareerEvents([]);
-      } catch (err) {
-        console.error("Failed to load profile extras", err);
+  // Documents (resumes, cover letters, portfolio files)
+  const fetchDocs = () =>
+    crud.listRows<DocumentRow>(
+      "documents",
+      "id,file_name,file_path,mime_type,bytes,uploaded_at,kind",
+      {
+        eq: { user_id: user?.id ?? "" },
+        order: { column: "uploaded_at", ascending: false },
       }
-    };
+    );
 
-    loadExtras();
-    return () => {
-      mounted = false;
-    };
-  }, [user, loading]);
+  const { data: docsData } = useList<DocumentRow>(fetchDocs, [
+    user?.id,
+    loading,
+  ]);
+
+  // Employment history (used to build the career timeline)
+  interface EmploymentRow {
+    id: string;
+    job_title?: string | null;
+    company_name?: string | null;
+    location?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    is_current?: boolean | null;
+    description?: string | null;
+  }
+
+  const fetchEmployment = () =>
+    crud.listRows<EmploymentRow>(
+      "employment_history",
+      "id,job_title,company_name,location,start_date,end_date,is_current,description",
+      {
+        eq: { user_id: user?.id ?? "" },
+        order: { column: "start_date", ascending: false },
+      }
+    );
+
+  const { data: employmentData } = useList<EmploymentRow>(fetchEmployment, [
+    user?.id,
+    loading,
+  ]);
+
+  // Skills (best-effort: table may not exist yet in all deployments)
+  interface SkillRow {
+    id: string;
+    name?: string | null;
+    category?: string | null;
+    proficiency?: number | null;
+  }
+
+  const fetchSkills = () =>
+    crud.listRows<SkillRow>("skills", "id,name,category,proficiency", {
+      eq: { user_id: user?.id ?? "" },
+    });
+
+  const { data: skillsData } = useList<SkillRow>(fetchSkills, [
+    user?.id,
+    loading,
+  ]);
+
+  // ---- Derive view models from raw data ----
+  useEffect(() => {
+    // Documents -> activities + projects count
+    const docList = docsData ?? [];
+    setActivities(docsToActivities(docList));
+    setCounts((c) => ({ ...c, projectsCount: docList.length }));
+
+    // Skills -> chart data + count (be defensive about missing fields)
+    const s = (skillsData ?? []).map((sRow) => ({
+      name: sRow.name ?? "Unnamed",
+      value: typeof sRow.proficiency === "number" ? sRow.proficiency : 1,
+    }));
+    setSkills(s);
+    setCounts((c) => ({ ...c, skillsCount: s.length }));
+
+    // Employment -> career events + count
+    const emp = (employmentData ?? []).map((e: EmploymentRow) => ({
+      id: e.id,
+      title: e.job_title ?? "",
+      company: e.company_name ?? "",
+      startDate: e.start_date ?? "",
+      endDate: e.is_current ? undefined : e.end_date ?? undefined,
+      description: e.description ?? undefined,
+    })) as CareerEventType[];
+    setCareerEvents(emp);
+    setCounts((c) => ({ ...c, employmentCount: emp.length }));
+
+    // Education count is not yet wired to a table in this sprint; keep zero
+    setCounts((c) => ({ ...c, educationCount: c.educationCount }));
+  }, [docsData, skillsData, employmentData]);
 
   return (
     <Box

@@ -129,6 +129,14 @@ const SkillsOverview: React.FC = () => {
       <Typography variant="h4" mb={2}>
         Skills Overview
       </Typography>
+      <Button
+  variant="contained"
+  sx={{ mb: 2 }}
+  onClick={() => (window.location.href = "/skills/manage")}
+>
+  Manage Skills
+</Button>
+
 
       <Stack direction="row" spacing={2} mb={3}>
         <TextField
