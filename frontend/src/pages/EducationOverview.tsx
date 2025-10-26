@@ -23,6 +23,8 @@ import {
   TimelineDot,
   TimelineOppositeContent,
 } from "@mui/lab";
+import { useNavigate } from "react-router-dom";
+
 
 type EducationEntry = {
   id: string;
@@ -90,9 +92,19 @@ const EducationOverview: React.FC = () => {
     setEducation((prev) => prev.filter((e) => e.id !== id));
     setConfirmDeleteId(null);
   };
+  const navigate = useNavigate();
+
 
   return (
     <Box p={3}>
+      <Button
+  variant="contained"
+  sx={{ mb: 3 }}
+  onClick={() => navigate("/education/manage")}
+>
+  + Add Education
+</Button>
+
       <Typography variant="h4" mb={3}>
         Education Timeline
       </Typography>

@@ -7,6 +7,7 @@ import EducationOverview from "./pages/EducationOverview";
 import Certifications from "./pages/Certifications";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
+import AddEducation from "./pages/AddEducation";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -32,6 +33,16 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+{
+  path: "/education/manage",
+  element: (
+    <ProtectedRoute>
+      <NavBar />
+      <BreadcrumbsBar />
+      <AddEducation />
+    </ProtectedRoute>
+  ),
+},
   { path: "/educationOverview", 
    element: (
       <>
@@ -53,9 +64,6 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
-  { path: "/employment-history", element: <EmploymentHistoryList /> },
-  { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/certifications", element: <Certifications /> },
   { path: "/portfolio", element: <ProjectPortfolio /> },
   { path: "/projects/:id", element: <ProjectDetails /> },
   { path: "/skills/manage", element: <AddSkills /> },
@@ -87,3 +95,6 @@ export const router = createBrowserRouter([
     ), 
   }
 ]);
+
+
+
