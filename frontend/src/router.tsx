@@ -17,6 +17,7 @@ import ProjectPortfolio from "./pages/ProjectPortfolio";
 import ProjectDetails from "./pages/ProjectDetails";
 import NavBar from "./components/NavigationBar/Navbar";
 import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
+import ProfileDetails from "./pages/ProfileDetails";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -82,6 +83,16 @@ export const router = createBrowserRouter([
         <NavBar />
         <BreadcrumbsBar />
         <Certifications />
+      </>
+    ),
+  },
+  {
+    path: "/profile-details",
+    element: (
+      <>
+        <NavBar />
+        <BreadcrumbsBar />
+        <ProfileDetails />
       </>
     ),
   },
