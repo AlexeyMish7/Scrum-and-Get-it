@@ -47,7 +47,7 @@ const NavBar: React.FC = () => {
     { label: "Education", path: "/educationOverview" },
     { label: "Skills", path: "/skillsOverview" },
     { label: "Employment", path: "/employment-history" },
-    { label: "Projects", path: "/add-projects" },
+    { label: "Projects", path: "/portfolio" },
     { label: "Certifications", path: "/certifications" }
   ];
 
