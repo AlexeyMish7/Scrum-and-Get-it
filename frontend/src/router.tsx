@@ -63,10 +63,10 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/add-projects",
+    path: "/portfolio",
     element: (
       <MainLayout>
-        <AddProjectForm />
+        <ProjectPortfolio />
       </MainLayout>
     ),
   },
@@ -86,6 +86,6 @@ export const router = createBrowserRouter([
       </MainLayout>
     ),
   },
-  { path: "/portfolio", element: <ProjectPortfolio /> },
+  { path: "/add-projects", element: <AddProjectForm /> },
   { path: "/projects/:id", element: <ProjectDetails /> },
 ]);
