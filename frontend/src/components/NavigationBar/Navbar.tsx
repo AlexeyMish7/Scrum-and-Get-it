@@ -153,7 +153,7 @@ const NavBar: React.FC = () => {
                   onClick={async () => {
                     handleMenuClose();
                     await signOut();
-                    navigate("/login", { replace: true });
+                    navigate("/", { replace: true });
                   }}
                 >
                   Logout
@@ -233,7 +233,7 @@ const NavBar: React.FC = () => {
                   onClick={async () => {
                     toggleDrawer(false)();
                     await signOut();
-                    navigate("/login", { replace: true });
+                    navigate("/", { replace: true });
                   }}
                 >
                   <ListItemText primary="Logout" />
