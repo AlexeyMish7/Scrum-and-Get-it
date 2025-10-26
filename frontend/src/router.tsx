@@ -96,5 +96,5 @@ export const router = createBrowserRouter([
     ),
   },
   { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/projects/:id", element: <ProjectDetails /> },
+  { path: "/projects/:id", element: <ProjectDetails /> }
 ]);
