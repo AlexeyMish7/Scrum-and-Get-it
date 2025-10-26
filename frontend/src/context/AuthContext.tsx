@@ -1,21 +1,3 @@
-/**
- * AuthContext
- *
- * High-level explanation (plain language):
- * - This file provides a small, shared place for the app to learn who the
- *   current user is and to start common auth actions (sign up, sign in,
- *   sign out, sign in with Google).
- * - When the app starts it asks Supabase: "is someone already signed in?" and
- *   keeps listening for changes (for example a sign-in in another browser tab).
- * - Components use the `useAuth()` hook to get the current user (or see that
- *   no one is signed in) and to call the helper functions.
- *
- * Why this helps:
- * - Centralizes where we check login state so every page behaves the same.
- * - Keeps token/session handling inside the Supabase SDK; components just ask
- *   "who is signed in now?" and react accordingly.
- */
-
 import {
   createContext,
   useContext,
@@ -23,51 +5,76 @@ import {
   useState,
   type ReactNode,
 } from "react";
-// Avoid importing runtime types from the supabase package here because some
-// editors/TS servers may fail to resolve the package types in certain
-// workspaces (causing "Cannot find module '@supabase/supabase-js'" errors).
-// Define the minimal shapes we need locally — this keeps strict typing for
-// our context without requiring the external type resolution.
+import { supabase } from "../supabaseClient";
+
+// ******************** Type Declerations *******************
+
+// Type definition for a user object returned from Supabase (ID, email, and optional metadata)
 type User = {
   id: string;
-  email?: string | null;
+  email: string;
   user_metadata?: Record<string, unknown> | null;
 };
 
-type Session = { user: User } | null;
+//Type definition for a session that has user and optional expiration time
+type Session = {
+  user: User;
+  expires_at?: string; // optional field for expiration time (if needed later)
+} | null;
 
+//Type definition for a provider string (e.g., "google", "github")
 type Provider = string;
-import { supabase } from "../supabaseClient";
 
-// Shape of the context value available to consumers
+/**
+ * Defines all values and helper functions exposed by the AuthContext.
+ *
+ * These values and methods are what other components can access through `useAuth()`.
+ * Each function that performs a network request (like sign-in or sign-up)
+ * returns a Promise, meaning it runs asynchronously and resolves later with a result.
+ */
 type AuthContextValue = {
+  // The current authentication session (null if no one is logged in)
   session: Session | null;
+
+  // The currently logged-in user object (shortcut from session.user)
   user: User | null;
+
+  // Indicates whether authentication state is still being checked or updated
   loading: boolean;
+
+  // Registers a new user account; returns a Promise that resolves. to success (ok: true) or an error (ok: false with message)
   signUpNewUser: (params: {
     email: string;
     password: string;
-    firstName?: string;
-    lastName?: string;
+    firstName: string;
+    lastName: string;
   }) => Promise<
     | { ok: true; requiresConfirmation?: boolean }
     | { ok: false; message: string }
   >;
+
+  // Logs in an existing user with email and password; returns a Promise.
   signIn: (
     email: string,
     password: string
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
+
+  // Logs in using an external OAuth provider (e.g., Google, GitHub);
   signInWithOAuth: (
     provider: Provider
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
+
+  // Logs the user out; returns a Promise that resolves when logout completes
   signOut: () => Promise<void>;
 };
 
-// Create the context; undefined by default to enforce provider usage
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-// Props for the provider (typed children prevents "implicitly any" errors)
+// Type for provider props; ensures children passed are valid React elements
 type ProviderProps = { children: ReactNode };
+
+// ******************** Component *******************
+
+// Create the authentication context (undefined by default until provided)
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthContextProvider({ children }: ProviderProps) {
   // The live Supabase session; null means "no user"

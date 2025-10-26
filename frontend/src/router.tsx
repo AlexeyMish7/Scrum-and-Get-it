@@ -55,6 +55,11 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
+  {
+    path: "/employment-history",
+  { path: "/employment-history", element: <EmploymentHistoryList /> },
+  { path: "/add-projects", element: <AddProjectForm /> },
+  { path: "/certifications", element: <Certifications /> },
   { path: "/portfolio", element: <ProjectPortfolio /> },
   { path: "/projects/:id", element: <ProjectDetails /> },
   { path: "/skills/manage", element: <AddSkills /> },
