@@ -54,7 +54,7 @@ const NavBar: React.FC = () => {
   return (
     <>
       <AppBar position="static" color="primary" elevation={0}>
-        <Toolbar sx={{ justifyContent: "space-between" }}>
+        <Toolbar disableGutters sx={{ justifyContent: "space-between", px: 2 }}>
           {/* ---- Left: Logo / Brand ---- */}
           <Typography
             variant="h6"
