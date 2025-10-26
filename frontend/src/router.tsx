@@ -19,6 +19,7 @@ import ProjectDetails from "./pages/ProjectDetails";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "./pages/ProfileDetails";
 import MainLayout from "./components/NavigationBar/MainLayout";
+import Settings from "./pages/Settings";
 
 
 export const router = createBrowserRouter([
@@ -83,6 +84,14 @@ export const router = createBrowserRouter([
     element: (
       <MainLayout>
         <ProfileDetails />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/settings",
+    element: (
+      <MainLayout>
+        <Settings />
       </MainLayout>
     ),
   },

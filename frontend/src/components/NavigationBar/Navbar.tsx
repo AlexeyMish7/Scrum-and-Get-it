@@ -20,9 +20,7 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { NavLink, useNavigate } from "react-router-dom";
-
-// ✅ Import your logo image
-import logo from "../../assets/logo/graphics_only.png";   // adjust relative path if needed
+import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
 
 const NavBar: React.FC = () => {
   const theme = useTheme();
@@ -44,7 +42,7 @@ const NavBar: React.FC = () => {
     { label: "Skills", path: "/skillsOverview" },
     { label: "Employment", path: "/employment-history" },
     { label: "Projects", path: "/portfolio" },
-    { label: "Certifications", path: "/certifications" }
+    { label: "Certifications", path: "/certifications" },
   ];
 
   return (
@@ -62,19 +60,12 @@ const NavBar: React.FC = () => {
               color: theme.palette.common.white,
             }}
           >
-            {/* ✅ Logo Image */}
             <Box
               component="img"
               src={logo}
-              alt="MyApp Logo"
-              sx={{
-                height: 40,
-                width: "auto",
-                mr: 1,
-                display: "block",
-              }}
+              alt="Flow ATS Logo"
+              sx={{ height: 40, width: "auto", mr: 1, display: "block" }}
             />
-            {/* Optional text next to logo */}
             <Typography
               variant="h6"
               sx={{
@@ -86,7 +77,7 @@ const NavBar: React.FC = () => {
             </Typography>
           </Box>
 
-          {/* ---- Desktop Menu ---- */}
+          {/* ---- Desktop Navigation ---- */}
           {!isMobile && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               {navItems.map((item) => (
@@ -126,7 +117,7 @@ const NavBar: React.FC = () => {
                 </Button>
               ))}
 
-              {/* --- Profile Avatar Menu Trigger --- */}
+              {/* --- Profile Avatar Menu --- */}
               <IconButton
                 onClick={handleMenuOpen}
                 sx={{ p: 0, ml: 1 }}
@@ -136,7 +127,6 @@ const NavBar: React.FC = () => {
                 <Avatar alt="User Profile" src="/static/images/avatar/1.jpg" />
               </IconButton>
 
-              {/* --- Avatar Drop-Down Menu --- */}
               <Menu
                 id="profile-menu"
                 anchorEl={anchorEl}
@@ -150,6 +140,14 @@ const NavBar: React.FC = () => {
                   }}
                 >
                   Profile
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    navigate("/settings");
+                  }}
+                >
+                  Settings
                 </MenuItem>
                 <MenuItem
                   onClick={async () => {
@@ -173,7 +171,7 @@ const NavBar: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      {/* ---- Drawer ---- */}
+      {/* ---- Mobile Drawer ---- */}
       <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
         <Box
           sx={{
@@ -205,18 +203,31 @@ const NavBar: React.FC = () => {
             </List>
           </Box>
 
+          {/* --- Bottom Section of Drawer --- */}
           <Box>
             <List>
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
                     toggleDrawer(false)();
-                    navigate("/profile");
+                    navigate("/profile-details");
                   }}
                 >
                   <ListItemText primary="Profile" />
                 </ListItemButton>
               </ListItem>
+
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    toggleDrawer(false)();
+                    navigate("/settings");
+                  }}
+                >
+                  <ListItemText primary="Settings" />
+                </ListItemButton>
+              </ListItem>
+
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={async () => {
