@@ -15,9 +15,11 @@ import EmploymentHistoryList from "./pages/EmployementHistoryList";
 import AddProjectForm from "./pages/AddProjectForm";
 import ProjectPortfolio from "./pages/ProjectPortfolio";
 import ProjectDetails from "./pages/ProjectDetails";
-import NavBar from "./components/NavigationBar/Navbar";
-import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
+//import NavBar from "./components/NavigationBar/Navbar";
+//import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "./pages/ProfileDetails";
+import MainLayout from "./components/NavigationBar/MainLayout";
+
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
@@ -26,30 +28,26 @@ export const router = createBrowserRouter([
     path: "/profile",
     element: (
       <ProtectedRoute>
-        <NavBar />
-        <BreadcrumbsBar />
-        <ProfilePage />
+        <MainLayout>
+          <ProfilePage />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
   {
     path: "/educationOverview",
     element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+      <MainLayout>
         <EducationOverview />
-      </>
+      </MainLayout>
     ),
   },
   {
     path: "/skillsOverview",
-    element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+     element: (
+      <MainLayout>
         <SkillsOverview />
-      </>
+      </MainLayout>
     ),
   },
   { path: "/login", element: <Login /> },
@@ -59,41 +57,33 @@ export const router = createBrowserRouter([
   {
     path: "/employment-history",
     element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+      <MainLayout>
         <EmploymentHistoryList />
-      </>
+      </MainLayout>
     ),
   },
   {
     path: "/add-projects",
     element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+      <MainLayout>
         <AddProjectForm />
-      </>
+      </MainLayout>
     ),
   },
   {
     path: "/certifications",
     element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+      <MainLayout>
         <Certifications />
-      </>
+      </MainLayout>
     ),
   },
   {
     path: "/profile-details",
     element: (
-      <>
-        <NavBar />
-        <BreadcrumbsBar />
+      <MainLayout>
         <ProfileDetails />
-      </>
+      </MainLayout>
     ),
   },
   { path: "/portfolio", element: <ProjectPortfolio /> },
