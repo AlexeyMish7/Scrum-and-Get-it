@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { NavLink, useNavigate } from "react-router-dom";
+import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
 
 const NavBar: React.FC = () => {
   const theme = useTheme();
@@ -27,27 +28,20 @@ const NavBar: React.FC = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
 
-
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  // --- Avatar dropdown handlers ---
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget); // Anchor to Avatar button clicked
-  };
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) =>
+    setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
-
-  // --- Drawer toggle handlers (for mobile) ---
   const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
 
-  // --- Main navigation links ---
   const navItems = [
     { label: "Dashboard", path: "/profile" },
     { label: "Education", path: "/educationOverview" },
     { label: "Skills", path: "/skillsOverview" },
     { label: "Employment", path: "/employment-history" },
-    { label: "Projects", path: "/add-projects" },
+    { label: "Projects", path: "/portfolio" },
     { label: "Certifications", path: "/certifications" }
   ];
 
@@ -56,20 +50,34 @@ const NavBar: React.FC = () => {
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar disableGutters sx={{ justifyContent: "space-between", px: 2 }}>
           {/* ---- Left: Logo / Brand ---- */}
-          <Typography
-            variant="h6"
+          <Box
             component={NavLink}
             to="/profile"
             sx={{
+              display: "flex",
+              alignItems: "center",
               textDecoration: "none",
               color: theme.palette.common.white,
-              fontWeight: 600,
             }}
           >
-            MyApp
-          </Typography>
+            <Box
+              component="img"
+              src={logo}
+              alt="Flow ATS Logo"
+              sx={{ height: 40, width: "auto", mr: 1, display: "block" }}
+            />
+            <Typography
+              variant="h6"
+              sx={{
+                color: theme.palette.common.white,
+                fontWeight: 600,
+              }}
+            >
+              Flow ATS
+            </Typography>
+          </Box>
 
-          {/* ---- Desktop Menu (regular nav items + avatar) ---- */}
+          {/* ---- Desktop Navigation ---- */}
           {!isMobile && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               {navItems.map((item) => (
@@ -109,21 +117,16 @@ const NavBar: React.FC = () => {
                 </Button>
               ))}
 
-              {/* --- Profile Avatar Menu Trigger --- */}
+              {/* --- Profile Avatar Menu --- */}
               <IconButton
                 onClick={handleMenuOpen}
                 sx={{ p: 0, ml: 1 }}
                 aria-controls={anchorEl ? "profile-menu" : undefined}
                 aria-haspopup="true"
               >
-                {/* 👇 Avatar = User Profile Picture */}
-                <Avatar
-                  alt="User Profile"
-                  src="/static/images/avatar/1.jpg"
-                />
+                <Avatar alt="User Profile" src="/static/images/avatar/1.jpg" />
               </IconButton>
 
-              {/* --- Avatar Drop-Down Menu --- */}
               <Menu
                 id="profile-menu"
                 anchorEl={anchorEl}
@@ -138,17 +141,23 @@ const NavBar: React.FC = () => {
                 >
                   Profile
                 </MenuItem>
-
-<MenuItem
-  onClick={async () => {
-    handleMenuClose();
-    await signOut();             
-    navigate("/login", { replace: true });
-  }}
->
-  Logout
-</MenuItem>
-
+                <MenuItem
+                  onClick={() => {
+                    handleMenuClose();
+                    navigate("/settings");
+                  }}
+                >
+                  Settings
+                </MenuItem>
+                <MenuItem
+                  onClick={async () => {
+                    handleMenuClose();
+                    await signOut();
+                    navigate("/", { replace: true });
+                  }}
+                >
+                  Logout
+                </MenuItem>
               </Menu>
             </Box>
           )}
@@ -162,7 +171,7 @@ const NavBar: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      {/* ---- Drawer (for Mobile Responsive Navigation) ---- */}
+      {/* ---- Mobile Drawer ---- */}
       <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
         <Box
           sx={{
@@ -173,7 +182,6 @@ const NavBar: React.FC = () => {
             justifyContent: "space-between",
           }}
         >
-          {/* Drawer Links */}
           <Box>
             <List>
               {navItems.map((item) => (
@@ -195,30 +203,41 @@ const NavBar: React.FC = () => {
             </List>
           </Box>
 
-          {/* Drawer Footer for Profile/Logout */}
+          {/* --- Bottom Section of Drawer --- */}
           <Box>
             <List>
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
                     toggleDrawer(false)();
-                    navigate("/profile");
+                    navigate("/profile-details");
                   }}
                 >
                   <ListItemText primary="Profile" />
                 </ListItemButton>
               </ListItem>
-              <ListItem disablePadding>
-<ListItemButton
-  onClick={async () => {
-    toggleDrawer(false)();
-    await signOut();                // ✅ important!
-    navigate("/login", { replace: true });
-  }}
->
-  <ListItemText primary="Logout" />
-</ListItemButton>
 
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    toggleDrawer(false)();
+                    navigate("/settings");
+                  }}
+                >
+                  <ListItemText primary="Settings" />
+                </ListItemButton>
+              </ListItem>
+
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={async () => {
+                    toggleDrawer(false)();
+                    await signOut();
+                    navigate("/", { replace: true });
+                  }}
+                >
+                  <ListItemText primary="Logout" />
+                </ListItemButton>
               </ListItem>
             </List>
           </Box>

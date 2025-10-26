@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
+import HomePage from "./pages/HomePage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
@@ -19,10 +20,11 @@ import ProjectDetails from "./pages/ProjectDetails";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "./pages/ProfileDetails";
 import MainLayout from "./components/NavigationBar/MainLayout";
+import Settings from "./pages/Settings";
 
 
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/login" replace /> },
+  { path: "/", element: <HomePage /> },
   { path: "/register", element: <Register /> },
   {
     path: "/profile",
@@ -63,10 +65,10 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/add-projects",
+    path: "/portfolio",
     element: (
       <MainLayout>
-        <AddProjectForm />
+        <ProjectPortfolio />
       </MainLayout>
     ),
   },
@@ -86,6 +88,14 @@ export const router = createBrowserRouter([
       </MainLayout>
     ),
   },
-  { path: "/portfolio", element: <ProjectPortfolio /> },
-  { path: "/projects/:id", element: <ProjectDetails /> },
+  {
+    path: "/settings",
+    element: (
+      <MainLayout>
+        <Settings />
+      </MainLayout>
+    ),
+  },
+  { path: "/add-projects", element: <AddProjectForm /> },
+  { path: "/projects/:id", element: <ProjectDetails /> }
 ]);
