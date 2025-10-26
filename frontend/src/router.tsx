@@ -13,6 +13,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
 import EmploymentHistoryList from "./pages/EmployementHistoryList";
 import AddProjectForm from "./pages/AddProjectForm";
+import ProjectPortfolio from "./pages/ProjectPortfolio";
+import ProjectDetails from "./pages/ProjectDetails";
 import NavBar from "./components/NavigationBar/Navbar";
 import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 
@@ -50,6 +52,11 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
+  { path: "/employment-history", element: <EmploymentHistoryList /> },
+  { path: "/add-projects", element: <AddProjectForm /> },
+  { path: "/certifications", element: <Certifications /> },
+  { path: "/portfolio", element: <ProjectPortfolio /> },
+  { path: "/projects/:id", element: <ProjectDetails /> }
   { path: "/employment-history", 
     element: (
       <>
