@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
+import LoadingSpinner from "../components/LoadingSpinner";
 type Props = { children: React.ReactNode };
 
 /**
@@ -14,6 +14,7 @@ export default function ProtectedRoute({ children }: Props) {
   const { user, loading } = useAuth();
 
   if (loading) return <div>Loading...</div>;
+  if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
