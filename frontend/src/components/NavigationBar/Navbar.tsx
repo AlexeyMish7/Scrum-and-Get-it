@@ -38,7 +38,7 @@ const NavBar: React.FC = () => {
 
   const navItems = [
     { label: "Dashboard", path: "/profile" },
-    { label: "Education", path: "/educationOverview" },
+    { label: "Education", path: "/education" },
     { label: "Skills", path: "/skillsOverview" },
     { label: "Employment", path: "/employment-history" },
     { label: "Projects", path: "/portfolio" },
