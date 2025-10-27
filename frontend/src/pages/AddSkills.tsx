@@ -70,7 +70,6 @@ const AddSkills = () => {
         return;
       }
 
-      // Persist to DB if user is available
       if (user) {
         try {
           const userCrud = crud.withUser(user.id);
@@ -99,7 +98,6 @@ const AddSkills = () => {
             ),
           };
           setUserSkills((s) => [...s, newSkill]);
-          // notify other parts of the app to refresh skills
           try {
             window.dispatchEvent(new CustomEvent("skills:changed"));
           } catch {
@@ -111,7 +109,6 @@ const AddSkills = () => {
           return;
         }
       } else {
-        // fallback to local-only addition
         const newSkill: SkillItem = {
           name: selectedSkill,
           category: selectedCategory,
@@ -131,7 +128,6 @@ const AddSkills = () => {
     })();
   };
 
-  // load persisted skills when user becomes available
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -189,7 +185,6 @@ const AddSkills = () => {
     setTempEditLevel("");
   };
 
-  // Update skill proficiency
   const handleUpdateLevel = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
@@ -219,11 +214,7 @@ const AddSkills = () => {
             ),
           };
           setUserSkills(updatedSkills);
-          try {
-            window.dispatchEvent(new CustomEvent("skills:changed"));
-          } catch (e) {
-            void e;
-          }
+          window.dispatchEvent(new CustomEvent("skills:changed"));
         } catch (err) {
           console.error(err);
           alert("Failed to update skill");
@@ -237,7 +228,6 @@ const AddSkills = () => {
     })();
   };
 
-  // Remove skill entirely
   const handleDeleteSkill = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
@@ -259,120 +249,183 @@ const AddSkills = () => {
         }
       }
       setUserSkills(userSkills.filter((_, i) => i !== selectedSkillIndex));
-      try {
-        window.dispatchEvent(new CustomEvent("skills:changed"));
-      } catch (e) {
-        void e;
-      }
+      window.dispatchEvent(new CustomEvent("skills:changed"));
       closeEditDialog();
     })();
   };
 
+  // ✅ Enhanced visual layout using theme
   return (
-    <Box p={4}>
-      <Typography variant="h3" mb={3} textAlign="center">
-        Add Skills
-      </Typography>
-
-      {/* ADD SKILLS FORM */}
-      <Stack direction="row" spacing={2} mb={3}>
-        <TextField
-          label="Skill"
-          select
-          value={selectedSkill}
-          onChange={(e) => setSelectedSkill(e.target.value)}
-          size="small"
-          sx={{ minWidth: 180 }}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        bgcolor: (theme) => theme.palette.background.default,
+        color: (theme) => theme.palette.text.primary,
+        p: 4,
+      }}
+    >
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          boxShadow: 3,
+          borderRadius: 3,
+          width: "95%",
+          maxWidth: 900,
+          p: 4,
+        }}
+      >
+        <Typography
+          variant="h4"
+          mb={4}
+          textAlign="center"
+          sx={{
+            fontWeight: 700,
+            color: (theme) => theme.palette.primary.main,
+          }}
         >
-          {suggestedSkillList.map((skill) => (
-            <MenuItem key={skill} value={skill}>
-              {skill}
-            </MenuItem>
-          ))}
-        </TextField>
+          Add Skills
+        </Typography>
 
-        <TextField
-          label="Category"
-          select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          size="small"
-          sx={{ minWidth: 150 }}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={3}
+          justifyContent="center"
+          alignItems="center"
+          mb={4}
         >
-          {skillCategoryOptions.map((cat) => (
-            <MenuItem key={cat} value={cat}>
-              {cat}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            label="Skill"
+            select
+            value={selectedSkill}
+            onChange={(e) => setSelectedSkill(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {suggestedSkillList.map((skill) => (
+              <MenuItem key={skill} value={skill}>
+                {skill}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <TextField
-          label="Proficiency"
-          select
-          value={selectedLevel}
-          onChange={(e) => setSelectedLevel(e.target.value)}
-          size="small"
-          sx={{ minWidth: 140 }}
+          <TextField
+            label="Category"
+            select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {skillCategoryOptions.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            label="Proficiency"
+            select
+            value={selectedLevel}
+            onChange={(e) => setSelectedLevel(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {skillLevelOptions.map((lvl) => (
+              <MenuItem key={lvl} value={lvl}>
+                {lvl}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Button
+            variant="contained"
+            onClick={handleAddSkill}
+            sx={{
+              px: 4,
+              py: 1.3,
+              fontWeight: 600,
+              backgroundColor: (theme) => theme.palette.primary.main,
+              ":hover": {
+                backgroundColor: (theme) => theme.palette.primary.dark,
+              },
+            }}
+          >
+            Add Skill
+          </Button>
+        </Stack>
+
+        <Stack
+          direction="row"
+          spacing={1.5}
+          flexWrap="wrap"
+          justifyContent="center"
+          mt={2}
         >
-          {skillLevelOptions.map((lvl) => (
-            <MenuItem key={lvl} value={lvl}>
-              {lvl}
-            </MenuItem>
+          {userSkills.map((skill, index) => (
+            <Chip
+              key={index}
+              label={`${skill.name} — ${skill.level}`}
+              color="primary"
+              variant="outlined"
+              onClick={() => openEditDialog(index)}
+              sx={{
+                mb: 1.5,
+                fontSize: "0.95rem",
+                borderRadius: "12px",
+                cursor: "pointer",
+              }}
+            />
           ))}
-        </TextField>
+        </Stack>
 
-        <Button variant="contained" onClick={handleAddSkill}>
-          Add Skill
-        </Button>
-      </Stack>
+        <Dialog open={selectedSkillIndex !== null} onClose={closeEditDialog}>
+          <DialogTitle>Edit Skill</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ mb: 2, fontWeight: 500 }}>
+              {selectedSkillIndex !== null && userSkills[selectedSkillIndex].name}
+            </Typography>
 
-      {/* SKILL TAGS */}
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        {userSkills.map((skill, index) => (
-          <Chip
-            key={index}
-            label={`${skill.name} — ${skill.level}`}
-            color="primary"
-            variant="outlined"
-            onClick={() => openEditDialog(index)}
-            sx={{ mb: 1, cursor: "pointer" }}
-          />
-        ))}
-      </Stack>
+            <FormControl fullWidth>
+              <InputLabel>Proficiency</InputLabel>
+              <Select
+                value={tempEditLevel}
+                label="Proficiency"
+                onChange={(e) => setTempEditLevel(e.target.value as string)}
+              >
+                {skillLevelOptions.map((lvl) => (
+                  <MenuItem key={lvl} value={lvl}>
+                    {lvl}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
 
-      <Dialog open={selectedSkillIndex !== null} onClose={closeEditDialog}>
-        <DialogTitle>Edit Skill</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2, fontWeight: 500 }}>
-            {selectedSkillIndex !== null && userSkills[selectedSkillIndex].name}
-          </Typography>
-
-          <FormControl fullWidth>
-            <InputLabel>Proficiency</InputLabel>
-            <Select
-              value={tempEditLevel}
-              label="Proficiency"
-              onChange={(e) => setTempEditLevel(e.target.value as string)}
+          <DialogActions>
+            <Button onClick={closeEditDialog}>Cancel</Button>
+            <Button color="error" onClick={handleDeleteSkill}>
+              Remove
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleUpdateLevel}
+              sx={{
+                backgroundColor: (theme) => theme.palette.primary.main,
+                ":hover": {
+                  backgroundColor: (theme) => theme.palette.primary.dark,
+                },
+              }}
             >
-              {skillLevelOptions.map((lvl) => (
-                <MenuItem key={lvl} value={lvl}>
-                  {lvl}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={closeEditDialog}>Cancel</Button>
-          <Button color="error" onClick={handleDeleteSkill}>
-            Remove
-          </Button>
-          <Button variant="contained" onClick={handleUpdateLevel}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Box>
   );
 };
