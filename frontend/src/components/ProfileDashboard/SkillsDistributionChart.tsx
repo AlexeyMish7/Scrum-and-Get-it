@@ -44,7 +44,7 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
       role="region"
       aria-label="Skills distribution chart"
     >
-      <Typography variant="h6" component="h2" sx={{ mt: 0 }}>
+      <Typography variant="h4" component="h2" sx={{ mt: 0 }}>
         Skills Distribution
       </Typography>
 

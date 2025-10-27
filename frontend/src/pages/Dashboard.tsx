@@ -652,7 +652,7 @@ const Dashboard: FC = () => {
 
       {/* --- DASHBOARD CONTENT --- */}
       <Box sx={{ p: 4, maxWidth: "1200px", margin: "0 auto" }}>
-        <Typography variant="h4" mb={3} fontWeight="bold">
+        <Typography variant="h2" mb={3} fontWeight="bold">
           Profile Overview
         </Typography>
 

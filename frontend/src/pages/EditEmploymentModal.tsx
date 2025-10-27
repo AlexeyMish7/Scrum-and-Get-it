@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
+import {
+  Typography,
+  TextField,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Box,
+} from "@mui/material";
 
 type EmploymentFormData = {
   id?: string;
@@ -91,89 +99,113 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-[500px]">
-        <h3 className="text-lg font-semibold mb-3">Edit Employment</h3>
+      <Box className="bg-white p-6 rounded-lg shadow-lg w-[500px]">
+        <Typography variant="h5" gutterBottom>
+          Edit Employment
+        </Typography>
 
-        <input
+        <TextField
           name="job_title"
+          label="Job Title"
           value={formData.job_title ?? ""}
           onChange={handleChange}
-          placeholder="Job Title"
-          className="border p-2 w-full mb-2"
+          fullWidth
+          margin="normal"
         />
 
-        <input
+        <TextField
           name="company_name"
+          label="Company Name"
           value={formData.company_name ?? ""}
           onChange={handleChange}
-          placeholder="Company Name"
-          className="border p-2 w-full mb-2"
+          fullWidth
+          margin="normal"
         />
 
-        <input
+        <TextField
           name="location"
+          label="Location"
           value={formData.location ?? ""}
           onChange={handleChange}
-          placeholder="Location"
-          className="border p-2 w-full mb-2"
+          fullWidth
+          margin="normal"
         />
 
-        <label className="block mb-1">Start Date:</label>
-        <input
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Start Date:
+        </Typography>
+        <TextField
           type="date"
           name="start_date"
           value={formData.start_date ?? ""}
           onChange={handleChange}
-          className="border p-2 w-full mb-2"
+          fullWidth
+          margin="dense"
+          InputLabelProps={{ shrink: true }}
         />
 
         {!formData.is_current && (
           <>
-            <label className="block mb-1">End Date:</label>
-            <input
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              End Date:
+            </Typography>
+            <TextField
               type="date"
               name="end_date"
               value={formData.end_date ?? ""}
               onChange={handleChange}
-              className="border p-2 w-full mb-2"
+              fullWidth
+              margin="dense"
+              InputLabelProps={{ shrink: true }}
             />
           </>
         )}
 
-        <label className="flex items-center gap-2 mb-3">
-          <input
-            type="checkbox"
-            name="is_current"
-            checked={Boolean(formData.is_current)}
-            onChange={handleChange}
-          />
-          Current Position
-        </label>
-
-        <textarea
-          name="description"
-          value={(formData.description as string) ?? ""}
-          onChange={handleChange}
-          placeholder="Job description (max 1000 chars)"
-          maxLength={1000}
-          className="border p-2 w-full mb-3"
+        <FormControlLabel
+          control={
+            <Checkbox
+              name="is_current"
+              checked={Boolean(formData.is_current)}
+              onChange={handleChange}
+              color="primary"
+            />
+          }
+          label="Current Position"
+          sx={{ mt: 1 }}
         />
 
-        {message && <p className="text-sm text-green-600 mb-2">{message}</p>}
+        <TextField
+          name="description"
+          label="Job Description"
+          value={(formData.description as string) ?? ""}
+          onChange={handleChange}
+          multiline
+          rows={3}
+          fullWidth
+          margin="normal"
+          inputProps={{ maxLength: 1000 }}
+        />
 
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1 border rounded">
+        {message && (
+          <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
+            {message}
+          </Typography>
+        )}
+
+        <Box className="flex justify-end gap-2 mt-3">
+          <Button variant="outlined" color="inherit" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
             onClick={handleSave}
             disabled={loading}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
           >
             {loading ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
     </div>
   );
 }

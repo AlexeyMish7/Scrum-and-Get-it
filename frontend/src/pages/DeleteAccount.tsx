@@ -78,8 +78,7 @@ const DeleteAccount: React.FC = () => {
         Delete Account
       </Typography>
       <Typography variant="body2" sx={{ mb: 2 }}>
-        You must confirm your password to delete your account. For now, this will only
-        verify your password and sign you out.
+        You must confirm your password to delete your account. This will permanently delete your account. 
       </Typography>
 
       <Button variant="contained" color="error" onClick={handleOpen}>

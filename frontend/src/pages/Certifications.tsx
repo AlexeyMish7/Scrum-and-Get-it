@@ -298,7 +298,7 @@ const Certifications: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Typography variant="h4" mb={3}>
+      <Typography variant="h2" mb={3}>
         Manage Your Certifications
       </Typography>
 

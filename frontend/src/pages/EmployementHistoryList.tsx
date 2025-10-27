@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
+//import { Typography } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
 import EditEmploymentModal from "./EditEmploymentModal";
+import { Button, Typography } from "@mui/material";
+
 
 interface EmploymentEntry {
   id: string;
@@ -93,8 +96,13 @@ export default function EmploymentHistoryList() {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Employment History</h2>
-      {entries.length === 0 && <p>No employment entries yet.</p>}
+      <Typography variant="h2" gutterBottom>
+        Employment History
+      </Typography>
+
+      {entries.length === 0 && (
+        <Typography variant="body1">No employment entries yet.</Typography>
+      )}
 
       <ul className="space-y-4">
         {entries.map((entry) => (
@@ -104,39 +112,43 @@ export default function EmploymentHistoryList() {
           >
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-semibold text-lg">
+                <Typography variant="h5">
                   {entry.job_title} @ {entry.company_name}
-                </h3>
-                <p className="text-sm text-gray-600">
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   {entry.location} •{" "}
                   {entry.is_current
                     ? "Present"
                     : `${entry.start_date} – ${entry.end_date}`}
-                </p>
+                </Typography>
               </div>
 
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="text"
+                  color="primary"
                   onClick={() => setEditingEntry(entry)}
-                  className="text-blue-600 hover:underline"
                 >
                   Edit
-                </button>
+                </Button>
 
                 {/* Only show delete if more than one entry */}
                 {entries.length > 1 && (
-                  <button
+                  <Button
+                    variant="text"
+                    color="error"
                     onClick={() => handleDelete(entry.id)}
-                    className="text-red-600 hover:underline"
                   >
                     Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
 
             {entry.description && (
-              <p className="mt-2 text-gray-700">{entry.description}</p>
+              <Typography variant="body1" className="mt-2" color="text.primary">
+                Job Description: {entry.description}
+              </Typography>
             )}
           </li>
         ))}
