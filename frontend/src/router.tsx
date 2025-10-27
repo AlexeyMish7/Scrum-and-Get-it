@@ -10,6 +10,7 @@ import AddEducation from "./pages/AddEducation";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 import HomePage from "./pages/HomePage";
+import AuthCallback from "./pages/AuthCallback";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AddEmployment from "./pages/AddEmployment";
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
     ),
   },
   { path: "/login", element: <Login /> },
+  { path: "/auth/callback", element: <AuthCallback /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
