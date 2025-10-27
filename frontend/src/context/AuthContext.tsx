@@ -6,37 +6,24 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "../supabaseClient";
+import type {
+  Session as SupabaseSession,
+  User as SupabaseUser,
+  AuthChangeEvent,
+  Provider as SupabaseProvider,
+} from "@supabase/auth-js";
 
 // ******************** Type Declarations *******************
 
-// Type definition for a user object returned from Supabase (ID, email, and optional metadata)
-type User = {
-  id: string;
-  email: string;
-  user_metadata?: Record<string, unknown> | null;
-};
+// Use Supabase-auth types for correctness
+type Session = SupabaseSession | null;
+type User = SupabaseUser | null;
 
-//Type definition for a session that has user and optional expiration time
-type Session = {
-  user: User;
-  expires_at?: string; // optional field for expiration time (if needed later)
-} | null;
-
-//Type definition for a provider string (e.g., "google", "github")
-type Provider = string;
-
-// Definition of the authentication context value shape --> blueprint for the global authentication object
+// Definition of the authentication context value shape
 type AuthContextValue = {
-  // The current authentication session (null if no one is logged in)
-  session: Session | null;
-
-  // The currently logged-in user object (shortcut from session.user)
-  user: User | null;
-
-  // Indicates whether authentication state is still being checked or updated
+  session: Session; // current Supabase session (null if logged out)
+  user: User; // active user data or null
   loading: boolean;
-
-  // Registers a new user account; returns a Promise that resolves. to success (ok: true) or an error (ok: false with message)
   signUpNewUser: (params: {
     email: string;
     password: string;
@@ -46,19 +33,14 @@ type AuthContextValue = {
     | { ok: true; requiresConfirmation?: boolean }
     | { ok: false; message: string }
   >;
-
-  // Logs in an existing user with email and password; returns a Promise.
   signIn: (
     email: string,
     password: string
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
-
-  // Logs in using an external OAuth provider (e.g., Google, GitHub);
+  // provider is a string like 'google' | 'github'
   signInWithOAuth: (
-    provider: Provider
+    provider: SupabaseProvider
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
-
-  // Logs the user out; returns a Promise that resolves when logout completes
   signOut: () => Promise<void>;
 };
 
@@ -84,8 +66,8 @@ export function AuthContextProvider({ children }: ProviderProps) {
     // Fetch current session (user stays logged in after page reload)
     supabase.auth
       .getSession()
-      .then(({ data }: { data: { session: Session | null } }) => {
-        if (mounted) setSession(data.session ?? null); // set current session or null
+      .then((resp) => {
+        if (mounted) setSession(resp.data.session ?? null); // set current session or null
       })
       .finally(() => {
         if (mounted) setLoading(false); // finish initial loading state
@@ -95,7 +77,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event: string, newSession: Session | null) => {
+      (_event: AuthChangeEvent, newSession: SupabaseSession | null) => {
         setSession(newSession); // update session when user logs in or out
         setLoading(false); // stop loading once event handled
       }
@@ -173,13 +155,21 @@ export function AuthContextProvider({ children }: ProviderProps) {
   ) => {
     try {
       // Start OAuth flow: redirect user to provider’s consent screen
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider, // e.g. "google" or "github"
         options: { redirectTo: `${window.location.origin}/auth/callback` }, // URL to return to after login
       });
 
       // If Supabase returns an error (bad config, canceled login, etc.)
       if (error) return { ok: false, message: error.message };
+
+      // In some supabase-js versions `data.url` contains the provider redirect URL.
+      // If present, navigate the browser to it. Otherwise, the SDK may have already
+      // handled the redirect (popup) flow.
+      if (data?.url) {
+        window.location.assign(data.url);
+        return { ok: true };
+      }
 
       // Success — user will be redirected and session updates automatically
       return { ok: true };
