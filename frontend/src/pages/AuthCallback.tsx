@@ -12,7 +12,8 @@ const AuthCallback: React.FC = () => {
     async function handleCallback() {
       try {
         // Try to read session (supabase-js may process the URL automatically)
-        const { data: sessData, error: sessErr } = await supabase.auth.getSession();
+        const { data: sessData, error: sessErr } =
+          await supabase.auth.getSession();
         if (sessErr) {
           console.error("getSession error:", sessErr);
           if (mounted) setError(sessErr.message ?? "OAuth callback failed");
@@ -22,7 +23,8 @@ const AuthCallback: React.FC = () => {
         if (sessData?.session) {
           navigate("/profile", { replace: true });
         } else {
-          if (mounted) setError("No active session found after OAuth callback.");
+          if (mounted)
+            setError("No active session found after OAuth callback.");
         }
       } catch (e) {
         console.error(e);
