@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Register from "./pages/Register";
+import AddSkills from "./pages/AddSkills";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
 import Certifications from "./pages/Certifications";
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
   { path: "/auth/callback", element: <AuthCallback /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/skills/manage", element: <AddSkills /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
   { path: "/skills/manage", element: <AddSkills /> },
