@@ -1,4 +1,6 @@
 import React from "react";
+import { Box, Typography, useTheme } from "@mui/material";
+
 
 interface CareerEvent {
   id: string;
@@ -14,53 +16,54 @@ interface CareerTimelineProps {
 }
 
 const CareerTimeline: React.FC<CareerTimelineProps> = ({ events }) => {
-  return (
-    <div style={{ margin: "2rem 0" }}>
-      <h2>Career Timeline</h2>
+  const theme = useTheme();
+    return (
+    <Box sx={{ my: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Career Timeline
+      </Typography>
 
-      <div
-        style={{
+      <Box
+        sx={{
           position: "relative",
-          margin: "2rem 0",
-          paddingLeft: "20px",
-          borderLeft: "3px solid #2196f3",
+          my: 4,
+          pl: 3,
+          borderLeft: `3px solid ${theme.palette.primary.main}`,
         }}
       >
         {events.map((event) => (
-          <div
-            key={event.id}
-            style={{
-              marginBottom: "2rem",
-              position: "relative",
-            }}
-          >
+          <Box key={event.id} sx={{ mb: 4, position: "relative" }}>
             {/* timeline dot */}
-            <span
-              style={{
+            <Box
+              sx={{
                 position: "absolute",
-                left: "-10px",
-                top: "8px",
-                width: "14px",
-                height: "14px",
+                left: -2,
+                top: 1,
+                width: 3.5,
+                height: 3.5,
                 borderRadius: "50%",
-                backgroundColor: "#2196f3",
+                bgcolor: theme.palette.primary.main,
               }}
-            ></span>
+            />
 
-            <div>
-              <h3 style={{ margin: 0 }}>{event.title}</h3>
-              <h4 style={{ margin: "4px 0", color: "#555" }}>{event.company}</h4>
-              <p style={{ margin: 0, fontSize: "0.9rem", color: "#888" }}>
+            <Box>
+              <Typography variant="h5">{event.title}</Typography>
+              <Typography variant="h6" color="text.secondary" sx={{ mt: 0.5 }}>
+                {event.company}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
                 {event.startDate} – {event.endDate ?? "Present"}
-              </p>
+              </Typography>
               {event.description && (
-                <p style={{ marginTop: "0.5rem", color: "#333" }}>{event.description}</p>
+                <Typography variant="body1" color="text.primary" sx={{ mt: 0.5 }}>
+                  Job Description: {event.description}
+                </Typography>
               )}
-            </div>
-          </div>
+            </Box>
+          </Box>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

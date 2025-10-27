@@ -5,7 +5,7 @@ import DeleteAccount from "./DeleteAccount";
 const Settings: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 800, mx: "auto", p: { xs: 2, sm: 3, md: 4 } }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h2" gutterBottom>
         Settings
       </Typography>
 

@@ -1,4 +1,6 @@
 import React from "react";
+import { Box, Typography, useTheme } from "@mui/material";
+
 
 interface ActivityItem {
   id: string;
@@ -11,50 +13,59 @@ interface RecentActivityTimelineProps {
 }
 
 const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({ activities }) => {
+  const theme = useTheme();
+
   return (
-    <div
-      style={{
-        margin: "0rem 0",
-        border: "1px solid #000", // thin black outline
-        borderRadius: "12px",
-        padding: "16px",
-        height: 323,            // same height as Skills Distribution
-        //overflowY: "auto",      // scroll if content exceeds height
+    <Box
+      sx={{
+        my: 0,
+        border: `1px solid ${theme.palette.text.primary}`,
+        borderRadius: 3,
+        p: 2,
+        height: 323, // same height as Skills Distribution
+        overflowY: "auto",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Recent Activity</h2>
-      <ul style={{ listStyle: "none", paddingLeft: 0, borderLeft: "2px solid #ccc" }}>
+      <Typography variant="h4" sx={{ mt: 0, mb: 2 }}>
+        Recent Activity
+      </Typography>
+
+      <Box sx={{ listStyle: "none", p: 0, borderLeft: `2px solid ${theme.palette.divider}` }}>
         {activities.map(({ id, date, description }) => (
-          <li
+          <Box
             key={id}
-            style={{
+            component="li"
+            sx={{
               position: "relative",
-              padding: "0.5rem 1rem 0.5rem 1.5rem",
-              marginBottom: "1rem",
+              pl: 4,
+              py: 1,
+              mb: 3,
             }}
           >
             {/* Timeline dot */}
-            <span
-              style={{
+            <Box
+              sx={{
                 position: "absolute",
-                left: "-7px",
+                left: -1.5,
                 top: "50%",
                 transform: "translateY(-50%)",
-                width: "12px",
-                height: "12px",
+                width: 3,
+                height: 3,
                 borderRadius: "50%",
-                backgroundColor: "#007bff",
+                bgcolor: theme.palette.primary.main,
               }}
-            ></span>
+            />
 
-            <div style={{ fontSize: "0.85rem", color: "#666" }}>
+            <Typography variant="body2" color="text.secondary">
               {new Date(date).toLocaleString()}
-            </div>
-            <div>{description}</div>
-          </li>
+            </Typography>
+            <Typography variant="body1" color="text.primary">
+              {description}
+            </Typography>
+          </Box>
         ))}
-      </ul>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

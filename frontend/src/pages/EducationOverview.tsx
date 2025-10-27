@@ -244,7 +244,7 @@ const EducationOverview: React.FC = () => {
         + Add Education
       </Button>
 
-      <Typography variant="h4" mb={3}>
+      <Typography variant="h2" mb={3}>
         Education Timeline
       </Typography>
 

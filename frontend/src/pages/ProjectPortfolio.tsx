@@ -164,7 +164,7 @@ const ProjectPortfolio: React.FC = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" textAlign="center" mb={2}>
+      <Typography variant="h2" textAlign="center" mb={2}>
         My Projects Portfolio
       </Typography>
 
