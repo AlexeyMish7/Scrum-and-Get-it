@@ -1,5 +1,5 @@
 import { useAuth } from "../../context/AuthContext";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -19,6 +19,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import { supabase } from "../../supabaseClient";
+import crud from "../../services/crud";
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
 
@@ -26,15 +28,73 @@ const NavBar: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) =>
     setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
   const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!user) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    const load = async () => {
+      const res = await crud.getUserProfile(user.id);
+      if (res.error) return;
+      const p = res.data as Record<string, unknown> | null;
+      type ProfileMeta = {
+        avatar_path?: string | null;
+        avatar_bucket?: string | null;
+      } & Record<string, unknown>;
+      const meta = (p?.meta as ProfileMeta | undefined) ?? {};
+      const avatar_path = meta?.avatar_path ?? null;
+      const avatar_bucket = meta?.avatar_bucket ?? "projects";
+      if (!avatar_path) {
+        setAvatarUrl(null);
+        return;
+      }
+      const { data, error } = await supabase.storage
+        .from(avatar_bucket)
+        .createSignedUrl(avatar_path, 60 * 60);
+      if (error) {
+        console.warn("Failed to create signed url for avatar", error);
+        setAvatarUrl(null);
+        return;
+      }
+      if (mounted) setAvatarUrl(data?.signedUrl ?? null);
+    };
+
+    load();
+
+    // subscribe to profile changes for this user so avatar updates live
+    const ch = supabase
+      .channel("public:profiles")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      // unsubscribe channel
+      ch.unsubscribe();
+    };
+  }, [user]);
 
   const navItems = [
     { label: "Dashboard", path: "/profile" },
@@ -42,7 +102,7 @@ const NavBar: React.FC = () => {
     { label: "Skills", path: "/skillsOverview" },
     { label: "Employment", path: "/employment-history" },
     { label: "Projects", path: "/portfolio" },
-    { label: "Certifications", path: "/certifications" }
+    { label: "Certifications", path: "/certifications" },
   ];
 
   return (
@@ -124,7 +184,9 @@ const NavBar: React.FC = () => {
                 aria-controls={anchorEl ? "profile-menu" : undefined}
                 aria-haspopup="true"
               >
-                <Avatar alt="User Profile" src="/static/images/avatar/1.jpg" />
+                <Avatar alt="User Profile" src={avatarUrl ?? undefined}>
+                  {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+                </Avatar>
               </IconButton>
 
               <Menu

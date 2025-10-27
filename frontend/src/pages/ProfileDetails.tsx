@@ -10,6 +10,7 @@ import {
   Alert,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
+import ProfilePicture from "../components/ProfilePicture";
 import crud from "../services/crud";
 
 interface ProfileData {
@@ -261,6 +262,7 @@ const ProfileDetails: React.FC = () => {
         {editMode ? (
           <>
             {/* ---- EDIT MODE ---- */}
+            <ProfilePicture />
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Box sx={{ flex: 1, minWidth: 250 }}>
                 <TextField
