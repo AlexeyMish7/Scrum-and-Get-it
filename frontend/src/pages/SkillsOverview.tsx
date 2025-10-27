@@ -206,7 +206,7 @@ const SkillsOverview: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Typography variant="h4" mb={2}>
+      <Typography variant="h2" mb={2}>
         Skills Overview
       </Typography>
       <Button
