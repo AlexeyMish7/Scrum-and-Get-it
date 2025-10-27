@@ -304,7 +304,49 @@ const Dashboard: FC = () => {
       throw err;
     }
   };
-  const handleAddProject = () => console.log("➕ Add Project clicked");
+  const handleAddProject = async (formData: Record<string, unknown>) => {
+    if (loading) throw new Error("Auth loading");
+    if (!user) throw new Error("Please sign in to add a project");
+
+    const userCrud = crud.withUser(user.id);
+
+    // Map modal form fields to projects table columns
+    const payload = {
+      proj_name:
+        (formData.title as string) ?? (formData.projectName as string) ?? "",
+      proj_description: (formData.description as string) ?? null,
+      start_date:
+        formatToSqlDate(formData.start_date ?? formData.startDate) ?? null,
+      end_date: formatToSqlDate(formData.end_date ?? formData.endDate) ?? null,
+      tech_and_skills:
+        typeof formData.technologies_input === "string"
+          ? (formData.technologies_input as string)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
+      project_url: (formData.url as string) ?? null,
+      team_size: null,
+      team_details: null,
+      industry_proj_type: null,
+      proj_outcomes: null,
+      status: (formData.is_ongoing as unknown) === true ? "ongoing" : "planned",
+      media_path: null,
+      meta: null,
+    };
+
+    const res = await userCrud.insertRow("projects", payload, "*");
+    if (res.error) {
+      console.error("Add project failed", res.error);
+      throw new Error(res.error.message || "Failed to add project");
+    }
+
+    // update local counts and notify listeners
+    setCounts((c) => ({ ...c, projectsCount: (c.projectsCount ?? 0) + 1 }));
+    window.dispatchEvent(new Event("projects:changed"));
+
+    return res.data;
+  };
 
   const handleExport = () => {
     const data = {
@@ -353,20 +395,25 @@ const Dashboard: FC = () => {
         const userCrud = crud.withUser(user.id);
 
         // Fetch documents, employment, skills and education in parallel using canonical table/column names
-        const [docsRes, empRes, skillsRes, educationRes] = await Promise.all([
-          userCrud.listRows("documents", "id,file_name,uploaded_at", {
-            order: { column: "uploaded_at", ascending: false },
-          }),
-          userCrud.listRows(
-            "employment",
-            "id,job_title,company_name,location,start_date,end_date,current_position,job_description",
-            { order: { column: "start_date", ascending: false } }
-          ),
-          userCrud.listRows("skills", "id,skill_name,proficiency_level"),
-          userCrud.listRows("education", "id", {
-            order: { column: "graduation_date", ascending: false },
-          }),
-        ]);
+        const [docsRes, empRes, skillsRes, educationRes, projectsRes] =
+          await Promise.all([
+            userCrud.listRows("documents", "id,file_name,uploaded_at", {
+              order: { column: "uploaded_at", ascending: false },
+            }),
+            userCrud.listRows(
+              "employment",
+              "id,job_title,company_name,location,start_date,end_date,current_position,job_description",
+              { order: { column: "start_date", ascending: false } }
+            ),
+            userCrud.listRows("skills", "id,skill_name,proficiency_level"),
+            userCrud.listRows("education", "id", {
+              order: { column: "graduation_date", ascending: false },
+            }),
+            // fetch projects count for dashboard summary
+            userCrud.listRows("projects", "id", {
+              order: { column: "start_date", ascending: false },
+            }),
+          ]);
 
         if (!mounted) return;
 
@@ -382,7 +429,14 @@ const Dashboard: FC = () => {
 
         // Map to view models
         setActivities(docsToActivities(docs));
-        setCounts((c) => ({ ...c, projectsCount: docs.length }));
+        // projects count should reflect rows in `projects`, not documents
+        const projRows: { id?: string }[] =
+          projectsRes && !projectsRes.error
+            ? Array.isArray(projectsRes.data)
+              ? projectsRes.data
+              : [projectsRes.data]
+            : [];
+        setCounts((c) => ({ ...c, projectsCount: projRows.length }));
 
         // Map proficiency_level enum to numeric values for the chart (beginner=1 .. expert=4)
         const proficiencyMap: Record<string, number> = {
@@ -513,6 +567,41 @@ const Dashboard: FC = () => {
     window.addEventListener("education:changed", handler);
     return () => {
       window.removeEventListener("education:changed", handler);
+    };
+  }, [user, loading]);
+
+  // Listen for project changes and refresh projects count
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const handler = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows("projects", "id", {
+          order: { column: "start_date", ascending: false },
+        });
+        if (res.error) {
+          console.error(
+            "Failed to refresh projects after external change",
+            res.error
+          );
+          return;
+        }
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
+        setCounts((c) => ({ ...c, projectsCount: rows.length }));
+      } catch (err) {
+        console.error("Error refreshing projects", err);
+      }
+    };
+
+    window.addEventListener("projects:changed", handler);
+    return () => {
+      window.removeEventListener("projects:changed", handler);
     };
   }, [user, loading]);
 
