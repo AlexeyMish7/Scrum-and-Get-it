@@ -31,10 +31,19 @@ interface SummaryCardsProps {
     educationCount: number;
     projectsCount: number;
   };
-  onAddEmployment: (data: any) => void;
-  onAddSkill: (data: any) => void;
-  onAddEducation: (data: any) => void;
-  onAddProject: (data: any) => void;
+  // Handlers receive the form payload (string/number/boolean values).
+  onAddEmployment: (
+    data: Record<string, string | number | boolean | undefined>
+  ) => Promise<void> | void;
+  onAddSkill: (
+    data: Record<string, string | number | boolean | undefined>
+  ) => Promise<void> | void;
+  onAddEducation: (
+    data: Record<string, string | number | boolean | undefined>
+  ) => Promise<void> | void;
+  onAddProject: (
+    data: Record<string, string | number | boolean | undefined>
+  ) => Promise<void> | void;
 }
 
 interface FieldBase {
@@ -45,7 +54,7 @@ interface FieldBase {
   options?: string[];
   min?: number;
   max?: number;
-  default?: any;
+  default?: string | number | boolean;
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({
@@ -57,16 +66,21 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
 }) => {
   const theme = useTheme();
   const [openDialog, setOpenDialog] = useState<null | string>(null);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<
+    Record<string, string | number | boolean | undefined>
+  >({});
   const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
+    // Narrow the value and update state using functional update to avoid stale closures
+    const nextValue = type === "checkbox" ? checked : (value as string);
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleSliderChange = (name: string, value: number | number[]) => {
-    setFormData({ ...formData, [name]: value });
+    const numeric = typeof value === "number" ? value : value[0];
+    setFormData((prev) => ({ ...prev, [name]: numeric }));
   };
 
   const handleSubmit = async (card: (typeof cardsData)[0]) => {
@@ -211,16 +225,17 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   const renderField = (field: FieldBase) => {
     const isEndDate =
       field.name === "end_date" &&
-      (formData["is_current"] || formData["is_ongoing"]);
+      (!!formData["is_current"] || !!formData["is_ongoing"]);
 
     const commonProps = {
       key: field.name,
       name: field.name,
       fullWidth: true,
-      value: formData[field.name] || "",
+      // coerce to string for TextField-compatible values
+      value: String(formData[field.name] ?? ""),
       onChange: handleInputChange,
       InputLabelProps: { shrink: true }, // always shrink label
-      disabled: isEndDate,
+      disabled: Boolean(isEndDate),
       required: field.required || false,
     };
 
@@ -263,13 +278,15 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           <Box key={field.name} sx={{ mt: 2, width: "100%" }}>
             <Typography gutterBottom>
               {field.label}:{" "}
-              {formData[field.name] ?? field.default ?? field.min}
+              {String(formData[field.name] ?? field.default ?? field.min)}
             </Typography>
             <Box sx={{ px: 1 }}>
               {" "}
               {/* Add horizontal padding to align with TextFields */}
               <Slider
-                value={formData[field.name] ?? field.default ?? field.min}
+                value={Number(
+                  formData[field.name] ?? field.default ?? field.min
+                )}
                 min={field.min}
                 max={field.max}
                 step={1}
@@ -288,7 +305,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={formData[field.name] || false}
+                  checked={Boolean(formData[field.name])}
                   onChange={handleInputChange}
                   name={field.name}
                 />

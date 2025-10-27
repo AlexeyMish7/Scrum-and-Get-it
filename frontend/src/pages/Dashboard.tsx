@@ -191,7 +191,63 @@ const Dashboard: FC = () => {
 
     return res.data;
   };
-  const handleAddSkill = () => console.log("➕ Add Skill clicked");
+
+  const handleAddSkill = async (formData: Record<string, unknown>) => {
+    if (loading) throw new Error("Auth loading");
+    if (!user) throw new Error("Please sign in to add skills");
+
+    const userCrud = crud.withUser(user.id);
+
+    // Map numeric slider (1-5) to proficiency enum expected by the DB
+    const num =
+      Number(formData.proficiency_level ?? formData.proficiency_level ?? 1) ||
+      1;
+    const numToEnum: Record<number, string> = {
+      1: "beginner",
+      2: "intermediate",
+      3: "advanced",
+      4: "expert",
+      5: "expert",
+    };
+
+    const payload = {
+      skill_name:
+        (formData.name as string) ?? (formData.skill_name as string) ?? "",
+      proficiency_level: numToEnum[num] ?? "beginner",
+      skill_category: (formData.category as string) ?? null,
+      meta: null,
+    };
+
+    const res = await userCrud.insertRow("skills", payload, "*");
+    if (res.error) {
+      console.error("Add skill failed", res.error);
+      throw new Error(res.error.message || "Failed to add skill");
+    }
+
+    // Map enum back to numeric value for the chart (beginner=1 .. expert=4)
+    const enumToNum: Record<string, number> = {
+      beginner: 1,
+      intermediate: 2,
+      advanced: 3,
+      expert: 4,
+    };
+
+    const row = res.data as Record<string, unknown>;
+    const skillName =
+      typeof row["skill_name"] === "string"
+        ? (row["skill_name"] as string)
+        : String(payload.skill_name);
+    const profEnum =
+      typeof row["proficiency_level"] === "string"
+        ? (row["proficiency_level"] as string)
+        : (payload.proficiency_level as string);
+    const numeric = enumToNum[profEnum] ?? 1;
+
+    setSkills((s) => [{ name: skillName, value: numeric }, ...s]);
+    setCounts((c) => ({ ...c, skillsCount: (c.skillsCount ?? 0) + 1 }));
+
+    return res.data;
+  };
   const handleAddEducation = () => console.log("➕ Add Education clicked");
   const handleAddProject = () => console.log("➕ Add Project clicked");
 
@@ -307,6 +363,55 @@ const Dashboard: FC = () => {
 
     return () => {
       mounted = false;
+    };
+  }, [user, loading]);
+
+  // Listen for skill changes elsewhere in the app and refresh skills list
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const handler = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "skills",
+          "id,skill_name,proficiency_level",
+          { order: { column: "skill_name", ascending: true } }
+        );
+        if (res.error) {
+          console.error(
+            "Failed to refresh skills after external change",
+            res.error
+          );
+          return;
+        }
+        const rows = Array.isArray(res.data) ? res.data : [res.data];
+        const enumToNum: Record<string, number> = {
+          beginner: 1,
+          intermediate: 2,
+          advanced: 3,
+          expert: 4,
+        };
+        type SkillRowRes = {
+          id?: string;
+          skill_name?: string;
+          proficiency_level?: string;
+        };
+        const mapped = (rows as SkillRowRes[]).map((r) => ({
+          name: r.skill_name ?? String(r.id ?? ""),
+          value: enumToNum[r.proficiency_level ?? "beginner"] ?? 1,
+        }));
+        setSkills(mapped);
+        setCounts((c) => ({ ...c, skillsCount: mapped.length }));
+      } catch (err) {
+        console.error("Error refreshing skills", err);
+      }
+    };
+
+    window.addEventListener("skills:changed", handler);
+    return () => {
+      window.removeEventListener("skills:changed", handler);
     };
   }, [user, loading]);
 
