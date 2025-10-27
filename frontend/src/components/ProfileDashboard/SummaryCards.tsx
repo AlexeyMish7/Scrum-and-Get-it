@@ -58,6 +58,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   const theme = useTheme();
   const [openDialog, setOpenDialog] = useState<null | string>(null);
   const [formData, setFormData] = useState<any>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -68,10 +69,21 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (card: typeof cardsData[0]) => {
-    card.onAdd(formData);
-    setFormData({});
-    setOpenDialog(null);
+  const handleSubmit = async (card: (typeof cardsData)[0]) => {
+    try {
+      setSubmitting(true);
+      // Allow the parent handler to perform async work (DB insert). If it fails,
+      // bubble the error so we don't close the dialog prematurely.
+      await Promise.resolve(card.onAdd(formData));
+      setFormData({});
+      setOpenDialog(null);
+    } catch (e) {
+      console.error("Add handler failed", e);
+      // Simple user feedback for now; parent handler may also surface errors
+      alert("Failed to add item. See console for details.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const cardsData = [
@@ -84,9 +96,19 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       fields: [
         { type: "text", name: "company", label: "Company", required: true },
         { type: "text", name: "position", label: "Position", required: true },
-        { type: "date", name: "start_date", label: "Start Date", required: true },
+        { type: "text", name: "location", label: "Location" },
+        {
+          type: "date",
+          name: "start_date",
+          label: "Start Date",
+          required: true,
+        },
         { type: "date", name: "end_date", label: "End Date" },
-        { type: "checkbox", name: "is_current", label: "Currently working here" },
+        {
+          type: "checkbox",
+          name: "is_current",
+          label: "Currently working here",
+        },
         { type: "textarea", name: "description", label: "Description" },
       ] as FieldBase[],
     },
@@ -122,12 +144,31 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       color: theme.palette.warning.main,
       onAdd: onAddEducation,
       fields: [
-        { type: "text", name: "institution", label: "Institution", required: true },
+        {
+          type: "text",
+          name: "institution",
+          label: "Institution",
+          required: true,
+        },
         { type: "text", name: "degree", label: "Degree", required: true },
-        { type: "text", name: "field_of_study", label: "Field of Study", required: true },
-        { type: "date", name: "start_date", label: "Start Date", required: true },
+        {
+          type: "text",
+          name: "field_of_study",
+          label: "Field of Study",
+          required: true,
+        },
+        {
+          type: "date",
+          name: "start_date",
+          label: "Start Date",
+          required: true,
+        },
         { type: "date", name: "end_date", label: "End Date" },
-        { type: "checkbox", name: "is_current", label: "Currently studying here" },
+        {
+          type: "checkbox",
+          name: "is_current",
+          label: "Currently studying here",
+        },
       ] as FieldBase[],
     },
     {
@@ -144,7 +185,12 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           name: "technologies_input",
           label: "Technologies (comma-separated)",
         },
-        { type: "date", name: "start_date", label: "Start Date", required: true },
+        {
+          type: "date",
+          name: "start_date",
+          label: "Start Date",
+          required: true,
+        },
         { type: "date", name: "end_date", label: "End Date" },
         { type: "checkbox", name: "is_ongoing", label: "Ongoing project" },
         { type: "text", name: "url", label: "Project URL (optional)" },
@@ -163,96 +209,98 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   const renderField = (field: FieldBase) => {
-  const isEndDate =
-    field.name === "end_date" &&
-    (formData["is_current"] || formData["is_ongoing"]);
+    const isEndDate =
+      field.name === "end_date" &&
+      (formData["is_current"] || formData["is_ongoing"]);
 
-  const commonProps = {
-    key: field.name,
-    name: field.name,
-    fullWidth: true,
-    value: formData[field.name] || "",
-    onChange: handleInputChange,
-    InputLabelProps: { shrink: true }, // always shrink label
-    disabled: isEndDate,
-    required: field.required || false,
-  };
+    const commonProps = {
+      key: field.name,
+      name: field.name,
+      fullWidth: true,
+      value: formData[field.name] || "",
+      onChange: handleInputChange,
+      InputLabelProps: { shrink: true }, // always shrink label
+      disabled: isEndDate,
+      required: field.required || false,
+    };
 
-  const fieldWrapperStyle = { mt: 2 }; // add top margin to prevent cut-off
+    const fieldWrapperStyle = { mt: 2 }; // add top margin to prevent cut-off
 
-  switch (field.type) {
-    case "text":
-    case "date":
-    case "url":
-      return (
-        <Box sx={fieldWrapperStyle}>
-          <TextField {...commonProps} label={field.label} type={field.type} />
-        </Box>
-      );
-    case "textarea":
-      return (
-        <Box sx={fieldWrapperStyle}>
-          <TextField
-            {...commonProps}
-            label={field.label}
-            multiline
-            rows={3}
-          />
-        </Box>
-      );
-    case "select":
-      return (
-        <Box sx={fieldWrapperStyle}>
-          <TextField {...commonProps} select label={field.label}>
-            {field.options?.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Box>
-      );
-    case "range":
-      return (
-        <Box key={field.name} sx={{ mt: 2, width: "100%" }}>
-          <Typography gutterBottom>
-            {field.label}: {formData[field.name] ?? field.default ?? field.min}
-          </Typography>
-          <Box sx={{ px: 1 }}> {/* Add horizontal padding to align with TextFields */}
-            <Slider
-              value={formData[field.name] ?? field.default ?? field.min}
-              min={field.min}
-              max={field.max}
-              step={1}
-              onChange={(e, val) => handleSliderChange(field.name, val)}
-              marks={[
-                { value: field.min!, label: "Beginner" },
-                { value: field.max!, label: "Expert" },
-              ]}
+    switch (field.type) {
+      case "text":
+      case "date":
+      case "url":
+        return (
+          <Box sx={fieldWrapperStyle}>
+            <TextField {...commonProps} label={field.label} type={field.type} />
+          </Box>
+        );
+      case "textarea":
+        return (
+          <Box sx={fieldWrapperStyle}>
+            <TextField
+              {...commonProps}
+              label={field.label}
+              multiline
+              rows={3}
             />
           </Box>
-        </Box>
-      );
-    case "checkbox":
-      return (
-        <Box sx={fieldWrapperStyle}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={formData[field.name] || false}
-                onChange={handleInputChange}
-                name={field.name}
+        );
+      case "select":
+        return (
+          <Box sx={fieldWrapperStyle}>
+            <TextField {...commonProps} select label={field.label}>
+              {field.options?.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+        );
+      case "range":
+        return (
+          <Box key={field.name} sx={{ mt: 2, width: "100%" }}>
+            <Typography gutterBottom>
+              {field.label}:{" "}
+              {formData[field.name] ?? field.default ?? field.min}
+            </Typography>
+            <Box sx={{ px: 1 }}>
+              {" "}
+              {/* Add horizontal padding to align with TextFields */}
+              <Slider
+                value={formData[field.name] ?? field.default ?? field.min}
+                min={field.min}
+                max={field.max}
+                step={1}
+                onChange={(_, val) => handleSliderChange(field.name, val)}
+                marks={[
+                  { value: field.min!, label: "Beginner" },
+                  { value: field.max!, label: "Expert" },
+                ]}
               />
-            }
-            label={field.label}
-          />
-        </Box>
-      );
-    default:
-      return null;
-  }
-};
-
+            </Box>
+          </Box>
+        );
+      case "checkbox":
+        return (
+          <Box sx={fieldWrapperStyle}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData[field.name] || false}
+                  onChange={handleInputChange}
+                  name={field.name}
+                />
+              }
+              label={field.label}
+            />
+          </Box>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <Box
@@ -278,7 +326,11 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
             }}
           >
             <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="flex-start"
+              >
                 <Box display="flex" alignItems="center" gap={2}>
                   <Box
                     sx={{
@@ -318,7 +370,12 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
             </CardContent>
           </Card>
 
-          <Dialog open={openDialog === card.title} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <Dialog
+            open={openDialog === card.title}
+            onClose={handleCloseDialog}
+            maxWidth="sm"
+            fullWidth
+          >
             <DialogTitle>{`Add ${card.title}`}</DialogTitle>
             <DialogContent
               sx={{
@@ -332,9 +389,15 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
               {card.fields.map((field) => renderField(field))}
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCloseDialog}>Cancel</Button>
-              <Button onClick={() => handleSubmit(card)} variant="contained">
-                Add
+              <Button onClick={handleCloseDialog} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handleSubmit(card)}
+                variant="contained"
+                disabled={submitting}
+              >
+                {submitting ? "Adding..." : "Add"}
               </Button>
             </DialogActions>
           </Dialog>
