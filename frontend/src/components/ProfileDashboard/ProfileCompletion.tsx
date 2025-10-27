@@ -1,4 +1,6 @@
 import React from "react";
+import { Box, Typography, useTheme } from "@mui/material";
+
 
 interface ProfileData {
   employmentCount: number;
@@ -41,54 +43,63 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
   if (completionPercentage >= 70) color = "#2ecc71"; // strong
   else if (completionPercentage >= 40) color = "#f1c40f"; // moderate
 
-  return (
-    <div
-      style={{
-        margin: "2rem 0",
-        padding: "1rem",
-        border: `1px solid ${color}`,
-        borderRadius: "8px",
-        backgroundColor: "#fafafa",
+  const theme = useTheme();
+
+   return (
+    <Box
+      sx={{
+        my: 4,
+        p: 3,
+        border: `1px solid ${theme.palette.primary.main}`,
+        borderRadius: 2,
+        backgroundColor: theme.palette.background.paper,
       }}
     >
-      <h2 style={{ marginBottom: "1rem" }}>
-        Profile Completion: <span style={{ color }}>{completionPercentage.toFixed(0)}%</span>
-      </h2>
+      <Typography variant="h4" gutterBottom>
+        Profile Completion:{" "}
+        <Box component="span" sx={{ color: theme.palette.success.main }}>
+          {completionPercentage.toFixed(0)}%
+        </Box>
+      </Typography>
 
-      <div
-        style={{
-          backgroundColor: "#eee",
-          height: "10px",
-          borderRadius: "5px",
+      <Box
+        sx={{
+          backgroundColor: theme.palette.grey[300],
+          height: 10,
+          borderRadius: 1,
           overflow: "hidden",
-          marginBottom: "1rem",
+          mb: 2,
         }}
       >
-        <div
-          style={{
+        <Box
+          sx={{
             height: "100%",
             width: `${completionPercentage}%`,
-            backgroundColor: color,
+            backgroundColor: theme.palette.success.main,
             transition: "width 0.5s ease",
           }}
-        ></div>
-      </div>
+        />
+      </Box>
 
       {suggestions.length > 0 ? (
         <>
-          <h4>Suggestions:</h4>
-          <ul style={{ color: color }}>
+          <Typography variant="h5" gutterBottom>
+            Suggestions:
+          </Typography>
+          <Box component="ul" sx={{ color: theme.palette.primary.main, pl: 3 }}>
             {suggestions.map((sugg, idx) => (
-              <li key={idx} style={{ marginBottom: "0.5rem" }}>
-                {sugg}
+              <li key={idx}>
+                <Typography variant="body1">{sugg}</Typography>
               </li>
             ))}
-          </ul>
+          </Box>
         </>
       ) : (
-        <p style={{ color: "#2ecc71" }}>Your profile is complete! 🎉</p>
+        <Typography variant="body1" sx={{ color: theme.palette.success.main }}>
+          Your profile is complete! 🎉
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 };
 
