@@ -228,7 +228,6 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       (!!formData["is_current"] || !!formData["is_ongoing"]);
 
     const commonProps = {
-      key: field.name,
       name: field.name,
       fullWidth: true,
       // coerce to string for TextField-compatible values
@@ -403,7 +402,11 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                 mb: 2, // bottom padding
               }}
             >
-              {card.fields.map((field) => renderField(field))}
+              {card.fields.map((field) => (
+                <React.Fragment key={field.name}>
+                  {renderField(field)}
+                </React.Fragment>
+              ))}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog} disabled={submitting}>
