@@ -22,7 +22,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   // Pull signup method from global Auth context (handles Supabase auth)
-  const { signUpNewUser } = useAuth();
+  const { signUpNewUser, signInWithOAuth } = useAuth();
 
   // --- UI + Form state ---
   // Stores all input values for the registration form
@@ -240,6 +240,22 @@ export default function Register() {
           Already have an account? <Link to="/Login">Sign in</Link>
         </p>
       </form>
+
+      <div style={{ marginTop: 12 }}>
+        <button
+          onClick={async () => {
+            setError("");
+            setInfo("");
+            setLoading(true);
+            const res = await signInWithOAuth("google");
+            setLoading(false);
+            if (!res.ok) setError(res.message || "OAuth error");
+          }}
+          disabled={loading}
+        >
+          Sign in with Google
+        </button>
+      </div>
 
       {/* Show messages if present */}
       {error && <p style={{ color: "red" }}>{error}</p>}
