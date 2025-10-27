@@ -11,7 +11,9 @@ import {
 } from "@mui/material";
 
 // Single icon import (good for tree-shaking)
-import { Download } from "@mui/icons-material";
+//import { Download } from "@mui/icons-material";
+
+import Icon from "../pages/Icon"; 
 
 // App widgets for the dashboard layout/visuals
 import SummaryCards from "../components/ProfileDashboard/SummaryCards";
@@ -329,7 +331,7 @@ const ProfilePage: FC = () => {
 
         <Button
           variant="contained"
-          startIcon={<Download />}
+          startIcon={<Icon name="Download" color="inherit" />}
           onClick={handleExport}
           sx={{ borderRadius: 2, textTransform: "none" }}
         >
