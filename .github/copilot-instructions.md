@@ -1,59 +1,62 @@
-# Copilot instructions for this repository
+## Copilot instructions — Scrum-and-Get-it (concise)
 
-Audience: automated coding assistants (Copilot / AI pair programmer)
+Audience
 
-Goal: help the agent become immediately productive in the ATS Tracker frontend (React + TypeScript + Vite + Supabase).
+- Automated coding assistants (Copilot / AI pair programmer)
 
-Key facts
+Goal
 
-- Stack: React 19 + TypeScript + Vite. Frontend folder: `frontend/`.
-- Node/npm: Node 20.19.5, npm >= 10.8.2 (see `frontend/package.json` -> `engines`).
-- Supabase: client in `frontend/src/supabaseClient.ts`. Required env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- Get productive quickly on the frontend (React + TypeScript + Vite) using Supabase for auth and data.
 
-Where to look first (high value files)
+Quick facts
 
-- `frontend/src/supabaseClient.ts` — single shared supabase client; throws early if env missing.
-- `frontend/src/context/AuthContext.tsx` — canonical auth flows (signUpNewUser, signIn, signInWithOAuth, signOut); keeps session and subscription via `onAuthStateChange`.
-- `frontend/src/services/crud.ts` — small, reusable CRUD helpers (listRows, getById, insertRow, upsertRow, updateById, deleteById).
-- `frontend/src/services/profileService.ts` — example use of `crud` and how profiles are upserted by user id.
-- `frontend/src/router.tsx` — contains app routes and shows use of `ProtectedRoute` and `NavBar` wrappers.
-- Pages: `frontend/src/pages/Register.tsx`, `Login.tsx`, `ProfilePage.tsx` demonstrate established patterns (form validation, email normalization, redirect targets).
+- Frontend root: `frontend/`.
+- Node: 20.19.5, npm >= 10.8.2 (see `frontend/package.json`).
+- Required env (do NOT commit): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
-Project conventions and patterns (concrete)
+Top files to read
 
-- Auth and sessions: always use `AuthContext`/`useAuth()` for user state; `AuthContext` normalizes emails to lowercase and writes first/last name into user metadata and `profiles` table.
-- RLS and queries: Supabase Row Level Security is enabled. Always filter reads/writes by the current user id (e.g. `.eq('user_id', user.id)`) when hitting `public.*` tables.
-- Profile persistence: `profiles` table uses the auth user id as primary key; code uses `upsert` with `onConflict: 'id'` (see `Register.tsx`).
-- CRUD pattern: prefer `services/crud.ts` helpers rather than calling supabase directly from pages where possible.
-- Error handling: return and show Supabase error messages when available; forms use `aria-live` / `role=alert` for accessibility.
-- Email normalization: callers trim and `toLowerCase()` emails before sending to Supabase.
+- `frontend/src/supabaseClient.ts` — single Supabase client.
+- `frontend/src/context/AuthContext.tsx` — auth/session lifecycle; use `useAuth()`.
+- `frontend/src/services/crud.ts` — centralized DB helpers (list/get/insert/update/upsert/delete + `withUser(userId)`). Prefer these for table access.
+- `frontend/src/router.tsx`, `frontend/src/components/ProtectedRoute.tsx` — routing and guards.
+- Example pages: `frontend/src/pages/Register.tsx`, `Login.tsx`, `ProfilePage.tsx`.
+- Database schema (canonical): `db/migrations/2025-10-26_recreate_full_schema.sql` — the full Postgres schema (tables, enums, RLS policies, triggers and storage bucket setup). Read this before making schema or RLS changes.
 
-Scripts & dev workflow (frontend)
+Core rules (must follow)
 
-- Start dev server: from `frontend` run `npm run dev` (Vite). Use PowerShell syntax when giving commands on Windows.
-- Build: `npm run build` (runs `tsc -b` then `vite build`).
-- Lint: `npm run lint`.
-- Preview production build: `npm run preview`.
+- Respect Supabase RLS: always scope queries to the current user for public tables (use `withUser(user.id)` or `.eq('user_id', user.id)`).
+- Use the shared `supabase` client from `supabaseClient.ts` everywhere.
+- Use `AuthContext` / `useAuth()` for session/user state; normalize emails with `trim().toLowerCase()`.
+- Prefer `services/crud.ts` wrappers over ad-hoc `supabase.from(...)` calls in pages/components.
+- Keep TypeScript strict where practical and make UI accessible (labels, `aria-live` for errors).
 
-Small examples to follow
+Developer commands (PowerShell)
 
-- Use `supabase` from `supabaseClient.ts` everywhere, e.g. `supabase.from('profiles').upsert([...], { onConflict: 'id' })`.
-- Use `crud` helpers for table work: `await crud.listRows<T>('applications', '*', { eq: { user_id: userId } })`.
+- Start dev: `cd frontend; npm run dev`
+- Build: `cd frontend; npm run build`
+- Lint: `cd frontend; npm run lint`
 
-When proposing changes
+Common patterns / examples
 
-- Be incremental: small commits and focused diffs. Prefer modifying or adding one file at a time.
-- Keep TypeScript types strict; avoid `any` unless unavoidable and justified.
-- Respect RLS: do not craft queries that bypass `user_id` filters.
-- Use accessible markup: visible labels, `aria-live` for errors, keyboard focus management for dialogs.
+- User-scoped list (preferred):
+  const userCrud = crud.withUser(user.id);
+  const res = await userCrud.listRows('documents', 'id,file_name,uploaded_at');
 
-If you need to add features quickly
+- Unscoped admin-like list:
+  const res = await crud.listRows('applications', '\*', { order: { column: 'created_at', ascending: false } });
 
-- Follow existing patterns: add services under `frontend/src/services/`, pages under `frontend/src/pages/`, and wire routes in `frontend/src/router.tsx`.
-- For auth flows, reuse `useAuth()` and `AuthContext` helpers rather than reimplementing direct supabase calls.
+- Upsert profile by auth id:
+  await crud.upsertRow('profiles', { id: user.id, first_name, last_name }, 'id');
 
-Questions / missing info
+PR guidance
 
-- If anything about backend schemas or RLS policies is unclear, ask for the Supabase migration SQL or check project docs (Sprint1 PRD in `docs/`).
+- Be incremental: one small change per PR with a short verification list.
+- If changing DB schema, add a migration under `db/migrations/` and include rollback/notes.
 
-End of file
+If you need more context
+
+- See the canonical DB schema at `db/migrations/2025-10-26_recreate_full_schema.sql` (includes table definitions, enums, RLS policies, views and storage bucket notes).
+- Ask for the Supabase migration SQL or `docs/Sprint1PRD.md` for additional schema and RLS expectations.
+
+End.

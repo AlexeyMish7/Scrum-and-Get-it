@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -18,7 +18,9 @@ import {
   DialogActions,
   Tooltip,
 } from "@mui/material";
-import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
+import { dummyProjects } from "../data/dummyProjects";
 
 export interface Project {
   id: string;
@@ -35,48 +37,7 @@ export interface Project {
   status: "Completed" | "Ongoing" | "Planned";
 }
 
-export const dummyProjects: Project[] = [
-  {
-    id: "1",
-    projectName: "Portfolio Website",
-    description: "A personal website to showcase projects and skills.",
-    role: "Frontend Developer",
-    startDate: "2024-01-10",
-    endDate: "2024-02-15",
-    technologies: "React, TypeScript, MUI",
-    projectUrl: "https://example.com/portfolio",
-    teamSize: "1",
-    outcomes: "Learned React and TypeScript deeply",
-    industry: "Education",
-    status: "Completed",
-  },
-  {
-    id: "2",
-    projectName: "Task Manager App",
-    description: "A simple app to track daily tasks with CRUD functionality.",
-    role: "Full Stack Developer",
-    startDate: "2024-03-01",
-    endDate: "2024-03-30",
-    technologies: "React, Node.js, Express, MongoDB",
-    teamSize: "3",
-    outcomes: "Built full CRUD operations and REST API",
-    industry: "Productivity",
-    status: "Completed",
-  },
-  {
-    id: "3",
-    projectName: "AI Chatbot",
-    description: "An AI-powered chatbot for customer service.",
-    role: "Backend Developer",
-    startDate: "2024-04-05",
-    endDate: "2024-05-10",
-    technologies: "Python, Flask, OpenAI API",
-    teamSize: "2",
-    outcomes: "Implemented AI integration and response handling",
-    industry: "Finance",
-    status: "Ongoing",
-  },
-];
+// dummyProjects is now provided from ../data/dummyProjects
 
 const ProjectPortfolio: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -89,16 +50,95 @@ const ProjectPortfolio: React.FC = () => {
 
   const navigate = useNavigate(); // added navigation
 
+  const { user, loading } = useAuth();
+
+  // Load projects from DB for the signed-in user; fall back to dummyProjects for guests
   useEffect(() => {
-    setProjects(dummyProjects);
-  }, []);
+    let mounted = true;
+
+    const load = async () => {
+      if (loading) return;
+      if (!user) {
+        if (!mounted) return;
+        setProjects(dummyProjects);
+        return;
+      }
+
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "projects",
+          "id,proj_name,proj_description,role,start_date,end_date,tech_and_skills,project_url,team_size,proj_outcomes,industry_proj_type,status,media_path",
+          { order: { column: "start_date", ascending: false } }
+        );
+        if (!mounted) return;
+        if (res.error) {
+          console.error("Failed to load projects:", res.error);
+          setProjects(dummyProjects);
+          return;
+        }
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
+        const mapped = rows.map((r: Record<string, unknown>) => {
+          const getString = (k: string) => {
+            const v = r[k];
+            if (typeof v === "string") return v;
+            if (Array.isArray(v)) return v.join(", ");
+            return String(v ?? "");
+          };
+          return {
+            id: getString("id"),
+            projectName: getString("proj_name"),
+            description: getString("proj_description"),
+            role: getString("role"),
+            startDate: getString("start_date"),
+            endDate: getString("end_date"),
+            technologies: getString("tech_and_skills"),
+            projectUrl:
+              typeof r["project_url"] === "string"
+                ? (r["project_url"] as string)
+                : undefined,
+            teamSize: getString("team_size"),
+            outcomes: getString("proj_outcomes"),
+            industry: getString("industry_proj_type"),
+            status:
+              typeof r["status"] === "string"
+                ? (r["status"] as "Completed" | "Ongoing" | "Planned")
+                : "Planned",
+          } as Project;
+        });
+        setProjects(mapped);
+      } catch (err) {
+        console.error("Error loading projects:", err);
+        setProjects(dummyProjects);
+      }
+    };
+
+    load();
+
+    const handler = () => void load();
+    window.addEventListener("projects:changed", handler);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("projects:changed", handler);
+    };
+  }, [user, loading]);
 
   useEffect(() => {
     let temp = [...projects];
 
-    if (search) temp = temp.filter((p) => p.projectName.toLowerCase().includes(search.toLowerCase()));
-    if (filterTech) temp = temp.filter((p) => p.technologies.includes(filterTech));
-    if (filterIndustry) temp = temp.filter((p) => p.industry === filterIndustry);
+    if (search)
+      temp = temp.filter((p) =>
+        p.projectName.toLowerCase().includes(search.toLowerCase())
+      );
+    if (filterTech)
+      temp = temp.filter((p) => p.technologies.includes(filterTech));
+    if (filterIndustry)
+      temp = temp.filter((p) => p.industry === filterIndustry);
 
     temp.sort((a, b) =>
       sortOrder === "newest"
@@ -130,17 +170,18 @@ const ProjectPortfolio: React.FC = () => {
 
       {/*Add Project Button */}
       <Box textAlign="center" mb={4}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleAddProject}
-        >
+        <Button variant="contained" color="primary" onClick={handleAddProject}>
           Add Project
         </Button>
       </Box>
 
       {/* Info Note */}
-      <Typography variant="body2" color="text.secondary" textAlign="center" mb={4}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        textAlign="center"
+        mb={4}
+      >
         Click on any project to view details and copy its shareable link.
       </Typography>
 
@@ -157,7 +198,11 @@ const ProjectPortfolio: React.FC = () => {
         <Grid size={12}>
           <FormControl fullWidth>
             <InputLabel>Technology</InputLabel>
-            <Select value={filterTech} label="Technology" onChange={(e) => setFilterTech(e.target.value)}>
+            <Select
+              value={filterTech}
+              label="Technology"
+              onChange={(e) => setFilterTech(e.target.value)}
+            >
               <MenuItem value="">All</MenuItem>
               <MenuItem value="React">React</MenuItem>
               <MenuItem value="TypeScript">TypeScript</MenuItem>
@@ -168,7 +213,11 @@ const ProjectPortfolio: React.FC = () => {
         <Grid size={12}>
           <FormControl fullWidth>
             <InputLabel>Industry</InputLabel>
-            <Select value={filterIndustry} label="Industry" onChange={(e) => setFilterIndustry(e.target.value)}>
+            <Select
+              value={filterIndustry}
+              label="Industry"
+              onChange={(e) => setFilterIndustry(e.target.value)}
+            >
               <MenuItem value="">All</MenuItem>
               <MenuItem value="Finance">Finance</MenuItem>
               <MenuItem value="Healthcare">Healthcare</MenuItem>
@@ -183,7 +232,9 @@ const ProjectPortfolio: React.FC = () => {
             <Select
               value={sortOrder}
               label="Sort"
-              onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+              onChange={(e) =>
+                setSortOrder(e.target.value as "newest" | "oldest")
+              }
             >
               <MenuItem value="newest">Newest</MenuItem>
               <MenuItem value="oldest">Oldest</MenuItem>
@@ -191,7 +242,12 @@ const ProjectPortfolio: React.FC = () => {
           </FormControl>
         </Grid>
         <Grid size={12}>
-          <Button variant="contained" color="primary" onClick={handlePrint} fullWidth>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handlePrint}
+            fullWidth
+          >
             Print All Projects
           </Button>
         </Grid>
@@ -220,10 +276,18 @@ const ProjectPortfolio: React.FC = () => {
       </Grid>
 
       {/* Project Details Dialog */}
-      <Dialog open={!!selectedProject} onClose={() => setSelectedProject(null)} maxWidth="sm" fullWidth className="no-print">
+      <Dialog
+        open={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+        maxWidth="sm"
+        fullWidth
+        className="no-print"
+      >
         <DialogTitle>{selectedProject?.projectName}</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="subtitle1">Role: {selectedProject?.role}</Typography>
+          <Typography variant="subtitle1">
+            Role: {selectedProject?.role}
+          </Typography>
           <Typography variant="subtitle2" mb={1}>
             Dates: {selectedProject?.startDate} - {selectedProject?.endDate}
           </Typography>
@@ -247,7 +311,12 @@ const ProjectPortfolio: React.FC = () => {
           </Typography>
 
           {selectedProject?.projectUrl && (
-            <Button href={selectedProject.projectUrl} target="_blank" sx={{ mt: 2 }} variant="outlined">
+            <Button
+              href={selectedProject.projectUrl}
+              target="_blank"
+              sx={{ mt: 2 }}
+              variant="outlined"
+            >
               View Project
             </Button>
           )}

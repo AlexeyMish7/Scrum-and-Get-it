@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
 import {
   Box,
   Card,
@@ -11,7 +13,24 @@ import {
   Divider,
 } from "@mui/material";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import type { DropResult } from "@hello-pangea/dnd";
+
+// Minimal local types to avoid depending on the DnD package's type exports.
+type DropResult = {
+  source: { droppableId: string; index: number };
+  destination?: { droppableId: string; index: number } | null;
+};
+
+type DroppableProvided = {
+  innerRef: (el: HTMLElement | null) => void;
+  droppableProps: Record<string, unknown>;
+  placeholder?: React.ReactNode;
+};
+
+type DraggableProvided = {
+  innerRef: (el: HTMLElement | null) => void;
+  draggableProps: Record<string, unknown>;
+  dragHandleProps?: Record<string, unknown>;
+};
 
 type Skill = {
   id: string;
@@ -68,6 +87,7 @@ const initialCategories: Category[] = [
 ];
 
 const SkillsOverview: React.FC = () => {
+  const { user, loading } = useAuth();
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [search, setSearch] = useState("");
 
@@ -106,6 +126,66 @@ const SkillsOverview: React.FC = () => {
     setCategories(newCats);
   };
 
+  // Load skills from DB and map into categories
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const fetchSkills = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "skills",
+          "id,skill_name,proficiency_level,skill_category"
+        );
+        if (res.error) {
+          console.error("Failed to load skills for overview", res.error);
+          return;
+        }
+        const rows = Array.isArray(res.data) ? res.data : [res.data];
+        type DbSkill = {
+          id?: string;
+          skill_name?: string;
+          proficiency_level?: string;
+          skill_category?: string;
+        };
+        const byCategory: Record<string, Skill[]> = {};
+        const enumToNum: Record<string, number> = {
+          beginner: 1,
+          intermediate: 2,
+          advanced: 3,
+          expert: 4,
+        };
+        (rows as DbSkill[]).forEach((r) => {
+          const cat = r.skill_category ?? "Technical";
+          const skill: Skill = {
+            id:
+              r.id ??
+              `${r.skill_name ?? "s"}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`,
+            name: r.skill_name ?? "Unnamed",
+            level: enumToNum[r.proficiency_level ?? "beginner"] ?? 1,
+          };
+          byCategory[cat] = byCategory[cat] || [];
+          byCategory[cat].push(skill);
+        });
+        const mappedCats: Category[] = Object.entries(byCategory).map(
+          ([k, v]) => ({
+            id: k.toLowerCase().replace(/\s+/g, "-"),
+            name: k,
+            skills: v,
+          })
+        );
+        setCategories(mappedCats);
+      } catch (err) {
+        console.error("Error fetching skills overview", err);
+      }
+    };
+
+    fetchSkills();
+  }, [user, loading]);
+
   // Export functionality
   const handleExport = () => {
     const exportData = categories.map((cat) => ({
@@ -130,13 +210,12 @@ const SkillsOverview: React.FC = () => {
         Skills Overview
       </Typography>
       <Button
-  variant="contained"
-  sx={{ mb: 2 }}
-  onClick={() => (window.location.href = "/skills/manage")}
->
-  Manage Skills
-</Button>
-
+        variant="contained"
+        sx={{ mb: 2 }}
+        onClick={() => (window.location.href = "/skills/manage")}
+      >
+        Manage Skills
+      </Button>
 
       <Stack direction="row" spacing={2} mb={3}>
         <TextField
@@ -168,7 +247,7 @@ const SkillsOverview: React.FC = () => {
 
             return (
               <Droppable key={category.id} droppableId={category.id}>
-                {(provided) => (
+                {(provided: DroppableProvided) => (
                   <Card
                     ref={provided.innerRef}
                     {...provided.droppableProps}
@@ -197,7 +276,7 @@ const SkillsOverview: React.FC = () => {
                           draggableId={skill.id}
                           index={index}
                         >
-                          {(provided) => (
+                          {(provided: DraggableProvided) => (
                             <Box
                               ref={provided.innerRef}
                               {...provided.draggableProps}
