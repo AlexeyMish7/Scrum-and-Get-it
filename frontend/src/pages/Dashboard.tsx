@@ -57,6 +57,17 @@ function readMetaString(meta: unknown, key: string): string {
   return typeof v === "string" ? v : "";
 }
 
+// Convert UI date input (YYYY-MM or YYYY-MM-DD) to SQL date (YYYY-MM-DD)
+function formatToSqlDate(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+  if (/^\d{4}-\d{2}/.test(s)) return `${s.slice(0, 7)}-01`;
+  return null;
+}
+
 function buildDisplayHeader(
   profile: Record<string, unknown> | null,
   authUser: { email?: string | null; user_metadata?: unknown } | null
@@ -248,7 +259,51 @@ const Dashboard: FC = () => {
 
     return res.data;
   };
-  const handleAddEducation = () => console.log("➕ Add Education clicked");
+  const handleAddEducation = async (
+    formData: Record<string, unknown>
+  ): Promise<void> => {
+    if (loading) throw new Error("Auth loading");
+    if (!user) throw new Error("Please sign in to add education");
+
+    const userCrud = crud.withUser(user.id);
+
+    const payload = {
+      institution_name:
+        (formData.institution as string) ??
+        (formData.institution_name as string) ??
+        "",
+      degree_type:
+        (formData.degree as string) ?? (formData.degree_type as string) ?? "",
+      field_of_study:
+        (formData.field_of_study as string) ?? (formData.major as string) ?? "",
+      graduation_date: formatToSqlDate(formData.end_date ?? formData.end),
+      gpa: formData.gpa == null ? null : Number(formData.gpa) || null,
+      enrollment_status:
+        (formData.is_current as unknown) === true ? "enrolled" : "not_enrolled",
+      education_level: undefined,
+      honors: (formData.awards as string) ?? null,
+      meta: null,
+    };
+
+    try {
+      const res = await userCrud.insertRow("education", payload, "*");
+      if (res.error) {
+        console.error("Add education failed", res.error);
+        throw new Error(res.error.message || "Failed to add education");
+      }
+
+      // update local counts immediately so UI reflects change
+      setCounts((c) => ({ ...c, educationCount: (c.educationCount ?? 0) + 1 }));
+
+      // notify other parts of the app to refresh if they listen
+      window.dispatchEvent(new Event("education:changed"));
+
+      return;
+    } catch (err) {
+      console.error("Error adding education from dashboard", err);
+      throw err;
+    }
+  };
   const handleAddProject = () => console.log("➕ Add Project clicked");
 
   const handleExport = () => {
@@ -297,8 +352,8 @@ const Dashboard: FC = () => {
         // Scoped CRUD helpers for this user
         const userCrud = crud.withUser(user.id);
 
-        // Fetch documents, employment and skills in parallel using canonical table/column names
-        const [docsRes, empRes, skillsRes] = await Promise.all([
+        // Fetch documents, employment, skills and education in parallel using canonical table/column names
+        const [docsRes, empRes, skillsRes, educationRes] = await Promise.all([
           userCrud.listRows("documents", "id,file_name,uploaded_at", {
             order: { column: "uploaded_at", ascending: false },
           }),
@@ -308,6 +363,9 @@ const Dashboard: FC = () => {
             { order: { column: "start_date", ascending: false } }
           ),
           userCrud.listRows("skills", "id,skill_name,proficiency_level"),
+          userCrud.listRows("education", "id", {
+            order: { column: "graduation_date", ascending: false },
+          }),
         ]);
 
         if (!mounted) return;
@@ -352,6 +410,14 @@ const Dashboard: FC = () => {
         })) as CareerEventType[];
         setCareerEvents(empEvents);
         setCounts((c) => ({ ...c, employmentCount: empEvents.length }));
+        // Education count (ensure dashboard shows correct number on initial load)
+        const eduRows: { id?: string }[] =
+          educationRes && !educationRes.error
+            ? Array.isArray(educationRes.data)
+              ? educationRes.data
+              : [educationRes.data]
+            : [];
+        setCounts((c) => ({ ...c, educationCount: eduRows.length }));
       } catch (err) {
         // Fail silently for now but keep UI functional; log for debugging
         // TODO: surface non-intrusive UI errors (snackbar/aria-live)
@@ -412,6 +478,41 @@ const Dashboard: FC = () => {
     window.addEventListener("skills:changed", handler);
     return () => {
       window.removeEventListener("skills:changed", handler);
+    };
+  }, [user, loading]);
+
+  // Listen for education changes and refresh education count
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const handler = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows("education", "id", {
+          order: { column: "graduation_date", ascending: false },
+        });
+        if (res.error) {
+          console.error(
+            "Failed to refresh education after external change",
+            res.error
+          );
+          return;
+        }
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
+        setCounts((c) => ({ ...c, educationCount: rows.length }));
+      } catch (err) {
+        console.error("Error refreshing education", err);
+      }
+    };
+
+    window.addEventListener("education:changed", handler);
+    return () => {
+      window.removeEventListener("education:changed", handler);
     };
   }, [user, loading]);
 

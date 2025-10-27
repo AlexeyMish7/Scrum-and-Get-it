@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
 import {
   Box,
   Typography,
@@ -25,7 +27,6 @@ import {
 } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
 
-
 type EducationEntry = {
   id: string;
   degree: string;
@@ -36,6 +37,18 @@ type EducationEntry = {
   gpa?: number;
   gpaPrivate?: boolean;
   honors?: string;
+};
+
+// When connected to the DB we'll load entries for the current user; keep
+// a small DB-row type to map fields safely.
+type DbEducationRow = {
+  id?: string;
+  degree_type?: string | null;
+  institution_name?: string | null;
+  field_of_study?: string | null;
+  graduation_date?: string | null;
+  gpa?: number | null;
+  honors?: string | null;
 };
 
 const initialEducation: EducationEntry[] = [
@@ -70,40 +83,166 @@ const initialEducation: EducationEntry[] = [
 ];
 
 const EducationOverview: React.FC = () => {
+  const { user, loading } = useAuth();
   const [education, setEducation] = useState<EducationEntry[]>(
-    initialEducation.sort(
-      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-    )
+    initialEducation
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      )
   );
 
   const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const handleSave = (entry: EducationEntry) => {
-    setEducation((prev) =>
-      prev.map((e) => (e.id === entry.id ? entry : e)).sort(
-        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      )
-    );
+  const handleSave = async (entry: EducationEntry) => {
+    // If user is signed in, persist update to DB; otherwise keep local
+    if (!loading && user) {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const payload = {
+          degree_type: entry.degree,
+          institution_name: entry.institution,
+          field_of_study: entry.fieldOfStudy,
+          graduation_date: entry.endDate ?? null,
+          gpa: entry.gpa ?? null,
+          honors: entry.honors ?? null,
+        };
+        const res = await userCrud.updateRow(
+          "education",
+          payload,
+          { eq: { id: entry.id } },
+          "*"
+        );
+        if (res.error) {
+          console.error("Failed to update education", res.error);
+          alert("Failed to save education. See console for details.");
+          return;
+        }
+        // Update local UI with the returned row (or the passed entry)
+        const updated = {
+          ...entry,
+          id: (res.data as DbEducationRow)?.id ?? entry.id,
+        };
+        setEducation((prev) =>
+          prev
+            .map((e) => (e.id === updated.id ? updated : e))
+            .sort(
+              (a, b) =>
+                new Date(b.startDate).getTime() -
+                new Date(a.startDate).getTime()
+            )
+        );
+        window.dispatchEvent(new Event("education:changed"));
+      } catch (err) {
+        console.error("Error saving education", err);
+        alert("Failed to save education. See console for details.");
+      }
+    } else {
+      setEducation((prev) =>
+        prev
+          .map((e) => (e.id === entry.id ? entry : e))
+          .sort(
+            (a, b) =>
+              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+          )
+      );
+    }
     setEditingEntry(null);
   };
 
-  const handleDelete = (id: string) => {
-    setEducation((prev) => prev.filter((e) => e.id !== id));
-    setConfirmDeleteId(null);
+  const handleDelete = async (id: string) => {
+    if (!loading && user) {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.deleteRow("education", { eq: { id } });
+        if (res.error) {
+          console.error("Failed to delete education", res.error);
+          alert("Failed to delete education. See console for details.");
+          return;
+        }
+        setEducation((prev) => prev.filter((e) => e.id !== id));
+        setConfirmDeleteId(null);
+        window.dispatchEvent(new Event("education:changed"));
+      } catch (err) {
+        console.error("Error deleting education", err);
+        alert("Failed to delete education. See console for details.");
+      }
+    } else {
+      setEducation((prev) => prev.filter((e) => e.id !== id));
+      setConfirmDeleteId(null);
+    }
   };
   const navigate = useNavigate();
 
+  // Load persisted education rows for the signed-in user and refresh on changes
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    let mounted = true;
+    const load = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "education",
+          "id,degree_type,institution_name,field_of_study,graduation_date,gpa,honors",
+          { order: { column: "graduation_date", ascending: false } }
+        );
+        if (res.error) {
+          console.error("Failed to load education rows", res.error);
+          return;
+        }
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
+        const mapped: EducationEntry[] = (rows as DbEducationRow[]).map(
+          (r) => ({
+            id: r.id ?? crypto.randomUUID(),
+            degree: r.degree_type ?? "",
+            institution: r.institution_name ?? "",
+            fieldOfStudy: r.field_of_study ?? "",
+            startDate: r.graduation_date ?? "",
+            endDate: r.graduation_date ?? undefined,
+            gpa: r.gpa ?? undefined,
+            gpaPrivate: false,
+            honors: r.honors ?? undefined,
+          })
+        );
+        if (!mounted) return;
+        setEducation(
+          mapped.sort(
+            (a, b) =>
+              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+          )
+        );
+      } catch (err) {
+        console.error("Error loading education", err);
+      }
+    };
+
+    load();
+
+    const handler = () => void load();
+    window.addEventListener("education:changed", handler);
+    return () => {
+      mounted = false;
+      window.removeEventListener("education:changed", handler);
+    };
+  }, [user, loading]);
 
   return (
     <Box p={3}>
       <Button
-  variant="contained"
-  sx={{ mb: 3 }}
-  onClick={() => navigate("/education/manage")}
->
-  + Add Education
-</Button>
+        variant="contained"
+        sx={{ mb: 3 }}
+        onClick={() => navigate("/education/manage")}
+      >
+        + Add Education
+      </Button>
 
       <Typography variant="h4" mb={3}>
         Education Timeline
@@ -147,7 +286,9 @@ const EducationOverview: React.FC = () => {
                   <Typography variant="subtitle1" color="text.secondary">
                     {edu.institution}
                   </Typography>
-                  <Typography variant="body2">Field: {edu.fieldOfStudy}</Typography>
+                  <Typography variant="body2">
+                    Field: {edu.fieldOfStudy}
+                  </Typography>
                   {edu.gpa !== undefined && !edu.gpaPrivate && (
                     <Typography variant="body2">GPA: {edu.gpa}</Typography>
                   )}
@@ -189,7 +330,10 @@ const EducationOverview: React.FC = () => {
                 fullWidth
                 value={editingEntry.institution}
                 onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, institution: e.target.value })
+                  setEditingEntry({
+                    ...editingEntry,
+                    institution: e.target.value,
+                  })
                 }
               />
               <TextField
@@ -197,7 +341,10 @@ const EducationOverview: React.FC = () => {
                 fullWidth
                 value={editingEntry.fieldOfStudy}
                 onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, fieldOfStudy: e.target.value })
+                  setEditingEntry({
+                    ...editingEntry,
+                    fieldOfStudy: e.target.value,
+                  })
                 }
               />
               <TextField
@@ -205,7 +352,10 @@ const EducationOverview: React.FC = () => {
                 fullWidth
                 value={editingEntry.startDate}
                 onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, startDate: e.target.value })
+                  setEditingEntry({
+                    ...editingEntry,
+                    startDate: e.target.value,
+                  })
                 }
               />
               <TextField
@@ -227,7 +377,9 @@ const EducationOverview: React.FC = () => {
                 onChange={(e) =>
                   setEditingEntry({
                     ...editingEntry,
-                    gpa: e.target.value ? parseFloat(e.target.value) : undefined,
+                    gpa: e.target.value
+                      ? parseFloat(e.target.value)
+                      : undefined,
                   })
                 }
               />
@@ -236,7 +388,10 @@ const EducationOverview: React.FC = () => {
                   <Switch
                     checked={editingEntry.gpaPrivate ?? false}
                     onChange={(e) =>
-                      setEditingEntry({ ...editingEntry, gpaPrivate: e.target.checked })
+                      setEditingEntry({
+                        ...editingEntry,
+                        gpaPrivate: e.target.checked,
+                      })
                     }
                   />
                 }
