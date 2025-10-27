@@ -11,8 +11,13 @@ import {
   FormControl,
   Button,
   CircularProgress,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
 
 interface ProjectEntry {
   projectName: string;
@@ -25,7 +30,7 @@ interface ProjectEntry {
   teamSize?: string;
   outcomes?: string;
   industry?: string;
-  status: "Completed" | "Ongoing" | "Planned";
+  status: "planned" | "ongoing" | "completed";
   mediaFile?: File | null;
 }
 
@@ -41,15 +46,16 @@ const AddProjectForm: React.FC = () => {
     teamSize: "",
     outcomes: "",
     industry: "",
-    status: "Planned",
+    status: "planned",
     mediaFile: null,
   });
 
   const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [saveToDocuments, setSaveToDocuments] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent< HTMLInputElement | HTMLTextAreaElement >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, files } = e.target as HTMLInputElement;
     if (files && files.length > 0) {
@@ -60,43 +66,49 @@ const AddProjectForm: React.FC = () => {
   };
 
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
-  const { name, value } = e.target;
-  setFormData({ ...formData, [name]: value as ProjectEntry["status"] });
-};
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value as ProjectEntry["status"] });
+  };
+
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    setLoading(true);
+    setSubmitting(true);
 
     // Validation
     if (!formData.projectName || !formData.description || !formData.startDate) {
       setMessage("Please fill in all required fields.");
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
 
     if (formData.endDate && formData.startDate > formData.endDate) {
       setMessage("Start date must be before end date.");
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
 
     try {
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr) console.warn("getUser error:", userErr);
-      const user = userData?.user ?? null;
-
-      if (!user) {
-        setMessage("Please sign in before adding a project.");
-        setLoading(false);
+      if (authLoading) {
+        setMessage("Auth still loading. Try again shortly.");
+        setSubmitting(false);
         return;
       }
 
-      let mediaUrl = null;
+      if (!user) {
+        setMessage("Please sign in before adding a project.");
+        setSubmitting(false);
+        return;
+      }
+
+      let mediaPath: string | null = null;
       if (formData.mediaFile) {
+        // upload to the canonical 'projects' bucket
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("project_media")
+          .from("projects")
           .upload(
             `${user.id}/${Date.now()}_${formData.mediaFile.name}`,
             formData.mediaFile
@@ -105,47 +117,106 @@ const AddProjectForm: React.FC = () => {
         if (uploadError) {
           console.error("File upload error:", uploadError);
           setMessage("Failed to upload media file.");
-          setLoading(false);
+          setSubmitting(false);
           return;
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from("project_media")
-          .getPublicUrl(uploadData.path);
-
-        mediaUrl = publicUrlData?.publicUrl ?? null;
+        // store the storage path (not public URL) in the DB; front-end can construct public URL if needed
+        mediaPath = uploadData.path;
+        // We don't need the public URL here; we store the storage path in the DB
+        mediaPath = uploadData.path;
       }
 
+      // Map UI fields to canonical DB column names from schema
       const payload = {
-        project_name: formData.projectName,
-        description: formData.description,
+        proj_name: formData.projectName,
+        proj_description: formData.description,
         role: formData.role,
         start_date: formData.startDate,
         end_date: formData.endDate || null,
-        technologies: formData.technologies,
+        tech_and_skills: formData.technologies
+          ? formData.technologies
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null,
         project_url: formData.projectUrl || null,
-        team_size: formData.teamSize || null,
-        outcomes: formData.outcomes || null,
-        industry: formData.industry || null,
+        team_size: formData.teamSize ? parseInt(formData.teamSize, 10) : null,
+        team_details: formData.teamSize || null,
+        industry_proj_type: formData.industry || null,
+        proj_outcomes: formData.outcomes || null,
         status: formData.status,
-        media_url: mediaUrl,
-        user_id: user.id,
+        media_path: mediaPath ?? null,
+        meta: null,
       };
-
-      const { data, error } = await supabase
-        .from("projects")
-        .insert([payload])
-        .select();
-
-      if (error) {
-        console.error("Supabase insert error:", error);
-        setMessage(`Something went wrong: ${error.message}`);
-        setLoading(false);
+      // Use the shared crud helper to respect RLS (withUser injects user_id)
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.insertRow("projects", payload, "*");
+      if (res.error) {
+        console.error("Insert project failed:", res.error);
+        // If we uploaded a file but the DB insert failed, remove the uploaded object to avoid orphaned files
+        if (mediaPath) {
+          try {
+            await supabase.storage.from("projects").remove([mediaPath]);
+          } catch (cleanupErr) {
+            console.warn(
+              "Failed to cleanup uploaded media after project insert failure:",
+              cleanupErr
+            );
+          }
+        }
+        setMessage(`Something went wrong: ${res.error.message}`);
+        setSubmitting(false);
         return;
       }
 
-      console.log("Inserted project:", data);
+      console.log("Inserted project:", res.data);
+      const insertedProject = res.data as { id?: string } | null;
       setMessage("✅ Project added successfully!");
+      // Optionally add a documents row for the uploaded media
+      if (saveToDocuments && mediaPath && formData.mediaFile) {
+        try {
+          const docPayload = {
+            kind: "portfolio",
+            file_name: formData.mediaFile.name,
+            file_path: mediaPath,
+            mime_type: formData.mediaFile.type,
+            bytes: formData.mediaFile.size,
+            meta: {
+              source: "project",
+              project_id: insertedProject?.id ?? null,
+            },
+          };
+
+          const docRes = await userCrud.insertRow("documents", docPayload, "*");
+          if (docRes.error) {
+            console.warn(
+              "Failed to insert documents row for project media:",
+              docRes.error
+            );
+            // Non-blocking: notify the user but don't fail the whole flow
+            setMessage((m) =>
+              m ? m + " — Document save failed" : "Document save failed"
+            );
+          } else {
+            // Notify listeners that documents changed
+            window.dispatchEvent(new Event("documents:changed"));
+          }
+        } catch (docErr) {
+          console.warn("Error inserting documents row:", docErr);
+          setMessage((m) =>
+            m ? m + " — Document save failed" : "Document save failed"
+          );
+        }
+      }
+      // Notify listeners and navigate back to the portfolio
+      window.dispatchEvent(new Event("projects:changed"));
+      try {
+        navigate("/portfolio");
+      } catch (navErr) {
+        /* ignore navigation errors in some test environments */
+        console.warn("Navigation failed:", navErr);
+      }
       setFormData({
         projectName: "",
         description: "",
@@ -157,14 +228,15 @@ const AddProjectForm: React.FC = () => {
         teamSize: "",
         outcomes: "",
         industry: "",
-        status: "Planned",
+        status: "planned",
         mediaFile: null,
       });
+      setSubmitting(false);
     } catch (err) {
       console.error("Unexpected error:", err);
       setMessage("Unexpected error occurred. Check console for details.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -311,9 +383,9 @@ const AddProjectForm: React.FC = () => {
                 label="Status"
                 onChange={handleSelectChange}
               >
-                <MenuItem value="Planned">Planned</MenuItem>
-                <MenuItem value="Ongoing">Ongoing</MenuItem>
-                <MenuItem value="Completed">Completed</MenuItem>
+                <MenuItem value="planned">Planned</MenuItem>
+                <MenuItem value="ongoing">Ongoing</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -341,20 +413,33 @@ const AddProjectForm: React.FC = () => {
             )}
           </Grid>
 
+          {/* Option to save uploaded media into the central Documents table */}
+          <Grid size={12}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={saveToDocuments}
+                  onChange={(e) => setSaveToDocuments(e.target.checked)}
+                />
+              }
+              label="Save uploaded media to My Documents"
+            />
+          </Grid>
+
           <Grid size={12} display="flex" justifyContent="space-between" mt={2}>
             <Button
               variant="primary"
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               sx={{ px: 4 }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Save Project"}
+              {submitting ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Save Project"
+              )}
             </Button>
-            <Button
-              variant="tertiary"
-              onClick={handleCancel}
-              sx={{ px: 4 }}
-            >
+            <Button variant="tertiary" onClick={handleCancel} sx={{ px: 4 }}>
               Cancel
             </Button>
           </Grid>
@@ -363,9 +448,7 @@ const AddProjectForm: React.FC = () => {
             <Grid size={12}>
               <Typography
                 textAlign="center"
-                color={
-                  message.startsWith("✅") ? "success.main" : "error.main"
-                }
+                color={message.startsWith("✅") ? "success.main" : "error.main"}
                 mt={2}
               >
                 {message}

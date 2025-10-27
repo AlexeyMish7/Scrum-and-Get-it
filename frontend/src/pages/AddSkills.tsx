@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
 import {
   Box,
   Typography,
@@ -17,56 +19,165 @@ import {
 } from "@mui/material";
 
 type SkillItem = {
+  id?: string;
   name: string;
   category: string;
   level: string;
 };
 
-const skillLevelOptions = [
-  "Beginner", "Intermediate", "Advanced", "Expert",
-];
+const skillLevelOptions = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 const suggestedSkillList = [
-  "React", "TypeScript", "Python", "Communication",
-  "Teamwork", "SQL", "Java", "Public Speaking",
+  "React",
+  "TypeScript",
+  "Python",
+  "Communication",
+  "Teamwork",
+  "SQL",
+  "Java",
+  "Public Speaking",
 ];
 const skillCategoryOptions = [
-  "Technical", "Soft Skills", "Languages", "Industry-Specific",
+  "Technical",
+  "Soft Skills",
+  "Languages",
+  "Industry-Specific",
 ];
 
 const AddSkills = () => {
+  const { user, loading } = useAuth();
   const [userSkills, setUserSkills] = useState<SkillItem[]>([]);
   const [selectedSkill, setSelectedSkill] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
 
-  const [selectedSkillIndex, setSelectedSkillIndex] = useState<number | null>(null);
+  const [selectedSkillIndex, setSelectedSkillIndex] = useState<number | null>(
+    null
+  );
   const [tempEditLevel, setTempEditLevel] = useState<string>("");
 
   const handleAddSkill = () => {
-    if (!selectedSkill || !selectedCategory || !selectedLevel) {
-      alert("Please fill out all fields before adding a skill.");
+    (async () => {
+      if (!selectedSkill || !selectedCategory || !selectedLevel) {
+        alert("Please fill out all fields before adding a skill.");
+        return;
+      }
+      const exists = userSkills.some(
+        (skill) => skill.name.toLowerCase() === selectedSkill.toLowerCase()
+      );
+      if (exists) {
+        alert("You already added this skill!");
+        return;
+      }
+
+      // Persist to DB if user is available
+      if (user) {
+        try {
+          const userCrud = crud.withUser(user.id);
+          const payload: {
+            skill_name: string;
+            proficiency_level: string;
+            skill_category: string;
+          } = {
+            skill_name: selectedSkill,
+            proficiency_level: selectedLevel.toLowerCase(),
+            skill_category: selectedCategory,
+          };
+          const res = await userCrud.insertRow("skills", payload, "*");
+          if (res.error) {
+            alert("Error adding skill: " + res.error.message);
+            return;
+          }
+          const inserted = Array.isArray(res.data) ? res.data[0] : res.data;
+          const newSkill: SkillItem = {
+            id: inserted?.id,
+            name: inserted?.skill_name ?? selectedSkill,
+            category: inserted?.skill_category ?? selectedCategory,
+            level: (inserted?.proficiency_level ?? selectedLevel).replace(
+              /^./,
+              (c: string) => c.toUpperCase()
+            ),
+          };
+          setUserSkills((s) => [...s, newSkill]);
+          // notify other parts of the app to refresh skills
+          try {
+            window.dispatchEvent(new CustomEvent("skills:changed"));
+          } catch {
+            /* noop */
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to add skill");
+          return;
+        }
+      } else {
+        // fallback to local-only addition
+        const newSkill: SkillItem = {
+          name: selectedSkill,
+          category: selectedCategory,
+          level: selectedLevel,
+        };
+        setUserSkills((s) => [...s, newSkill]);
+        try {
+          window.dispatchEvent(new CustomEvent("skills:changed"));
+        } catch {
+          /* noop */
+        }
+      }
+
+      setSelectedSkill("");
+      setSelectedCategory("");
+      setSelectedLevel("");
+    })();
+  };
+
+  // load persisted skills when user becomes available
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      setUserSkills([]);
       return;
     }
-    const exists = userSkills.some(
-      (skill) => skill.name.toLowerCase() === selectedSkill.toLowerCase()
-    );
-    if (exists) {
-      alert("You already added this skill!");
-      return;
-    }
-    const newSkill: SkillItem = {
-      name: selectedSkill,
-      category: selectedCategory,
-      level: selectedLevel,
+
+    const fetchSkills = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "skills",
+          "id,skill_name,proficiency_level,skill_category",
+          { order: { column: "skill_name", ascending: true } }
+        );
+        if (res.error) {
+          console.error("Failed to fetch skills", res.error);
+          return;
+        }
+        const rows = Array.isArray(res.data) ? res.data : [res.data];
+        type DbRow = {
+          id?: string;
+          skill_name?: string;
+          proficiency_level?: string;
+          skill_category?: string;
+        };
+        const mapped = (rows as DbRow[]).map(
+          (r) =>
+            ({
+              id: r.id,
+              name: r.skill_name ?? "",
+              category: r.skill_category ?? "Technical",
+              level: (r.proficiency_level ?? "beginner").replace(
+                /^./,
+                (c: string) => c.toUpperCase()
+              ),
+            } as SkillItem)
+        );
+        setUserSkills(mapped);
+      } catch (err) {
+        console.error("Error loading skills", err);
+      }
     };
 
-    setUserSkills([...userSkills, newSkill]);
-
-    setSelectedSkill("");
-    setSelectedCategory("");
-    setSelectedLevel("");
-  };
+    fetchSkills();
+  }, [user, loading]);
 
   const openEditDialog = (index: number) => {
     setSelectedSkillIndex(index);
@@ -80,19 +191,81 @@ const AddSkills = () => {
 
   // Update skill proficiency
   const handleUpdateLevel = () => {
-    if (selectedSkillIndex === null) return;
-    const updatedSkills = [...userSkills];
-    
-    updatedSkills[selectedSkillIndex].level = tempEditLevel;
-    setUserSkills(updatedSkills);
-    closeEditDialog();
+    (async () => {
+      if (selectedSkillIndex === null) return;
+      const skill = userSkills[selectedSkillIndex];
+      if (skill?.id && user) {
+        try {
+          const userCrud = crud.withUser(user.id);
+          const res = await userCrud.updateRow(
+            "skills",
+            { proficiency_level: tempEditLevel.toLowerCase() },
+            { eq: { id: skill.id } },
+            "*"
+          );
+          if (res.error) {
+            alert("Error updating skill: " + res.error.message);
+            return;
+          }
+          const updatedRow = Array.isArray(res.data) ? res.data[0] : res.data;
+          const updatedSkills = [...userSkills];
+          updatedSkills[selectedSkillIndex] = {
+            id: updatedRow?.id ?? skill.id,
+            name: updatedRow?.skill_name ?? skill.name,
+            category: updatedRow?.skill_category ?? skill.category,
+            level: (updatedRow?.proficiency_level ?? tempEditLevel).replace(
+              /^./,
+              (c: string) => c.toUpperCase()
+            ),
+          };
+          setUserSkills(updatedSkills);
+          try {
+            window.dispatchEvent(new CustomEvent("skills:changed"));
+          } catch (e) {
+            void e;
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to update skill");
+        }
+      } else {
+        const updatedSkills = [...userSkills];
+        updatedSkills[selectedSkillIndex].level = tempEditLevel;
+        setUserSkills(updatedSkills);
+      }
+      closeEditDialog();
+    })();
   };
 
   // Remove skill entirely
   const handleDeleteSkill = () => {
-    if (selectedSkillIndex === null) return;
-    setUserSkills(userSkills.filter((_, i) => i !== selectedSkillIndex));
-    closeEditDialog();
+    (async () => {
+      if (selectedSkillIndex === null) return;
+      const skill = userSkills[selectedSkillIndex];
+      if (skill?.id && user) {
+        try {
+          const userCrud = crud.withUser(user.id);
+          const res = await userCrud.deleteRow("skills", {
+            eq: { id: skill.id },
+          });
+          if (res.error) {
+            alert("Error deleting skill: " + res.error.message);
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to delete skill");
+          return;
+        }
+      }
+      setUserSkills(userSkills.filter((_, i) => i !== selectedSkillIndex));
+      try {
+        window.dispatchEvent(new CustomEvent("skills:changed"));
+      } catch (e) {
+        void e;
+      }
+      closeEditDialog();
+    })();
   };
 
   return (
@@ -107,7 +280,6 @@ const AddSkills = () => {
           label="Skill"
           select
           value={selectedSkill}
-          
           onChange={(e) => setSelectedSkill(e.target.value)}
           size="small"
           sx={{ minWidth: 180 }}
@@ -123,7 +295,6 @@ const AddSkills = () => {
           label="Category"
           select
           value={selectedCategory}
-          
           onChange={(e) => setSelectedCategory(e.target.value)}
           size="small"
           sx={{ minWidth: 150 }}
@@ -194,7 +365,9 @@ const AddSkills = () => {
 
         <DialogActions>
           <Button onClick={closeEditDialog}>Cancel</Button>
-          <Button color="error" onClick={handleDeleteSkill}>Remove</Button>
+          <Button color="error" onClick={handleDeleteSkill}>
+            Remove
+          </Button>
           <Button variant="contained" onClick={handleUpdateLevel}>
             Save
           </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -14,13 +14,15 @@ import {
   Chip,
   Divider,
   InputAdornment,
-  IconButton,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import PendingIcon from "@mui/icons-material/HourglassEmpty";
 import SearchIcon from "@mui/icons-material/Search";
 import dayjs from "dayjs";
+import { useAuth } from "../context/AuthContext";
+import crud from "../services/crud";
+import { supabase } from "../supabaseClient";
 
 type Certification = {
   id: string;
@@ -31,8 +33,9 @@ type Certification = {
   expirationDate?: string;
   doesNotExpire: boolean;
   certId?: string;
-  file?: File;
-  verified: boolean;
+  file?: File | null;
+  media_path?: string | null;
+  verification_status?: string | null; // maps to verification_status_enum
 };
 
 const categories = [
@@ -66,7 +69,9 @@ const Certifications: React.FC = () => {
     expirationDate: "",
     doesNotExpire: false,
     certId: "",
-    verified: false,
+    file: null,
+    media_path: null,
+    verification_status: "unverified",
   });
 
   // Filtered by organization search
@@ -77,23 +82,178 @@ const Certifications: React.FC = () => {
     );
   }, [certifications, search]);
 
-  const handleAddCert = () => {
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    let mounted = true;
+    if (loading) return;
+    if (!user) {
+      setCertifications([]);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const userCrud = crud.withUser(user.id);
+        const res = await userCrud.listRows(
+          "certifications",
+          "id,name,issuing_org,category,date_earned,expiration_date,does_not_expire,cert_id,media_path,verification_status",
+          { order: { column: "date_earned", ascending: false } }
+        );
+        if (!mounted) return;
+        if (res.error) {
+          console.error("Failed to load certifications:", res.error);
+          setCertifications([]);
+          return;
+        }
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
+        const mapped: Certification[] = (rows as Record<string, unknown>[]).map(
+          (r) => ({
+            id: (r["id"] as string) ?? "",
+            name: (r["name"] as string) ?? "",
+            organization: (r["issuing_org"] as string) ?? "",
+            category: (r["category"] as string) ?? "",
+            dateEarned: (r["date_earned"] as string) ?? "",
+            expirationDate: (r["expiration_date"] as string) ?? "",
+            doesNotExpire: Boolean(r["does_not_expire"] ?? false),
+            certId: (r["cert_id"] as string) ?? "",
+            media_path: (r["media_path"] as string) ?? null,
+            verification_status: (r["verification_status"] as string) ?? null,
+            file: null,
+          })
+        );
+        setCertifications(mapped);
+      } catch (err) {
+        console.error("Error loading certifications", err);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user, loading]);
+
+  const handleAddCert = async () => {
+    if (loading) return;
+    if (!user) throw new Error("Please sign in to add a certification");
     if (!newCert.name || !newCert.organization || !newCert.dateEarned) return;
-    setCertifications([
-      ...certifications,
-      { ...newCert, id: Date.now().toString(), verified: false },
-    ]);
-    setNewCert({
-      id: "",
-      name: "",
-      organization: "",
-      category: "",
-      dateEarned: "",
-      expirationDate: "",
-      doesNotExpire: false,
-      certId: "",
-      verified: false,
-    });
+
+    const userCrud = crud.withUser(user.id);
+
+    let mediaPath: string | null = null;
+    try {
+      if (newCert.file) {
+        const file = newCert.file;
+        const key = `${user.id}/${Date.now()}_${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("certifications")
+          .upload(key, file);
+        if (uploadError) {
+          console.error("Certification file upload failed:", uploadError);
+          throw uploadError;
+        }
+        mediaPath = uploadData.path;
+      }
+
+      const payload: Record<string, unknown> = {
+        name: newCert.name,
+        issuing_org: newCert.organization,
+        category: newCert.category || null,
+        date_earned: newCert.dateEarned,
+        expiration_date: newCert.doesNotExpire
+          ? null
+          : newCert.expirationDate || null,
+        does_not_expire: Boolean(newCert.doesNotExpire),
+        cert_id: newCert.certId || null,
+        media_path: mediaPath,
+        verification_status: "unverified",
+      };
+
+      const res = await userCrud.insertRow("certifications", payload, "*");
+      if (res.error) {
+        console.error("Insert certification failed:", res.error);
+        // cleanup uploaded file if any
+        if (mediaPath) {
+          try {
+            await supabase.storage.from("certifications").remove([mediaPath]);
+          } catch (cleanupErr) {
+            console.warn(
+              "Failed to cleanup uploaded certification file:",
+              cleanupErr
+            );
+          }
+        }
+        throw new Error(res.error.message || "Failed to add certification");
+      }
+
+      const row = res.data as Record<string, unknown>;
+      const created: Certification = {
+        id: (row["id"] as string) ?? "",
+        name: (row["name"] as string) ?? "",
+        organization: (row["issuing_org"] as string) ?? newCert.organization,
+        category: (row["category"] as string) ?? newCert.category,
+        dateEarned: (row["date_earned"] as string) ?? newCert.dateEarned,
+        expirationDate:
+          (row["expiration_date"] as string) ?? newCert.expirationDate,
+        doesNotExpire: Boolean(row["does_not_expire"] ?? false),
+        certId: (row["cert_id"] as string) ?? newCert.certId,
+        media_path: (row["media_path"] as string) ?? mediaPath,
+        verification_status:
+          (row["verification_status"] as string) ?? "unverified",
+        file: null,
+      };
+
+      // Optionally create a documents row pointing to the uploaded file
+      if (mediaPath && newCert.file) {
+        try {
+          const docPayload: Record<string, unknown> = {
+            kind: "other",
+            file_name: newCert.file.name,
+            file_path: mediaPath,
+            mime_type: newCert.file.type || null,
+            bytes: newCert.file.size || null,
+            meta: { source: "certification", certification_id: created.id },
+          };
+          const docRes = await userCrud.insertRow("documents", docPayload, "*");
+          if (docRes.error) {
+            console.warn(
+              "Failed to create documents row for certification:",
+              docRes.error
+            );
+          } else {
+            window.dispatchEvent(new Event("documents:changed"));
+          }
+        } catch (docErr) {
+          console.warn("Error creating documents row:", docErr);
+        }
+      }
+
+      setCertifications((prev) => [created, ...prev]);
+      // reset form
+      setNewCert({
+        id: "",
+        name: "",
+        organization: "",
+        category: "",
+        dateEarned: "",
+        expirationDate: "",
+        doesNotExpire: false,
+        certId: "",
+        file: null,
+        media_path: null,
+        verification_status: "unverified",
+      } as Certification);
+
+      window.dispatchEvent(new Event("certifications:changed"));
+    } catch (err) {
+      console.error("Failed to add certification", err);
+      // For now keep UI feedback minimal; callers may show snackbar
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,10 +261,34 @@ const Certifications: React.FC = () => {
     if (file) setNewCert({ ...newCert, file });
   };
 
-  const handleVerify = (id: string) => {
-    setCertifications((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, verified: true } : c))
-    );
+  const handleVerify = async (id: string) => {
+    if (loading) return;
+    if (!user) throw new Error("Please sign in to verify");
+    try {
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.updateRow(
+        "certifications",
+        { verification_status: "verified" },
+        { eq: { id } },
+        "*"
+      );
+      if (res.error) {
+        console.error("Failed to set certification verified:", res.error);
+        return;
+      }
+      // update local state
+      const updated = (res.data as Record<string, unknown>) ?? {};
+      const newStatus =
+        (updated["verification_status"] as string) ?? "verified";
+      setCertifications((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, verification_status: newStatus } : c
+        )
+      );
+      window.dispatchEvent(new Event("certifications:changed"));
+    } catch (err) {
+      console.error("Error verifying certification", err);
+    }
   };
 
   const today = dayjs();
@@ -196,7 +380,9 @@ const Certifications: React.FC = () => {
                     setNewCert({
                       ...newCert,
                       doesNotExpire: e.target.checked,
-                      expirationDate: e.target.checked ? "" : newCert.expirationDate,
+                      expirationDate: e.target.checked
+                        ? ""
+                        : newCert.expirationDate,
                     })
                   }
                 />
@@ -208,7 +394,9 @@ const Certifications: React.FC = () => {
               label="Certification Number / ID"
               fullWidth
               value={newCert.certId}
-              onChange={(e) => setNewCert({ ...newCert, certId: e.target.value })}
+              onChange={(e) =>
+                setNewCert({ ...newCert, certId: e.target.value })
+              }
             />
 
             <Button
@@ -224,6 +412,8 @@ const Certifications: React.FC = () => {
                 Uploaded: {newCert.file.name}
               </Typography>
             )}
+
+            {/* certification files are always saved to documents */}
 
             <Button
               variant="contained"
@@ -266,7 +456,11 @@ const Certifications: React.FC = () => {
                 boxShadow: 2,
                 borderRadius: 2,
                 borderLeft: `5px solid ${
-                  cert.verified ? "#2e7d32" : expiringSoon ? "#ed6c02" : "#1976d2"
+                  cert.verification_status === "verified"
+                    ? "#2e7d32"
+                    : expiringSoon
+                    ? "#ed6c02"
+                    : "#1976d2"
                 }`,
               }}
             >
@@ -277,7 +471,7 @@ const Certifications: React.FC = () => {
                   alignItems="center"
                 >
                   <Typography variant="h6">{cert.name}</Typography>
-                  {cert.verified ? (
+                  {cert.verification_status === "verified" ? (
                     <Chip
                       label="Verified"
                       color="success"
@@ -286,7 +480,11 @@ const Certifications: React.FC = () => {
                     />
                   ) : (
                     <Chip
-                      label="Pending Verification"
+                      label={
+                        cert.verification_status === "pending"
+                          ? "Pending Verification"
+                          : "Unverified"
+                      }
                       color="warning"
                       size="small"
                       icon={<PendingIcon />}
@@ -311,15 +509,15 @@ const Certifications: React.FC = () => {
                     ID: {cert.certId}
                   </Typography>
                 )}
-                {cert.file && (
+                {cert.media_path && (
                   <Typography variant="caption" display="block">
-                    📎 File: {cert.file.name}
+                    📎 File stored at: {cert.media_path}
                   </Typography>
                 )}
-                {!cert.verified && (
+                {cert.verification_status !== "verified" && (
                   <Button
                     size="small"
-                    onClick={() => handleVerify(cert.id)}
+                    onClick={() => void handleVerify(cert.id)}
                     sx={{ mt: 1 }}
                   >
                     Mark as Verified

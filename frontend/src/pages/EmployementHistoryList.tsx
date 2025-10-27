@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import * as crud from "../services/crud";
 import EditEmploymentModal from "./EditEmploymentModal";
 
 interface EmploymentEntry {
@@ -14,42 +15,79 @@ interface EmploymentEntry {
 }
 
 export default function EmploymentHistoryList() {
+  const { user, loading } = useAuth();
   const [entries, setEntries] = useState<EmploymentEntry[]>([]);
-  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(
+    null
+  );
 
-  const fetchEntries = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const fetchEntries = useCallback(async () => {
+    if (loading) return;
+    if (!user) {
+      setEntries([]);
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from("employment_history")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("start_date", { ascending: false });
+    try {
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.listRows("employment", "*", {
+        order: { column: "start_date", ascending: false },
+      });
 
-    if (error) console.error(error);
-    else setEntries(data || []);
-  };
+      if (res.error) {
+        console.error("fetchEntries error:", res.error);
+        setEntries([]);
+      } else {
+        // Map DB shape (current_position, job_description) to frontend shape (is_current, description)
+        const rows = (res.data ?? []) as Array<Record<string, unknown>>;
+        const mapped = rows.map((r) => ({
+          id: r.id,
+          job_title: r.job_title,
+          company_name: r.company_name,
+          location: r.location,
+          start_date: r.start_date,
+          end_date: r.end_date,
+          is_current: r.current_position ?? false,
+          description: r.job_description ?? "",
+        })) as EmploymentEntry[];
+        setEntries(mapped);
+      }
+    } catch (e) {
+      console.error("Unexpected fetchEntries error", e);
+      setEntries([]);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
-    fetchEntries();
-  }, []);
+    void fetchEntries();
+  }, [fetchEntries]);
 
   const handleDelete = async (entryId: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this entry?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this entry?"
+    );
     if (!confirmed) return;
 
-    const { error } = await supabase
-      .from("employment_history")
-      .delete()
-      .eq("id", entryId);
+    if (!user) {
+      alert("Please sign in to delete entries.");
+      return;
+    }
 
-    if (error) {
-      console.error(error);
+    try {
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.deleteRow("employment", {
+        eq: { id: entryId },
+      });
+      if (res.error) {
+        console.error(res.error);
+        alert("Something went wrong. Please try again.");
+      } else {
+        alert("Employment entry deleted successfully!");
+        fetchEntries(); // refresh list immediately
+      }
+    } catch (e) {
+      console.error("Delete failed", e);
       alert("Something went wrong. Please try again.");
-    } else {
-      alert("Employment entry deleted successfully!");
-      fetchEntries(); // refresh list immediately
     }
   };
 
@@ -70,7 +108,10 @@ export default function EmploymentHistoryList() {
                   {entry.job_title} @ {entry.company_name}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {entry.location} • {entry.is_current ? "Present" : `${entry.start_date} – ${entry.end_date}`}
+                  {entry.location} •{" "}
+                  {entry.is_current
+                    ? "Present"
+                    : `${entry.start_date} – ${entry.end_date}`}
                 </p>
               </div>
 

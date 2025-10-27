@@ -6,6 +6,7 @@ import Certifications from "./pages/Certifications";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
+import AddEducation from "./pages/AddEducation";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 import HomePage from "./pages/HomePage";
@@ -21,7 +22,6 @@ import ProjectDetails from "./pages/ProjectDetails";
 import ProfileDetails from "./pages/ProfileDetails";
 import MainLayout from "./components/NavigationBar/MainLayout";
 import Settings from "./pages/Settings";
-
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
@@ -45,8 +45,18 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/education/manage",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddEducation />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/skillsOverview",
-     element: (
+    element: (
       <MainLayout>
         <SkillsOverview />
       </MainLayout>
@@ -97,5 +107,5 @@ export const router = createBrowserRouter([
     ),
   },
   { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/projects/:id", element: <ProjectDetails /> }
+  { path: "/projects/:id", element: <ProjectDetails /> },
 ]);

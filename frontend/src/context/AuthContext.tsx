@@ -192,7 +192,14 @@ export function AuthContextProvider({ children }: ProviderProps) {
 
   // Logs out the current user using Supabase; listener will update session automatically
   const signOut: AuthContextValue["signOut"] = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // Supabase may return 401/403 when the session was already revoked server-side.
+      // Don't surface this as a fatal error in the UI — clear local state regardless.
+      // Log for diagnostics but continue.
+      console.warn("Non-fatal signOut error (ignored):", e);
+    }
   };
 
   // Provide global auth state and functions to all child components
