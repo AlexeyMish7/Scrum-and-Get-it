@@ -16,6 +16,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Autocomplete,
 } from "@mui/material";
 
 type SkillItem = {
@@ -37,6 +38,7 @@ const suggestedSkillList = [
   "Java",
   "Public Speaking",
 ];
+
 const skillCategoryOptions = [
   "Technical",
   "Soft Skills",
@@ -232,6 +234,13 @@ const AddSkills = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
       const skill = userSkills[selectedSkillIndex];
+
+      // ✅ Added confirmation before deleting
+      const confirmDelete = window.confirm(
+        `Are you sure you want to delete "${skill.name}"?`
+      );
+      if (!confirmDelete) return;
+
       if (skill?.id && user) {
         try {
           const userCrud = crud.withUser(user.id);
@@ -297,20 +306,22 @@ const AddSkills = () => {
           alignItems="center"
           mb={4}
         >
-          <TextField
-            label="Skill"
-            select
+          {/* ✅ Replaced select with Autocomplete */}
+          <Autocomplete
+            freeSolo
+            options={suggestedSkillList}
             value={selectedSkill}
-            onChange={(e) => setSelectedSkill(e.target.value)}
-            size="small"
-            sx={{ minWidth: 200 }}
-          >
-            {suggestedSkillList.map((skill) => (
-              <MenuItem key={skill} value={skill}>
-                {skill}
-              </MenuItem>
-            ))}
-          </TextField>
+            onChange={(_, newValue) => setSelectedSkill(newValue || "")}
+            onInputChange={(_, newInputValue) => setSelectedSkill(newInputValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Skill"
+                size="small"
+                sx={{ minWidth: 200 }}
+              />
+            )}
+          />
 
           <TextField
             label="Category"
