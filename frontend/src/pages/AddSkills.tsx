@@ -70,7 +70,10 @@ const AddSkills = () => {
         return;
       }
 
+<<<<<<< HEAD
       // Persist to DB if user is available
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
       if (user) {
         try {
           const userCrud = crud.withUser(user.id);
@@ -99,7 +102,10 @@ const AddSkills = () => {
             ),
           };
           setUserSkills((s) => [...s, newSkill]);
+<<<<<<< HEAD
           // notify other parts of the app to refresh skills
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
           try {
             window.dispatchEvent(new CustomEvent("skills:changed"));
           } catch {
@@ -111,7 +117,10 @@ const AddSkills = () => {
           return;
         }
       } else {
+<<<<<<< HEAD
         // fallback to local-only addition
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
         const newSkill: SkillItem = {
           name: selectedSkill,
           category: selectedCategory,
@@ -131,7 +140,10 @@ const AddSkills = () => {
     })();
   };
 
+<<<<<<< HEAD
   // load persisted skills when user becomes available
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -189,7 +201,10 @@ const AddSkills = () => {
     setTempEditLevel("");
   };
 
+<<<<<<< HEAD
   // Update skill proficiency
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
   const handleUpdateLevel = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
@@ -219,11 +234,15 @@ const AddSkills = () => {
             ),
           };
           setUserSkills(updatedSkills);
+<<<<<<< HEAD
           try {
             window.dispatchEvent(new CustomEvent("skills:changed"));
           } catch (e) {
             void e;
           }
+=======
+          window.dispatchEvent(new CustomEvent("skills:changed"));
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
         } catch (err) {
           console.error(err);
           alert("Failed to update skill");
@@ -237,7 +256,10 @@ const AddSkills = () => {
     })();
   };
 
+<<<<<<< HEAD
   // Remove skill entirely
+=======
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
   const handleDeleteSkill = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
@@ -259,15 +281,20 @@ const AddSkills = () => {
         }
       }
       setUserSkills(userSkills.filter((_, i) => i !== selectedSkillIndex));
+<<<<<<< HEAD
       try {
         window.dispatchEvent(new CustomEvent("skills:changed"));
       } catch (e) {
         void e;
       }
+=======
+      window.dispatchEvent(new CustomEvent("skills:changed"));
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
       closeEditDialog();
     })();
   };
 
+<<<<<<< HEAD
   return (
     <Box p={4}>
       <Typography variant="h3" mb={3} textAlign="center">
@@ -373,6 +400,180 @@ const AddSkills = () => {
           </Button>
         </DialogActions>
       </Dialog>
+=======
+  // ✅ Enhanced visual layout using theme
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        bgcolor: (theme) => theme.palette.background.default,
+        color: (theme) => theme.palette.text.primary,
+        p: 4,
+      }}
+    >
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          boxShadow: 3,
+          borderRadius: 3,
+          width: "95%",
+          maxWidth: 900,
+          p: 4,
+        }}
+      >
+        <Typography
+          variant="h4"
+          mb={4}
+          textAlign="center"
+          sx={{
+            fontWeight: 700,
+            color: (theme) => theme.palette.primary.main,
+          }}
+        >
+          Add Skills
+        </Typography>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={3}
+          justifyContent="center"
+          alignItems="center"
+          mb={4}
+        >
+          <TextField
+            label="Skill"
+            select
+            value={selectedSkill}
+            onChange={(e) => setSelectedSkill(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {suggestedSkillList.map((skill) => (
+              <MenuItem key={skill} value={skill}>
+                {skill}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            label="Category"
+            select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {skillCategoryOptions.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            label="Proficiency"
+            select
+            value={selectedLevel}
+            onChange={(e) => setSelectedLevel(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            {skillLevelOptions.map((lvl) => (
+              <MenuItem key={lvl} value={lvl}>
+                {lvl}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Button
+            variant="contained"
+            onClick={handleAddSkill}
+            sx={{
+              px: 4,
+              py: 1.3,
+              fontWeight: 600,
+              backgroundColor: (theme) => theme.palette.primary.main,
+              ":hover": {
+                backgroundColor: (theme) => theme.palette.primary.dark,
+              },
+            }}
+          >
+            Add Skill
+          </Button>
+        </Stack>
+
+        <Stack
+          direction="row"
+          spacing={1.5}
+          flexWrap="wrap"
+          justifyContent="center"
+          mt={2}
+        >
+          {userSkills.map((skill, index) => (
+            <Chip
+              key={index}
+              label={`${skill.name} — ${skill.level}`}
+              color="primary"
+              variant="outlined"
+              onClick={() => openEditDialog(index)}
+              sx={{
+                mb: 1.5,
+                fontSize: "0.95rem",
+                borderRadius: "12px",
+                cursor: "pointer",
+              }}
+            />
+          ))}
+        </Stack>
+
+        <Dialog open={selectedSkillIndex !== null} onClose={closeEditDialog}>
+          <DialogTitle>Edit Skill</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ mb: 2, fontWeight: 500 }}>
+              {selectedSkillIndex !== null && userSkills[selectedSkillIndex].name}
+            </Typography>
+
+            <FormControl fullWidth>
+              <InputLabel>Proficiency</InputLabel>
+              <Select
+                value={tempEditLevel}
+                label="Proficiency"
+                onChange={(e) => setTempEditLevel(e.target.value as string)}
+              >
+                {skillLevelOptions.map((lvl) => (
+                  <MenuItem key={lvl} value={lvl}>
+                    {lvl}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={closeEditDialog}>Cancel</Button>
+            <Button color="error" onClick={handleDeleteSkill}>
+              Remove
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleUpdateLevel}
+              sx={{
+                backgroundColor: (theme) => theme.palette.primary.main,
+                ":hover": {
+                  backgroundColor: (theme) => theme.palette.primary.dark,
+                },
+              }}
+            >
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
     </Box>
   );
 };

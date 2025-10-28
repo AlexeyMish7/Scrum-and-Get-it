@@ -1,10 +1,15 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Register from "./pages/Register";
+import AddSkills from "./pages/AddSkills";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
 import Certifications from "./pages/Certifications";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
+<<<<<<< HEAD
+=======
+
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import AddEducation from "./pages/AddEducation";
 import ForgotPassword from "./pages/ForgetPassword";
@@ -43,6 +48,7 @@ export const router = createBrowserRouter([
       <MainLayout>
         <EducationOverview />
       </MainLayout>
+<<<<<<< HEAD
     ),
   },
   {
@@ -85,6 +91,52 @@ export const router = createBrowserRouter([
     ),
   },
   {
+=======
+    ),
+  },
+  {
+    path: "/education/manage",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddEducation />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/skillsOverview",
+    element: (
+      <MainLayout>
+        <SkillsOverview />
+      </MainLayout>
+    ),
+  },
+  { path: "/login", element: <Login /> },
+  { path: "/auth/callback", element: <AuthCallback /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/skills/manage", element: <AddSkills /> },
+  { path: "/reset-password", element: <ResetPassword /> },
+  { path: "/add-employment", element: <AddEmployment /> },
+
+  {
+    path: "/employment-history",
+    element: (
+      <MainLayout>
+        <EmploymentHistoryList />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/portfolio",
+    element: (
+      <MainLayout>
+        <ProjectPortfolio />
+      </MainLayout>
+    ),
+  },
+  {
+>>>>>>> c06f4c3430e8687faf6a51fd713d56dba2e982ea
     path: "/certifications",
     element: (
       <MainLayout>
