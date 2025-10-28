@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -8,7 +8,10 @@ import {
   Paper,
   Snackbar,
   Alert,
-} from '@mui/material';
+} from "@mui/material";
+import { useAuth } from "../context/AuthContext";
+import ProfilePicture from "../components/ProfilePicture";
+import crud from "../services/crud";
 
 interface ProfileData {
   fullName: string;
@@ -23,56 +26,147 @@ interface ProfileData {
 }
 
 const industries = [
-  'Technology',
-  'Finance',
-  'Healthcare',
-  'Education',
-  'Marketing',
-  'Engineering',
-  'Law',
-  'Real Estate',
-  'Manufacturing',
-  'Consulting',
-  'Retail',
-  'Hospitality',
-  'Government',
-  'Nonprofit',
-  'Other',
+  "Technology",
+  "Finance",
+  "Healthcare",
+  "Education",
+  "Marketing",
+  "Engineering",
+  "Law",
+  "Real Estate",
+  "Manufacturing",
+  "Consulting",
+  "Retail",
+  "Hospitality",
+  "Government",
+  "Nonprofit",
+  "Other",
 ];
 
-const experienceLevels = ['Entry', 'Mid', 'Senior', 'Executive'];
+const experienceLevels = ["Entry", "Mid", "Senior", "Executive"];
 
 const usStates = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+  "AL",
+  "AK",
+  "AZ",
+  "AR",
+  "CA",
+  "CO",
+  "CT",
+  "DE",
+  "FL",
+  "GA",
+  "HI",
+  "ID",
+  "IL",
+  "IN",
+  "IA",
+  "KS",
+  "KY",
+  "LA",
+  "ME",
+  "MD",
+  "MA",
+  "MI",
+  "MN",
+  "MS",
+  "MO",
+  "MT",
+  "NE",
+  "NV",
+  "NH",
+  "NJ",
+  "NM",
+  "NY",
+  "NC",
+  "ND",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VT",
+  "VA",
+  "WA",
+  "WV",
+  "WI",
+  "WY",
 ];
 
 const ProfileDetails: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
+
   const [formData, setFormData] = useState<ProfileData>({
-    fullName: '',
-    email: '',
-    phone: '',
-    city: '',
-    state: '',
-    headline: '',
-    bio: '',
-    industry: '',
-    experience: '',
+    fullName: "",
+    email: "",
+    phone: "",
+    city: "",
+    state: "",
+    headline: "",
+    bio: "",
+    industry: "",
+    experience: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [bioCount, setBioCount] = useState(0);
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(true);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Load profile from DB when user is available
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (authLoading) return;
+      if (!user) return;
+      try {
+        const res = await crud.getUserProfile(user.id);
+        if (!mounted) return;
+        if (res.error) {
+          console.warn("Failed to load profile", res.error);
+          return;
+        }
+        const p = res.data as Record<string, unknown> | null;
+        if (!p) return;
+        setFormData({
+          fullName: (p["full_name"] as string) ?? "",
+          email: (p["email"] as string) ?? "",
+          phone: (p["phone"] as string) ?? "",
+          city: (p["city"] as string) ?? "",
+          state: (p["state"] as string) ?? "",
+          headline: (p["professional_title"] as string) ?? "",
+          bio: (p["summary"] as string) ?? "",
+          industry: (p["industry"] as string) ?? "",
+          experience: p["experience_level"]
+            ? String(p["experience_level"]).charAt(0).toUpperCase() +
+              String(p["experience_level"]).slice(1)
+            : "",
+        });
+      } catch (err) {
+        console.error("Error loading profile", err);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user, authLoading]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
-    if (name === 'bio') {
+    if (name === "bio") {
       setBioCount(value.length);
     }
   };
@@ -82,32 +176,73 @@ const ProfileDetails: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10}$/;
 
-    if (!formData.fullName) newErrors.fullName = 'Full name is required';
+    if (!formData.fullName) newErrors.fullName = "Full name is required";
 
-    if (!formData.email) newErrors.email = 'Email is required';
-    else if (!emailRegex.test(formData.email)) newErrors.email = 'Enter a valid email address';
+    if (!formData.email) newErrors.email = "Email is required";
+    else if (!emailRegex.test(formData.email))
+      newErrors.email = "Enter a valid email address";
 
-    if (!formData.phone) newErrors.phone = 'Phone is required';
-    else if (!phoneRegex.test(formData.phone.replace(/\D/g, '')))
-      newErrors.phone = 'Phone must be 10 digits';
+    if (!formData.phone) newErrors.phone = "Phone is required";
+    else if (!phoneRegex.test(formData.phone.replace(/\D/g, "")))
+      newErrors.phone = "Phone must be 10 digits";
 
-    if (!formData.city) newErrors.city = 'City is required';
+    if (!formData.city) newErrors.city = "City is required";
 
-    if (!formData.state) newErrors.state = 'Please select your state';
+    if (!formData.state) newErrors.state = "Please select your state";
 
-    if (!formData.headline) newErrors.headline = 'Professional headline is required';
-    if (!formData.industry) newErrors.industry = 'Please select an industry';
-    if (!formData.experience) newErrors.experience = 'Please select experience level';
+    if (!formData.headline)
+      newErrors.headline = "Professional headline is required";
+    if (!formData.industry) newErrors.industry = "Please select an industry";
+    if (!formData.experience)
+      newErrors.experience = "Please select experience level";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = () => {
-    if (validateForm()) {
-      setOpenSnackbar(true);
-      setEditMode(false);
-    }
+    (async () => {
+      if (!validateForm()) return;
+      if (authLoading) return;
+      if (!user) {
+        setErrorMsg("You must be signed in to save your profile");
+        setOpenErrorSnackbar(true);
+        return;
+      }
+      setSaving(true);
+      try {
+        const payload: Record<string, unknown> = {
+          id: user.id,
+          full_name: formData.fullName,
+          email: formData.email?.trim().toLowerCase() ?? null,
+          phone: formData.phone ?? null,
+          city: formData.city ?? null,
+          state: formData.state ?? null,
+          professional_title: formData.headline ?? null,
+          summary: formData.bio ?? null,
+          industry: formData.industry ?? null,
+          experience_level: formData.experience
+            ? formData.experience.toLowerCase()
+            : null,
+        };
+
+        const res = await crud.upsertRow("profiles", payload, "id");
+        if (res.error) {
+          console.error("Failed to save profile", res.error);
+          setErrorMsg(res.error.message || "Failed to save profile");
+          setOpenErrorSnackbar(true);
+          return;
+        }
+        setOpenSnackbar(true);
+        setEditMode(false);
+      } catch (err) {
+        console.error("Error saving profile", err);
+        setErrorMsg(String(err));
+        setOpenErrorSnackbar(true);
+      } finally {
+        setSaving(false);
+      }
+    })();
   };
 
   const handleCancel = () => {
@@ -116,16 +251,19 @@ const ProfileDetails: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 4, backgroundColor: 'background.default', minHeight: '100vh' }}>
-      <Paper sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
+    <Box
+      sx={{ p: 4, backgroundColor: "background.default", minHeight: "100vh" }}
+    >
+      <Paper sx={{ p: 4, maxWidth: 800, mx: "auto" }}>
         <Typography variant="h4" gutterBottom>
-          {editMode ? 'Edit Profile' : 'Profile Details'}
+          {editMode ? "Edit Profile" : "Profile Details"}
         </Typography>
 
         {editMode ? (
           <>
             {/* ---- EDIT MODE ---- */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <ProfilePicture />
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Box sx={{ flex: 1, minWidth: 250 }}>
                 <TextField
                   label="Full Name"
@@ -152,7 +290,7 @@ const ProfileDetails: React.FC = () => {
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 2 }}>
               <Box sx={{ flex: 1, minWidth: 250 }}>
                 <TextField
                   label="Phone"
@@ -225,7 +363,7 @@ const ProfileDetails: React.FC = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 2 }}>
               <Box sx={{ flex: 1, minWidth: 250 }}>
                 <TextField
                   select
@@ -266,12 +404,19 @@ const ProfileDetails: React.FC = () => {
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 2,
+                mt: 4,
+              }}
+            >
               <Button variant="secondary" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={handleSave}>
-                Save
+              <Button variant="primary" onClick={handleSave} disabled={saving}>
+                {saving ? "Saving..." : "Save"}
               </Button>
             </Box>
           </>
@@ -280,22 +425,39 @@ const ProfileDetails: React.FC = () => {
             {/* ---- VIEW MODE ---- */}
             <Box sx={{ mt: 2 }}>
               <Typography variant="h6">Basic Information</Typography>
-              <Typography><strong>Full Name:</strong> {formData.fullName || '—'}</Typography>
-              <Typography><strong>Email:</strong> {formData.email || '—'}</Typography>
-              <Typography><strong>Phone:</strong> {formData.phone || '—'}</Typography>
-              <Typography><strong>Location:</strong> {`${formData.city || '—'}, ${formData.state || '—'}`}</Typography>
+              <Typography>
+                <strong>Full Name:</strong> {formData.fullName || "—"}
+              </Typography>
+              <Typography>
+                <strong>Email:</strong> {formData.email || "—"}
+              </Typography>
+              <Typography>
+                <strong>Phone:</strong> {formData.phone || "—"}
+              </Typography>
+              <Typography>
+                <strong>Location:</strong>{" "}
+                {`${formData.city || "—"}, ${formData.state || "—"}`}
+              </Typography>
             </Box>
 
             <Box sx={{ mt: 3 }}>
               <Typography variant="h6">Professional Details</Typography>
-              <Typography><strong>Headline:</strong> {formData.headline || '—'}</Typography>
-              <Typography><strong>Industry:</strong> {formData.industry || '—'}</Typography>
-              <Typography><strong>Experience:</strong> {formData.experience || '—'}</Typography>
-              <Typography sx={{ mt: 1 }}><strong>Bio:</strong></Typography>
-              <Typography variant="body2">{formData.bio || '—'}</Typography>
+              <Typography>
+                <strong>Headline:</strong> {formData.headline || "—"}
+              </Typography>
+              <Typography>
+                <strong>Industry:</strong> {formData.industry || "—"}
+              </Typography>
+              <Typography>
+                <strong>Experience:</strong> {formData.experience || "—"}
+              </Typography>
+              <Typography sx={{ mt: 1 }}>
+                <strong>Bio:</strong>
+              </Typography>
+              <Typography variant="body2">{formData.bio || "—"}</Typography>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
               <Button variant="primary" onClick={() => setEditMode(true)}>
                 Edit
               </Button>
@@ -308,14 +470,28 @@ const ProfileDetails: React.FC = () => {
         open={openSnackbar}
         autoHideDuration={3000}
         onClose={() => setOpenSnackbar(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={() => setOpenSnackbar(false)}
           severity="success"
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           Profile saved successfully!
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={openErrorSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setOpenErrorSnackbar(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setOpenErrorSnackbar(false)}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {errorMsg || "Failed to save profile"}
         </Alert>
       </Snackbar>
     </Box>

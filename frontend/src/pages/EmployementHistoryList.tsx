@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import * as crud from "../services/crud";
 import EditEmploymentModal from "./EditEmploymentModal";
+import { Button, Typography, Box } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 interface EmploymentEntry {
   id: string;
@@ -14,49 +17,97 @@ interface EmploymentEntry {
 }
 
 export default function EmploymentHistoryList() {
+  const { user, loading } = useAuth();
   const [entries, setEntries] = useState<EmploymentEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(null);
+  const navigate = useNavigate(); // ✅ for navigation
 
-  const fetchEntries = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const fetchEntries = useCallback(async () => {
+    if (loading) return;
+    if (!user) {
+      setEntries([]);
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from("employment_history")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("start_date", { ascending: false });
+    try {
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.listRows("employment", "*", {
+        order: { column: "start_date", ascending: false },
+      });
 
-    if (error) console.error(error);
-    else setEntries(data || []);
-  };
+      if (res.error) {
+        console.error("fetchEntries error:", res.error);
+        setEntries([]);
+      } else {
+        const rows = (res.data ?? []) as Array<Record<string, unknown>>;
+        const mapped = rows.map((r) => ({
+          id: r.id,
+          job_title: r.job_title,
+          company_name: r.company_name,
+          location: r.location,
+          start_date: r.start_date,
+          end_date: r.end_date,
+          is_current: r.current_position ?? false,
+          description: r.job_description ?? "",
+        })) as EmploymentEntry[];
+        setEntries(mapped);
+      }
+    } catch (e) {
+      console.error("Unexpected fetchEntries error", e);
+      setEntries([]);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
-    fetchEntries();
-  }, []);
+    void fetchEntries();
+  }, [fetchEntries]);
 
   const handleDelete = async (entryId: string) => {
     const confirmed = window.confirm("Are you sure you want to delete this entry?");
     if (!confirmed) return;
 
-    const { error } = await supabase
-      .from("employment_history")
-      .delete()
-      .eq("id", entryId);
+    if (!user) {
+      alert("Please sign in to delete entries.");
+      return;
+    }
 
-    if (error) {
-      console.error(error);
+    try {
+      const userCrud = crud.withUser(user.id);
+      const res = await userCrud.deleteRow("employment", {
+        eq: { id: entryId },
+      });
+      if (res.error) {
+        console.error(res.error);
+        alert("Something went wrong. Please try again.");
+      } else {
+        alert("Employment entry deleted successfully!");
+        fetchEntries(); // refresh list immediately
+      }
+    } catch (e) {
+      console.error("Delete failed", e);
       alert("Something went wrong. Please try again.");
-    } else {
-      alert("Employment entry deleted successfully!");
-      fetchEntries(); // refresh list immediately
     }
   };
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Employment History</h2>
-      {entries.length === 0 && <p>No employment entries yet.</p>}
+      {/* ✅ Header + Add Button Row */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h2" gutterBottom>
+          Employment History
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate("/add-employment")}
+        >
+          Add Employment
+        </Button>
+      </Box>
+
+      {entries.length === 0 && (
+        <Typography variant="body1">No employment entries yet.</Typography>
+      )}
 
       <ul className="space-y-4">
         {entries.map((entry) => (
@@ -66,36 +117,43 @@ export default function EmploymentHistoryList() {
           >
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-semibold text-lg">
+                <Typography variant="h5">
                   {entry.job_title} @ {entry.company_name}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {entry.location} • {entry.is_current ? "Present" : `${entry.start_date} – ${entry.end_date}`}
-                </p>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {entry.location} •{" "}
+                  {entry.is_current
+                    ? "Present"
+                    : `${entry.start_date} – ${entry.end_date}`}
+                </Typography>
               </div>
 
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="text"
+                  color="primary"
                   onClick={() => setEditingEntry(entry)}
-                  className="text-blue-600 hover:underline"
                 >
                   Edit
-                </button>
+                </Button>
 
                 {/* Only show delete if more than one entry */}
                 {entries.length > 1 && (
-                  <button
+                  <Button
+                    variant="text"
+                    color="error"
                     onClick={() => handleDelete(entry.id)}
-                    className="text-red-600 hover:underline"
                   >
                     Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
 
             {entry.description && (
-              <p className="mt-2 text-gray-700">{entry.description}</p>
+              <Typography variant="body1" className="mt-2" color="text.primary">
+                Job Description: {entry.description}
+              </Typography>
             )}
           </li>
         ))}

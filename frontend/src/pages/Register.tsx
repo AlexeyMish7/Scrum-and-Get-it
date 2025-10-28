@@ -8,7 +8,22 @@ import { supabase } from "../supabaseClient";
 // Custom authentication context for managing session + signup logic
 import { useAuth } from "../context/AuthContext";
 
-//Type for our registration form fields
+// ✅ MUI imports for styling + theme integration
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  Stack,
+  Alert,
+  CircularProgress,
+  CssBaseline,
+  ThemeProvider,
+} from "@mui/material";
+import theme from "../theme/theme";
+
+// Type for our registration form fields
 type RegisterForm = {
   firstName: string;
   lastName: string;
@@ -22,7 +37,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   // Pull signup method from global Auth context (handles Supabase auth)
-  const { signUpNewUser } = useAuth();
+  const { signUpNewUser, signInWithOAuth } = useAuth();
 
   // --- UI + Form state ---
   // Stores all input values for the registration form
@@ -155,95 +170,146 @@ export default function Register() {
   };
 
   return (
-    <div>
-      <h1>Register</h1>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
 
-      {/* Registration form with controlled inputs */}
-      <form onSubmit={handleSubmit} noValidate>
-        <label>
-          First Name
-          <input
-            name="firstName"
-            type="text"
-            placeholder="First Name"
-            autoComplete="given-name"
-            onChange={handleChange}
-            value={form.firstName}
-            required
-          />
-        </label>
-        <br />
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "background.default",
+          padding: 2,
+        }}
+      >
+        <Paper
+          elevation={4}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            maxWidth: 450,
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="h3" mb={3}>
+            Register
+          </Typography>
 
-        <label>
-          Last Name
-          <input
-            name="lastName"
-            type="text"
-            placeholder="Last Name"
-            autoComplete="family-name"
-            onChange={handleChange}
-            value={form.lastName}
-            required
-          />
-        </label>
-        <br />
+          {/* Registration form with controlled inputs */}
+          <Stack spacing={2} component="form" onSubmit={handleSubmit} noValidate>
+            <TextField
+              label="First Name"
+              name="firstName"
+              type="text"
+              autoComplete="given-name"
+              onChange={handleChange}
+              value={form.firstName}
+              required
+              fullWidth
+            />
 
-        <label>
-          Email
-          <input
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-            onChange={handleChange}
-            value={form.email}
-            required
-          />
-        </label>
-        <br />
+            <TextField
+              label="Last Name"
+              name="lastName"
+              type="text"
+              autoComplete="family-name"
+              onChange={handleChange}
+              value={form.lastName}
+              required
+              fullWidth
+            />
 
-        <label>
-          Password
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            autoComplete="new-password"
-            onChange={handleChange}
-            value={form.password}
-            required
-          />
-        </label>
-        <br />
+            <TextField
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              onChange={handleChange}
+              value={form.email}
+              required
+              fullWidth
+            />
 
-        <label>
-          Confirm Password
-          <input
-            name="confirmPassword"
-            type="password"
-            placeholder="Confirm Password"
-            autoComplete="new-password"
-            onChange={handleChange}
-            value={form.confirmPassword}
-            required
-          />
-        </label>
-        <br />
+            <TextField
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              onChange={handleChange}
+              value={form.password}
+              required
+              fullWidth
+            />
 
-        {/* Disable submit button while loading */}
-        <button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Account"}
-        </button>
+            <TextField
+              label="Confirm Password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              onChange={handleChange}
+              value={form.confirmPassword}
+              required
+              fullWidth
+            />
 
-        {/* Link to login for existing users */}
-        <p>
-          Already have an account? <Link to="/Login">Sign in</Link>
-        </p>
-      </form>
+            {/* Disable submit button while loading */}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              sx={{ mt: 1 }}
+            >
+              {loading ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Create Account"
+              )}
+            </Button>
 
-      {/* Show messages if present */}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {info && <p style={{ color: "green" }}>{info}</p>}
-    </div>
+            {/* Link to login for existing users */}
+            <Typography variant="body2">
+              Already have an account?{" "}
+              <Link
+                to="/Login"
+                style={{ textDecoration: "none", color: "#1976D2" }}
+              >
+                Sign in
+              </Link>
+            </Typography>
+          </Stack>
+
+          <Button
+            onClick={async () => {
+              setError("");
+              setInfo("");
+              setLoading(true);
+              const res = await signInWithOAuth("google");
+              setLoading(false);
+              if (!res.ok) setError(res.message || "OAuth error");
+            }}
+            variant="tertiary"
+            disabled={loading}
+            sx={{ mt: 2 }}
+            fullWidth
+          >
+            Sign in with Google
+          </Button>
+
+          {/* Show messages if present */}
+          {error && (
+            <Alert sx={{ mt: 2 }} severity="error">
+              {error}
+            </Alert>
+          )}
+          {info && (
+            <Alert sx={{ mt: 2 }} severity="success">
+              {info}
+            </Alert>
+          )}
+        </Paper>
+      </Box>
+    </ThemeProvider>
   );
 }

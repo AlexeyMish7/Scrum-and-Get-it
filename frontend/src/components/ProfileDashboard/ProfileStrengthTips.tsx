@@ -1,6 +1,6 @@
-// src/components/ProfileDashboard/ProfileStrengthTips.tsx
 import React from "react";
 import { FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
+import { Box, Typography, useTheme } from "@mui/material";
 
 interface ProfileStrengthTipsProps {
   strengthScore: number; // 0–100
@@ -11,69 +11,87 @@ const ProfileStrengthTips: React.FC<ProfileStrengthTipsProps> = ({
   strengthScore,
   recommendations,
 }) => {
-  // Determine label, color, and icon
+  const theme = useTheme();
+
+  // Determine label, color, and icon using theme palette
   let label = "Weak";
-  let color = "#e74c3c";
+  let color = theme.palette.error.main;
   let icon = <FaTimesCircle color={color} />;
 
   if (strengthScore >= 70) {
     label = "Strong";
-    color = "#2ecc71";
+    color = theme.palette.success.main;
     icon = <FaCheckCircle color={color} />;
   } else if (strengthScore >= 40) {
     label = "Moderate";
-    color = "#f1c40f";
+    color = theme.palette.warning.main;
     icon = <FaExclamationTriangle color={color} />;
   }
 
   return (
-    <div
-      style={{
-        margin: "2rem 0",
-        padding: "1rem",
+    <Box
+      sx={{
+        my: 4,
+        p: 2,
         border: `1px solid ${color}`,
-        borderRadius: "8px",
-        backgroundColor: "#fafafa",
+        borderRadius: 2,
+        backgroundColor: theme.palette.background.paper,
       }}
     >
-      <h2 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        {icon} Profile Strength: <span style={{ color }}>{label}</span> ({strengthScore}%)
-      </h2>
+      <Typography
+        variant="h4"
+        sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+      >
+        {icon} Profile Strength:{" "}
+        <Box component="span" sx={{ color }}>
+          {label}
+        </Box>{" "}
+        ({strengthScore}%)
+      </Typography>
 
-      <div
-        style={{
-          backgroundColor: "#eee",
-          height: "10px",
-          borderRadius: "5px",
+      <Box
+        sx={{
+          backgroundColor: theme.palette.grey[300],
+          height: 10,
+          borderRadius: 1,
           overflow: "hidden",
-          margin: "0.5rem 0 1rem 0",
+          mb: 2,
         }}
       >
-        <div
-          style={{
+        <Box
+          sx={{
             height: "100%",
             width: `${strengthScore}%`,
-            backgroundColor: color,
-            transition: "width 0.4s ease",
+            backgroundColor: theme.palette.success.main,
+            transition: "width 0.5s ease",
           }}
-        ></div>
-      </div>
+        />
+      </Box>
 
       {recommendations.length > 0 ? (
         <>
-          <h4>Recommendations:</h4>
-          <ul>
+          <Typography variant="h5" gutterBottom>
+            Recommendations:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mb: 0 }}>
             {recommendations.map((rec, idx) => (
-              <li key={idx} style={{ marginBottom: "0.5rem" }}>
+              <Typography
+                key={idx}
+                component="li"
+                variant="body1"
+                sx={{ mb: 0.5 }}
+              >
                 {rec}
-              </li>
+              </Typography>
             ))}
-          </ul>
+          </Box>
         </>
       ) : (
-        <p style={{ color: "#2ecc71" }}>Your profile looks great! 🎉</p>
+        <Typography variant="body1" sx={{ color: theme.palette.success.main }}>
+          Your profile looks great! 🎉
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 };
 
