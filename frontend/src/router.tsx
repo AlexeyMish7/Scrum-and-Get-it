@@ -3,8 +3,10 @@ import Register from "./pages/Register";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
 import Certifications from "./pages/Certifications";
+import AddSkills from "./pages/AddSkills";
 import SkillsOverview from "./pages/SkillsOverview";
 import Login from "./pages/Login";
+import 
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import AddEducation from "./pages/AddEducation";
 import ForgotPassword from "./pages/ForgetPassword";
@@ -68,6 +70,9 @@ export const router = createBrowserRouter([
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/add-employment", element: <AddEmployment /> },
+  { path: "/add-skills", element: <AddSkills /> },
+  { path: "/skills/manage", element: <AddSkills /> },
+
   {
     path: "/employment-history",
     element: (
