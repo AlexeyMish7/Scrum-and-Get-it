@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Register from "./pages/Register";
 import ProfilePage from "./pages/ProfilePage";
 import EducationOverview from "./pages/EducationOverview";
@@ -41,9 +41,11 @@ export const router = createBrowserRouter([
   {
     path: "/education",
     element: (
-      <MainLayout>
-        <EducationOverview />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <EducationOverview />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   {
@@ -59,18 +61,47 @@ export const router = createBrowserRouter([
   {
     path: "/skillsOverview",
     element: (
-      <MainLayout>
-        <SkillsOverview />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <SkillsOverview />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   { path: "/login", element: <Login /> },
   { path: "/auth/callback", element: <AuthCallback /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
-  { path: "/add-employment", element: <AddEmployment /> },
-  { path: "/add-skills", element: <AddSkills /> },
-  { path: "/skills/manage", element: <AddSkills /> },
+  {
+    path: "/add-employment",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddEmployment />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/add-skills",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddSkills />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/skills/manage",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddSkills />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
 
   {
     path: "/employment-history",
@@ -122,6 +153,26 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  { path: "/add-projects", element: <AddProjectForm /> },
-  { path: "/projects/:id", element: <ProjectDetails /> },
+  {
+    path: "/add-projects",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddProjectForm />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/projects/:id",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <ProjectDetails />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  // Catch-all: redirect unknown routes to home
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
