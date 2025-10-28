@@ -57,6 +57,15 @@ interface FieldBase {
   default?: string | number | boolean;
 }
 
+const degreeOptions = [
+  "High School",
+  "Associate",
+  "Bachelor's",
+  "Master's",
+  "PhD",
+  "Certificate",
+];
+
 const SummaryCards: React.FC<SummaryCardsProps> = ({
   counts,
   onAddEmployment,
@@ -152,39 +161,23 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       ] as FieldBase[],
     },
     {
-      title: "Education",
-      count: counts.educationCount,
-      icon: <FaGraduationCap size={24} color="#fff" />,
-      color: theme.palette.warning.main,
-      onAdd: onAddEducation,
-      fields: [
-        {
-          type: "text",
-          name: "institution",
-          label: "Institution",
-          required: true,
-        },
-        { type: "text", name: "degree", label: "Degree", required: true },
-        {
-          type: "text",
-          name: "field_of_study",
-          label: "Field of Study",
-          required: true,
-        },
-        {
-          type: "date",
-          name: "start_date",
-          label: "Start Date",
-          required: true,
-        },
-        { type: "date", name: "end_date", label: "End Date" },
-        {
-          type: "checkbox",
-          name: "is_current",
-          label: "Currently studying here",
-        },
-      ] as FieldBase[],
-    },
+    title: "Education",
+    count: counts.educationCount,
+    icon: <FaGraduationCap size={24} color="#fff" />,
+    color: theme.palette.warning.main,
+    onAdd: onAddEducation,
+    fields: [
+      { type: "select", name: "degree", label: "Degree Type", options: degreeOptions, required: true },
+      { type: "text", name: "institution", label: "Institution", required: true },
+      { type: "text", name: "field_of_study", label: "Field of Study", required: true },
+      { type: "text", name: "start_date", label: "Start Date (YYYY-MM)", required: true },
+      { type: "checkbox", name: "is_current", label: "Currently Enrolled" },
+      { type: "text", name: "end_date", label: "End Date (YYYY-MM)" }, // hide in renderField if is_current
+      { type: "number", name: "gpa", label: "GPA (optional)" },
+      { type: "checkbox", name: "private_gpa", label: "Hide GPA" },
+      { type: "text", name: "awards", label: "Achievements / Honors" },
+    ] as FieldBase[],
+  },
     {
       title: "Projects",
       count: counts.projectsCount,
@@ -193,7 +186,6 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       onAdd: onAddProject,
       fields: [
         { type: "text", name: "title", label: "Project Title", required: true },
-        { type: "textarea", name: "description", label: "Description" },
         {
           type: "text",
           name: "technologies_input",
@@ -223,100 +215,50 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   const renderField = (field: FieldBase) => {
-    const isEndDate =
-      field.name === "end_date" &&
-      (!!formData["is_current"] || !!formData["is_ongoing"]);
+  const isEndDate =
+    field.name === "end_date" &&
+    formData["is_current"]; // hide End Date if Currently Enrolled
 
-    const commonProps = {
-      name: field.name,
-      fullWidth: true,
-      // coerce to string for TextField-compatible values
-      value: String(formData[field.name] ?? ""),
-      onChange: handleInputChange,
-      InputLabelProps: { shrink: true }, // always shrink label
-      disabled: Boolean(isEndDate),
-      required: field.required || false,
-    };
-
-    const fieldWrapperStyle = { mt: 2 }; // add top margin to prevent cut-off
-
-    switch (field.type) {
-      case "text":
-      case "date":
-      case "url":
-        return (
-          <Box sx={fieldWrapperStyle}>
-            <TextField {...commonProps} label={field.label} type={field.type} />
-          </Box>
-        );
-      case "textarea":
-        return (
-          <Box sx={fieldWrapperStyle}>
-            <TextField
-              {...commonProps}
-              label={field.label}
-              multiline
-              rows={3}
-            />
-          </Box>
-        );
-      case "select":
-        return (
-          <Box sx={fieldWrapperStyle}>
-            <TextField {...commonProps} select label={field.label}>
-              {field.options?.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-        );
-      case "range":
-        return (
-          <Box key={field.name} sx={{ mt: 2, width: "100%" }}>
-            <Typography gutterBottom>
-              {field.label}:{" "}
-              {String(formData[field.name] ?? field.default ?? field.min)}
-            </Typography>
-            <Box sx={{ px: 1 }}>
-              {" "}
-              {/* Add horizontal padding to align with TextFields */}
-              <Slider
-                value={Number(
-                  formData[field.name] ?? field.default ?? field.min
-                )}
-                min={field.min}
-                max={field.max}
-                step={1}
-                onChange={(_, val) => handleSliderChange(field.name, val)}
-                marks={[
-                  { value: field.min!, label: "Beginner" },
-                  { value: field.max!, label: "Expert" },
-                ]}
-              />
-            </Box>
-          </Box>
-        );
-      case "checkbox":
-        return (
-          <Box sx={fieldWrapperStyle}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={Boolean(formData[field.name])}
-                  onChange={handleInputChange}
-                  name={field.name}
-                />
-              }
-              label={field.label}
-            />
-          </Box>
-        );
-      default:
-        return null;
-    }
+  const commonProps = {
+    name: field.name,
+    fullWidth: true,
+    value: String(formData[field.name] ?? ""),
+    onChange: handleInputChange,
+    InputLabelProps: { shrink: true },
+    disabled: Boolean(isEndDate),
+    required: field.required || false,
   };
+
+  switch (field.type) {
+    case "text":
+    case "date":
+    case "number":
+      return <TextField {...commonProps} label={field.label} type={field.type} />;
+    case "select":
+      return (
+        <TextField {...commonProps} select label={field.label}>
+          {field.options?.map((opt) => (
+            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+          ))}
+        </TextField>
+      );
+    case "checkbox":
+      return (
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={Boolean(formData[field.name])}
+              onChange={handleInputChange}
+              name={field.name}
+            />
+          }
+          label={field.label}
+        />
+      );
+    default:
+      return null;
+  }
+};
 
   return (
     <Box
@@ -399,13 +341,16 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                 flexDirection: "column",
                 gap: 2,
                 mt: 2, // extra top padding to prevent label cutoff
-                mb: 2, // bottom padding
+                mb: 2,
               }}
             >
               {card.fields.map((field) => (
-                <React.Fragment key={field.name}>
+                // <React.Fragment key={field.name}>
+                //   {renderField(field)}
+                // </React.Fragment>
+                <Box key={field.name} sx={{ mt: 2 }}>
                   {renderField(field)}
-                </React.Fragment>
+                </Box>
               ))}
             </DialogContent>
             <DialogActions>
