@@ -149,9 +149,8 @@ let theme = createTheme({
           flexDirection: 'column',
           minHeight: '100vh',
           boxSizing: 'border-box',
-          padding: '16px',
-          '@media (min-width:600px)': { padding: '24px' },
-          '@media (min-width:900px)': { padding: '32px' },
+          padding: '0 5px 24px 5px', // ⬅ removes top padding
+          '@media (min-width:900px)': { padding: '0 5px 32px 5px' },
         },
         button: {
           minHeight: '48px',
