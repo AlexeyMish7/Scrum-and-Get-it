@@ -255,7 +255,7 @@ const EducationOverview: React.FC = () => {
         sx={{ mb: 3 }}
         onClick={() => navigate("/education/manage")}
       >
-        + Add Education
+        Add Education
       </Button>
 
       <Typography variant="h2" mb={3}>
@@ -327,108 +327,110 @@ const EducationOverview: React.FC = () => {
 
       {/* Edit Dialog */}
       {editingEntry && (
-        <Dialog open={true} onClose={() => setEditingEntry(null)} fullWidth>
-          <DialogTitle>Edit Education</DialogTitle>
-          <DialogContent>
-            <Stack spacing={2} mt={1}>
-              <TextField
-                label="Degree"
-                fullWidth
-                value={editingEntry.degree}
-                onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, degree: e.target.value })
-                }
-              />
-              <TextField
-                label="Institution"
-                fullWidth
-                value={editingEntry.institution}
-                onChange={(e) =>
-                  setEditingEntry({
-                    ...editingEntry,
-                    institution: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                label="Field of Study"
-                fullWidth
-                value={editingEntry.fieldOfStudy}
-                onChange={(e) =>
-                  setEditingEntry({
-                    ...editingEntry,
-                    fieldOfStudy: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                label="Start Date (YYYY-MM)"
-                fullWidth
-                value={editingEntry.startDate}
-                onChange={(e) =>
-                  setEditingEntry({
-                    ...editingEntry,
-                    startDate: e.target.value,
-                  })
-                }
-              />
-              <TextField
-                label="End Date (YYYY-MM)"
-                fullWidth
-                value={editingEntry.endDate ?? ""}
-                onChange={(e) =>
-                  setEditingEntry({
-                    ...editingEntry,
-                    endDate: e.target.value || undefined,
-                  })
-                }
-              />
-              <TextField
-                label="GPA"
-                type="number"
-                fullWidth
-                value={editingEntry.gpa ?? ""}
-                onChange={(e) =>
-                  setEditingEntry({
-                    ...editingEntry,
-                    gpa: e.target.value
-                      ? parseFloat(e.target.value)
-                      : undefined,
-                  })
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editingEntry.gpaPrivate ?? false}
-                    onChange={(e) =>
-                      setEditingEntry({
-                        ...editingEntry,
-                        gpaPrivate: e.target.checked,
-                      })
-                    }
-                  />
-                }
-                label="Hide GPA"
-              />
-              <TextField
-                label="Honors/Achievements"
-                fullWidth
-                value={editingEntry.honors ?? ""}
-                onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, honors: e.target.value })
-                }
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingEntry(null)}>Cancel</Button>
-            <Button onClick={() => editingEntry && handleSave(editingEntry)}>
-              Save
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+  <Dialog open={true} onClose={() => setEditingEntry(null)} fullWidth>
+    <DialogTitle>Edit Education</DialogTitle>
+    <DialogContent>
+      <Stack spacing={2} mt={1}>
+        <TextField
+          label="Degree Type"
+          fullWidth
+          value={editingEntry.degree}
+          onChange={(e) =>
+            setEditingEntry({ ...editingEntry, degree: e.target.value })
+          }
+        />
+        <TextField
+          label="Institution"
+          fullWidth
+          value={editingEntry.institution}
+          onChange={(e) =>
+            setEditingEntry({ ...editingEntry, institution: e.target.value })
+          }
+        />
+        <TextField
+          label="Field of Study"
+          fullWidth
+          value={editingEntry.fieldOfStudy}
+          onChange={(e) =>
+            setEditingEntry({ ...editingEntry, fieldOfStudy: e.target.value })
+          }
+        />
+        <TextField
+          label="Start Date (YYYY-MM)"
+          fullWidth
+          value={editingEntry.startDate}
+          onChange={(e) =>
+            setEditingEntry({ ...editingEntry, startDate: e.target.value })
+          }
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={!editingEntry.endDate}
+              onChange={(e) =>
+                setEditingEntry({
+                  ...editingEntry,
+                  endDate: e.target.checked ? undefined : editingEntry.endDate ?? "",
+                })
+              }
+            />
+          }
+          label="Currently Enrolled"
+        />
+        <TextField
+          label="End Date (YYYY-MM)"
+          fullWidth
+          value={editingEntry.endDate ?? ""}
+          onChange={(e) =>
+            setEditingEntry({
+              ...editingEntry,
+              endDate: e.target.value || undefined,
+            })
+          }
+          disabled={!editingEntry.endDate && !editingEntry.startDate}
+        />
+        <TextField
+          label="GPA (optional)"
+          type="number"
+          fullWidth
+          value={editingEntry.gpa ?? ""}
+          onChange={(e) =>
+            setEditingEntry({
+              ...editingEntry,
+              gpa: e.target.value ? parseFloat(e.target.value) : undefined,
+            })
+          }
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={editingEntry.gpaPrivate ?? false}
+              onChange={(e) =>
+                setEditingEntry({ ...editingEntry, gpaPrivate: e.target.checked })
+              }
+            />
+          }
+          label="Hide GPA"
+        />
+        <TextField
+          label="Achievements / Honors"
+          fullWidth
+          value={editingEntry.honors ?? ""}
+          onChange={(e) =>
+            setEditingEntry({ ...editingEntry, honors: e.target.value })
+          }
+        />
+      </Stack>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setEditingEntry(null)}>Cancel</Button>
+      <Button onClick={() => editingEntry && handleSave(editingEntry)}>
+        Save
+      </Button>
+    </DialogActions>
+  </Dialog>
+)}
+
 
       {/* Delete Confirmation Dialog */}
       {confirmDeleteId && (
