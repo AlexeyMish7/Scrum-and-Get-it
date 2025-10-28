@@ -119,7 +119,14 @@ export function AuthContextProvider({ children }: ProviderProps) {
       const requiresConfirmation = !data?.session;
       if (requiresConfirmation) return { ok: true, requiresConfirmation: true };
 
-      // Otherwise, signup succeeded and session was created
+      // Otherwise, signup succeeded and a session was created. Update local state
+      // immediately to avoid races where callers redirect before the auth
+      // listener updates session.
+      if (data?.session) {
+        setSession(data.session);
+        setLoading(false);
+      }
+
       return { ok: true };
     } catch (e) {
       // Handle unexpected errors (like network issues)
@@ -137,10 +144,26 @@ export function AuthContextProvider({ children }: ProviderProps) {
         password,
       });
 
-      // If Supabase returns an error (e.g., wrong credentials), pass it back
-      if (error) return { ok: false, message: error.message };
+      // If Supabase returns an error (e.g., wrong credentials), return a
+      // user-friendly message rather than leaking internal error details.
+      if (error) {
+        const status = (error as unknown as { status?: number })?.status;
+        const msg =
+          status === 400 || status === 401
+            ? "Invalid email or password"
+            : error.message;
+        return { ok: false, message: msg };
+      }
 
-      // Login successful — Supabase automatically sets the session
+      // Login successful — update session immediately when available to avoid
+      // brief UI races before the onAuthStateChange listener fires.
+      try {
+        const s = await supabase.auth.getSession();
+        if (s?.data?.session) setSession(s.data.session);
+      } catch {
+        /* non-fatal */
+      }
+
       return { ok: true };
     } catch (e) {
       // Handles unexpected issues (like network or server errors)
@@ -184,6 +207,10 @@ export function AuthContextProvider({ children }: ProviderProps) {
   const signOut: AuthContextValue["signOut"] = async () => {
     try {
       await supabase.auth.signOut();
+      // clear local state immediately so UI doesn't show stale user while
+      // the auth listener or network call reconciles
+      setSession(null);
+      setLoading(false);
     } catch (e) {
       // Supabase may return 401/403 when the session was already revoked server-side.
       // Don't surface this as a fatal error in the UI — clear local state regardless.
@@ -191,6 +218,8 @@ export function AuthContextProvider({ children }: ProviderProps) {
       console.warn("Non-fatal signOut error (ignored):", e);
     }
   };
+  // Note: we clear local state immediately above to avoid stale UI. The
+  // onAuthStateChange listener will reconcile authoritative state shortly.
 
   // Provide global auth state and functions to all child components
   return (
