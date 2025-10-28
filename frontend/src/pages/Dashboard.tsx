@@ -13,6 +13,7 @@ import {
 import Icon from "./Icon";
 import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
+import LoadingSpinner from "../components/LoadingSpinner";
 // Local minimal CareerEvent shape used by the timeline. Keep this small so the
 // Dashboard can remain independent while preserving the UI contract expected
 // by `CareerTimeline`. Replace with the shared type when reintroducing full
@@ -372,6 +373,7 @@ const Dashboard: FC = () => {
     }
 
     const loadAll = async () => {
+      setDataLoading(true);
       try {
         // Profile header
         const profRes = await crud.getUserProfile(user.id);
@@ -468,6 +470,8 @@ const Dashboard: FC = () => {
         // Fail silently for now but keep UI functional; log for debugging
         // TODO: surface non-intrusive UI errors (snackbar/aria-live)
         console.error("Dashboard data load failed", err);
+      } finally {
+        if (mounted) setDataLoading(false);
       }
     };
 
@@ -596,6 +600,28 @@ const Dashboard: FC = () => {
       window.removeEventListener("projects:changed", handler);
     };
   }, [user, loading]);
+
+  // Show loading spinner while initial data is being fetched
+  // Track whether the dashboard's data load is in progress. Keep the
+  // spinner visible until both auth initialization and the dashboard's
+  // parallel data fetch complete to avoid flashing placeholder content.
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    // If auth is still initializing, keep showing the spinner.
+    if (loading) return;
+    // If there is no user, stop dataLoading so the page can render a guest view
+    if (!user) {
+      setDataLoading(false);
+      return;
+    }
+    // Otherwise, when the auth finished and user exists, let the data fetch effect
+    // (below) control dataLoading while it runs.
+  }, [loading, user]);
+
+  if (loading || dataLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Box
