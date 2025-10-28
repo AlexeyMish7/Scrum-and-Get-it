@@ -38,10 +38,10 @@ type EducationEntry = {
   gpa?: number;
   gpaPrivate?: boolean;
   honors?: string;
+  active?: boolean;
 };
 
-// When connected to the DB we'll load entries for the current user; keep
-// a small DB-row type to map fields safely.
+// Matches Supabase columns
 type DbEducationRow = {
   id?: string;
   degree_type?: string | null;
@@ -51,6 +51,8 @@ type DbEducationRow = {
   start_date?: string | null;
   gpa?: number | null;
   honors?: string | null;
+  enrollment_status?: string | null;
+  meta?: { privateGpa?: boolean } | null;
 };
 
 const EducationOverview: React.FC = () => {
@@ -60,13 +62,12 @@ const EducationOverview: React.FC = () => {
 
   const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSave = async (entry: EducationEntry) => {
-    // If user is signed in, persist update to DB; otherwise keep local
     if (!loading && user) {
       try {
         const userCrud = crud.withUser(user.id);
-        // Convert UI YYYY-MM -> DATE (use first day of month) when saving
         const payload = {
           degree_type: entry.degree,
           institution_name: entry.institution,
@@ -75,6 +76,8 @@ const EducationOverview: React.FC = () => {
           start_date: entry.startDate ? `${entry.startDate}-01` : null,
           gpa: entry.gpa ?? null,
           honors: entry.honors ?? null,
+          enrollment_status: entry.active ? "enrolled" : "not_enrolled",
+          meta: { privateGpa: entry.gpaPrivate ?? false },
         };
         const res = await userCrud.updateRow(
           "education",
@@ -87,7 +90,6 @@ const EducationOverview: React.FC = () => {
           alert("Failed to save education. See console for details.");
           return;
         }
-        // Update local UI with the returned row (or the passed entry)
         const updated = {
           ...entry,
           id: (res.data as DbEducationRow)?.id ?? entry.id,
@@ -141,9 +143,8 @@ const EducationOverview: React.FC = () => {
       setConfirmDeleteId(null);
     }
   };
-  const navigate = useNavigate();
 
-  // Load persisted education rows for the signed-in user and refresh on changes
+  // Load data from Supabase
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -158,7 +159,8 @@ const EducationOverview: React.FC = () => {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
           "education",
-          "id,degree_type,institution_name,field_of_study,graduation_date,start_date,gpa,honors",
+          // ✅ Now includes meta + enrollment_status for GPA and current status
+          "id,degree_type,institution_name,field_of_study,graduation_date,start_date,gpa,honors,enrollment_status,meta",
           { order: { column: "graduation_date", ascending: false } }
         );
         if (res.error) {
@@ -170,7 +172,7 @@ const EducationOverview: React.FC = () => {
           : res.data
           ? [res.data]
           : [];
-        // Convert DB DATE strings to YYYY-MM for the UI
+
         const dbDateToYYYYMM = (d?: string | null): string | undefined => {
           if (!d) return undefined;
           try {
@@ -180,20 +182,19 @@ const EducationOverview: React.FC = () => {
           }
         };
 
-        const mapped: EducationEntry[] = (rows as DbEducationRow[]).map(
-          (r) => ({
-            id: r.id ?? crypto.randomUUID(),
-            degree: r.degree_type ?? "",
-            institution: r.institution_name ?? "",
-            fieldOfStudy: r.field_of_study ?? "",
-            // Prefer explicit DB start_date, fall back to empty string for UI
-            startDate: dbDateToYYYYMM(r.start_date) ?? "",
-            endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
-            gpa: r.gpa ?? undefined,
-            gpaPrivate: false,
-            honors: r.honors ?? undefined,
-          })
-        );
+        const mapped: EducationEntry[] = (rows as DbEducationRow[]).map((r) => ({
+          id: r.id ?? crypto.randomUUID(),
+          degree: r.degree_type ?? "",
+          institution: r.institution_name ?? "",
+          fieldOfStudy: r.field_of_study ?? "",
+          startDate: dbDateToYYYYMM(r.start_date) ?? "",
+          endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
+          gpa: r.gpa ?? undefined,
+          gpaPrivate: r.meta?.privateGpa ?? false,
+          honors: r.honors ?? undefined,
+          active: r.enrollment_status === "enrolled",
+        }));
+
         if (!mounted) return;
         setEducation(
           mapped.sort(
@@ -235,7 +236,7 @@ const EducationOverview: React.FC = () => {
 
       <Timeline position="alternate">
         {education.map((edu, index) => {
-          const ongoing = !edu.endDate;
+          const ongoing = edu.active || !edu.endDate;
           return (
             <TimelineItem key={edu.id}>
               <TimelineOppositeContent sx={{ m: "auto 0" }}>
@@ -274,8 +275,10 @@ const EducationOverview: React.FC = () => {
                   <Typography variant="body2">
                     Field: {edu.fieldOfStudy}
                   </Typography>
-                  {edu.gpa !== undefined && !edu.gpaPrivate && (
-                    <Typography variant="body2">GPA: {edu.gpa}</Typography>
+                  {edu.gpa !== undefined && (
+                    <Typography variant="body2">
+                      {edu.gpaPrivate ? "(GPA hidden)" : `GPA: ${edu.gpa}`}
+                    </Typography>
                   )}
                   <Stack direction="row" spacing={1} mt={1}>
                     <Button size="small" onClick={() => setEditingEntry(edu)}>
@@ -403,7 +406,7 @@ const EducationOverview: React.FC = () => {
 )}
 
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       {confirmDeleteId && (
         <Dialog open={true} onClose={() => setConfirmDeleteId(null)}>
           <DialogTitle>Confirm Delete</DialogTitle>
