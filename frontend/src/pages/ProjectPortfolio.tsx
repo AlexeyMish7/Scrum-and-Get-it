@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import crud from "../services/crud";
 import { dummyProjects } from "../data/dummyProjects";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export interface Project {
   id: string;
@@ -41,6 +42,7 @@ export interface Project {
 
 const ProjectPortfolio: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
   const [filterTech, setFilterTech] = useState("");
@@ -57,13 +59,19 @@ const ProjectPortfolio: React.FC = () => {
     let mounted = true;
 
     const load = async () => {
-      if (loading) return;
-      if (!user) {
-        if (!mounted) return;
-        setProjects(dummyProjects);
+      if (loading) {
+        setIsLoading(true);
         return;
       }
 
+      if (!user) {
+        if (!mounted) return;
+        setProjects(dummyProjects);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       try {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
@@ -114,6 +122,8 @@ const ProjectPortfolio: React.FC = () => {
       } catch (err) {
         console.error("Error loading projects:", err);
         setProjects(dummyProjects);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -148,6 +158,8 @@ const ProjectPortfolio: React.FC = () => {
 
     setFilteredProjects(temp);
   }, [projects, search, filterTech, filterIndustry, sortOrder]);
+
+  if (loading || isLoading) return <LoadingSpinner />;
 
   const handlePrint = () => window.print();
 

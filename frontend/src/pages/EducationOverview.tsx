@@ -26,6 +26,7 @@ import {
   TimelineOppositeContent,
 } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 type EducationEntry = {
   id: string;
@@ -52,47 +53,10 @@ type DbEducationRow = {
   honors?: string | null;
 };
 
-const initialEducation: EducationEntry[] = [
-  {
-    id: "1",
-    degree: "Master of Science",
-    institution: "MIT",
-    fieldOfStudy: "Computer Science",
-    startDate: "09/2022",
-    endDate: "06/2024",
-    gpa: 3.9,
-    gpaPrivate: false,
-    honors: "Dean's List",
-  },
-  {
-    id: "2",
-    degree: "Bachelor of Science",
-    institution: "UC Berkeley",
-    fieldOfStudy: "Software Engineering",
-    startDate: "09/2018",
-    endDate: "06/2022",
-    gpa: 3.8,
-    gpaPrivate: true,
-  },
-  {
-    id: "3",
-    degree: "Certificate in AI",
-    institution: "Coursera",
-    fieldOfStudy: "Machine Learning",
-    startDate: "01/2023",
-  },
-];
-
 const EducationOverview: React.FC = () => {
   const { user, loading } = useAuth();
-  const [education, setEducation] = useState<EducationEntry[]>(
-    initialEducation
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      )
-  );
+  const [education, setEducation] = useState<EducationEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -182,10 +146,14 @@ const EducationOverview: React.FC = () => {
   // Load persisted education rows for the signed-in user and refresh on changes
   useEffect(() => {
     if (loading) return;
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     let mounted = true;
     const load = async () => {
+      setIsLoading(true);
       try {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
@@ -233,6 +201,7 @@ const EducationOverview: React.FC = () => {
               new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
           )
         );
+        setIsLoading(false);
       } catch (err) {
         console.error("Error loading education", err);
       }
@@ -247,6 +216,8 @@ const EducationOverview: React.FC = () => {
       window.removeEventListener("education:changed", handler);
     };
   }, [user, loading]);
+
+  if (isLoading || loading) return <LoadingSpinner />;
 
   return (
     <Box p={3}>

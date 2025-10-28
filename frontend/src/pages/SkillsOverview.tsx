@@ -12,6 +12,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Minimal local types to avoid depending on the DnD package's type exports.
@@ -44,51 +45,14 @@ type Category = {
   skills: Skill[];
 };
 
-//custom categories
-const initialCategories: Category[] = [
-  {
-    id: "technical",
-    name: "Technical",
-    skills: [
-      { id: "react", name: "React", level: 5 },
-      { id: "typescript", name: "TypeScript", level: 4 },
-      { id: "git", name: "Git / Version Control", level: 4 },
-      { id: "docker", name: "Docker", level: 3 },
-    ],
-  },
-  {
-    id: "soft-skills",
-    name: "Soft Skills",
-    skills: [
-      { id: "communication", name: "Communication", level: 5 },
-      { id: "teamwork", name: "Teamwork", level: 4 },
-      { id: "problem-solving", name: "Problem Solving", level: 4 },
-      { id: "adaptability", name: "Adaptability", level: 3 },
-    ],
-  },
-  {
-    id: "languages",
-    name: "Languages",
-    skills: [
-      { id: "english", name: "English", level: 5 },
-      { id: "spanish", name: "Spanish", level: 3 },
-      { id: "french", name: "French", level: 2 },
-    ],
-  },
-  {
-    id: "industry-specific",
-    name: "Industry-Specific",
-    skills: [
-      { id: "finance", name: "Finance Terminology", level: 3 },
-      { id: "cloud", name: "Cloud Computing Concepts", level: 4 },
-      { id: "security", name: "Cybersecurity Awareness", level: 3 },
-    ],
-  },
-];
+// No fake/default categories — start empty and show a loading spinner while
+// the real user-scoped skills are being fetched. This prevents a flash of
+// placeholder data when switching pages.
 
 const SkillsOverview: React.FC = () => {
   const { user, loading } = useAuth();
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   // Filtered skills by search term
@@ -128,10 +92,22 @@ const SkillsOverview: React.FC = () => {
 
   // Load skills from DB and map into categories
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+    // Keep spinner while auth is initializing
+    if (loading) {
+      setIsLoading(true);
+      return;
+    }
 
+    // If there's no user, show an empty state (no spinner)
+    if (!user) {
+      setCategories([]);
+      setIsLoading(false);
+      return;
+    }
+
+    let mounted = true;
     const fetchSkills = async () => {
+      setIsLoading(true);
       try {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
@@ -140,9 +116,10 @@ const SkillsOverview: React.FC = () => {
         );
         if (res.error) {
           console.error("Failed to load skills for overview", res.error);
+          if (mounted) setCategories([]);
           return;
         }
-        const rows = Array.isArray(res.data) ? res.data : [res.data];
+        const rows = Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
         type DbSkill = {
           id?: string;
           skill_name?: string;
@@ -177,13 +154,21 @@ const SkillsOverview: React.FC = () => {
             skills: v,
           })
         );
+        if (!mounted) return;
         setCategories(mappedCats);
       } catch (err) {
         console.error("Error fetching skills overview", err);
+        if (mounted) setCategories([]);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
 
     fetchSkills();
+
+    return () => {
+      mounted = false;
+    };
   }, [user, loading]);
 
   // Export functionality
@@ -203,6 +188,8 @@ const SkillsOverview: React.FC = () => {
     link.download = "skills_by_category.json";
     link.click();
   };
+
+  if (isLoading || loading) return <LoadingSpinner />;
 
   return (
     <Box p={3}>

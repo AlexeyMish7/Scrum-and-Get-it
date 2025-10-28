@@ -87,12 +87,45 @@ const ProfilePicture: React.FC = () => {
       setMetaPath(avatar_path);
       if (avatar_path) {
         try {
+          // Try a cached signed URL first to avoid reloads on route changes
+          const cacheKey = `avatar:${avatar_bucket}:${avatar_path}`;
+          const raw = localStorage.getItem(cacheKey);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw) as {
+                url: string;
+                expiresAt: number;
+              };
+              if (Date.now() < parsed.expiresAt - 10_000) {
+                setAvatarUrl(parsed.url);
+                return;
+              }
+              localStorage.removeItem(cacheKey);
+            } catch {
+              localStorage.removeItem(cacheKey);
+            }
+          }
+
           // create signed url for display (expires in 1 hour)
           const { data, error } = await supabase.storage
             .from(avatar_bucket)
             .createSignedUrl(avatar_path, 60 * 60);
           if (error) throw error;
-          setAvatarUrl(data.signedUrl ?? null);
+          const signed = data.signedUrl ?? null;
+          setAvatarUrl(signed);
+          if (signed) {
+            try {
+              localStorage.setItem(
+                cacheKey,
+                JSON.stringify({
+                  url: signed,
+                  expiresAt: Date.now() + 60 * 60 * 1000,
+                })
+              );
+            } catch {
+              /* ignore */
+            }
+          }
         } catch (err) {
           console.warn("Failed to load avatar", err);
           setAvatarUrl(null);
@@ -177,8 +210,23 @@ const ProfilePicture: React.FC = () => {
       if (signedErr) {
         console.warn("createSignedUrl error", signedErr);
       }
-      setAvatarUrl(signedData?.signedUrl ?? null);
+      const signed = signedData?.signedUrl ?? null;
+      setAvatarUrl(signed);
       setMetaPath(fileName);
+      // cache signed url to reduce reloads during navigation
+      if (signed) {
+        try {
+          localStorage.setItem(
+            `avatar:${BUCKET}:${fileName}`,
+            JSON.stringify({
+              url: signed,
+              expiresAt: Date.now() + 60 * 60 * 1000,
+            })
+          );
+        } catch {
+          /* ignore */
+        }
+      }
       setProgress(100);
     } catch (err: unknown) {
       console.error("Avatar upload failed", err);
@@ -294,10 +342,45 @@ const ProfilePicture: React.FC = () => {
                   setError(null);
                   // reload current avatar preview if available
                   if (metaPath) {
+                    // try to use cached signed url first
+                    try {
+                      const raw = localStorage.getItem(
+                        `avatar:${BUCKET}:${metaPath}`
+                      );
+                      if (raw) {
+                        const parsed = JSON.parse(raw) as {
+                          url: string;
+                          expiresAt: number;
+                        };
+                        if (Date.now() < parsed.expiresAt - 10_000) {
+                          setAvatarUrl(parsed.url);
+                          return;
+                        }
+                        localStorage.removeItem(`avatar:${BUCKET}:${metaPath}`);
+                      }
+                    } catch {
+                      localStorage.removeItem(`avatar:${BUCKET}:${metaPath}`);
+                    }
                     supabase.storage
                       .from(BUCKET)
                       .createSignedUrl(metaPath, 60 * 60)
-                      .then(({ data }) => setAvatarUrl(data?.signedUrl ?? null))
+                      .then(({ data }) => {
+                        const signed = data?.signedUrl ?? null;
+                        setAvatarUrl(signed);
+                        if (signed) {
+                          try {
+                            localStorage.setItem(
+                              `avatar:${BUCKET}:${metaPath}`,
+                              JSON.stringify({
+                                url: signed,
+                                expiresAt: Date.now() + 60 * 60 * 1000,
+                              })
+                            );
+                          } catch {
+                            /* ignore */
+                          }
+                        }
+                      })
                       .catch(() => setAvatarUrl(null));
                   }
                 }}
