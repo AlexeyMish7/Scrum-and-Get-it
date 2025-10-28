@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-//import { Typography } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
 import EditEmploymentModal from "./EditEmploymentModal";
-import { Button, Typography } from "@mui/material";
-
+import { Button, Typography, Box } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 interface EmploymentEntry {
   id: string;
@@ -20,9 +19,8 @@ interface EmploymentEntry {
 export default function EmploymentHistoryList() {
   const { user, loading } = useAuth();
   const [entries, setEntries] = useState<EmploymentEntry[]>([]);
-  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(
-    null
-  );
+  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(null);
+  const navigate = useNavigate(); // ✅ for navigation
 
   const fetchEntries = useCallback(async () => {
     if (loading) return;
@@ -41,7 +39,6 @@ export default function EmploymentHistoryList() {
         console.error("fetchEntries error:", res.error);
         setEntries([]);
       } else {
-        // Map DB shape (current_position, job_description) to frontend shape (is_current, description)
         const rows = (res.data ?? []) as Array<Record<string, unknown>>;
         const mapped = rows.map((r) => ({
           id: r.id,
@@ -66,9 +63,7 @@ export default function EmploymentHistoryList() {
   }, [fetchEntries]);
 
   const handleDelete = async (entryId: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this entry?"
-    );
+    const confirmed = window.confirm("Are you sure you want to delete this entry?");
     if (!confirmed) return;
 
     if (!user) {
@@ -96,9 +91,19 @@ export default function EmploymentHistoryList() {
 
   return (
     <div className="p-6">
-      <Typography variant="h2" gutterBottom>
-        Employment History
-      </Typography>
+      {/* ✅ Header + Add Button Row */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h2" gutterBottom>
+          Employment History
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate("/add-employment")}
+        >
+          Add Employment
+        </Button>
+      </Box>
 
       {entries.length === 0 && (
         <Typography variant="body1">No employment entries yet.</Typography>
