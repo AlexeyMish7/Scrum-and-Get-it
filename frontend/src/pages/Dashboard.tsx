@@ -116,15 +116,6 @@ import SkillsDistributionChart from "../components/ProfileDashboard/SkillsDistri
 import CareerTimeline from "../components/ProfileDashboard/CareerTimeline";
 import ProfileStrengthTips from "../components/ProfileDashboard/ProfileStrengthTips";
 
-/*
-  Dashboard (stripped)
-  - Purpose: temporary, minimal version of the old `ProfilePage` while we rework
-    dashboard logic. Keeps the original UI and props/layout so the frontend team
-    doesn't see visual changes, but removes data-fetching complexity.
-  - Behaviour: uses lightweight local placeholder state for counts, activities,
-    and charts. Replace with real data-fetching later (use `crud.withUser(user.id)` etc.).
-*/
-
 const Dashboard: FC = () => {
   const theme = useTheme();
 
@@ -277,6 +268,7 @@ const Dashboard: FC = () => {
       field_of_study:
         (formData.field_of_study as string) ?? (formData.major as string) ?? "",
       graduation_date: formatToSqlDate(formData.end_date ?? formData.end),
+      start_date: formatToSqlDate(formData.start_date ?? formData.start),
       gpa: formData.gpa == null ? null : Number(formData.gpa) || null,
       enrollment_status:
         (formData.is_current as unknown) === true ? "enrolled" : "not_enrolled",
@@ -406,7 +398,7 @@ const Dashboard: FC = () => {
               { order: { column: "start_date", ascending: false } }
             ),
             userCrud.listRows("skills", "id,skill_name,proficiency_level"),
-            userCrud.listRows("education", "id", {
+            userCrud.listRows("education", "id,graduation_date,start_date", {
               order: { column: "graduation_date", ascending: false },
             }),
             // fetch projects count for dashboard summary
