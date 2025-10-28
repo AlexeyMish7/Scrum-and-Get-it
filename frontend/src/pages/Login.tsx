@@ -2,6 +2,16 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  useTheme,
+  Divider,
+} from "@mui/material";
+
+
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, signInWithOAuth } = useAuth();
@@ -44,22 +54,46 @@ const Login = () => {
     // On success, SDK will redirect to provider; nothing more to do here.
   };
 
+  const theme = useTheme();
   return (
-    <div className="login-wrapper">
-      <h1>Sign In</h1>
-      <form onSubmit={submitLogin} aria-live="polite">
-        <input
+    <Box
+      sx={{
+        maxWidth: 400,
+        mx: "auto",
+        mt: 10,
+        p: 4,
+        borderRadius: 3,
+        boxShadow: 2,
+        bgcolor: theme.palette.background.paper,
+      }}
+    >
+      <Typography
+        variant="h5"
+        textAlign="center"
+        fontWeight="bold"
+        mb={3}
+        color={theme.palette.text.primary}
+      >
+        Sign In
+      </Typography>
+
+      <Box component="form" onSubmit={submitLogin} aria-live="polite">
+        <TextField
           type="email"
-          placeholder="Email"
+          label="Email"
+          fullWidth
+          margin="normal"
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
           required
           disabled={loading}
         />
 
-        <input
+        <TextField
           type="password"
-          placeholder="Password"
+          label="Password"
+          fullWidth
+          margin="normal"
           value={userPassword}
           onChange={(e) => setUserPassword(e.target.value)}
           required
@@ -67,29 +101,70 @@ const Login = () => {
         />
 
         {loginError && (
-          <p role="alert" style={{ color: "red" }}>
+          <Typography
+            role="alert"
+            variant="body2"
+            color="error"
+            textAlign="center"
+            mt={1}
+          >
             {loginError}
-          </p>
+          </Typography>
         )}
 
-        <button type="submit" disabled={loading}>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          disabled={loading}
+          sx={{ mt: 3 }}
+        >
           {loading ? "Signing in..." : "Log In"}
-        </button>
-      </form>
+        </Button>
+      </Box>
 
-      <div style={{ marginTop: 12 }}>
-        <button onClick={handleGoogle} disabled={loading}>
-          Sign in with Google
-        </button>
-        <p style={{ marginTop: 8 }}>
-          <Link to="/forgot-password">Forgot password?</Link>
-        </p>
+      <Divider sx={{ my: 3 }}>OR</Divider>
 
-        <p style={{ marginTop: 8 }}>
-          Don't have an account? <Link to="/register">Register</Link>
-        </p>
-      </div>
-    </div>
+      <Button
+        onClick={handleGoogle}
+        variant="outlined"
+        color="secondary"
+        fullWidth
+        disabled={loading}
+      >
+        Sign in with Google
+      </Button>
+
+      <Box textAlign="center" mt={2}>
+        <Typography variant="body2">
+          <Link
+            to="/forgot-password"
+            style={{
+              color: theme.palette.primary.main,
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Forgot password?
+          </Link>
+        </Typography>
+
+        <Typography variant="body2" mt={1}>
+          Don’t have an account?{" "}
+          <Link
+            to="/register"
+            style={{
+              color: theme.palette.primary.main,
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Register
+          </Link>
+        </Typography>
+      </Box>
+    </Box>
   );
 };
 

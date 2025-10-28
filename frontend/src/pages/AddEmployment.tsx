@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  useTheme,
+} from "@mui/material";
 
 interface EmploymentEntry {
   jobTitle: string;
@@ -118,109 +127,133 @@ const AddEmploymentForm: React.FC = () => {
     window.history.back(); // simple navigation back to employment history view
   };
 
+  const theme = useTheme(); 
+  
   return (
-    <form
+    <Box
+      component="form"
       onSubmit={handleSubmit}
-      className="max-w-lg mx-auto p-6 border rounded-2xl shadow-sm space-y-4 bg-white"
+      sx={{
+        maxWidth: 600,
+        mx: "auto",
+        p: 4,
+        borderRadius: 3,
+        boxShadow: 1,
+        bgcolor: theme.palette.background.paper,
+      }}
     >
-      <h2 className="text-2xl font-semibold mb-4 text-center">
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        textAlign="center"
+        mb={3}
+        color={theme.palette.text.primary}
+      >
         Add Employment History
-      </h2>
+      </Typography>
 
-      <input
-        type="text"
+      <TextField
+        label="Job Title *"
         name="jobTitle"
-        placeholder="Job Title *"
         value={formData.jobTitle}
         onChange={handleChange}
-        className="w-full p-2 border rounded"
+        fullWidth
         required
+        margin="normal"
       />
 
-      <input
-        type="text"
+      <TextField
+        label="Company Name *"
         name="companyName"
-        placeholder="Company Name *"
         value={formData.companyName}
         onChange={handleChange}
-        className="w-full p-2 border rounded"
+        fullWidth
         required
+        margin="normal"
       />
 
-      <input
-        type="text"
+      <TextField
+        label="Location"
         name="location"
-        placeholder="Location"
         value={formData.location}
         onChange={handleChange}
-        className="w-full p-2 border rounded"
+        fullWidth
+        margin="normal"
       />
 
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <label className="block text-sm font-medium">Start Date *</label>
-          <input
-            type="date"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-
-        {!formData.isCurrent && (
-          <div className="flex-1">
-            <label className="block text-sm font-medium">End Date</label>
-            <input
-              type="date"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          name="isCurrent"
-          checked={formData.isCurrent}
+      <Box display="flex" gap={2}>
+        <TextField
+          label="Start Date *"
+          type="date"
+          name="startDate"
+          value={formData.startDate}
           onChange={handleChange}
+          fullWidth
+          required
+          InputLabelProps={{ shrink: true }}
         />
-        <label>Current Position</label>
-      </div>
+        {!formData.isCurrent && (
+          <TextField
+            label="End Date"
+            type="date"
+            name="endDate"
+            value={formData.endDate}
+            onChange={handleChange}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+        )}
+      </Box>
 
-      <textarea
+      <FormControlLabel
+        control={
+          <Checkbox
+            name="isCurrent"
+            checked={formData.isCurrent}
+            onChange={handleChange}
+          />
+        }
+        label="Current Position"
+        sx={{ mt: 1 }}
+      />
+
+      <TextField
+        label="Job Description (max 1000 characters)"
         name="description"
-        placeholder="Job Description (max 1000 characters)"
         value={formData.description}
         onChange={handleChange}
-        className="w-full p-2 border rounded"
-        maxLength={1000}
+        fullWidth
+        multiline
+        rows={4}
+        inputProps={{ maxLength: 1000 }}
+        margin="normal"
       />
 
-      <div className="flex justify-between mt-4">
-        <button
+      <Box display="flex" justifyContent="space-between" mt={3}>
+        <Button
           type="submit"
+          variant="contained"
+          color="primary"
           disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           {loading ? "Saving..." : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-        >
+        </Button>
+        <Button variant="secondary" onClick={handleCancel}>
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Box>
 
-      {message && <p className="text-center mt-3">{message}</p>}
-    </form>
+      {message && (
+        <Typography
+          variant="body2"
+          textAlign="center"
+          mt={2}
+          color={theme.palette.text.secondary}
+        >
+          {message}
+        </Typography>
+      )}
+    </Box>
   );
 };
 
