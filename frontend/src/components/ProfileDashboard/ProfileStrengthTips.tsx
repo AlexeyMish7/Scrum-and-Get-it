@@ -1,19 +1,77 @@
 import React from "react";
-import { FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
 import { Box, Typography, useTheme } from "@mui/material";
+import { FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
 
-interface ProfileStrengthTipsProps {
-  strengthScore: number; // 0–100
-  recommendations: string[];
+interface ProfileData {
+  employmentCount: number;
+  skillsCount: number;
+  educationCount: number;
+  projectsCount: number;
 }
 
-const ProfileStrengthTips: React.FC<ProfileStrengthTipsProps> = ({
-  strengthScore,
-  recommendations,
-}) => {
+interface ProfileStrengthProps {
+  profile: ProfileData;
+}
+
+const REQUIRED_COUNTS = {
+  employment: 2,
+  skills: 5,
+  education: 1,
+  projects: 3,
+};
+
+const WEIGHTS = {
+  employment: 0.3,
+  skills: 0.3,
+  education: 0.2,
+  projects: 0.2,
+};
+
+const ProfileStrength: React.FC<ProfileStrengthProps> = ({ profile }) => {
   const theme = useTheme();
 
-  // Determine label, color, and icon using theme palette
+  const employmentStrength = Math.min(profile.employmentCount / REQUIRED_COUNTS.employment, 1);
+  const skillsStrength = Math.min(profile.skillsCount / REQUIRED_COUNTS.skills, 1);
+  const educationStrength = Math.min(profile.educationCount / REQUIRED_COUNTS.education, 1);
+  const projectsStrength = Math.min(profile.projectsCount / REQUIRED_COUNTS.projects, 1);
+
+  const strengthScore =
+    (employmentStrength * WEIGHTS.employment +
+      skillsStrength * WEIGHTS.skills +
+      educationStrength * WEIGHTS.education +
+      projectsStrength * WEIGHTS.projects) *
+    100;
+
+  const recommendations: string[] = [];
+
+if (employmentStrength < 1) {
+  recommendations.push(
+    "Include detailed descriptions of your responsibilities and achievements for each job.",
+    "Highlight measurable results or projects you led in past roles."
+  );
+}
+
+if (skillsStrength < 1) {
+  recommendations.push(
+    "List at least 3–5 key skills relevant to your career goals.",
+    "Include both technical and soft skills."
+  );
+}
+
+if (educationStrength < 1) {
+  recommendations.push(
+    "Include your degree, institution, and graduation year.",
+    "Highlight relevant coursework, certifications, or awards."
+  );
+}
+
+if (projectsStrength < 1) {
+  recommendations.push(
+    "Add at least one project with a clear description and your role.",
+    "Include links to live demos, GitHub repos, or portfolios."
+  );
+}
+
   let label = "Weak";
   let color = theme.palette.error.main;
   let icon = <FaTimesCircle color={color} />;
@@ -32,21 +90,18 @@ const ProfileStrengthTips: React.FC<ProfileStrengthTipsProps> = ({
     <Box
       sx={{
         my: 4,
-        p: 2,
+        p: 3,
         border: `1px solid ${color}`,
         borderRadius: 2,
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Typography
-        variant="h4"
-        sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-      >
+      <Typography variant="h4" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
         {icon} Profile Strength:{" "}
         <Box component="span" sx={{ color }}>
           {label}
         </Box>{" "}
-        ({strengthScore}%)
+        ({strengthScore.toFixed(0)}%)
       </Typography>
 
       <Box
@@ -62,7 +117,7 @@ const ProfileStrengthTips: React.FC<ProfileStrengthTipsProps> = ({
           sx={{
             height: "100%",
             width: `${strengthScore}%`,
-            backgroundColor: theme.palette.success.main,
+            backgroundColor: color,
             transition: "width 0.5s ease",
           }}
         />
@@ -73,26 +128,21 @@ const ProfileStrengthTips: React.FC<ProfileStrengthTipsProps> = ({
           <Typography variant="h5" gutterBottom>
             Recommendations:
           </Typography>
-          <Box component="ul" sx={{ pl: 2, mb: 0 }}>
+          <Box component="ul" sx={{ pl: 3, mb: 0 }}>
             {recommendations.map((rec, idx) => (
-              <Typography
-                key={idx}
-                component="li"
-                variant="body1"
-                sx={{ mb: 0.5 }}
-              >
-                {rec}
-              </Typography>
+              <li key={idx}>
+                <Typography variant="body1">{rec}</Typography>
+              </li>
             ))}
           </Box>
         </>
       ) : (
         <Typography variant="body1" sx={{ color: theme.palette.success.main }}>
-          Your profile looks great! 🎉
+          Your profile looks strong! 🎉
         </Typography>
       )}
     </Box>
   );
 };
 
-export default ProfileStrengthTips;
+export default ProfileStrength;

@@ -687,14 +687,7 @@ const Dashboard: FC = () => {
             <ProfileCompletion profile={counts} />
           </Box>
           <Box sx={{ flex: "1 1 300px" }}>
-            <ProfileStrengthTips
-              strengthScore={85}
-              recommendations={[
-                "Add more details to your recent job description",
-                "Include a professional summary section",
-                "List at least 3 soft skills",
-              ]}
-            />
+            <ProfileStrengthTips profile={counts} />
           </Box>
         </Box>
 

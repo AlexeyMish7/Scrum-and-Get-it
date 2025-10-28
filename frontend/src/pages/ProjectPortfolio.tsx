@@ -51,6 +51,7 @@ const ProjectPortfolio: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
+  // Load projects
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -80,6 +81,7 @@ const ProjectPortfolio: React.FC = () => {
           setProjects(dummyProjects);
           return;
         }
+
         const rows = Array.isArray(res.data)
           ? res.data
           : res.data
@@ -132,6 +134,7 @@ const ProjectPortfolio: React.FC = () => {
     };
   }, [user, loading]);
 
+  // Filtering + sorting
   useEffect(() => {
     let temp = [...projects];
 
@@ -165,22 +168,48 @@ const ProjectPortfolio: React.FC = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      {/* ✅ Add Project button top-left */}
-      <Box textAlign="left" mb={2}>
+      <style>
+      {`
+        @media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .MuiCard-root {
+    page-break-inside: avoid;
+    border: 1px solid #000;
+    margin-bottom: 10px;
+  }
+
+  a {
+    color: black;
+    text-decoration: none;
+  }
+}
+      `}
+</style>
+        <Typography variant="h2" textAlign="center" mb={2}>
+          My Projects Portfolio
+        </Typography>
+
+      {/* Add Project Button */}
+      <Box textAlign="center" mb={4} className="no-print">
         <Button variant="contained" color="primary" onClick={handleAddProject}>
           Add Project
         </Button>
       </Box>
-
-      <Typography variant="h2" textAlign="center" mb={2}>
-        My Projects Portfolio
-      </Typography>
 
       <Typography
         variant="body2"
         color="text.secondary"
         textAlign="center"
         mb={4}
+        className="no-print"
       >
         Click on any project to view details and copy its shareable link.
       </Typography>
@@ -253,27 +282,27 @@ const ProjectPortfolio: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Projects Grid */}
-      <Grid container spacing={3}>
-        {filteredProjects.map((project) => (
-          <Grid size={12} key={project.id}>
-            <Card
-              onClick={() => setSelectedProject(project)}
-              sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}
-            >
-              <CardContent>
-                <Typography variant="h6">{project.projectName}</Typography>
-                <Typography variant="body2" color="text.secondary" mb={1}>
-                  {project.role} | {project.technologies}
-                </Typography>
-                <Typography variant="body2" mb={1}>
-                  {project.description.slice(0, 100)}...
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {/* Project Cards */}
+        <Grid container spacing={3}>
+          {filteredProjects.map((project) => (
+            <Grid size={12} key={project.id} className="project-card">
+              <Card
+                onClick={() => setSelectedProject(project)}
+                sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}
+              >
+                <CardContent>
+                  <Typography variant="h6">{project.projectName}</Typography>
+                  <Typography variant="body2" color="text.secondary" mb={1}>
+                    {project.role} | {project.technologies}
+                  </Typography>
+                  <Typography variant="body2" mb={1}>
+                    {project.description.slice(0, 100)}...
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
       {/* Project Details Dialog */}
       <Dialog
@@ -281,7 +310,6 @@ const ProjectPortfolio: React.FC = () => {
         onClose={() => setSelectedProject(null)}
         maxWidth="sm"
         fullWidth
-        className="no-print"
       >
         <DialogTitle>{selectedProject?.projectName}</DialogTitle>
         <DialogContent dividers>

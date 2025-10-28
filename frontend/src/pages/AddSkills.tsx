@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import crud from "../services/crud";
+
 import {
   Box,
   Typography,
@@ -137,7 +138,10 @@ const AddSkills = () => {
       setSelectedSkill("");
       setSelectedCategory("");
       setSelectedLevel("");
-      setIsAdding(false);
+      //setIsAdding(false);
+
+      navigate("/skillsOverview");
+      
     })();
   };
 
