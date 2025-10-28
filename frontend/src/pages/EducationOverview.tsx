@@ -47,6 +47,7 @@ type DbEducationRow = {
   institution_name?: string | null;
   field_of_study?: string | null;
   graduation_date?: string | null;
+  start_date?: string | null;
   gpa?: number | null;
   honors?: string | null;
 };
@@ -101,11 +102,13 @@ const EducationOverview: React.FC = () => {
     if (!loading && user) {
       try {
         const userCrud = crud.withUser(user.id);
+        // Convert UI YYYY-MM -> DATE (use first day of month) when saving
         const payload = {
           degree_type: entry.degree,
           institution_name: entry.institution,
           field_of_study: entry.fieldOfStudy,
-          graduation_date: entry.endDate ?? null,
+          graduation_date: entry.endDate ? `${entry.endDate}-01` : null,
+          start_date: entry.startDate ? `${entry.startDate}-01` : null,
           gpa: entry.gpa ?? null,
           honors: entry.honors ?? null,
         };
@@ -187,7 +190,7 @@ const EducationOverview: React.FC = () => {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
           "education",
-          "id,degree_type,institution_name,field_of_study,graduation_date,gpa,honors",
+          "id,degree_type,institution_name,field_of_study,graduation_date,start_date,gpa,honors",
           { order: { column: "graduation_date", ascending: false } }
         );
         if (res.error) {
@@ -199,14 +202,25 @@ const EducationOverview: React.FC = () => {
           : res.data
           ? [res.data]
           : [];
+        // Convert DB DATE strings to YYYY-MM for the UI
+        const dbDateToYYYYMM = (d?: string | null): string | undefined => {
+          if (!d) return undefined;
+          try {
+            return new Date(d).toISOString().slice(0, 7);
+          } catch {
+            return undefined;
+          }
+        };
+
         const mapped: EducationEntry[] = (rows as DbEducationRow[]).map(
           (r) => ({
             id: r.id ?? crypto.randomUUID(),
             degree: r.degree_type ?? "",
             institution: r.institution_name ?? "",
             fieldOfStudy: r.field_of_study ?? "",
-            startDate: r.graduation_date ?? "",
-            endDate: r.graduation_date ?? undefined,
+            // Prefer explicit DB start_date, fall back to empty string for UI
+            startDate: dbDateToYYYYMM(r.start_date) ?? "",
+            endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
             gpa: r.gpa ?? undefined,
             gpaPrivate: false,
             honors: r.honors ?? undefined,

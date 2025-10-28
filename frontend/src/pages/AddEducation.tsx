@@ -36,6 +36,7 @@ type DbEducationRow = {
   degree_type?: string | null;
   field_of_study?: string | null;
   graduation_date?: string | null;
+  start_date?: string | null;
   gpa?: number | null;
   honors?: string | null;
 };
@@ -118,6 +119,7 @@ const AddEducation = () => {
         degree_type: formData.level,
         field_of_study: formData.major,
         graduation_date: formatToSqlDate(formData.end),
+        start_date: formatToSqlDate(formData.start),
         gpa: formData.gpa ?? null,
         enrollment_status: formData.active ? "enrolled" : "not_enrolled",
         education_level: undefined,
@@ -136,7 +138,9 @@ const AddEducation = () => {
         level: row.degree_type ?? formData.level,
         school: row.institution_name ?? formData.school,
         major: row.field_of_study ?? formData.major,
-        start: String(formData.start),
+        start: row.start_date
+          ? String(row.start_date).slice(0, 7)
+          : String(formData.start),
         // map DB full date back to YYYY-MM for UI
         end: row.graduation_date
           ? String(row.graduation_date).slice(0, 7)
@@ -151,7 +155,8 @@ const AddEducation = () => {
       window.dispatchEvent(new Event("education:changed"));
       // after successful add, navigate back to the overview
       try {
-        navigate("/educationOverview");
+        // Router defines the education overview at `/education`
+        navigate("/education");
       } catch (navErr) {
         // swallow navigation errors in test/dev environments
         console.warn("Navigation failed:", navErr);
@@ -229,7 +234,7 @@ const AddEducation = () => {
           level: r.degree_type ?? "",
           school: r.institution_name ?? "",
           major: r.field_of_study ?? "",
-          start: "",
+          start: r.start_date ? String(r.start_date).slice(0, 7) : "",
           // normalize DB date to YYYY-MM for the UI (remove day)
           end: r.graduation_date
             ? String(r.graduation_date).slice(0, 7)
