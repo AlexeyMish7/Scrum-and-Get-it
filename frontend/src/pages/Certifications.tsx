@@ -23,6 +23,7 @@ import dayjs from "dayjs";
 import { useAuth } from "../context/AuthContext";
 import crud from "../services/crud";
 import { supabase } from "../supabaseClient";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 type Certification = {
   id: string;
@@ -59,6 +60,7 @@ const organizations = [
 
 const Certifications: React.FC = () => {
   const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [newCert, setNewCert] = useState<Certification>({
     id: "",
@@ -86,13 +88,18 @@ const Certifications: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    if (loading) return;
+    if (loading) {
+      setIsLoading(true);
+      return;
+    }
     if (!user) {
       setCertifications([]);
+      setIsLoading(false);
       return;
     }
 
     const load = async () => {
+      setIsLoading(true);
       try {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
@@ -129,6 +136,9 @@ const Certifications: React.FC = () => {
         setCertifications(mapped);
       } catch (err) {
         console.error("Error loading certifications", err);
+        setCertifications([]);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -137,6 +147,8 @@ const Certifications: React.FC = () => {
       mounted = false;
     };
   }, [user, loading]);
+
+  if (loading || isLoading) return <LoadingSpinner />;
 
   const handleAddCert = async () => {
     if (loading) return;

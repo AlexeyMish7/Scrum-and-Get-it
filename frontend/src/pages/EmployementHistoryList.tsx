@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import * as crud from "../services/crud";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Button, Typography, Box } from "@mui/material";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
 
 interface EmploymentEntry {
@@ -19,16 +20,24 @@ interface EmploymentEntry {
 export default function EmploymentHistoryList() {
   const { user, loading } = useAuth();
   const [entries, setEntries] = useState<EmploymentEntry[]>([]);
-  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(null);
-  const navigate = useNavigate(); // ✅ for navigation
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(
+    null
+  );
+  const navigate = useNavigate(); //
 
   const fetchEntries = useCallback(async () => {
-    if (loading) return;
+    if (loading) {
+      setIsLoading(true);
+      return;
+    }
     if (!user) {
       setEntries([]);
+      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     try {
       const userCrud = crud.withUser(user.id);
       const res = await userCrud.listRows("employment", "*", {
@@ -55,6 +64,8 @@ export default function EmploymentHistoryList() {
     } catch (e) {
       console.error("Unexpected fetchEntries error", e);
       setEntries([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [user, loading]);
 
@@ -62,8 +73,12 @@ export default function EmploymentHistoryList() {
     void fetchEntries();
   }, [fetchEntries]);
 
+  if (isLoading || loading) return <LoadingSpinner />;
+
   const handleDelete = async (entryId: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this entry?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this entry?"
+    );
     if (!confirmed) return;
 
     if (!user) {
@@ -92,7 +107,12 @@ export default function EmploymentHistoryList() {
   return (
     <div className="p-6">
       {/* ✅ Header + Add Button Row */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
         <Typography variant="h2" gutterBottom>
           Employment History
         </Typography>

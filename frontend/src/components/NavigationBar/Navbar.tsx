@@ -32,7 +32,31 @@ const NavBar: React.FC = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    // Try to synchronously read any valid cached avatar signed URL so the
+    // avatar image can render immediately on mount and avoid a flash from
+    // initials -> image when navigating between routes.
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (!key.startsWith("avatar:")) continue;
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw) as { url: string; expiresAt: number };
+          if (Date.now() < parsed.expiresAt - 10_000) return parsed.url;
+          // expired -> remove
+          localStorage.removeItem(key);
+        } catch {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) =>
     setAnchorEl(event.currentTarget);
@@ -45,6 +69,40 @@ const NavBar: React.FC = () => {
       setAvatarUrl(null);
       return;
     }
+
+    // small helper: cache signed urls in localStorage to avoid regenerating
+    // them on every route change which causes the img to reload.
+    const cacheKey = (bucket: string, path: string) =>
+      `avatar:${bucket}:${path}`;
+    const getCachedSignedUrl = (bucket: string, path: string) => {
+      try {
+        const k = cacheKey(bucket, path);
+        const raw = localStorage.getItem(k);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { url: string; expiresAt: number };
+        if (Date.now() < parsed.expiresAt - 10_000) return parsed.url; // keep 10s margin
+        // expired
+        localStorage.removeItem(k);
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    const setCachedSignedUrl = (
+      bucket: string,
+      path: string,
+      url: string,
+      ttlSec: number
+    ) => {
+      try {
+        const k = cacheKey(bucket, path);
+        const expiresAt = Date.now() + ttlSec * 1000;
+        localStorage.setItem(k, JSON.stringify({ url, expiresAt }));
+      } catch {
+        /* ignore */
+      }
+    };
 
     const load = async () => {
       const res = await crud.getUserProfile(user.id);
@@ -61,6 +119,14 @@ const NavBar: React.FC = () => {
         setAvatarUrl(null);
         return;
       }
+
+      // try cache first
+      const cached = getCachedSignedUrl(avatar_bucket, avatar_path);
+      if (cached) {
+        if (mounted) setAvatarUrl(cached);
+        return;
+      }
+
       const { data, error } = await supabase.storage
         .from(avatar_bucket)
         .createSignedUrl(avatar_path, 60 * 60);
@@ -69,7 +135,16 @@ const NavBar: React.FC = () => {
         setAvatarUrl(null);
         return;
       }
-      if (mounted) setAvatarUrl(data?.signedUrl ?? null);
+      if (mounted) {
+        setAvatarUrl(data?.signedUrl ?? null);
+        if (data?.signedUrl)
+          setCachedSignedUrl(
+            avatar_bucket,
+            avatar_path,
+            data.signedUrl,
+            60 * 60
+          );
+      }
     };
 
     load();
