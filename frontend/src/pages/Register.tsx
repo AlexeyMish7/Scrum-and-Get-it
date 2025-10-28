@@ -8,7 +8,7 @@ import { supabase } from "../supabaseClient";
 // Custom authentication context for managing session + signup logic
 import { useAuth } from "../context/AuthContext";
 
-// ✅ MUI imports for styling + theme integration
+// MUI imports for styling + theme integration
 import {
   Box,
   TextField,
@@ -198,7 +198,12 @@ export default function Register() {
           </Typography>
 
           {/* Registration form with controlled inputs */}
-          <Stack spacing={2} component="form" onSubmit={handleSubmit} noValidate>
+          <Stack
+            spacing={2}
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+          >
             <TextField
               label="First Name"
               name="firstName"
