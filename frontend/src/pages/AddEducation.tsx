@@ -268,7 +268,7 @@ const AddEducation = () => {
         {/* Dropdown */}
         <TextField
           select
-          label="Education Level"
+          label="Degree Type"
           value={formData.level}
           onChange={(e) => updateField("level", e.target.value)}
         >
