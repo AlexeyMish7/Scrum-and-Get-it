@@ -413,7 +413,6 @@ const AddProjectForm: React.FC = () => {
             )}
           </Grid>
 
-          {/* Option to save uploaded media into the central Documents table */}
           <Grid size={12}>
             <FormControlLabel
               control={
