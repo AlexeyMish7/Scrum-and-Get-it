@@ -15,7 +15,6 @@ import {
 import LoadingSpinner from "../components/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
-// Minimal local types to avoid depending on the DnD package's type exports.
 type DropResult = {
   source: { droppableId: string; index: number };
   destination?: { droppableId: string; index: number } | null;
@@ -36,7 +35,7 @@ type DraggableProvided = {
 type Skill = {
   id: string;
   name: string;
-  level: number; //1-5
+  level: number; // 1–5
 };
 
 type Category = {
@@ -45,17 +44,12 @@ type Category = {
   skills: Skill[];
 };
 
-// No fake/default categories — start empty and show a loading spinner while
-// the real user-scoped skills are being fetched. This prevents a flash of
-// placeholder data when switching pages.
-
 const SkillsOverview: React.FC = () => {
   const { user, loading } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Filtered skills by search term
   const filteredCategories = useMemo(() => {
     if (!search) return categories;
     return categories.map((cat) => ({
@@ -66,7 +60,6 @@ const SkillsOverview: React.FC = () => {
     }));
   }, [categories, search]);
 
-  // Handle drag & drop
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
@@ -90,15 +83,11 @@ const SkillsOverview: React.FC = () => {
     setCategories(newCats);
   };
 
-  // Load skills from DB and map into categories
   useEffect(() => {
-    // Keep spinner while auth is initializing
     if (loading) {
       setIsLoading(true);
       return;
     }
-
-    // If there's no user, show an empty state (no spinner)
     if (!user) {
       setCategories([]);
       setIsLoading(false);
@@ -119,7 +108,11 @@ const SkillsOverview: React.FC = () => {
           if (mounted) setCategories([]);
           return;
         }
-        const rows = Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
         type DbSkill = {
           id?: string;
           skill_name?: string;
@@ -171,7 +164,6 @@ const SkillsOverview: React.FC = () => {
     };
   }, [user, loading]);
 
-  // Export functionality
   const handleExport = () => {
     const exportData = categories.map((cat) => ({
       category: cat.name,
@@ -193,9 +185,7 @@ const SkillsOverview: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Typography variant="h2" mb={2}>
-        Skills Overview
-      </Typography>
+      {/* ✅ Button moved ABOVE the title */}
       <Button
         variant="contained"
         sx={{ mb: 2 }}
@@ -203,6 +193,10 @@ const SkillsOverview: React.FC = () => {
       >
         Add Skill
       </Button>
+
+      <Typography variant="h2" mb={2}>
+        Skills Overview
+      </Typography>
 
       <Stack direction="row" spacing={2} mb={3}>
         <TextField
