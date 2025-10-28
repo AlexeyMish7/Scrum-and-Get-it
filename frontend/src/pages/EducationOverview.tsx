@@ -64,6 +64,14 @@ const EducationOverview: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // helper: convert YYYY-MM (or other date strings) to ms safely; returns 0 for invalid/missing
+  const dateToMs = (s?: string | undefined) => {
+    if (!s) return 0;
+    const d = new Date(s);
+    const t = d.getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+
   const handleSave = async (entry: EducationEntry) => {
     if (!loading && user) {
       try {
@@ -97,13 +105,9 @@ const EducationOverview: React.FC = () => {
         setEducation((prev) =>
           prev
             .map((e) => (e.id === updated.id ? updated : e))
-            .sort(
-              (a, b) =>
-                new Date(b.startDate).getTime() -
-                new Date(a.startDate).getTime()
-            )
+            .sort((a, b) => dateToMs(b.startDate) - dateToMs(a.startDate))
         );
-        window.dispatchEvent(new Event("education:changed"));
+        window.dispatchEvent(new CustomEvent("education:changed"));
       } catch (err) {
         console.error("Error saving education", err);
         alert("Failed to save education. See console for details.");
@@ -112,10 +116,7 @@ const EducationOverview: React.FC = () => {
       setEducation((prev) =>
         prev
           .map((e) => (e.id === entry.id ? entry : e))
-          .sort(
-            (a, b) =>
-              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-          )
+          .sort((a, b) => dateToMs(b.startDate) - dateToMs(a.startDate))
       );
     }
     setEditingEntry(null);
@@ -133,7 +134,7 @@ const EducationOverview: React.FC = () => {
         }
         setEducation((prev) => prev.filter((e) => e.id !== id));
         setConfirmDeleteId(null);
-        window.dispatchEvent(new Event("education:changed"));
+        window.dispatchEvent(new CustomEvent("education:changed"));
       } catch (err) {
         console.error("Error deleting education", err);
         alert("Failed to delete education. See console for details.");
@@ -165,6 +166,7 @@ const EducationOverview: React.FC = () => {
         );
         if (res.error) {
           console.error("Failed to load education rows", res.error);
+          if (mounted) setIsLoading(false);
           return;
         }
         const rows = Array.isArray(res.data)
@@ -182,29 +184,29 @@ const EducationOverview: React.FC = () => {
           }
         };
 
-        const mapped: EducationEntry[] = (rows as DbEducationRow[]).map((r) => ({
-          id: r.id ?? crypto.randomUUID(),
-          degree: r.degree_type ?? "",
-          institution: r.institution_name ?? "",
-          fieldOfStudy: r.field_of_study ?? "",
-          startDate: dbDateToYYYYMM(r.start_date) ?? "",
-          endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
-          gpa: r.gpa ?? undefined,
-          gpaPrivate: r.meta?.privateGpa ?? false,
-          honors: r.honors ?? undefined,
-          active: r.enrollment_status === "enrolled",
-        }));
+        const mapped: EducationEntry[] = (rows as DbEducationRow[]).map(
+          (r) => ({
+            id: r.id ?? crypto.randomUUID(),
+            degree: r.degree_type ?? "",
+            institution: r.institution_name ?? "",
+            fieldOfStudy: r.field_of_study ?? "",
+            startDate: dbDateToYYYYMM(r.start_date) ?? "",
+            endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
+            gpa: r.gpa ?? undefined,
+            gpaPrivate: r.meta?.privateGpa ?? false,
+            honors: r.honors ?? undefined,
+            active: r.enrollment_status === "enrolled",
+          })
+        );
 
         if (!mounted) return;
         setEducation(
-          mapped.sort(
-            (a, b) =>
-              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-          )
+          mapped.sort((a, b) => dateToMs(b.startDate) - dateToMs(a.startDate))
         );
         setIsLoading(false);
       } catch (err) {
         console.error("Error loading education", err);
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -301,116 +303,138 @@ const EducationOverview: React.FC = () => {
 
       {/* Edit Dialog */}
       {editingEntry && (
-  <Dialog open={true} onClose={() => setEditingEntry(null)} fullWidth>
-    <DialogTitle>Edit Education</DialogTitle>
-    <DialogContent>
-      <Stack spacing={2} mt={1}>
-        <TextField
-          label="Degree Type"
+        <Dialog
+          open={true}
+          onClose={() => setEditingEntry(null)}
           fullWidth
-          value={editingEntry.degree}
-          onChange={(e) =>
-            setEditingEntry({ ...editingEntry, degree: e.target.value })
-          }
-        />
-        <TextField
-          label="Institution"
-          fullWidth
-          value={editingEntry.institution}
-          onChange={(e) =>
-            setEditingEntry({ ...editingEntry, institution: e.target.value })
-          }
-        />
-        <TextField
-          label="Field of Study"
-          fullWidth
-          value={editingEntry.fieldOfStudy}
-          onChange={(e) =>
-            setEditingEntry({ ...editingEntry, fieldOfStudy: e.target.value })
-          }
-        />
-        <TextField
-          label="Start Date (YYYY-MM)"
-          fullWidth
-          value={editingEntry.startDate}
-          onChange={(e) =>
-            setEditingEntry({ ...editingEntry, startDate: e.target.value })
-          }
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={!editingEntry.endDate}
-              onChange={(e) =>
-                setEditingEntry({
-                  ...editingEntry,
-                  endDate: e.target.checked ? undefined : editingEntry.endDate ?? "",
-                })
-              }
-            />
-          }
-          label="Currently Enrolled"
-        />
-        <TextField
-          label="End Date (YYYY-MM)"
-          fullWidth
-          value={editingEntry.endDate ?? ""}
-          onChange={(e) =>
-            setEditingEntry({
-              ...editingEntry,
-              endDate: e.target.value || undefined,
-            })
-          }
-          disabled={!editingEntry.endDate && !editingEntry.startDate}
-        />
-        <TextField
-          label="GPA (optional)"
-          type="number"
-          fullWidth
-          value={editingEntry.gpa ?? ""}
-          onChange={(e) =>
-            setEditingEntry({
-              ...editingEntry,
-              gpa: e.target.value ? parseFloat(e.target.value) : undefined,
-            })
-          }
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={editingEntry.gpaPrivate ?? false}
-              onChange={(e) =>
-                setEditingEntry({ ...editingEntry, gpaPrivate: e.target.checked })
-              }
-            />
-          }
-          label="Hide GPA"
-        />
-        <TextField
-          label="Achievements / Honors"
-          fullWidth
-          value={editingEntry.honors ?? ""}
-          onChange={(e) =>
-            setEditingEntry({ ...editingEntry, honors: e.target.value })
-          }
-        />
-      </Stack>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={() => setEditingEntry(null)}>Cancel</Button>
-      <Button onClick={() => editingEntry && handleSave(editingEntry)}>
-        Save
-      </Button>
-    </DialogActions>
-  </Dialog>
-)}
-
+          aria-labelledby="edit-education-title"
+        >
+          <DialogTitle id="edit-education-title">Edit Education</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} mt={1}>
+              <TextField
+                label="Degree Type"
+                fullWidth
+                value={editingEntry.degree}
+                onChange={(e) =>
+                  setEditingEntry({ ...editingEntry, degree: e.target.value })
+                }
+              />
+              <TextField
+                label="Institution"
+                fullWidth
+                value={editingEntry.institution}
+                onChange={(e) =>
+                  setEditingEntry({
+                    ...editingEntry,
+                    institution: e.target.value,
+                  })
+                }
+              />
+              <TextField
+                label="Field of Study"
+                fullWidth
+                value={editingEntry.fieldOfStudy}
+                onChange={(e) =>
+                  setEditingEntry({
+                    ...editingEntry,
+                    fieldOfStudy: e.target.value,
+                  })
+                }
+              />
+              <TextField
+                label="Start Date (YYYY-MM)"
+                fullWidth
+                value={editingEntry.startDate}
+                onChange={(e) =>
+                  setEditingEntry({
+                    ...editingEntry,
+                    startDate: e.target.value,
+                  })
+                }
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={!editingEntry.endDate}
+                    onChange={(e) =>
+                      setEditingEntry({
+                        ...editingEntry,
+                        endDate: e.target.checked
+                          ? undefined
+                          : editingEntry.endDate ?? "",
+                      })
+                    }
+                  />
+                }
+                label="Currently Enrolled"
+              />
+              <TextField
+                label="End Date (YYYY-MM)"
+                fullWidth
+                value={editingEntry.endDate ?? ""}
+                onChange={(e) =>
+                  setEditingEntry({
+                    ...editingEntry,
+                    endDate: e.target.value || undefined,
+                  })
+                }
+                disabled={!editingEntry.endDate && !editingEntry.startDate}
+              />
+              <TextField
+                label="GPA (optional)"
+                type="number"
+                fullWidth
+                value={editingEntry.gpa ?? ""}
+                onChange={(e) =>
+                  setEditingEntry({
+                    ...editingEntry,
+                    gpa: e.target.value
+                      ? parseFloat(e.target.value)
+                      : undefined,
+                  })
+                }
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={editingEntry.gpaPrivate ?? false}
+                    onChange={(e) =>
+                      setEditingEntry({
+                        ...editingEntry,
+                        gpaPrivate: e.target.checked,
+                      })
+                    }
+                  />
+                }
+                label="Hide GPA"
+              />
+              <TextField
+                label="Achievements / Honors"
+                fullWidth
+                value={editingEntry.honors ?? ""}
+                onChange={(e) =>
+                  setEditingEntry({ ...editingEntry, honors: e.target.value })
+                }
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditingEntry(null)}>Cancel</Button>
+            <Button onClick={() => editingEntry && handleSave(editingEntry)}>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation */}
       {confirmDeleteId && (
         <Dialog open={true} onClose={() => setConfirmDeleteId(null)}>
-          <DialogTitle>Confirm Delete</DialogTitle>
-          <DialogContent>
+          <DialogTitle id="confirm-delete-education-title">
+            Confirm Delete
+          </DialogTitle>
+          <DialogContent aria-labelledby="confirm-delete-education-title">
             <Typography>
               Are you sure you want to delete this education entry?
             </Typography>
