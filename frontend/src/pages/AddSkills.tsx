@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import crud from "../services/crud";
 import {
@@ -47,6 +48,7 @@ const skillCategoryOptions = [
 ];
 
 const AddSkills = () => {
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [userSkills, setUserSkills] = useState<SkillItem[]>([]);
   const [selectedSkill, setSelectedSkill] = useState("");
@@ -57,6 +59,8 @@ const AddSkills = () => {
     null
   );
   const [tempEditLevel, setTempEditLevel] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleAddSkill = () => {
     (async () => {
@@ -64,11 +68,14 @@ const AddSkills = () => {
         alert("Please fill out all fields before adding a skill.");
         return;
       }
+      if (isAdding) return; // prevent double submit
+      setIsAdding(true);
       const exists = userSkills.some(
         (skill) => skill.name.toLowerCase() === selectedSkill.toLowerCase()
       );
       if (exists) {
         alert("You already added this skill!");
+        setIsAdding(false);
         return;
       }
 
@@ -87,6 +94,7 @@ const AddSkills = () => {
           const res = await userCrud.insertRow("skills", payload, "*");
           if (res.error) {
             alert("Error adding skill: " + res.error.message);
+            setIsAdding(false);
             return;
           }
           const inserted = Array.isArray(res.data) ? res.data[0] : res.data;
@@ -107,7 +115,9 @@ const AddSkills = () => {
           }
         } catch (err) {
           console.error(err);
+          console.error(err);
           alert("Failed to add skill");
+          setIsAdding(false);
           return;
         }
       } else {
@@ -127,6 +137,7 @@ const AddSkills = () => {
       setSelectedSkill("");
       setSelectedCategory("");
       setSelectedLevel("");
+      setIsAdding(false);
     })();
   };
 
@@ -137,7 +148,10 @@ const AddSkills = () => {
       return;
     }
 
-    const fetchSkills = async () => {
+    let mounted = true;
+
+    // Reusable loader so we can refresh from the server after mutations
+    const loadSkills = async () => {
       try {
         const userCrud = crud.withUser(user.id);
         const res = await userCrud.listRows(
@@ -149,7 +163,11 @@ const AddSkills = () => {
           console.error("Failed to fetch skills", res.error);
           return;
         }
-        const rows = Array.isArray(res.data) ? res.data : [res.data];
+        const rows = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
         type DbRow = {
           id?: string;
           skill_name?: string;
@@ -168,13 +186,17 @@ const AddSkills = () => {
               ),
             } as SkillItem)
         );
-        setUserSkills(mapped);
+        if (mounted) setUserSkills(mapped);
       } catch (err) {
         console.error("Error loading skills", err);
       }
     };
 
-    fetchSkills();
+    loadSkills();
+
+    return () => {
+      mounted = false;
+    };
   }, [user, loading]);
 
   const openEditDialog = (index: number) => {
@@ -191,6 +213,8 @@ const AddSkills = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
       const skill = userSkills[selectedSkillIndex];
+      if (isUpdating) return;
+      setIsUpdating(true);
       if (skill?.id && user) {
         try {
           const userCrud = crud.withUser(user.id);
@@ -202,6 +226,7 @@ const AddSkills = () => {
           );
           if (res.error) {
             alert("Error updating skill: " + res.error.message);
+            setIsUpdating(false);
             return;
           }
           const updatedRow = Array.isArray(res.data) ? res.data[0] : res.data;
@@ -220,12 +245,14 @@ const AddSkills = () => {
         } catch (err) {
           console.error(err);
           alert("Failed to update skill");
+          setIsUpdating(false);
         }
       } else {
         const updatedSkills = [...userSkills];
         updatedSkills[selectedSkillIndex].level = tempEditLevel;
         setUserSkills(updatedSkills);
       }
+      setIsUpdating(false);
       closeEditDialog();
     })();
   };
@@ -233,9 +260,14 @@ const AddSkills = () => {
   const handleDeleteSkill = () => {
     (async () => {
       if (selectedSkillIndex === null) return;
-      const skill = userSkills[selectedSkillIndex];
 
-      // ✅ Added confirmation before deleting
+      // Capture the index at the start of the operation so we don't
+      // accidentally remove the wrong item if the local array changes
+      // while awaiting the network operation.
+      const indexToDelete = selectedSkillIndex;
+      const skill = userSkills[indexToDelete];
+
+      // Confirmation before deleting
       const confirmDelete = window.confirm(
         `Are you sure you want to delete "${skill.name}"?`
       );
@@ -243,22 +275,75 @@ const AddSkills = () => {
 
       if (skill?.id && user) {
         try {
+          if (isUpdating) return;
+          setIsUpdating(true);
           const userCrud = crud.withUser(user.id);
           const res = await userCrud.deleteRow("skills", {
             eq: { id: skill.id },
           });
+          console.debug("deleteRow response:", res);
           if (res.error) {
             alert("Error deleting skill: " + res.error.message);
+            setIsUpdating(false);
             return;
           }
         } catch (err) {
           console.error(err);
           alert("Failed to delete skill");
+          setIsUpdating(false);
           return;
         }
       }
-      setUserSkills(userSkills.filter((_, i) => i !== selectedSkillIndex));
-      window.dispatchEvent(new CustomEvent("skills:changed"));
+      // Refresh from server when we have a logged-in user so the UI reflects
+      // the authoritative database state (and surfaces any RLS-related failures).
+      if (user) {
+        try {
+          const userCrud = crud.withUser(user.id);
+          const refetch = await userCrud.listRows(
+            "skills",
+            "id,skill_name,proficiency_level,skill_category",
+            { order: { column: "skill_name", ascending: true } }
+          );
+          console.debug("refetch after delete:", refetch);
+          if (!refetch.error) {
+            const rows = Array.isArray(refetch.data)
+              ? refetch.data
+              : refetch.data
+              ? [refetch.data]
+              : [];
+            type DbRow = {
+              id?: string;
+              skill_name?: string;
+              proficiency_level?: string;
+              skill_category?: string;
+            };
+            const mapped = (rows as DbRow[]).map(
+              (r) =>
+                ({
+                  id: r.id,
+                  name: r.skill_name ?? "",
+                  category: r.skill_category ?? "Technical",
+                  level: (r.proficiency_level ?? "beginner").replace(
+                    /^./,
+                    (c: string) => c.toUpperCase()
+                  ),
+                } as SkillItem)
+            );
+            setUserSkills(mapped);
+          }
+        } catch (err) {
+          console.error("Failed to refetch skills after delete", err);
+        }
+      } else {
+        // For unauthenticated/local mode just update client state
+        setUserSkills((prev) => prev.filter((_, i) => i !== indexToDelete));
+      }
+      try {
+        window.dispatchEvent(new CustomEvent("skills:changed"));
+      } catch {
+        /* noop */
+      }
+      setIsUpdating(false);
       closeEditDialog();
     })();
   };
@@ -287,16 +372,40 @@ const AddSkills = () => {
           p: 4,
         }}
       >
-        <Typography
-          variant="h4"
-          mb={4}
-          textAlign="center"
-          sx={{
-            fontWeight: 700,
-            color: (theme) => theme.palette.primary.main,
-          }}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
         >
-          Add Skills
+          <Typography
+            variant="h4"
+            textAlign="left"
+            sx={{
+              fontWeight: 700,
+              color: (theme) => theme.palette.primary.main,
+            }}
+          >
+            Add Skills
+          </Typography>
+
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/skillsOverview")}
+            aria-label="Back to skills overview"
+          >
+            Back
+          </Button>
+        </Stack>
+
+        <Typography
+          variant="body2"
+          mb={3}
+          textAlign="center"
+          color="text.secondary"
+        >
+          Click a skill to edit or remove it. You can also use keyboard
+          (Enter/Space) when focused.
         </Typography>
 
         <Stack
@@ -312,7 +421,9 @@ const AddSkills = () => {
             options={suggestedSkillList}
             value={selectedSkill}
             onChange={(_, newValue) => setSelectedSkill(newValue || "")}
-            onInputChange={(_, newInputValue) => setSelectedSkill(newInputValue)}
+            onInputChange={(_, newInputValue) =>
+              setSelectedSkill(newInputValue)
+            }
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -379,11 +490,21 @@ const AddSkills = () => {
         >
           {userSkills.map((skill, index) => (
             <Chip
-              key={index}
+              key={skill.id ?? `${skill.name}-${index}`}
               label={`${skill.name} — ${skill.level}`}
               color="primary"
               variant="outlined"
               onClick={() => openEditDialog(index)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Edit ${skill.name} skill`}
+              title={`Click to edit or remove ${skill.name}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openEditDialog(index);
+                }
+              }}
               sx={{
                 mb: 1.5,
                 fontSize: "0.95rem",
@@ -394,11 +515,16 @@ const AddSkills = () => {
           ))}
         </Stack>
 
-        <Dialog open={selectedSkillIndex !== null} onClose={closeEditDialog}>
-          <DialogTitle>Edit Skill</DialogTitle>
+        <Dialog
+          open={selectedSkillIndex !== null}
+          onClose={closeEditDialog}
+          aria-labelledby="edit-skill-title"
+        >
+          <DialogTitle id="edit-skill-title">Edit Skill</DialogTitle>
           <DialogContent>
             <Typography sx={{ mb: 2, fontWeight: 500 }}>
-              {selectedSkillIndex !== null && userSkills[selectedSkillIndex].name}
+              {selectedSkillIndex !== null &&
+                userSkills[selectedSkillIndex].name}
             </Typography>
 
             <FormControl fullWidth>
@@ -419,12 +545,17 @@ const AddSkills = () => {
 
           <DialogActions>
             <Button onClick={closeEditDialog}>Cancel</Button>
-            <Button color="error" onClick={handleDeleteSkill}>
+            <Button
+              color="error"
+              onClick={handleDeleteSkill}
+              disabled={isUpdating}
+            >
               Remove
             </Button>
             <Button
               variant="contained"
               onClick={handleUpdateLevel}
+              disabled={isUpdating}
               sx={{
                 backgroundColor: (theme) => theme.palette.primary.main,
                 ":hover": {
@@ -432,7 +563,7 @@ const AddSkills = () => {
                 },
               }}
             >
-              Save
+              {isUpdating ? "Saving..." : "Save"}
             </Button>
           </DialogActions>
         </Dialog>

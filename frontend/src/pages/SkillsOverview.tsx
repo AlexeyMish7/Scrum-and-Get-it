@@ -191,7 +191,7 @@ const SkillsOverview: React.FC = () => {
         sx={{ mb: 2 }}
         onClick={() => (window.location.href = "/skills/manage")}
       >
-        Add Skill
+        Manage skills
       </Button>
 
       <Typography variant="h2" mb={2}>
