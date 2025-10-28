@@ -44,6 +44,17 @@ type Category = {
   skills: Skill[];
 };
 
+// No fake/default categories — start empty and show a loading spinner while
+// the real user-scoped skills are being fetched. This prevents a flash of
+// placeholder data when switching pages.
+
+const levelLabels: Record<number, string> = {
+  1: "Beginner",
+  2: "Intermediate",
+  3: "Advanced",
+  4: "Expert",
+};
+
 const SkillsOverview: React.FC = () => {
   const { user, loading } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -276,7 +287,7 @@ const SkillsOverview: React.FC = () => {
                                 variant="caption"
                                 color="text.secondary"
                               >
-                                Level: {skill.level}
+                                Level: {levelLabels[skill.level] || "Unknown"}
                               </Typography>
                             </Box>
                           )}
