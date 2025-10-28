@@ -38,8 +38,6 @@ export interface Project {
   status: "Completed" | "Ongoing" | "Planned";
 }
 
-// dummyProjects is now provided from ../data/dummyProjects
-
 const ProjectPortfolio: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,14 +48,11 @@ const ProjectPortfolio: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  const navigate = useNavigate(); // added navigation
-
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  // Load projects from DB for the signed-in user; fall back to dummyProjects for guests
   useEffect(() => {
     let mounted = true;
-
     const load = async () => {
       if (loading) {
         setIsLoading(true);
@@ -128,7 +123,6 @@ const ProjectPortfolio: React.FC = () => {
     };
 
     load();
-
     const handler = () => void load();
     window.addEventListener("projects:changed", handler);
 
@@ -162,32 +156,26 @@ const ProjectPortfolio: React.FC = () => {
   if (loading || isLoading) return <LoadingSpinner />;
 
   const handlePrint = () => window.print();
-
   const handleCopyLink = (projectId: string) => {
     const url = `${window.location.origin}/projects/${projectId}`;
     navigator.clipboard.writeText(url);
     alert("Project link copied to clipboard!");
   };
-
-  // navigate to add project page
-  const handleAddProject = () => {
-    navigate("/add-projects");
-  };
+  const handleAddProject = () => navigate("/add-projects");
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h2" textAlign="center" mb={2}>
-        My Projects Portfolio
-      </Typography>
-
-      {/*Add Project Button */}
-      <Box textAlign="center" mb={4}>
+      {/* ✅ Add Project button top-left */}
+      <Box textAlign="left" mb={2}>
         <Button variant="contained" color="primary" onClick={handleAddProject}>
           Add Project
         </Button>
       </Box>
 
-      {/* Info Note */}
+      <Typography variant="h2" textAlign="center" mb={2}>
+        My Projects Portfolio
+      </Typography>
+
       <Typography
         variant="body2"
         color="text.secondary"
@@ -197,7 +185,7 @@ const ProjectPortfolio: React.FC = () => {
         Click on any project to view details and copy its shareable link.
       </Typography>
 
-      {/* Filters, search, and print button */}
+      {/* Filters, search, and print */}
       <Grid container spacing={2} mb={4} className="no-print">
         <Grid size={12}>
           <TextField
@@ -265,7 +253,7 @@ const ProjectPortfolio: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Project Cards */}
+      {/* Projects Grid */}
       <Grid container spacing={3}>
         {filteredProjects.map((project) => (
           <Grid size={12} key={project.id}>
@@ -333,7 +321,6 @@ const ProjectPortfolio: React.FC = () => {
             </Button>
           )}
 
-          {/* Copy Shareable Link */}
           <Tooltip title="Copy unique shareable URL for this project">
             <Button
               onClick={() => handleCopyLink(selectedProject!.id)}

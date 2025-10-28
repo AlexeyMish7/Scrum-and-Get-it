@@ -24,7 +24,7 @@ export default function EmploymentHistoryList() {
   const [editingEntry, setEditingEntry] = useState<EmploymentEntry | null>(
     null
   );
-  const navigate = useNavigate(); //
+  const navigate = useNavigate();
 
   const fetchEntries = useCallback(async () => {
     if (loading) {
@@ -96,7 +96,7 @@ export default function EmploymentHistoryList() {
         alert("Something went wrong. Please try again.");
       } else {
         alert("Employment entry deleted successfully!");
-        fetchEntries(); // refresh list immediately
+        fetchEntries();
       }
     } catch (e) {
       console.error("Delete failed", e);
@@ -106,16 +106,8 @@ export default function EmploymentHistoryList() {
 
   return (
     <div className="p-6">
-      {/* ✅ Header + Add Button Row */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
-        <Typography variant="h2" gutterBottom>
-          Employment History
-        </Typography>
+      {/* ✅ Add Employment button top-left */}
+      <Box display="flex" justifyContent="flex-start" mb={2}>
         <Button
           variant="contained"
           color="primary"
@@ -124,6 +116,10 @@ export default function EmploymentHistoryList() {
           Add Employment
         </Button>
       </Box>
+
+      <Typography variant="h2" gutterBottom>
+        Employment History
+      </Typography>
 
       {entries.length === 0 && (
         <Typography variant="body1">No employment entries yet.</Typography>
@@ -157,7 +153,6 @@ export default function EmploymentHistoryList() {
                   Edit
                 </Button>
 
-                {/* Only show delete if more than one entry */}
                 {entries.length > 1 && (
                   <Button
                     variant="text"
