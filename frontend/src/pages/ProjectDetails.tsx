@@ -37,24 +37,54 @@ const ProjectDetails: React.FC = () => {
           return;
         }
         const r = res.data as Record<string, unknown>;
+        // Helper to handle different column naming conventions across queries
+        const firstString = (keys: string[]) => {
+          for (const k of keys) {
+            const v = r[k];
+            if (typeof v === "string") return v;
+            if (Array.isArray(v)) return v.join(", ");
+            if (v !== undefined && v !== null) return String(v);
+          }
+          return "";
+        };
+
         setProject({
-          id: String(r.id ?? ""),
-          projectName: String(r.project_name ?? ""),
-          description: String(r.description ?? ""),
-          role: String(r.role ?? ""),
-          startDate: String(r.start_date ?? ""),
-          endDate: String(r.end_date ?? ""),
-          technologies: String(r.technologies ?? ""),
+          id: firstString(["id", "project_id"]),
+          projectName: firstString([
+            "proj_name",
+            "project_name",
+            "proj_title",
+            "name",
+          ]),
+          description: firstString([
+            "proj_description",
+            "description",
+            "proj_desc",
+          ]),
+          role: firstString(["role"]),
+          startDate: firstString([
+            "start_date",
+            "proj_start_date",
+            "date_start",
+          ]),
+          endDate: firstString(["end_date", "proj_end_date", "date_end"]),
+          technologies: firstString([
+            "tech_and_skills",
+            "technologies",
+            "techs",
+          ]),
           projectUrl:
-            typeof r.project_url === "string"
-              ? (r.project_url as string)
+            typeof r["project_url"] === "string"
+              ? (r["project_url"] as string)
+              : typeof r["projecturl"] === "string"
+              ? (r["projecturl"] as string)
               : undefined,
-          teamSize: String(r.team_size ?? ""),
-          outcomes: String(r.outcomes ?? ""),
-          industry: String(r.industry ?? ""),
+          teamSize: firstString(["team_size", "team"]),
+          outcomes: firstString(["proj_outcomes", "outcomes"]),
+          industry: firstString(["industry_proj_type", "industry"]),
           status:
-            typeof r.status === "string"
-              ? (r.status as "Completed" | "Ongoing" | "Planned")
+            typeof r["status"] === "string"
+              ? (r["status"] as "Completed" | "Ongoing" | "Planned")
               : "Planned",
         });
       } catch (err) {
