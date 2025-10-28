@@ -72,6 +72,7 @@ const ProfilePicture: React.FC = () => {
     let mounted = true;
     const load = async () => {
       if (!user || authLoading) return;
+
       // read profile meta to find avatar path
       const res = await crud.getUserProfile(user.id);
       if (res.error) return;
@@ -85,33 +86,37 @@ const ProfilePicture: React.FC = () => {
       const avatar_bucket = meta?.avatar_bucket ?? BUCKET;
       if (!mounted) return;
       setMetaPath(avatar_path);
-      if (avatar_path) {
-        try {
-          // Try a cached signed URL first to avoid reloads on route changes
-          const cacheKey = `avatar:${avatar_bucket}:${avatar_path}`;
-          const raw = localStorage.getItem(cacheKey);
-          if (raw) {
-            try {
-              const parsed = JSON.parse(raw) as {
-                url: string;
-                expiresAt: number;
-              };
-              if (Date.now() < parsed.expiresAt - 10_000) {
-                setAvatarUrl(parsed.url);
-                return;
-              }
-              localStorage.removeItem(cacheKey);
-            } catch {
-              localStorage.removeItem(cacheKey);
-            }
-          }
 
-          // create signed url for display (expires in 1 hour)
-          const { data, error } = await supabase.storage
-            .from(avatar_bucket)
-            .createSignedUrl(avatar_path, 60 * 60);
-          if (error) throw error;
-          const signed = data.signedUrl ?? null;
+      if (!avatar_path) {
+        setAvatarUrl(null);
+        return;
+      }
+
+      try {
+        const cacheKey = `avatar:${avatar_bucket}:${avatar_path}`;
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw) as {
+              url: string;
+              expiresAt: number;
+            };
+            if (Date.now() < parsed.expiresAt - 10_000) {
+              if (mounted) setAvatarUrl(parsed.url);
+              return;
+            }
+            localStorage.removeItem(cacheKey);
+          } catch {
+            localStorage.removeItem(cacheKey);
+          }
+        }
+
+        const { data, error } = await supabase.storage
+          .from(avatar_bucket)
+          .createSignedUrl(avatar_path, 60 * 60);
+        if (error) throw error;
+        const signed = data.signedUrl ?? null;
+        if (mounted) {
           setAvatarUrl(signed);
           if (signed) {
             try {
@@ -126,19 +131,35 @@ const ProfilePicture: React.FC = () => {
               /* ignore */
             }
           }
-        } catch (err) {
-          console.warn("Failed to load avatar", err);
-          setAvatarUrl(null);
         }
-      } else {
-        setAvatarUrl(null);
+      } catch (err) {
+        console.warn("Failed to load avatar", err);
+        if (mounted) setAvatarUrl(null);
       }
     };
+
     load();
     return () => {
       mounted = false;
     };
   }, [user, authLoading]);
+
+  // Revoke object URLs for pending previews when pendingFile changes or on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (
+          pendingFile &&
+          pendingFile.preview &&
+          pendingFile.preview.startsWith("blob:")
+        ) {
+          URL.revokeObjectURL(pendingFile.preview);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [pendingFile]);
 
   if (!user) return null;
 
@@ -159,9 +180,15 @@ const ProfilePicture: React.FC = () => {
     setProcessing(true);
     setProgress(5);
 
+    let createdPreview: string | null = null;
     try {
-      // preview stage (fast)
-      const previewUrl = URL.createObjectURL(file);
+      // preview stage (fast) - reuse pending preview if available
+      const previewUrl =
+        pendingFile && pendingFile.file === file
+          ? pendingFile.preview
+          : URL.createObjectURL(file);
+      if (previewUrl && (!pendingFile || pendingFile.file !== file))
+        createdPreview = previewUrl;
       setAvatarUrl(previewUrl);
       setProgress(20);
 
@@ -223,6 +250,26 @@ const ProfilePicture: React.FC = () => {
               expiresAt: Date.now() + 60 * 60 * 1000,
             })
           );
+        } catch {
+          /* ignore */
+        }
+      }
+      // clear pending preview and revoke any created blob URL
+      try {
+        if (
+          pendingFile &&
+          pendingFile.preview &&
+          pendingFile.preview.startsWith("blob:")
+        ) {
+          URL.revokeObjectURL(pendingFile.preview);
+        }
+      } catch {
+        /* ignore */
+      }
+      setPendingFile(null);
+      if (createdPreview && createdPreview.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(createdPreview);
         } catch {
           /* ignore */
         }

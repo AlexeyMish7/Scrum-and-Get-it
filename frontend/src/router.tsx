@@ -75,41 +75,51 @@ export const router = createBrowserRouter([
   {
     path: "/employment-history",
     element: (
-      <MainLayout>
-        <EmploymentHistoryList />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <EmploymentHistoryList />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/portfolio",
     element: (
-      <MainLayout>
-        <ProjectPortfolio />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <ProjectPortfolio />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/certifications",
     element: (
-      <MainLayout>
-        <Certifications />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <Certifications />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/profile-details",
     element: (
-      <MainLayout>
-        <ProfileDetails />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <ProfileDetails />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: "/settings",
     element: (
-      <MainLayout>
-        <Settings />
-      </MainLayout>
+      <ProtectedRoute>
+        <MainLayout>
+          <Settings />
+        </MainLayout>
+      </ProtectedRoute>
     ),
   },
   { path: "/add-projects", element: <AddProjectForm /> },

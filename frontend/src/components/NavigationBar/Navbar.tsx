@@ -33,14 +33,32 @@ const NavBar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    // Try to synchronously read any valid cached avatar signed URL so the
-    // avatar image can render immediately on mount and avoid a flash from
-    // initials -> image when navigating between routes.
+    // If there's no user yet, there's nothing to restore synchronously.
     try {
+      if (!window) return null;
+    } catch {
+      return null;
+    }
+    try {
+      // Use user id to avoid returning another user's cached avatar.
+      // Keys are stored as `avatar:<bucket>:<path>` where <path> begins with user id.
+      // Try to find the current user id in a global place if the app sets it
+      // (this is optional and only used to narrow the cache lookup). Fallback
+      // to null which will allow a looser cache match that still filters by
+      // key contents.
+      let uid: string | null = null;
+      try {
+        const maybe = window as unknown as Record<string, unknown>;
+        const v = maybe.__CURRENT_USER_ID;
+        if (typeof v === "string") uid = v;
+      } catch {
+        uid = null;
+      }
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (!key) continue;
         if (!key.startsWith("avatar:")) continue;
+        if (uid && !key.includes(`:${uid}`)) continue; // skip other users' avatars
         const raw = localStorage.getItem(key);
         if (!raw) continue;
         try {
