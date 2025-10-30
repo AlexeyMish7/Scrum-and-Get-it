@@ -1,29 +1,29 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import Register from "./pages/Register";
-import ProfilePage from "./pages/ProfilePage";
-import EducationOverview from "./pages/EducationOverview";
-import Certifications from "./pages/Certifications";
-import AddSkills from "./pages/AddSkills";
-import SkillsOverview from "./pages/SkillsOverview";
-import Login from "./pages/Login";
+import Register from "./pages/auth/Register";
+import ProfilePage from "./pages/profile/ProfilePage";
+import EducationOverview from "./pages/education/EducationOverview";
+import Certifications from "./pages/certifications/Certifications";
+import AddSkills from "./pages/skills/AddSkills";
+import SkillsOverview from "./pages/skills/SkillsOverview";
+import Login from "./pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
-import AddEducation from "./pages/AddEducation";
-import ForgotPassword from "./pages/ForgetPassword";
-import ResetPassword from "./pages/ResetPassword";
-import HomePage from "./pages/HomePage";
-import AuthCallback from "./pages/AuthCallback";
+import AddEducation from "./pages/education/AddEducation";
+import ForgotPassword from "./pages/auth/ForgetPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+import HomePage from "./pages/home/HomePage";
+import AuthCallback from "./pages/auth/AuthCallback";
 
-import ProtectedRoute from "./components/ProtectedRoute";
-import AddEmployment from "./pages/AddEmployment";
-import EmploymentHistoryList from "./pages/EmployementHistoryList";
-import AddProjectForm from "./pages/AddProjectForm";
-import ProjectPortfolio from "./pages/ProjectPortfolio";
-import ProjectDetails from "./pages/ProjectDetails";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import AddEmployment from "./pages/employment/AddEmployment";
+import EmploymentHistoryList from "./pages/employment/EmploymentHistoryList";
+import AddProjectForm from "./pages/projects/AddProjectForm";
+import ProjectPortfolio from "./pages/projects/ProjectPortfolio";
+import ProjectDetails from "./pages/projects/ProjectDetails";
 //import NavBar from "./components/NavigationBar/Navbar";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
-import ProfileDetails from "./pages/ProfileDetails";
-import MainLayout from "./components/NavigationBar/MainLayout";
-import Settings from "./pages/Settings";
+import ProfileDetails from "./pages/profile/ProfileDetails";
+import MainLayout from "./components/navigation/MainLayout";
+import Settings from "./pages/profile/Settings";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },

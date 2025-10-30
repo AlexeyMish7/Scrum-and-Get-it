@@ -1,21 +1,21 @@
-import { createTheme, responsiveFontSizes } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from "@mui/material/styles";
 
 // 👉 Module augmentation to let MUI know about @mui/lab's LoadingButton
-declare module '@mui/material/styles' {
+declare module "@mui/material/styles" {
   interface Components {
-    MuiLoadingButton?: any;
+    MuiLoadingButton?: unknown;
   }
 }
 
 // 👉 Module augmentation for custom button variants on <Button> and <LoadingButton>
-declare module '@mui/material/Button' {
+declare module "@mui/material/Button" {
   interface ButtonPropsVariantOverrides {
     primary: true;
     secondary: true;
     tertiary: true;
   }
 }
-declare module '@mui/lab/LoadingButton' {
+declare module "@mui/lab/LoadingButton" {
   interface LoadingButtonPropsVariantOverrides {
     primary: true;
     secondary: true;
@@ -26,37 +26,37 @@ declare module '@mui/lab/LoadingButton' {
 let theme = createTheme({
   palette: {
     primary: {
-      main: '#1976D2', // Blue
-      light: '#63A4FF',
-      dark: '#004BA0',
-      contrastText: '#FFFFFF',
+      main: "#1976D2", // Blue
+      light: "#63A4FF",
+      dark: "#004BA0",
+      contrastText: "#FFFFFF",
     },
     secondary: {
-      main: '#FF5722',
+      main: "#FF5722",
     },
     success: {
-      main: '#4CAF50',
-      contrastText: '#FFFFFF',
+      main: "#4CAF50",
+      contrastText: "#FFFFFF",
     },
     warning: {
-      main: '#FFC107',
-      contrastText: '#000000',
+      main: "#FFC107",
+      contrastText: "#000000",
     },
     error: {
-      main: '#F44336',
-      contrastText: '#FFFFFF',
+      main: "#F44336",
+      contrastText: "#FFFFFF",
     },
     info: {
-      main: '#2196F3',
-      contrastText: '#FFFFFF',
+      main: "#2196F3",
+      contrastText: "#FFFFFF",
     },
     background: {
-      default: '#F8F9FA',
-      paper: '#FFFFFF',
+      default: "#F8F9FA",
+      paper: "#FFFFFF",
     },
     text: {
-      primary: '#212529',
-      secondary: '#6C757D',
+      primary: "#212529",
+      secondary: "#6C757D",
     },
   },
 
@@ -128,40 +128,40 @@ let theme = createTheme({
     // ✅ GLOBAL resets, page layout, responsive typography + padding
     MuiCssBaseline: {
       styleOverrides: (themeParam) => ({
-        "h1": { ...themeParam.typography.h1 },
-        "h2": { ...themeParam.typography.h2 },
-        "h3": { ...themeParam.typography.h3 },
-        "h4": { ...themeParam.typography.h4 },
-        "h5": { ...themeParam.typography.h5 },
-        "h6": { ...themeParam.typography.h6 },
-        "p": { ...themeParam.typography.body1 },
+        h1: { ...themeParam.typography.h1 },
+        h2: { ...themeParam.typography.h2 },
+        h3: { ...themeParam.typography.h3 },
+        h4: { ...themeParam.typography.h4 },
+        h5: { ...themeParam.typography.h5 },
+        h6: { ...themeParam.typography.h6 },
+        p: { ...themeParam.typography.body1 },
 
         // ✅ Base universal page layout adjustments
         body: {
           margin: 0,
           padding: 0,
-          backgroundColor: '#F8F9FA',
+          backgroundColor: "#F8F9FA",
           fontFamily: "'Inter', sans-serif",
-          overflowX: 'hidden', // prevent horizontal scrolling on small screens
+          overflowX: "hidden", // prevent horizontal scrolling on small screens
         },
-        '#root': {
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
-          boxSizing: 'border-box',
-          padding: '0 5px 24px 5px', // ⬅ removes top padding
-          '@media (min-width:900px)': { padding: '0 5px 32px 5px' },
+        "#root": {
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          boxSizing: "border-box",
+          padding: "0 5px 24px 5px", // ⬅ removes top padding
+          "@media (min-width:900px)": { padding: "0 5px 32px 5px" },
         },
         button: {
-          minHeight: '48px',
-          minWidth: '48px', // ensure touch accessibility
+          minHeight: "48px",
+          minWidth: "48px", // ensure touch accessibility
         },
         input: {
-          fontSize: '16px', // prevent zoom on iOS
-          boxSizing: 'border-box',
+          fontSize: "16px", // prevent zoom on iOS
+          boxSizing: "border-box",
         },
         textarea: {
-          fontSize: '16px',
+          fontSize: "16px",
         },
       }),
     },
@@ -170,45 +170,45 @@ let theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none',
+          textTransform: "none",
           borderRadius: 8,
           fontWeight: 500,
-          transition: 'background-color 0.2s, box-shadow 0.2s',
-          '&:active': {
-            transform: 'scale(0.98)',
+          transition: "background-color 0.2s, box-shadow 0.2s",
+          "&:active": {
+            transform: "scale(0.98)",
           },
         },
-        sizeSmall: { padding: '4px 12px', fontSize: '0.8rem' },
-        sizeMedium: { padding: '6px 16px', fontSize: '0.9rem' },
-        sizeLarge: { padding: '8px 20px', fontSize: '1rem' },
+        sizeSmall: { padding: "4px 12px", fontSize: "0.8rem" },
+        sizeMedium: { padding: "6px 16px", fontSize: "0.9rem" },
+        sizeLarge: { padding: "8px 20px", fontSize: "1rem" },
       },
       variants: [
         {
-          props: { variant: 'primary' },
+          props: { variant: "primary" },
           style: {
-            backgroundColor: '#1976D2',
-            color: '#FFFFFF',
-            '&:hover': { backgroundColor: '#1565C0' },
-            '&:disabled': { backgroundColor: '#90CAF9', color: '#FFFFFF' },
+            backgroundColor: "#1976D2",
+            color: "#FFFFFF",
+            "&:hover": { backgroundColor: "#1565C0" },
+            "&:disabled": { backgroundColor: "#90CAF9", color: "#FFFFFF" },
           },
         },
         {
-          props: { variant: 'secondary' },
+          props: { variant: "secondary" },
           style: {
-            backgroundColor: '#E0E0E0',
-            color: '#212529',
-            '&:hover': { backgroundColor: '#BDBDBD' },
-            '&:disabled': { backgroundColor: '#EEEEEE', color: '#9E9E9E' },
+            backgroundColor: "#E0E0E0",
+            color: "#212529",
+            "&:hover": { backgroundColor: "#BDBDBD" },
+            "&:disabled": { backgroundColor: "#EEEEEE", color: "#9E9E9E" },
           },
         },
         {
-          props: { variant: 'tertiary' },
+          props: { variant: "tertiary" },
           style: {
-            border: '1px solid #1976D2',
-            color: '#1976D2',
-            backgroundColor: 'transparent',
-            '&:hover': { backgroundColor: '#E3F2FD' },
-            '&:disabled': { color: '#90CAF9', borderColor: '#90CAF9' },
+            border: "1px solid #1976D2",
+            color: "#1976D2",
+            backgroundColor: "transparent",
+            "&:hover": { backgroundColor: "#E3F2FD" },
+            "&:disabled": { color: "#90CAF9", borderColor: "#90CAF9" },
           },
         },
       ],
@@ -219,39 +219,39 @@ let theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          textTransform: 'none',
+          textTransform: "none",
           fontWeight: 500,
-          '&.Mui-disabled': { opacity: 0.6 },
-          '&:active': { transform: 'scale(0.98)' },
+          "&.Mui-disabled": { opacity: 0.6 },
+          "&:active": { transform: "scale(0.98)" },
         },
       },
       variants: [
         {
-          props: { variant: 'primary' },
+          props: { variant: "primary" },
           style: {
-            backgroundColor: '#1976D2',
-            color: '#FFFFFF',
-            '&:hover': { backgroundColor: '#1565C0' },
-            '&:disabled': { backgroundColor: '#90CAF9', color: '#FFFFFF' },
+            backgroundColor: "#1976D2",
+            color: "#FFFFFF",
+            "&:hover": { backgroundColor: "#1565C0" },
+            "&:disabled": { backgroundColor: "#90CAF9", color: "#FFFFFF" },
           },
         },
         {
-          props: { variant: 'secondary' },
+          props: { variant: "secondary" },
           style: {
-            backgroundColor: '#E0E0E0',
-            color: '#212529',
-            '&:hover': { backgroundColor: '#BDBDBD' },
-            '&:disabled': { backgroundColor: '#EEEEEE', color: '#9E9E9E' },
+            backgroundColor: "#E0E0E0",
+            color: "#212529",
+            "&:hover": { backgroundColor: "#BDBDBD" },
+            "&:disabled": { backgroundColor: "#EEEEEE", color: "#9E9E9E" },
           },
         },
         {
-          props: { variant: 'tertiary' },
+          props: { variant: "tertiary" },
           style: {
-            border: '1px solid #1976D2',
-            color: '#1976D2',
-            backgroundColor: 'transparent',
-            '&:hover': { backgroundColor: '#E3F2FD' },
-            '&:disabled': { color: '#90CAF9', borderColor: '#90CAF9' },
+            border: "1px solid #1976D2",
+            color: "#1976D2",
+            backgroundColor: "transparent",
+            "&:hover": { backgroundColor: "#E3F2FD" },
+            "&:disabled": { color: "#90CAF9", borderColor: "#90CAF9" },
           },
         },
       ],
@@ -261,18 +261,21 @@ let theme = createTheme({
     MuiTextField: {
       styleOverrides: {
         root: {
-          '& .MuiOutlinedInput-root': {
+          "& .MuiOutlinedInput-root": {
             borderRadius: 8,
-            backgroundColor: '#FFFFFF',
-            '&:hover fieldset': { borderColor: '#1976D2' },
-            '&.Mui-focused fieldset': { borderColor: '#1976D2', borderWidth: 2 },
-            '&.Mui-error fieldset': { borderColor: '#F44336' },
+            backgroundColor: "#FFFFFF",
+            "&:hover fieldset": { borderColor: "#1976D2" },
+            "&.Mui-focused fieldset": {
+              borderColor: "#1976D2",
+              borderWidth: 2,
+            },
+            "&.Mui-error fieldset": { borderColor: "#F44336" },
           },
-          '& .MuiFormHelperText-root.Mui-error': {
-            color: '#F44336',
+          "& .MuiFormHelperText-root.Mui-error": {
+            color: "#F44336",
           },
-          '& .MuiInputLabel-root.Mui-focused': {
-            color: '#1976D2',
+          "& .MuiInputLabel-root.Mui-focused": {
+            color: "#1976D2",
           },
         },
       },
