@@ -23,10 +23,14 @@ const ProjectDetails: React.FC = () => {
 
       try {
         const userCrud = crud.withUser(user.id);
-        const res = await userCrud.getRow("projects", "*", {
-          eq: { id: id as string },
-          single: true,
-        });
+        const res = await userCrud.getRow<Record<string, unknown>>(
+          "projects",
+          "*",
+          {
+            eq: { id: id as string },
+            single: true,
+          }
+        );
         if (!mounted) return;
         if (res.error || !res.data) {
           // no data found

@@ -55,7 +55,7 @@ const ProjectPortfolio: React.FC = () => {
       setIsLoading(true);
       try {
         const userCrud = crud.withUser(user.id);
-        const res = await userCrud.listRows(
+        const res = await userCrud.listRows<Record<string, unknown>>(
           "projects",
           "id,proj_name,proj_description,role,start_date,end_date,tech_and_skills,project_url,team_size,proj_outcomes,industry_proj_type,status,media_path",
           { order: { column: "start_date", ascending: false } }
