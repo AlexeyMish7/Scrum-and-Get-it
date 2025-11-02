@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/add-projects",
+    path: "/projects/new",
     element: (
       <ProtectedRoute>
         <MainLayout>
@@ -169,6 +169,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <MainLayout>
           <ProjectDetails />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/projects/:id/edit",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddProjectForm />
         </MainLayout>
       </ProtectedRoute>
     ),
