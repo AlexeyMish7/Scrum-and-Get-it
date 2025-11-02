@@ -1,0 +1,71 @@
+/* Styles for the Employment pages (shared across list, add and edit fragments)
+   - Keep class names semantic and small so they are easy to adjust during restyling.
+   - Avoid inline sx props; theme-aware colors are applied by using MUI Paper
+     background where appropriate. */
+
+.employment-container {
+  padding: 24px;
+}
+
+.employment-top {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.employment-title {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.employment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: block;
+}
+
+.employment-item {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 120ms ease-in-out;
+}
+.employment-item:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.employment-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.employment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.employment-description {
+  margin-top: 8px;
+}
+
+.employment-form-paper {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.employment-form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.employment-form-fields > .MuiFormControl-root {
+  width: 100%;
+}

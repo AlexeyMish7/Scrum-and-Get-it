@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { CrudError } from "../services/types";
 
 // Types for our centralized error handling
@@ -21,58 +21,84 @@ export const useErrorHandler = () => {
   });
 
   // Close the notification
-  const closeNotification = () => {
+  const closeNotification = useCallback(() => {
     setNotification((prev) => ({ ...prev, open: false }));
-  };
+  }, []);
 
   // Show a notification with custom message and severity
-  const showNotification = (
-    message: string,
-    severity: ErrorSeverity = "info",
-    autoHideDuration: number = 4000
-  ) => {
-    setNotification({
-      open: true,
-      message,
-      severity,
-      autoHideDuration,
-    });
-  };
+  const showNotification = useCallback(
+    (
+      message: string,
+      severity: ErrorSeverity = "info",
+      autoHideDuration: number = 4000
+    ) => {
+      setNotification({
+        open: true,
+        message,
+        severity,
+        autoHideDuration,
+      });
+    },
+    []
+  );
 
   // Handle errors and convert them to user-friendly messages
-  const handleError = (
-    error: CrudError | unknown,
-    customMessage?: string,
-    severity: ErrorSeverity = "error"
-  ) => {
-    const message = customMessage || getErrorMessage(error);
-    showNotification(message, severity);
-  };
+  const handleError = useCallback(
+    (
+      error: CrudError | unknown,
+      customMessage?: string,
+      severity: ErrorSeverity = "error"
+    ) => {
+      const message = customMessage || getErrorMessage(error);
+      showNotification(message, severity);
+    },
+    [showNotification]
+  );
 
   // Handle success messages
-  const showSuccess = (message: string, autoHideDuration?: number) => {
-    showNotification(message, "success", autoHideDuration);
-  };
+  const showSuccess = useCallback(
+    (message: string, autoHideDuration?: number) => {
+      showNotification(message, "success", autoHideDuration);
+    },
+    [showNotification]
+  );
 
   // Handle warning messages
-  const showWarning = (message: string, autoHideDuration?: number) => {
-    showNotification(message, "warning", autoHideDuration);
-  };
+  const showWarning = useCallback(
+    (message: string, autoHideDuration?: number) => {
+      showNotification(message, "warning", autoHideDuration);
+    },
+    [showNotification]
+  );
 
   // Handle info messages
-  const showInfo = (message: string, autoHideDuration?: number) => {
-    showNotification(message, "info", autoHideDuration);
-  };
+  const showInfo = useCallback(
+    (message: string, autoHideDuration?: number) => {
+      showNotification(message, "info", autoHideDuration);
+    },
+    [showNotification]
+  );
 
-  return {
-    notification,
-    closeNotification,
-    showNotification,
-    handleError,
-    showSuccess,
-    showWarning,
-    showInfo,
-  };
+  return useMemo(
+    () => ({
+      notification,
+      closeNotification,
+      showNotification,
+      handleError,
+      showSuccess,
+      showWarning,
+      showInfo,
+    }),
+    [
+      notification,
+      closeNotification,
+      showNotification,
+      handleError,
+      showSuccess,
+      showWarning,
+      showInfo,
+    ]
+  );
 };
 
 // Centralized error message processing function

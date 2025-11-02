@@ -1,211 +1,202 @@
-import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
-import * as crud from "../../services/crud";
-import {
-  Typography,
-  TextField,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  Box,
-} from "@mui/material";
+import { useState, useRef, useEffect } from "react";
+/*
+  EditEmploymentModal
+  -------------------
+  Purpose:
+  - A focused modal that allows the user to update a single employment entry.
+  - Focuses the first input when opened to improve keyboard accessibility.
+  - Performs the same validation rules as the Add form (required fields, date order).
 
-type EmploymentFormData = {
-  id?: string;
-  job_title?: string | null;
-  company_name?: string | null;
-  location?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  is_current?: boolean | null;
-  description?: string | null;
-};
+  Notification strategy:
+  - This modal does not show the success snackbar itself. Instead it updates
+    the parent list and uses navigation state to surface a centralized success
+    message on the Employment History page. This keeps all success notifications
+    visually consistent in one place.
+*/
+import type { RefObject } from "react";
+import { useAuth } from "../../context/AuthContext";
+import employmentService from "../../services/employment";
+import type { EmploymentFormData, EmploymentRow } from "../../types/employment";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from "@mui/material";
+import "./employment.css";
+import EmploymentForm from "./EmploymentForm";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface Props {
-  entry: EmploymentFormData;
+  entry: EmploymentRow;
   onClose: () => void;
+  // onSave: notify parent to refresh list (notifications are delivered via
+  // navigation state so they appear in the central list view).
   onSave: () => void;
 }
 
 export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<EmploymentFormData>(entry);
+  // Map incoming DB row (snake_case) into the UI form shape (camelCase)
+  const initialForm: EmploymentFormData = {
+    jobTitle: (entry.job_title as string) ?? "",
+    companyName: (entry.company_name as string) ?? "",
+    location: (entry.location as string) ?? "",
+    startDate: (entry.start_date as string) ?? "",
+    endDate: (entry.end_date as string) ?? "",
+    isCurrent: Boolean(entry.current_position),
+    description: (entry.job_description as string) ?? "",
+  };
+
+  const [formData, setFormData] = useState<EmploymentFormData>(initialForm);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof EmploymentFormData, string>>
+  >({});
+  const { handleError, notification, closeNotification } = useErrorHandler();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const firstFieldRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  useEffect(() => {
+    // Focus first input when dialog opens
+    firstFieldRef.current?.focus();
+  }, []);
+
+  const handleFieldChange = (
+    name: keyof EmploymentFormData,
+    val: string | boolean
   ) => {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
-    const name =
-      (target as HTMLInputElement).name || (target as HTMLTextAreaElement).name;
-    const value =
-      (target as HTMLInputElement).value ??
-      (target as HTMLTextAreaElement).value;
-    const type = (target as HTMLInputElement).type ?? "text";
-    const checked = (target as HTMLInputElement).checked;
-
-    setFormData((prev) => ({
-      ...(prev as EmploymentFormData),
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData((prev) => ({ ...(prev as EmploymentFormData), [name]: val }));
+    setErrors((prev) => ({ ...(prev || {}), [name]: undefined }));
   };
 
   const handleSave = async () => {
     setLoading(true);
-    setMessage("");
+    // clear handled by centralized snackbar
     try {
       if (!user) {
-        setMessage("Please sign in to save changes.");
+        handleError("Please sign in to save changes.");
         setLoading(false);
         return;
       }
-
-      const userCrud = crud.withUser(user.id);
-      const payload = {
-        job_title: formData.job_title,
-        company_name: formData.company_name,
-        location: formData.location,
-        start_date: formData.start_date,
-        end_date: formData.is_current ? null : formData.end_date,
-        current_position: formData.is_current,
-        job_description: formData.description,
-      };
 
       if (!entry.id) {
-        setMessage("Missing entry id. Cannot save changes.");
+        handleError("Missing entry id. Cannot save changes.");
         setLoading(false);
         return;
       }
 
-      const res = await userCrud.updateRow("employment", payload, {
-        eq: { id: entry.id },
-      });
+      // Basic validations: ensure required fields are present and dates make sense
+      const jobTitle = (formData.jobTitle ?? "").toString().trim();
+      const companyName = (formData.companyName ?? "").toString().trim();
+
+      const newErrors: Partial<Record<keyof EmploymentFormData, string>> = {};
+      if (!jobTitle) newErrors.jobTitle = "Required";
+      if (!companyName) newErrors.companyName = "Required";
+
+      const startDate = (
+        formData.startDate ??
+        entry.start_date ??
+        ""
+      ).toString();
+      if (!startDate) newErrors.startDate = "Required";
+
+      const endDateRaw = (formData.endDate ?? "").toString().trim();
+      const isCurrent = endDateRaw === "" ? true : Boolean(formData.isCurrent);
+      const endDate = isCurrent ? null : endDateRaw || null;
+
+      if (endDate && startDate && endDate < startDate)
+        newErrors.endDate = "End date must be the same or after start date";
+
+      if (Object.keys(newErrors).length > 0) {
+        // Show inline field errors and a friendly top-level message
+        setErrors(newErrors);
+        handleError("Please fix the highlighted fields.");
+        setLoading(false);
+        return;
+      }
+
+      // Build an explicit payload using DB column names (snake_case). Keep
+      // values explicit to avoid accidental partial updates — we always send
+      // the full shape expected by the backend.
+      const payload = {
+        job_title: jobTitle || (entry.job_title as string) || "",
+        company_name: companyName || (entry.company_name as string) || "",
+        location: formData.location ?? null,
+        start_date: startDate,
+        end_date: endDate,
+        current_position: isCurrent,
+        job_description: formData.description ?? null,
+      } as const;
+
+      // Perform the update and delegate notification display to the list via
+      // navigation state so users always see success messages in one place.
+      const res = await employmentService.updateEmployment(
+        user.id,
+        entry.id,
+        payload
+      );
       setLoading(false);
 
       if (res.error) {
         console.error(res.error);
-        setMessage("Something went wrong. Please try again.");
+        handleError(res.error);
       } else {
-        setMessage("Changes saved successfully!");
+        // Close modal and refresh parent list
         onSave();
+        // Use navigation state to surface a centralized success snackbar on the list page
+        navigate(location.pathname, {
+          replace: true,
+          state: { success: "Changes saved successfully!" },
+        });
       }
     } catch (e) {
       console.error(e);
-      setMessage("Something went wrong. Please try again.");
+      handleError(e);
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-      <Box className="bg-white p-6 rounded-lg shadow-lg w-[500px]">
-        <Typography variant="h5" gutterBottom>
-          Edit Employment
-        </Typography>
-
-        <TextField
-          name="job_title"
-          label="Job Title"
-          value={formData.job_title ?? ""}
-          onChange={handleChange}
-          fullWidth
-          margin="normal"
+    <Dialog
+      open
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="edit-employment-title"
+    >
+      <DialogTitle id="edit-employment-title">Edit Employment</DialogTitle>
+      <DialogContent dividers className="glossy-card">
+        <EmploymentForm
+          value={formData}
+          onFieldChange={handleFieldChange}
+          errors={errors}
+          firstFieldRef={firstFieldRef as RefObject<HTMLInputElement>}
         />
 
-        <TextField
-          name="company_name"
-          label="Company Name"
-          value={formData.company_name ?? ""}
-          onChange={handleChange}
-          fullWidth
-          margin="normal"
+        {/* Messages are surfaced via the centralized ErrorSnackbar */}
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
         />
-
-        <TextField
-          name="location"
-          label="Location"
-          value={formData.location ?? ""}
-          onChange={handleChange}
-          fullWidth
-          margin="normal"
-        />
-
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          Start Date:
-        </Typography>
-        <TextField
-          type="date"
-          name="start_date"
-          value={formData.start_date ?? ""}
-          onChange={handleChange}
-          fullWidth
-          margin="dense"
-          InputLabelProps={{ shrink: true }}
-        />
-
-        {!formData.is_current && (
-          <>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              End Date:
-            </Typography>
-            <TextField
-              type="date"
-              name="end_date"
-              value={formData.end_date ?? ""}
-              onChange={handleChange}
-              fullWidth
-              margin="dense"
-              InputLabelProps={{ shrink: true }}
-            />
-          </>
-        )}
-
-        <FormControlLabel
-          control={
-            <Checkbox
-              name="is_current"
-              checked={Boolean(formData.is_current)}
-              onChange={handleChange}
-              color="primary"
-            />
-          }
-          label="Current Position"
-          sx={{ mt: 1 }}
-        />
-
-        <TextField
-          name="description"
-          label="Job Description"
-          value={(formData.description as string) ?? ""}
-          onChange={handleChange}
-          multiline
-          rows={3}
-          fullWidth
-          margin="normal"
-          inputProps={{ maxLength: 1000 }}
-        />
-
-        {message && (
-          <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
-            {message}
-          </Typography>
-        )}
-
-        <Box className="flex justify-end gap-2 mt-3">
-          <Button variant="outlined" color="inherit" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            {loading ? "Saving..." : "Save Changes"}
-          </Button>
-        </Box>
-      </Box>
-    </div>
+      </DialogContent>
+      <DialogActions>
+        <Button variant="outlined" color="inherit" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          {loading ? "Saving..." : "Save Changes"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

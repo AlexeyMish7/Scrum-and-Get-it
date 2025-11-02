@@ -460,6 +460,20 @@ let theme = createTheme({
             padding: "0 8px",
             borderRadius: 4,
           },
+          // For date inputs the browser shows a native placeholder (eg. mm/dd/yyyy)
+          // which can visually clash with the floating label. Use the :has selector
+          // to detect TextFields that contain a date input and force the label to
+          // be in its floated/shrunk position so the native hint and label don't overlap.
+          // Note: :has is supported in modern browsers (Chromium, Safari, Edge). If
+          // you need to support very old browsers, we can fall back to setting
+          // InputLabelProps={{ shrink: true }} on individual date fields.
+          '&:has(input[type="date"]) .MuiInputLabel-root': {
+            transform: "translate(14px, -8px) scale(0.85)",
+            background: "rgba(255, 255, 255, 0.95)",
+            padding: "0 8px",
+            borderRadius: 4,
+            color: "#3b82f6",
+          },
         },
       },
     },
