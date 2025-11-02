@@ -363,6 +363,13 @@ export function withUser(userId?: string | null) {
     if (opts && typeof (opts as any).offset === "number")
       output.offset = (opts as any).offset;
 
+    // Preserve common additional filter types (in, neq, like, ilike) so
+    // callers can pass complex filters while still scoping by user_id.
+    if (opts && (opts as any).in) output.in = { ...(opts as any).in };
+    if (opts && (opts as any).neq) output.neq = { ...(opts as any).neq };
+    if (opts && (opts as any).like) output.like = { ...(opts as any).like };
+    if (opts && (opts as any).ilike) output.ilike = { ...(opts as any).ilike };
+
     // Return the final options object with user_id injected
     return output as ListOptions;
   }

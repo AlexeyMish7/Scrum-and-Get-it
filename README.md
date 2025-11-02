@@ -1,34 +1,59 @@
 # 🧠 ATS for Candidates
 
-*CS 490 Capstone Project – Fall 2025*
+_CS 490 Capstone Project – Fall 2025_
 
 > **Empowering job seekers with the same tools employers use.**
 > The ATS for Candidates platform provides job applicants with intelligent application tracking, AI-powered content generation, and organized career management—all in one place.
 
 ---
 
-## 🚀 Current Sprint – Sprint 1 (Fundamentals & Authentication)
+## 📚 **Documentation**
+
+> **🎯 [Complete Documentation Hub →](docs/README.md)**
+
+### **Quick Links**
+
+- 🚀 **[Setup Guide](docs/getting-started/setup.md)** - Get started developing
+- 🏗️ **[Architecture](docs/getting-started/architecture-overview.md)** - System design overview
+- 📝 **[Component Docs](docs/features/education/add-education-component.md)** - Example implementation
+- 🤖 **[AI Assistant Guide](docs/development/tools/copilot-instructions.md)** - Copilot context
+
+### **For Developers**
+
+- [Development Standards](docs/development/standards/documentation-standards.md)
+- [Branching Workflow](docs/development/workflow/branching.md)
+- [Error Handling System](docs/api/services/error-handling.md)
+
+### **For Project Management**
+
+- [Sprint 1 Requirements](docs/project-management/sprints/sprint1-prd.md)
+- [Current Tasks](docs/project-management/tasks/todo.md)
+
+---
+
+## Current Sprint – Sprint 1 (Fundamentals & Authentication)
 
 **Sprint Objective**
 Establish the foundational infrastructure for the ATS for Candidates platform by implementing:
 
-* Core authentication (Email/Password + Google OAuth)
-* Database architecture (PostgreSQL via Supabase)
-* Brand identity and design system foundation
-* Basic user profiles and document upload
+- Core authentication (Email/Password + Google OAuth)
+- Database architecture (PostgreSQL via Supabase)
+- Brand identity and design system foundation
+- Basic user profiles and document upload
 
 **Sprint Duration:** October 14 – October 28
 **Sprint 1 Demo:** October 28
 **Instructor:** Prof. Bill McCann
+
 ---
 
 ## 👥 Team Members
 
-* **Jane Kalla** (Product Manager)
-* **Alexey Mishin**
-* **Aliya Laliwala**
-* **Nafisa Ahmed**
-* **Nihaal Warraich**
+- **Jane Kalla** (Product Manager)
+- **Alexey Mishin**
+- **Aliya Laliwala**
+- **Nafisa Ahmed**
+- **Nihaal Warraich**
 
 ---
 
@@ -36,21 +61,21 @@ Establish the foundational infrastructure for the ATS for Candidates platform by
 
 ### **Frontend**
 
-* **React + TypeScript (via Vite)** – Modern component-based development
-* **Styling Framework (TBD)** – Options include Material UI, Chakra, or Tailwind CSS
+- **React + TypeScript (via Vite)** – Modern component-based development
+- **Styling Framework (TBD)** – Options include Material UI, Chakra, or Tailwind CSS
 
 ### **Backend / Infrastructure**
 
-* **Supabase (PostgreSQL + Auth + Storage)** – Backend-as-a-Service
-* **Supabase Auth** – Secure login with email/password and Google OAuth
-* **Supabase Storage** – Resume and document management
-* **Row-Level Security (RLS)** – Protects user-specific data access
+- **Supabase (PostgreSQL + Auth + Storage)** – Backend-as-a-Service
+- **Supabase Auth** – Secure login with email/password and Google OAuth
+- **Supabase Storage** – Resume and document management
+- **Row-Level Security (RLS)** – Protects user-specific data access
 
 ### **DevOps & Testing**
 
-* **GitHub Actions** – CI/CD pipeline for build and deployment
-* **Jest / Cypress (TBD)** – Unit and end-to-end testing
-* **ESLint + Prettier** – Code linting and formatting standards
+- **GitHub Actions** – CI/CD pipeline for build and deployment
+- **Jest / Cypress (TBD)** – Unit and end-to-end testing
+- **ESLint + Prettier** – Code linting and formatting standards
 
 ---
 
@@ -58,11 +83,16 @@ Establish the foundational infrastructure for the ATS for Candidates platform by
 
 ```
 Scrum-and-Get-it/
-├── frontend/         # React + Vite frontend
-├── docs/             # Documentation (Setup, Branching, PRD, etc.)
-│   ├── SETUP.md
-│   ├── BRANCHING.md
-└── README.md         # Project overview
+├── frontend/                    # React + Vite frontend
+├── docs/                        # Organized documentation
+│   ├── getting-started/         # Setup, architecture
+│   ├── development/             # Standards, workflow
+│   ├── features/                # Component documentation
+│   ├── api/                     # Service documentation
+│   ├── design/                  # Colors, themes
+│   └── project-management/      # Sprints, tasks
+├── db/                          # Database migrations
+└── README.md                    # Project overview
 ```
 
 ---
@@ -70,14 +100,14 @@ Scrum-and-Get-it/
 ## ⚙️ Setting Up the Project Locally
 
 To get the frontend running on your machine, follow the step-by-step setup guide in
-👉 **[`docs/SETUP.md`](./docs/SETUP.md)**
+👉 **[Setup Guide](docs/getting-started/setup.md)**
 
 That file includes:
 
-* Installing **nvm** (Node Version Manager)
-* Cloning the repo
-* Installing **Node.js v20.19.5** and matching **npm**
-* Running the frontend with **Vite**
+- Installing **nvm** (Node Version Manager)
+- Cloning the repo
+- Installing **Node.js v20.19.5** and matching **npm**
+- Running the frontend with **Vite**
 
 ---
 
@@ -85,7 +115,7 @@ That file includes:
 
 We use a **trunk-based branching model** for version control.
 Before creating or merging branches, review the full guide in
-👉 **[`docs/BRANCHING.md`](./docs/BRANCHING.md)**
+👉 **[Branching Workflow](docs/development/workflow/branching.md)**
 
 Example branch names:
 
@@ -110,10 +140,10 @@ docs/update-readme
 
 ## 🧠 Additional Resources
 
-* 🧩 **Project Kickoff Slides:** Overview of concept, goals, and sprints
-* 💛 **PRD:** Functional requirements for Sprint 1
-* 🌱 **Branching Guide:** For consistent GitHub workflow
-* 🧪 **Setup Guide:** For local environment installation
+- 🧩 **Project Kickoff Slides:** Overview of concept, goals, and sprints
+- 💛 **PRD:** Functional requirements for Sprint 1
+- 🌱 **Branching Guide:** For consistent GitHub workflow
+- 🧪 **Setup Guide:** For local environment installation
 
 ---
 
