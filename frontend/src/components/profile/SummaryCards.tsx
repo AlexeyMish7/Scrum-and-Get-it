@@ -114,10 +114,13 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           return;
         }
         setSubmitting(true);
+        // Map UI-friendly skill inputs to the DB shape expected by the
+        // shared mappers / AddSkills page. Note: proficiency_level is stored
+        // in the DB as a lowercase enum (beginner|intermediate|advanced|expert).
         const payload: Record<string, unknown> = {
-          name: skillName,
-          category: skillCategory,
-          proficiency_level: skillLevel,
+          skill_name: skillName,
+          skill_category: skillCategory,
+          proficiency_level: String(skillLevel).toLowerCase(),
         };
         await Promise.resolve(
           card.onAdd(
@@ -175,11 +178,9 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       setFormData({});
       setOpenDialog(null);
     } catch (e) {
+      // Log and surface errors using the shared error handler so messages are
+      // consistent across the app and map DB/Supabase errors to friendly text.
       console.error("Add handler failed", e);
-      // Use centralized error handler to show a snackbar
-      // Prefer showing the original error message when available so users
-      // see actionable feedback (e.g. "Skill name is required"). Other
-      // components call handleError(error) directly — follow same pattern.
       handleError(e);
     } finally {
       setSubmitting(false);
@@ -298,7 +299,8 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   const renderField = (field: FieldBase) => {
-    const isEndDate = field.name === "end_date" && formData["is_current"]; // hide End Date if Currently Enrolled
+    // If the user marked the entry as current, hide/disable the end date field
+    const isEndDate = field.name === "end_date" && formData["is_current"];
 
     const commonProps = {
       name: field.name,

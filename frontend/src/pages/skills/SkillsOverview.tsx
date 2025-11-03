@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { levelLabels, skillCategoryOptions } from "../../constants/skills";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import skillsService from "../../services/skills";
@@ -49,14 +50,8 @@ import "./SkillsOverview.css";
 // the real user-scoped skills are being fetched. This prevents a flash of
 // placeholder data when switching pages.
 
-// Friendly labels shown to users for numeric skill levels.
-// Kept as a small lookup so the UI reads nicely instead of raw numbers.
-const levelLabels: Record<number, string> = {
-  1: "Beginner",
-  2: "Intermediate",
-  3: "Advanced",
-  4: "Expert",
-};
+// Friendly labels shown to users for numeric skill levels are centralized
+// in src/constants/skills.ts so other components reuse the same labels.
 
 const SkillsOverview: React.FC = () => {
   const { user, loading } = useAuth();
@@ -178,62 +173,58 @@ const SkillsOverview: React.FC = () => {
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-
+    // Use draggableId (safer than relying on filtered lists) to find the moved item
     const { source, destination } = result;
-    // Use the filtered view to identify the moved skill id (handles active search)
-    const srcFilteredIdx = filteredCategories.findIndex(
-      (c) => c.id === source.droppableId
-    );
-    const dstFilteredIdx = filteredCategories.findIndex(
-      (c) => c.id === destination.droppableId
-    );
-    if (srcFilteredIdx < 0 || dstFilteredIdx < 0) return;
-
-    const movedSkill = filteredCategories[srcFilteredIdx].skills[source.index];
-    if (!movedSkill || !movedSkill.id) return;
+    const movedId = result.draggableId;
 
     // Disallow moving between categories. If the user dropped into a
     // different column, restore the layout we snapped at drag-start and
     // show a short error message explaining the rule.
     if (source.droppableId !== destination.droppableId) {
-      // rollback to the snapshot taken at drag start (if available)
       setCategories(
         preDragRef.current ??
           categories.map((c) => ({ ...c, skills: [...c.skills] }))
       );
-      // show a helpful error message via centralized handler
       handleErrorRef.current?.(
         "You can't move skills between categories — only the position within the same category matters."
       );
       preDragRef.current = null;
       return;
     }
+
     // Clone the current categories so we can compute the final ordering
     // and also keep a `prev` to restore if saving fails.
     const prev = categories.map((c) => ({ ...c, skills: [...c.skills] }));
-
     const full = prev.map((c) => ({ ...c, skills: [...c.skills] }));
 
-    const srcFullIdx = full.findIndex(
-      (c) => c.id === filteredCategories[srcFilteredIdx].id
-    );
-    const dstFullIdx = full.findIndex(
-      (c) => c.id === filteredCategories[dstFilteredIdx].id
-    );
+    const srcFullIdx = full.findIndex((c) => c.id === source.droppableId);
+    const dstFullIdx = full.findIndex((c) => c.id === destination.droppableId);
     if (srcFullIdx < 0 || dstFullIdx < 0) return;
+
+    // Find the moved skill object in the source full list by id
+    const movedSkill = full[srcFullIdx].skills.find((s) => s.id === movedId);
+    if (!movedSkill) return;
+
+    // To compute a stable insertion index we capture the destination's
+    // visible IDs BEFORE removing the moved item. This avoids off-by-one
+    // issues when the item is moved within the same list and elements
+    // shift during removal.
+    const destIdsBefore = full[dstFullIdx].skills.map((s) => s.id);
 
     // Remove the moved skill from the source list (by id) before inserting
     full[srcFullIdx].skills = full[srcFullIdx].skills.filter(
       (s) => s.id !== movedSkill.id
     );
 
-    // Compute insertion index in destination full list using filtered dest mapping
-    const filteredDest = filteredCategories[dstFilteredIdx];
+    // Compute insertion index in destination full list robustly.
+    // If the destination index is beyond visible items, append. Otherwise
+    // map the anchor id from the visible list to its index in the full list
+    // after removal.
     let insertIndex = full[dstFullIdx].skills.length;
-    if (destination.index < filteredDest.skills.length) {
-      const anchor = filteredDest.skills[destination.index];
+    if (destination.index < destIdsBefore.length) {
+      const anchorId = destIdsBefore[destination.index];
       const anchorIdx = full[dstFullIdx].skills.findIndex(
-        (s) => s.id === anchor.id
+        (s) => s.id === anchorId
       );
       insertIndex = anchorIdx >= 0 ? anchorIdx : full[dstFullIdx].skills.length;
     }
@@ -295,6 +286,95 @@ const SkillsOverview: React.FC = () => {
         // On success show a brief confirmation and notify other pages
         showSuccess("Skill order saved");
         window.dispatchEvent(new CustomEvent("skills:changed"));
+
+        // If the batch update returned authoritative updated rows, merge
+        // them into the local categories state to avoid an extra refetch.
+        try {
+          const updatedRows = (batchRes.data as SkillItem[]) ?? [];
+          if (updatedRows.length > 0) {
+            // Build a map of category buckets using the shared category list
+            const byCategory: Record<string, Skill[]> = {};
+            skillCategoryOptions.forEach((c) => (byCategory[c] = []));
+
+            const enumToNum: Record<string, number> = {
+              beginner: 1,
+              intermediate: 2,
+              advanced: 3,
+              expert: 4,
+            };
+
+            // Start with a fresh population: include existing skills that
+            // were NOT part of the update, and then place updated rows at
+            // their new positions. This avoids duplicates or stale entries.
+            const updatedIds = new Set(updatedRows.map((r) => r.id));
+
+            // Add existing non-updated skills into their current buckets
+            categories.forEach((cat) => {
+              cat.skills.forEach((s) => {
+                if (!updatedIds.has(s.id)) {
+                  byCategory[cat.name] = byCategory[cat.name] || [];
+                  byCategory[cat.name].push(s);
+                }
+              });
+            });
+
+            // Insert updated rows into their declared category/position
+            updatedRows.forEach((r) => {
+              const alt = r as unknown as Record<string, unknown>;
+              const cat =
+                r.category ??
+                (typeof alt.skill_category === "string"
+                  ? (alt.skill_category as string)
+                  : undefined) ??
+                "Technical";
+              const name =
+                r.name ??
+                (typeof alt.skill_name === "string"
+                  ? (alt.skill_name as string)
+                  : undefined) ??
+                "Unnamed";
+              const rawLevel = r.level ?? "beginner";
+              const lvlStr =
+                typeof rawLevel === "string" ? rawLevel : String(rawLevel);
+              const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
+              const skill: Skill = {
+                id: r.id ?? `${name}-${Math.random().toString(36).slice(2, 8)}`,
+                name,
+                level: levelNum,
+                position: r.position,
+              };
+              byCategory[cat] = byCategory[cat] || [];
+              byCategory[cat].push(skill);
+            });
+
+            // Sort buckets by position (fallback to name)
+            Object.keys(byCategory).forEach((k) => {
+              byCategory[k].sort((a, b) => {
+                const pa =
+                  typeof a.position === "number"
+                    ? a.position
+                    : Number.POSITIVE_INFINITY;
+                const pb =
+                  typeof b.position === "number"
+                    ? b.position
+                    : Number.POSITIVE_INFINITY;
+                if (pa !== pb) return pa - pb;
+                return a.name.localeCompare(b.name);
+              });
+            });
+
+            const mappedCats: Category[] = Object.entries(byCategory).map(
+              ([k, v]) => ({
+                id: k.toLowerCase().replace(/\s+/g, "-"),
+                name: k,
+                skills: v,
+              })
+            );
+            setCategories(mappedCats);
+          }
+        } catch (e) {
+          console.debug("skills:merge-error", e);
+        }
       } catch (err) {
         // rollback UI and surface error
         handleErrorRef.current?.(err);
@@ -334,13 +414,8 @@ const SkillsOverview: React.FC = () => {
         const rows = (res.data ?? []) as SkillItem[];
         const byCategory: Record<string, Skill[]> = {};
         // Ensure common categories exist even when empty so users can drop into them.
-        const DEFAULT_CATEGORIES = [
-          "Technical",
-          "Soft Skills",
-          "Language",
-          "Other",
-        ];
-        DEFAULT_CATEGORIES.forEach(
+        // Use shared category options so the overview and add pages stay consistent.
+        skillCategoryOptions.forEach(
           (c) => (byCategory[c] = byCategory[c] || [])
         );
         const enumToNum: Record<string, number> = {
@@ -371,7 +446,18 @@ const SkillsOverview: React.FC = () => {
           const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
 
           const skill: Skill = {
-            id: r.id ?? `${name}-${Math.random().toString(36).slice(2, 8)}`,
+            id:
+              r.id ??
+              ((): string => {
+                const maybeRand = (
+                  globalThis.crypto as unknown as {
+                    randomUUID?: () => string;
+                  }
+                ).randomUUID;
+                return typeof maybeRand === "function"
+                  ? maybeRand()
+                  : `${name}-${Math.random().toString(36).slice(2, 8)}`;
+              })(),
             name,
             level: levelNum,
             position: r.position,

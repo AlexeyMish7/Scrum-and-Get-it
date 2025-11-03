@@ -1,22 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-/*
-  EmploymentHistoryList
-  ---------------------
-  Responsibilities and user-facing behavior:
-  - Displays the current user's employment history as a list of entries.
-  - Allows the user to add a new employment entry (navigates to the Add form).
-  - Allows editing an entry via a modal (EditEmploymentModal).
-  - Allows deleting an entry with a confirmation dialog.
 
-  UX and implementation notes (non-technical):
-  - We try to avoid visual "flicker" by only showing a loading spinner when
-    loading lasts longer than a short delay. That keeps the page from looking
-    like it reloads briefly on fast networks.
-  - All CRUD success messages are shown centrally on this page via navigation
-    state (so users see success messages in a consistent place after add/edit/delete).
-  - The list is refreshed after edits/deletions so the UI always reflects the
-    latest database state.
-*/
+// EmploymentHistoryList — high-level overview
+// - Shows the signed-in user's employment entries.
+// - Supports add (navigates), edit (modal), and delete (confirm then remove).
+// - Uses a delayed spinner to avoid flicker on fast networks.
+// Notes for students: this file uses React hooks (useEffect/useCallback)
+// and a ref to keep track of the previous user id so we don't refetch
+// unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import employmentService from "../../services/employment";

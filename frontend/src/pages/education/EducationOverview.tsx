@@ -33,6 +33,7 @@ import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import "./EducationOverview.css";
+import { parseMonthToMs } from "../../utils/dateUtils";
 
 /*
   EducationOverview
@@ -67,14 +68,9 @@ const EducationOverview: React.FC = () => {
   const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Small helper used when sorting entries by date.
-  // Accepts a partial date like "2022-09" and returns a millisecond timestamp.
-  // Returns 0 for missing/invalid dates so sorting stays stable.
-  const dateToMs = (s?: string | undefined) => {
-    if (!s || s.trim() === "") return 0;
-    const parsed = new Date(s + "-01");
-    return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-  };
+  // Use shared date utility to convert YYYY-MM strings to milliseconds.
+  // Returns 0 for invalid/missing input so sorting is stable.
+  const dateToMs = (s?: string | undefined) => parseMonthToMs(s ?? undefined);
 
   // Fetch the user's education entries from the shared service.
   // Keeps loading state and funnels any errors into the centralized handler.
@@ -195,15 +191,7 @@ const EducationOverview: React.FC = () => {
   }
 
   return (
-    <Box
-      className="education-overview-container"
-      sx={{
-        p: { xs: 2, sm: 3, md: 4 },
-        width: "100%",
-        minHeight: "100vh",
-        position: "relative",
-      }}
-    >
+    <Box className="education-overview-container">
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
@@ -243,22 +231,15 @@ const EducationOverview: React.FC = () => {
               <TimelineItem>
                 <TimelineOppositeContent />
                 <TimelineSeparator>
-                  <TimelineDot
-                    sx={{ backgroundColor: "#94a3b8", border: "none" }}
-                  />
+                  {/* Empty-state dot: styled via CSS to keep visuals centralized */}
+                  <TimelineDot className="timeline-dot-empty" />
                 </TimelineSeparator>
                 <TimelineContent className="education-timeline-content">
                   <Box className="education-card">
                     {/* Empty state: encourage the user to add their first entry */}
                     <Typography
                       variant="body1"
-                      style={{
-                        color: "#64748b",
-                        textAlign: "center",
-                        fontSize: "1rem",
-                        fontWeight: 500,
-                        lineHeight: 1.6,
-                      }}
+                      className="education-empty-text"
                     >
                       No education entries yet. Click "+ Add Education" to get
                       started building your academic profile.
@@ -289,31 +270,22 @@ const EducationOverview: React.FC = () => {
                       {ongoing && (
                         <Typography
                           variant="caption"
-                          sx={{
-                            display: "block",
-                            color: "#10b981",
-                            fontWeight: 600,
-                            fontSize: "0.75rem",
-                            marginTop: "2px",
-                          }}
+                          className="education-current-badge"
                         >
                           Current
                         </Typography>
                       )}
                     </TimelineOppositeContent>
                     <TimelineSeparator>
+                      {/* Dot for each entry; CSS controls size and color */}
                       <TimelineDot
-                        sx={{
-                          backgroundColor: ongoing ? "#10b981" : "#3b82f6",
-                          border: "none",
-                          width: 12,
-                          height: 12,
-                        }}
+                        className={
+                          ongoing ? "timeline-dot-ongoing" : "timeline-dot"
+                        }
                       />
                       {index < education.length - 1 && (
-                        <TimelineConnector
-                          sx={{ backgroundColor: "#e2e8f0" }}
-                        />
+                        /* Connector between timeline dots; shown for all but last item */
+                        <TimelineConnector className="timeline-connector" />
                       )}
                     </TimelineSeparator>
                     <TimelineContent className="education-timeline-content">

@@ -1,19 +1,10 @@
 import React from "react";
-/*
-  EmploymentForm (shared)
-  -------------------------
-  A small, reusable form fragment used by both AddEmployment and
-  EditEmploymentModal. This component accepts a controlled `value` object
-  and an `onFieldChange` callback and is intentionally dumb — it does not
-  perform side-effects or submit data.
 
-  User-facing behavior described here:
-  - Marks required fields visually and exposes inline helper text for errors.
-  - When the end date is cleared, the form automatically marks the position
-    as "current" to match the common UX expectation and the database semantics.
-  - Date inputs use `InputLabelProps={{ shrink: true }}` to keep the label
-    floating and avoid overlapping the browser's native date hint (e.g. mm/dd/yyyy).
-*/
+// EmploymentForm — small, controlled form fragment
+// - Pure UI: accepts `value` and `onFieldChange` and renders inputs.
+// - Keeps validation messaging simple (parent handles the validation state).
+// Notes for students: this component demonstrates a controlled input
+// pattern and a higher-order type `EmploymentFormData` used for the form shape.
 import type { EmploymentFormData } from "../../types/employment";
 import { TextField, FormControlLabel, Checkbox, Box } from "@mui/material";
 
@@ -33,20 +24,19 @@ export default function EmploymentForm({
   errors,
   firstFieldRef,
 }: Props) {
+  // Handle input changes and forward simplified values to the parent.
+  // This keeps the component stateless and easy to test.
   const handleInput =
     (name: keyof EmploymentFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      // Normalize the event value and forward to the parent. The parent is
-      // responsible for updating the form state (this component is controlled).
       const target = e.target as HTMLInputElement;
       const val = target.type === "checkbox" ? target.checked : target.value;
       onFieldChange(name, val as unknown as string | boolean);
     };
 
-  // If endDate is cleared we treat the job as current (sync UI)
+  // If end date is cleared, flip the current flag so the parent knows
+  // the position should be treated as ongoing. Small UX convenience.
   const handleEndDateBlur = () => {
-    // When the user clears the end date, automatically flip the "current"
-    // checkbox on so the form stays consistent with the user's intent.
     if (!value.endDate || value.endDate.trim() === "") {
       onFieldChange("isCurrent", true);
     }

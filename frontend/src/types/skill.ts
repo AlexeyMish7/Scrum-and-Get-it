@@ -21,7 +21,10 @@ export type SkillItem = {
   id?: string;
   name: string;
   category: string;
-  level: string; // e.g. "Beginner", "Intermediate"
+  // Level can be either a label (string) or a numeric score (1..4).
+  // We allow both because UI forms use labels while overview/drag
+  // code commonly works with numeric levels for averaging/sorting.
+  level: string | number; // e.g. "Beginner" or 1
   // Optional position used for client-side ordering. Stored in DB under
   // `meta.position` (JSON) to avoid an expensive schema migration.
   position?: number;
@@ -43,6 +46,9 @@ import type { ReactNode } from "react";
 export type DropResult = {
   source: { droppableId: string; index: number };
   destination?: { droppableId: string; index: number } | null;
+  // `draggableId` is provided by the drag/drop library and is useful when
+  // locating the moved item by id instead of relying on indices.
+  draggableId?: string;
 };
 
 export type DroppableProvided = {

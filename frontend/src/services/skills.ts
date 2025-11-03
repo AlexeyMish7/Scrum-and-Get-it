@@ -30,9 +30,11 @@ function mapRowToSkill(r: DbSkillRow): SkillItem {
 
 export async function listSkills(userId: string) {
   const userCrud = crud.withUser(userId);
-  const res = await userCrud.listRows("skills", PROJECTION, {
-    order: { column: "skill_name", ascending: true },
-  });
+  // We intentionally do NOT request a server-side ordering here because
+  // ordering is driven by `meta.position` (a JSON column) which may not
+  // be expressible via the generic order helper. Instead fetch the rows
+  // and let the client normalize/sort by meta.position (see below).
+  const res = await userCrud.listRows("skills", PROJECTION);
   if (res.error) return { data: null, error: res.error };
   const rows = Array.isArray(res.data)
     ? (res.data as DbSkillRow[])
@@ -126,9 +128,11 @@ export async function batchUpdateSkills(
     metaById[id] = (r.meta as Record<string, unknown>) ?? {};
   });
 
-  const results: Array<{ id: string; error: unknown | null }> = [];
+  const updatedRows: Array<ReturnType<typeof mapRowToSkill>> = [];
 
-  // Apply updates sequentially to avoid race conditions merging meta
+  // Apply updates sequentially to avoid race conditions merging meta.
+  // Collect the updated DB rows and map them to SkillItem so the
+  // caller can reconcile UI state from authoritative data immediately.
   for (const u of updates) {
     const existingMeta = metaById[u.id] ?? {};
     const incomingMeta = u.meta ?? {};
@@ -148,13 +152,14 @@ export async function batchUpdateSkills(
       { eq: { id: u.id } },
       "*"
     );
-    results.push({ id: u.id, error: res.error });
+    if (res.error) {
+      return { data: null, error: res.error };
+    }
+    const updated = Array.isArray(res.data) ? res.data[0] : res.data;
+    updatedRows.push(mapRowToSkill(updated as DbSkillRow));
   }
 
-  // If any failed, return an aggregated error
-  const failed = results.find((r) => r.error);
-  if (failed) return { data: null, error: failed.error };
-  return { data: results, error: null };
+  return { data: updatedRows, error: null };
 }
 
 export default {

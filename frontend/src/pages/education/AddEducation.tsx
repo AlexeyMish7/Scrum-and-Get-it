@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isMonthAfter } from "../../utils/dateUtils";
 import { useAuth } from "../../context/AuthContext";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
@@ -91,11 +92,9 @@ const AddEducation: React.FC = () => {
 
     // If not currently enrolled and end date is provided, validate it's after start date
     if (!formData.active && formData.endDate && formData.startDate) {
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
-      if (endDate <= startDate) {
-        return false; // End date must be after start date
-      }
+      // If not active, and both dates provided, ensure endDate is after startDate
+      const isValid = isMonthAfter(formData.startDate, formData.endDate);
+      if (!isValid) return false;
     }
 
     return hasRequiredFields;

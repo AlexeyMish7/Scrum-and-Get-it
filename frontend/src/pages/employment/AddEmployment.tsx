@@ -1,19 +1,11 @@
 import React, { useState } from "react";
-/*
-  AddEmployment
-  -------------
-  This component renders the "Add Employment" form and handles the
-  following user-facing responsibilities:
-  - Collects job title, company, location, start/end dates, current flag, and description.
-  - Performs client-side validation (required fields, date ordering) and shows
-    inline errors to help users correct mistakes quickly.
-  - Treats an empty end date as a "current" position by default.
-  - On success, navigates back to the Employment History page and passes a
-    success message in navigation state so the list page can show a centralized
-    success snackbar (keeps notifications consistent across the flow).
-  - The Cancel button navigates back in history as a simple way to return to
-    the previous view.
-*/
+
+// AddEmployment — form to create a new employment entry
+// - Collects required fields, validates client-side, and sends a payload
+//   to the employment service. On success it navigates back to the list and
+//   uses navigation state to show a centralized success message.
+// Student notes: the component demonstrates form validation, controlled
+// components, and preparing a backend payload using snake_case keys.
 import { useAuth } from "../../context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData } from "../../types/employment";
@@ -113,10 +105,12 @@ const AddEmploymentForm: React.FC = () => {
 
       const res = await employmentService.insertEmployment(user.id, payload);
 
+      // If the server returned an error, surface it via the centralized
+      // error handler and do not navigate. Previously this branch
+      // navigated with a success message on error which hid failures.
       if (res.error) {
-        navigate("/employment-history", {
-          state: { success: "Employment added" },
-        });
+        console.error(res.error);
+        handleError(res.error);
         setLoading(false);
         return;
       }

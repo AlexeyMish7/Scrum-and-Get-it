@@ -1,18 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-/*
-  EditEmploymentModal
-  -------------------
-  Purpose:
-  - A focused modal that allows the user to update a single employment entry.
-  - Focuses the first input when opened to improve keyboard accessibility.
-  - Performs the same validation rules as the Add form (required fields, date order).
 
-  Notification strategy:
-  - This modal does not show the success snackbar itself. Instead it updates
-    the parent list and uses navigation state to surface a centralized success
-    message on the Employment History page. This keeps all success notifications
-    visually consistent in one place.
-*/
+// EditEmploymentModal — lightweight edit dialog
+// - Renders the shared EmploymentForm inside a dialog and saves changes.
+// - Focuses the first input for accessibility and delegates notifications
+//   to the parent list via navigation state (keeps success messages centralized).
+// Student note: mapping between DB row (snake_case) and form shape (camelCase)
+// is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
 import { useAuth } from "../../context/AuthContext";
 import employmentService from "../../services/employment";
@@ -62,10 +55,11 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Focus first input when dialog opens
+    // Focus the first input when dialog opens to improve keyboard UX.
     firstFieldRef.current?.focus();
   }, []);
 
+  // Update a single form field; parent keeps the full form state.
   const handleFieldChange = (
     name: keyof EmploymentFormData,
     val: string | boolean
@@ -90,7 +84,7 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
         return;
       }
 
-      // Basic validations: ensure required fields are present and dates make sense
+      // Basic validations: mark missing required fields and ensure date ordering
       const jobTitle = (formData.jobTitle ?? "").toString().trim();
       const companyName = (formData.companyName ?? "").toString().trim();
 

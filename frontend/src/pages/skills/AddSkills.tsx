@@ -24,6 +24,11 @@ import {
   Autocomplete,
 } from "@mui/material";
 import type { SkillItem, DbSkillRow } from "../../types/skill";
+import {
+  skillLevelOptions,
+  skillCategoryOptions,
+  levelLabels,
+} from "../../constants/skills";
 
 /*
   AddSkills page — high level overview (non-technical)
@@ -50,9 +55,6 @@ import type { SkillItem, DbSkillRow } from "../../types/skill";
 */
 
 // Using centralized SkillItem type from frontend/src/types/skill.ts
-
-// Simple dropdown options for proficiency. Keeps the UI friendly.
-const skillLevelOptions = ["Beginner", "Intermediate", "Advanced", "Expert"];
 
 const suggestedSkillList = [
   // Frontend
@@ -211,7 +213,6 @@ const suggestedSkillList = [
 
 // Keep category options aligned with the SkillsOverview defaults so
 // drag/drop and bucket names match exactly.
-const skillCategoryOptions = ["Technical", "Soft Skills", "Language", "Other"];
 
 const AddSkills = () => {
   // Local UI state (what the user sees and interacts with)
@@ -297,10 +298,31 @@ const AddSkills = () => {
           return;
         }
       } else {
+        // For unauthenticated/demo mode create a temporary id and normalize
+        // the selected proficiency into the numeric shape (1..4) used by
+        // the overview UI so averages and ordering behave consistently.
         const newSkill: SkillItem = {
+          id: ((): string => {
+            const maybeRand = (
+              globalThis.crypto as unknown as {
+                randomUUID?: () => string;
+              }
+            ).randomUUID;
+            return typeof maybeRand === "function"
+              ? maybeRand()
+              : `local-${Math.random().toString(36).slice(2, 8)}`;
+          })(),
           name: selectedSkill,
           category: selectedCategory,
-          level: selectedLevel,
+          level: ((): number => {
+            const map: Record<string, number> = {
+              beginner: 1,
+              intermediate: 2,
+              advanced: 3,
+              expert: 4,
+            };
+            return map[(selectedLevel || "").toLowerCase()] ?? 1;
+          })(),
         };
         setUserSkills((s) => [...s, newSkill]);
         try {
@@ -356,7 +378,13 @@ const AddSkills = () => {
 
   const openEditDialog = (index: number) => {
     setSelectedSkillIndex(index);
-    setTempEditLevel(userSkills[index].level);
+    const lvl = userSkills[index].level;
+    // Normalize to a label string for the edit dialog select
+    const label =
+      typeof lvl === "number"
+        ? levelLabels[lvl] ?? String(lvl)
+        : String(lvl || "");
+    setTempEditLevel(label);
   };
 
   const closeEditDialog = () => {
@@ -480,7 +508,6 @@ const AddSkills = () => {
   //  - Edit dialog (change level or remove)
   //  - Centralized snackbars and confirmation dialog
   // All actions use the shared services/hooks above for consistency.
-  // ✅ Enhanced visual layout using theme
   return (
     <Box className="skills-page-container">
       <Box className="skills-card glossy-card">
@@ -517,7 +544,7 @@ const AddSkills = () => {
           justifyContent="center"
           alignItems="center"
         >
-          {/* ✅ Replaced select with Autocomplete */}
+          {/* Replaced select with Autocomplete */}
           <div className="input-wide">
             <Autocomplete
               freeSolo
