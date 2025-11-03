@@ -7,17 +7,39 @@ import {
   LinearProgress,
   Typography,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PhotoCamera from "@mui/icons-material/PhotoCamera";
+import ReactCrop, { type Crop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 import crud from "../../services/crud";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { ErrorSnackbar } from "./ErrorSnackbar";
+import ConfirmDialog from "./ConfirmDialog";
 
+// ProfilePicture
+// Handles user avatar display, interactive cropping, upload to Supabase Storage,
+// and bookkeeping in the `documents` table + `profiles.meta` for cleanup.
+// Important notes:
+// - Uses a short-lived signed URL to display private storage objects.
+// - Uses centralized error handling via `useErrorHandler()`.
+// - Keeps the UI responsive by showing a preview and a progress indicator.
+
+// Limits and configuration for avatar uploads
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif"];
+// We standardize avatar images to a square PNG of TARGET_SIZE to keep
+// presentation consistent across the app and avoid runtime resizing.
 const TARGET_SIZE = 512; // square 512x512
-const BUCKET = "projects"; // using existing bucket (first path segment must be user id per policies)
+// Storage bucket used for avatars. Supabase RLS policies expect the
+// first path segment to be the user id for per-user isolation.
+const BUCKET = "avatars";
 
 async function resizeImageToSquare(file: File, size = TARGET_SIZE) {
   return new Promise<Blob | null>((resolve, reject) => {
@@ -55,28 +77,102 @@ async function resizeImageToSquare(file: File, size = TARGET_SIZE) {
   });
 }
 
+  // Create cropped image blob from an <img> element and a crop rect
+  // Notes: ReactCrop provides crop dimensions relative to the displayed
+  // image; we must scale those to the image's natural size before
+  // drawing to the canvas to preserve resolution.
+  async function getCroppedImg(image: HTMLImageElement, crop: Crop) {
+          return new Promise<{ blob: Blob; dataUrl: string }>((resolve, reject) => {
+            try {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              if (!ctx) return reject(new Error("Failed to get canvas context"));
+
+              const scaleX = image.naturalWidth / image.width;
+              const scaleY = image.naturalHeight / image.height;
+
+              const px = crop.x ?? 0;
+              const py = crop.y ?? 0;
+              const pwidth = crop.width ?? image.width;
+              const pheight = crop.height ?? image.height;
+
+              // Use pixel sizes for canvas
+              canvas.width = Math.round(pwidth);
+              canvas.height = Math.round(pheight);
+
+              ctx.drawImage(
+                image,
+                px * scaleX,
+                py * scaleY,
+                pwidth * scaleX,
+                pheight * scaleY,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              );
+
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) return reject(new Error("Failed to produce blob"));
+                  const dataUrl = canvas.toDataURL("image/png");
+                  resolve({ blob, dataUrl });
+                },
+                "image/png",
+                0.9
+              );
+            } catch (err) {
+              reject(err);
+            }
+          });
+        }
+
 const ProfilePicture: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const { handleError, notification, closeNotification, showSuccess } =
+    useErrorHandler();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [metaPath, setMetaPath] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState<number>(0);
-  const [error, setError] = useState<string | null>(null);
+  // local error state removed in favor of centralized ErrorSnackbar via useErrorHandler
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [pendingFile, setPendingFile] = useState<{
     file: File;
     preview: string;
   } | null>(null);
+  // Crop dialog state (for interactive cropping before upload)
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [imgSrc, setImgSrc] = useState<string>("");
+  const [crop, setCrop] = useState<Crop | undefined>();
+  const [completedCrop, setCompletedCrop] = useState<Crop | undefined>();
+  const [imgRef, setImgRef] = useState<HTMLImageElement | null>(null);
+  const [displayInitial, setDisplayInitial] = useState<string>(
+    (user?.email?.charAt(0)?.toUpperCase() as string) ?? "U"
+  );
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       if (!user || authLoading) return;
 
-      // read profile meta to find avatar path
-      const res = await crud.getUserProfile(user.id);
+  // Read the user's profile row to find avatar metadata. The profile's
+  // `meta` JSON column may contain avatar_path/avatar_bucket which we use
+  // to construct a signed URL for display.
+  const res = await crud.getUserProfile(user.id);
       if (res.error) return;
       const p = res.data as Record<string, unknown> | null;
+        // determine display initial from profile first_name/full_name or fallback to email
+        try {
+          const firstName = (p && (p.first_name as string)) ?? null;
+          const fullName = (p && (p.full_name as string)) ?? null;
+          const source = firstName || fullName || user.email || "";
+          const initial = String(source).trim().charAt(0)?.toUpperCase() || "U";
+          setDisplayInitial(initial);
+        } catch {
+          setDisplayInitial(user?.email?.charAt(0)?.toUpperCase() ?? "U");
+        }
       type ProfileMeta = {
         avatar_path?: string | null;
         avatar_bucket?: string | null;
@@ -166,15 +262,14 @@ const ProfilePicture: React.FC = () => {
   const onChooseClick = () => fileRef.current?.click();
 
   const handleFile = async (file?: File) => {
-    setError(null);
     if (!file) return;
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Invalid file type. Use JPG, PNG or GIF.");
-      return;
+  handleError(new Error("Invalid file type. Use JPG, PNG or GIF."));
+  return;
     }
     if (file.size > MAX_BYTES) {
-      setError("File is too large. Max size is 5MB.");
-      return;
+  handleError(new Error("File is too large. Max size is 5MB."));
+  return;
     }
 
     setProcessing(true);
@@ -222,13 +317,19 @@ const ProfilePicture: React.FC = () => {
       setProgress(85);
 
       // persist meta in profiles.meta
-      await crud.updateUserProfile(user.id, {
-        meta: {
-          ...((await crud.getUserProfile(user.id)).data?.meta ?? {}),
-          avatar_path: fileName,
-          avatar_bucket: BUCKET,
-        },
-      });
+      try {
+        const profileRes = await crud.getUserProfile(user.id);
+        const existingMeta = (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
+        await crud.updateUserProfile(user.id, {
+          meta: {
+            ...(existingMeta as Record<string, unknown>),
+            avatar_path: fileName,
+            avatar_bucket: BUCKET,
+          },
+        });
+      } catch (e) {
+        console.warn("Failed to persist avatar meta", e);
+      }
 
       // create signed URL for display
       const { data: signedData, error: signedErr } = await supabase.storage
@@ -254,6 +355,68 @@ const ProfilePicture: React.FC = () => {
           /* ignore */
         }
       }
+      // Create a documents row linking this avatar file for later cleanup/management
+      try {
+        const userCrud = crud.withUser(user.id);
+        // Ensure a profiles row exists for this user (FK required by documents.user_id)
+        try {
+          const existingProfile = await crud.getUserProfile(user.id);
+          if (!existingProfile.data) {
+            // create a minimal profile so documents FK and RLS checks succeed
+            await crud.upsertRow(
+              "profiles",
+              {
+                id: user.id,
+                full_name: user.email?.split("@")[0] ?? null,
+                email: user.email?.toLowerCase() ?? null,
+              },
+              "id"
+            );
+          }
+        } catch (e) {
+          // non-fatal; proceed and let insert report if something else is wrong
+          console.warn("Failed to ensure profile exists before inserting document", e);
+        }
+
+        const docRes = await userCrud.insertRow(
+          "documents",
+          {
+            // documents.kind is restricted by a CHECK in the schema; use 'other' for avatars
+            kind: "other",
+            file_name: file.name,
+            file_path: fileName,
+            mime_type: file.type,
+            bytes: file.size ?? null,
+            meta: { source: "avatar" },
+          },
+          "*"
+        );
+        if (docRes.error) {
+          console.error("Failed to create documents row:", docRes.error);
+          // surface friendly message via centralized handler
+          handleError(docRes.error);
+        }
+
+        if (!docRes.error && docRes.data) {
+          const docId = (docRes.data as unknown as { id?: string }).id ?? null;
+          if (docId) {
+            try {
+              const profileRes2 = await crud.getUserProfile(user.id);
+              const existingMeta2 = (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
+              await crud.updateUserProfile(user.id, {
+                meta: {
+                  ...(existingMeta2 as Record<string, unknown>),
+                  avatar_document_id: docId,
+                },
+              });
+            } catch {
+              /* ignore profile meta update failure */
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to create documents row for avatar", e);
+      }
       // clear pending preview and revoke any created blob URL
       try {
         if (
@@ -277,10 +440,7 @@ const ProfilePicture: React.FC = () => {
       setProgress(100);
     } catch (err: unknown) {
       console.error("Avatar upload failed", err);
-      let msg = "Upload failed";
-      if (err instanceof Error) msg = err.message;
-      else msg = String(err);
-      setError(msg ?? "Upload failed");
+      handleError(err);
     } finally {
       // brief delay so progress reaches 100 for UX
       setTimeout(() => {
@@ -295,18 +455,25 @@ const ProfilePicture: React.FC = () => {
     if (f) {
       // validate quickly and show preview; upload only after confirm
       if (!ALLOWED_TYPES.includes(f.type)) {
-        setError("Invalid file type. Use JPG, PNG or GIF.");
+        handleError(new Error("Invalid file type. Use JPG, PNG or GIF."));
         e.currentTarget.value = "";
         return;
       }
       if (f.size > MAX_BYTES) {
-        setError("File is too large. Max size is 5MB.");
+        handleError(new Error("File is too large. Max size is 5MB."));
         e.currentTarget.value = "";
         return;
       }
-      const previewUrl = URL.createObjectURL(f);
-      setPendingFile({ file: f, preview: previewUrl });
-      setAvatarUrl(previewUrl);
+      // open interactive crop dialog (reuse crop pattern used elsewhere)
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = String(reader.result);
+        setImgSrc(src);
+        setShowCropDialog(true);
+      };
+      reader.readAsDataURL(f);
+      // remember original file until user applies crop
+      setPendingFile({ file: f, preview: "" });
     }
     e.currentTarget.value = ""; // reset so same file can be picked again
   };
@@ -315,24 +482,74 @@ const ProfilePicture: React.FC = () => {
     if (!metaPath) return;
     setProcessing(true);
     try {
-      await supabase.storage.from(BUCKET).remove([metaPath]);
+      // Delete documents row by avatar_document_id if present, otherwise by file_path
+      const profileRes = await crud.getUserProfile(user.id);
+      const existingMeta = (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
+  const avatarDoc = (existingMeta as Record<string, unknown> | null)?.avatar_document_id;
+  const docId = typeof avatarDoc === "string" ? avatarDoc : null;
+
+      const userCrud = crud.withUser(user.id);
+      if (docId) {
+        try {
+          await userCrud.deleteRow("documents", { eq: { id: docId } });
+        } catch (e) {
+          console.warn("Failed to delete avatar document row by id", e);
+        }
+      } else {
+        try {
+          await userCrud.deleteRow("documents", { eq: { file_path: metaPath } });
+        } catch (e) {
+          console.warn("Failed to delete avatar document row by file_path", e);
+        }
+      }
+
+      // remove storage object
+      try {
+        await supabase.storage.from(BUCKET).remove([metaPath]);
+      } catch (err) {
+        console.warn("Failed to remove avatar from storage", err);
+      }
+
+      // clear profile meta
+      try {
+        const profileRes2 = await crud.getUserProfile(user.id);
+        const existingMeta2 = (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
+        await crud.updateUserProfile(user.id, {
+          meta: {
+            ...(existingMeta2 as Record<string, unknown>),
+            avatar_path: null,
+            avatar_document_id: null,
+          },
+        });
+      } catch (err) {
+        console.warn("Failed to remove avatar meta", err);
+      }
     } catch (err) {
-      console.warn("Failed to remove avatar from storage", err);
-    }
-    try {
-      // remove meta
-      await crud.updateUserProfile(user.id, {
-        meta: {
-          ...((await crud.getUserProfile(user.id)).data?.meta ?? {}),
-          avatar_path: null,
-        },
-      });
-    } catch (err) {
-      console.warn("Failed to remove avatar meta", err);
+      console.warn("Unexpected error removing avatar", err);
     }
     setAvatarUrl(null);
     setMetaPath(null);
     setProcessing(false);
+  };
+
+  // Apply crop from dialog -> replace pendingFile with cropped File and preview
+  const handleCropApply = async () => {
+    if (!imgRef || !completedCrop || !pendingFile) {
+      handleError(new Error("Missing crop data"));
+      return;
+    }
+    try {
+      const { blob, dataUrl } = await getCroppedImg(imgRef, completedCrop);
+      const croppedFile = new File([blob], `cropped_${pendingFile.file.name}`, {
+        type: blob.type,
+      });
+      setPendingFile({ file: croppedFile, preview: dataUrl });
+      setAvatarUrl(dataUrl);
+      setShowCropDialog(false);
+    } catch (err) {
+      console.error("Crop failed", err);
+      handleError(err);
+    }
   };
 
   return (
@@ -348,9 +565,20 @@ const ProfilePicture: React.FC = () => {
       <Avatar
         src={avatarUrl ?? undefined}
         alt="Profile avatar"
-        sx={{ width: 96, height: 96 }}
+        sx={{
+          width: 96,
+          height: 96,
+          // glossy gradient background when no avatar image is present
+          ...(avatarUrl
+            ? {}
+            : {
+                background: "linear-gradient(135deg,#6a11cb,#2575fc)",
+                color: "#fff",
+                fontWeight: "bold",
+              }),
+        }}
       >
-        {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+        {!avatarUrl ? displayInitial : null}
       </Avatar>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -365,11 +593,16 @@ const ProfilePicture: React.FC = () => {
                 {metaPath ? "Replace" : "Upload"}
               </Button>
               {metaPath && (
-                <Tooltip title="Remove avatar">
-                  <IconButton onClick={handleRemove} disabled={processing}>
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
+                <>
+                  <Tooltip title="Remove avatar">
+                    <IconButton
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={processing}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
               )}
             </>
           ) : (
@@ -381,12 +614,12 @@ const ProfilePicture: React.FC = () => {
               >
                 Confirm
               </Button>
-              <Button
-                color="inherit"
-                onClick={() => {
-                  // cancel pending
-                  setPendingFile(null);
-                  setError(null);
+                  <Button
+                    color="inherit"
+                    onClick={() => {
+                      // cancel pending
+                      setPendingFile(null);
+                      closeNotification();
                   // reload current avatar preview if available
                   if (metaPath) {
                     // try to use cached signed url first
@@ -446,13 +679,51 @@ const ProfilePicture: React.FC = () => {
             </Typography>
           </Box>
         )}
-
-        {error && (
-          <Typography variant="caption" color="error">
-            {error}
-          </Typography>
-        )}
+        {/* centralized notification snackbar */}
+        <ErrorSnackbar notification={notification} onClose={closeNotification} />
       </Box>
+      {/* Crop Dialog - interactive crop before confirming upload */}
+      <Dialog open={showCropDialog} onClose={() => setShowCropDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Crop Your Avatar</DialogTitle>
+        <DialogContent>
+          {imgSrc && (
+            <ReactCrop
+              crop={crop}
+              onChange={(_, percentCrop) => setCrop(percentCrop)}
+              onComplete={(c) => setCompletedCrop(c)}
+              aspect={1}
+              className="projects-crop-container"
+            >
+              <img
+                src={imgSrc}
+                onLoad={(e) => setImgRef(e.currentTarget as HTMLImageElement)}
+                alt="Crop preview"
+                style={{ maxWidth: "100%", maxHeight: 400 }}
+              />
+            </ReactCrop>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowCropDialog(false)}>Cancel</Button>
+          <Button onClick={handleCropApply} className="projects-btn-glossy">
+            Apply Crop
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Confirm delete dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete avatar"
+        description="Are you sure you want to delete your avatar? This will remove the image from storage and your profile."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={async () => {
+          setShowDeleteConfirm(false);
+          await handleRemove();
+          showSuccess("Avatar removed");
+        }}
+      />
     </Box>
   );
 };

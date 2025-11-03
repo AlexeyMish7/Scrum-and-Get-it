@@ -1,0 +1,158 @@
+// Mapping helpers: convert quick-add form payloads into DB-ready payloads
+// Local date normalizer (kept small and deterministic)
+const dateRegexFull = /^\d{4}-\d{2}-\d{2}$/;
+const dateRegexMonth = /^\d{4}-\d{2}$/;
+export function formatToSqlDate(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  if (dateRegexFull.test(s)) return s;
+  if (dateRegexMonth.test(s)) return `${s}-01`;
+  if (/^\d{4}-\d{2}/.test(s)) return `${s.slice(0, 7)}-01`;
+  return null;
+}
+
+type MapperResult<T> = { payload?: T; error?: string };
+
+export const mapEmployment = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const job_title = String(
+    formData.position ?? formData.job_title ?? ""
+  ).trim();
+  const company_name = String(
+    formData.company ?? formData.company_name ?? ""
+  ).trim();
+  const start_date =
+    formatToSqlDate(formData.start_date ?? formData.start) ?? null;
+
+  if (!job_title) return { error: "Job title is required" };
+  if (!company_name) return { error: "Company name is required" };
+  if (!start_date) return { error: "Start date is required" };
+
+  const payload: Record<string, unknown> = {
+    job_title,
+    company_name,
+    // Keep only columns that exist in the canonical DB schema for `employment`
+    location: (formData.location as string) ?? null,
+    start_date,
+    end_date: formatToSqlDate(formData.end_date) ?? null,
+    current_position: (formData.is_current as unknown) === true,
+    job_description: (formData.description as string) ?? null,
+    // The `employment` table doesn't include a `meta` column in the schema.
+    // Drop any extra quick-add fields to avoid Supabase schema errors.
+  };
+
+  return { payload };
+};
+
+export const mapSkill = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const skill_name = String(formData.name ?? formData.skill_name ?? "").trim();
+  const profRaw = formData.proficiency_level ?? formData.proficiency ?? 1;
+  if (!skill_name) return { error: "Skill name is required" };
+
+  const numToEnum: Record<number, string> = {
+    1: "beginner",
+    2: "intermediate",
+    3: "advanced",
+    4: "expert",
+    5: "expert",
+  };
+
+  // Normalize proficiency input. Accept numeric (1-5) or string labels
+  function normalizeProf(raw: unknown): string {
+    if (typeof raw === "string") {
+      const s = raw.trim().toLowerCase();
+      if (["beginner", "intermediate", "advanced", "expert"].includes(s))
+        return s;
+      const parsed = Number(s);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 5)
+        return numToEnum[Math.round(parsed)];
+    }
+    const n = Number(raw);
+    if (!Number.isNaN(n) && n >= 1 && n <= 5) return numToEnum[Math.round(n)];
+    return "beginner";
+  }
+
+  const proficiency_level = normalizeProf(profRaw);
+
+  // Keep payload shape identical to AddSkills page: skill_name, proficiency_level, skill_category
+  const payload: Record<string, unknown> = {
+    skill_name,
+    proficiency_level,
+    skill_category: (formData.category as string) ?? "Technical",
+  };
+
+  return { payload };
+};
+
+export const mapEducation = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const institution_name = String(
+    formData.institution ?? formData.institution_name ?? ""
+  ).trim();
+  const start_date =
+    formatToSqlDate(formData.start_date ?? formData.start) ?? null;
+  if (!institution_name) return { error: "Institution name is required" };
+  if (!start_date) return { error: "Start date is required for education" };
+
+  const payload: Record<string, unknown> = {
+    institution_name,
+    degree_type:
+      (formData.degree as string) ?? (formData.degree_type as string) ?? null,
+    field_of_study:
+      (formData.field_of_study as string) ?? (formData.major as string) ?? null,
+    graduation_date: formatToSqlDate(formData.end_date ?? formData.end),
+    start_date,
+    gpa: formData.gpa == null ? null : Number(formData.gpa) || null,
+    enrollment_status:
+      (formData.is_current as unknown) === true ? "enrolled" : "not_enrolled",
+    education_level: (formData.education_level as string) ?? null,
+    honors: (formData.awards as string) ?? null,
+    meta: (formData.meta as Record<string, unknown>) ?? null,
+  };
+
+  return { payload };
+};
+
+export const mapProject = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const proj_name = String(formData.title ?? formData.projectName ?? "").trim();
+  const start_date =
+    formatToSqlDate(formData.start_date ?? formData.startDate) ?? null;
+  if (!proj_name) return { error: "Project name is required" };
+  if (!start_date) return { error: "Project start date is required" };
+
+  const techs =
+    typeof formData.technologies_input === "string"
+      ? (formData.technologies_input as string)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : Array.isArray(formData.technologies)
+      ? (formData.technologies as string[]).map((s) => String(s).trim())
+      : null;
+
+  const payload: Record<string, unknown> = {
+    proj_name,
+    proj_description: (formData.description as string) ?? null,
+    start_date,
+    end_date: formatToSqlDate(formData.end_date ?? formData.endDate) ?? null,
+    tech_and_skills: techs,
+    project_url: (formData.url as string) ?? null,
+    team_size:
+      formData.team_size == null ? null : Number(formData.team_size) || null,
+    team_details: (formData.team_details as string) ?? null,
+    industry_proj_type: (formData.industry as string) ?? null,
+    proj_outcomes: (formData.outcomes as string) ?? null,
+    status: (formData.is_ongoing as unknown) === true ? "ongoing" : "planned",
+    media_path: null,
+    meta: (formData.meta as Record<string, unknown>) ?? null,
+  };
+
+  return { payload };
+};

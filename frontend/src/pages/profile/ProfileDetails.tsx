@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box,
   TextField,
   MenuItem,
   Typography,
@@ -11,19 +10,9 @@ import {
 } from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
 import ProfilePicture from "../../components/common/ProfilePicture";
-import crud from "../../services/crud";
-
-interface ProfileData {
-  fullName: string;
-  email: string;
-  phone: string;
-  city: string;
-  state: string;
-  headline: string;
-  bio: string;
-  industry: string;
-  experience: string;
-}
+import profileService from "../../services/profileService";
+import "./ProfileDetails.css";
+import type { ProfileData } from "../../types/profile";
 
 const industries = [
   "Technology",
@@ -98,6 +87,12 @@ const usStates = [
   "WY",
 ];
 
+// ProfileDetails
+// Responsible for rendering and editing a user's profile information.
+// - Shows an editable form (Edit mode) and a read-only summary (View mode).
+// - Uses `profileService` to load and save profile data. The service
+//   maps between the DB row shape and the UI-friendly `ProfileData`.
+// - The email field is intentionally read-only in the form (managed by auth).
 const ProfileDetails: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
 
@@ -128,29 +123,21 @@ const ProfileDetails: React.FC = () => {
       if (authLoading) return;
       if (!user) return;
       try {
-        const res = await crud.getUserProfile(user.id);
+        // Ask the profileService to fetch and map the profile row.
+        // This keeps DB-specific shape (first_name/last_name etc.) out of the UI.
+        const res = await profileService.getProfile(user.id);
         if (!mounted) return;
         if (res.error) {
+          // Non-fatal: show in console but don't crash the page
           console.warn("Failed to load profile", res.error);
           return;
         }
         const p = res.data as Record<string, unknown> | null;
         if (!p) return;
-        setFormData({
-          fullName: (p["full_name"] as string) ?? "",
-          email: (p["email"] as string) ?? "",
-          phone: (p["phone"] as string) ?? "",
-          city: (p["city"] as string) ?? "",
-          state: (p["state"] as string) ?? "",
-          headline: (p["professional_title"] as string) ?? "",
-          bio: (p["summary"] as string) ?? "",
-          industry: (p["industry"] as string) ?? "",
-          experience: p["experience_level"]
-            ? String(p["experience_level"]).charAt(0).toUpperCase() +
-              String(p["experience_level"]).slice(1)
-            : "",
-        });
+        const mapped = profileService.mapRowToProfile(p);
+        setFormData(mapped);
       } catch (err) {
+        // Unexpected error while loading profile
         console.error("Error loading profile", err);
       }
     };
@@ -167,6 +154,7 @@ const ProfileDetails: React.FC = () => {
     setFormData({ ...formData, [name]: value });
 
     if (name === "bio") {
+      // Track character count for the bio textarea (max 500)
       setBioCount(value.length);
     }
   };
@@ -176,6 +164,7 @@ const ProfileDetails: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10}$/;
 
+    // Basic client-side validation to provide immediate feedback.
     if (!formData.fullName) newErrors.fullName = "Full name is required";
 
     if (!formData.email) newErrors.email = "Email is required";
@@ -211,22 +200,10 @@ const ProfileDetails: React.FC = () => {
       }
       setSaving(true);
       try {
-        const payload: Record<string, unknown> = {
-          id: user.id,
-          full_name: formData.fullName,
-          email: formData.email?.trim().toLowerCase() ?? null,
-          phone: formData.phone ?? null,
-          city: formData.city ?? null,
-          state: formData.state ?? null,
-          professional_title: formData.headline ?? null,
-          summary: formData.bio ?? null,
-          industry: formData.industry ?? null,
-          experience_level: formData.experience
-            ? formData.experience.toLowerCase()
-            : null,
-        };
-
-        const res = await crud.upsertRow("profiles", payload, "id");
+        // Build the payload and upsert via the profileService. The service
+        // will normalize fields (email -> lowercase) and split fullName into
+        // first_name / last_name so DB NOT NULL constraints are satisfied.
+        const res = await profileService.upsertProfile(user.id, formData);
         if (res.error) {
           console.error("Failed to save profile", res.error);
           setErrorMsg(res.error.message || "Failed to save profile");
@@ -251,11 +228,9 @@ const ProfileDetails: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{ p: 4, backgroundColor: "background.default", minHeight: "100vh" }}
-    >
-      <Paper sx={{ p: 4, maxWidth: 800, mx: "auto" }}>
-        <Typography variant="h4" gutterBottom>
+    <div className="profile-container">
+      <Paper className="profile-paper">
+        <Typography className="profile-header" variant="h4" gutterBottom>
           {editMode ? "Edit Profile" : "Profile Details"}
         </Typography>
 
@@ -263,8 +238,8 @@ const ProfileDetails: React.FC = () => {
           <>
             {/* ---- EDIT MODE ---- */}
             <ProfilePicture />
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <Box sx={{ flex: 1, minWidth: 250 }}>
+            <div className="profile-row">
+              <div className="profile-col">
                 <TextField
                   label="Full Name"
                   name="fullName"
@@ -275,8 +250,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.fullName}
                   helperText={errors.fullName}
                 />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 250 }}>
+              </div>
+              <div className="profile-col">
                 <TextField
                   label="Email"
                   name="email"
@@ -285,13 +260,16 @@ const ProfileDetails: React.FC = () => {
                   fullWidth
                   required
                   error={!!errors.email}
-                  helperText={errors.email}
+                  helperText={errors.email || "Email can't be changed."}
+                  InputProps={{ readOnly: true }}
+                  disabled
+                  inputProps={{ "aria-readonly": true }}
                 />
-              </Box>
-            </Box>
+              </div>
+            </div>
 
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 2 }}>
-              <Box sx={{ flex: 1, minWidth: 250 }}>
+            <div className="profile-row profile-single">
+              <div className="profile-col">
                 <TextField
                   label="Phone"
                   name="phone"
@@ -302,8 +280,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.phone}
                   helperText={errors.phone}
                 />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 150 }}>
+              </div>
+              <div className="profile-col-sm">
                 <TextField
                   label="City"
                   name="city"
@@ -314,8 +292,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.city}
                   helperText={errors.city}
                 />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 150 }}>
+              </div>
+              <div className="profile-col-sm">
                 <TextField
                   select
                   label="State"
@@ -333,10 +311,10 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </Box>
-            </Box>
+              </div>
+            </div>
 
-            <Box sx={{ mt: 2 }}>
+            <div className="profile-single">
               <TextField
                 label="Professional Headline / Title"
                 name="headline"
@@ -347,9 +325,9 @@ const ProfileDetails: React.FC = () => {
                 error={!!errors.headline}
                 helperText={errors.headline}
               />
-            </Box>
+            </div>
 
-            <Box sx={{ mt: 2 }}>
+            <div className="profile-single">
               <TextField
                 label="Brief Bio / Summary"
                 name="bio"
@@ -361,10 +339,10 @@ const ProfileDetails: React.FC = () => {
                 inputProps={{ maxLength: 500 }}
                 helperText={`${bioCount} / 500 characters`}
               />
-            </Box>
+            </div>
 
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 2 }}>
-              <Box sx={{ flex: 1, minWidth: 250 }}>
+            <div className="profile-row profile-single">
+              <div className="profile-col">
                 <TextField
                   select
                   label="Industry"
@@ -382,8 +360,8 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 250 }}>
+              </div>
+              <div className="profile-col">
                 <TextField
                   select
                   label="Experience Level"
@@ -401,29 +379,26 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </Box>
-            </Box>
+              </div>
+            </div>
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 2,
-                mt: 4,
-              }}
-            >
-              <Button variant="secondary" onClick={handleCancel}>
+            <div className="actions">
+              <Button className="btn btn-secondary" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={handleSave} disabled={saving}>
+              <Button
+                className="btn btn-primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "Saving..." : "Save"}
               </Button>
-            </Box>
+            </div>
           </>
         ) : (
           <>
             {/* ---- VIEW MODE ---- */}
-            <Box sx={{ mt: 2 }}>
+            <div className="profile-single">
               <Typography variant="h6">Basic Information</Typography>
               <Typography>
                 <strong>Full Name:</strong> {formData.fullName || "—"}
@@ -438,9 +413,9 @@ const ProfileDetails: React.FC = () => {
                 <strong>Location:</strong>{" "}
                 {`${formData.city || "—"}, ${formData.state || "—"}`}
               </Typography>
-            </Box>
+            </div>
 
-            <Box sx={{ mt: 3 }}>
+            <div className="profile-single">
               <Typography variant="h6">Professional Details</Typography>
               <Typography>
                 <strong>Headline:</strong> {formData.headline || "—"}
@@ -451,17 +426,20 @@ const ProfileDetails: React.FC = () => {
               <Typography>
                 <strong>Experience:</strong> {formData.experience || "—"}
               </Typography>
-              <Typography sx={{ mt: 1 }}>
+              <Typography className="bio-title">
                 <strong>Bio:</strong>
               </Typography>
               <Typography variant="body2">{formData.bio || "—"}</Typography>
-            </Box>
+            </div>
 
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
-              <Button variant="primary" onClick={() => setEditMode(true)}>
+            <div className="actions" style={{ marginTop: 16 }}>
+              <Button
+                className="btn btn-primary"
+                onClick={() => setEditMode(true)}
+              >
                 Edit
               </Button>
-            </Box>
+            </div>
           </>
         )}
       </Paper>
@@ -475,7 +453,7 @@ const ProfileDetails: React.FC = () => {
         <Alert
           onClose={() => setOpenSnackbar(false)}
           severity="success"
-          sx={{ width: "100%" }}
+          className="full-width-alert"
         >
           Profile saved successfully!
         </Alert>
@@ -489,12 +467,12 @@ const ProfileDetails: React.FC = () => {
         <Alert
           onClose={() => setOpenErrorSnackbar(false)}
           severity="error"
-          sx={{ width: "100%" }}
+          className="full-width-alert"
         >
           {errorMsg || "Failed to save profile"}
         </Alert>
       </Snackbar>
-    </Box>
+    </div>
   );
 };
 
