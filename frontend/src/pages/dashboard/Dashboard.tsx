@@ -13,11 +13,17 @@ import {
 import Icon from "../../components/common/Icon";
 import { useAuth } from "../../context/AuthContext";
 import * as crud from "../../services/crud";
+import type { EmploymentRow } from "../../types/employment";
+import type { DbSkillRow } from "../../types/skill";
+import type { DocumentRow } from "../../types/document.ts";
+import {
+  mapEmployment,
+  mapSkill,
+  mapEducation,
+  mapProject,
+} from "../../services/dbMappers";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
-// Local minimal CareerEvent shape used by the timeline. Keep this small so the
-// Dashboard can remain independent while preserving the UI contract expected
-// by `CareerTimeline`. Replace with the shared type when reintroducing full
-// data plumbing.
+// Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {
   id: string;
   title: string;
@@ -27,30 +33,6 @@ type CareerEventType = {
   description?: string | undefined;
 };
 
-// Light-weight row shapes used by the Dashboard mapping helpers
-interface DocumentRow {
-  id: string;
-  file_name?: string | null;
-  uploaded_at?: string | null;
-}
-// Matches `public.employment` table in the canonical schema
-interface EmploymentRow {
-  id: string;
-  job_title?: string | null;
-  company_name?: string | null;
-  location?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  current_position?: boolean | null;
-  job_description?: string | null;
-}
-// Matches `public.skills` table: `skill_name` + `proficiency_level` enum
-interface SkillRow {
-  id: string;
-  skill_name?: string | null;
-  proficiency_level?: string | null;
-}
-
 // ----- Helper utilities (module-level to avoid hook linter complaints) -----
 function readMetaString(meta: unknown, key: string): string {
   if (!meta || typeof meta !== "object") return "";
@@ -58,16 +40,7 @@ function readMetaString(meta: unknown, key: string): string {
   return typeof v === "string" ? v : "";
 }
 
-// Convert UI date input (YYYY-MM or YYYY-MM-DD) to SQL date (YYYY-MM-DD)
-function formatToSqlDate(v: unknown): string | null {
-  if (v == null) return null;
-  const s = String(v).trim();
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
-  if (/^\d{4}-\d{2}/.test(s)) return `${s.slice(0, 7)}-01`;
-  return null;
-}
+// Date normalization is handled by dbMappers; keep this module focused on UI and handlers.
 
 function buildDisplayHeader(
   profile: Record<string, unknown> | null,
@@ -144,24 +117,22 @@ const Dashboard: FC = () => {
 
   // (row shapes are declared at module-level)
 
-  const handleAddEmployment = async (formData: Record<string, unknown>) => {
+  const handleAddEmployment = async (
+    formData: Record<string, unknown>
+  ): Promise<void> => {
     if (loading) throw new Error("Auth loading");
     if (!user) throw new Error("Please sign in to add employment");
 
     const userCrud = crud.withUser(user.id);
 
-    // Map SummaryCards field names -> DB column names
-    const payload = {
-      job_title: formData.position ?? formData.job_title ?? "",
-      company_name: formData.company ?? formData.company_name ?? "",
-      location: formData.location || null,
-      start_date: formData.start_date || null,
-      end_date: formData.end_date || null,
-      current_position: Boolean(formData.is_current),
-      job_description: formData.description || null,
-    };
-
-    const res = await userCrud.insertRow("employment", payload, "*");
+    // Use shared mapper to build payload and validate
+    const mappedEmp = mapEmployment(formData);
+    if (mappedEmp.error) throw new Error(mappedEmp.error);
+    const res = await userCrud.insertRow(
+      "employment",
+      mappedEmp.payload ?? {},
+      "*"
+    );
     if (res.error) {
       console.error("Add employment failed", res.error);
       throw new Error(res.error.message || "Failed to add employment");
@@ -169,59 +140,45 @@ const Dashboard: FC = () => {
 
     // Inserted row (res.data) — update local UI state so the dashboard reflects change immediately
     const row = res.data as Record<string, unknown>;
+    const usedPayload = (mappedEmp.payload ?? {}) as Record<string, unknown>;
     const asString = (v: unknown) =>
       typeof v === "string" ? v : String(v ?? "");
     const asMaybeString = (v: unknown) => (v == null ? undefined : asString(v));
 
     const newEvent: CareerEventType = {
       id: asString(row["id"]),
-      title: asString(row["job_title"] ?? payload.job_title),
-      company: asString(row["company_name"] ?? payload.company_name),
+      title: asString(row["job_title"] ?? usedPayload.job_title),
+      company: asString(row["company_name"] ?? usedPayload.company_name),
       startDate: asString(
-        row["start_date"] ?? payload.start_date ?? new Date().toISOString()
+        row["start_date"] ?? usedPayload.start_date ?? new Date().toISOString()
       ),
       endDate:
         (row["current_position"] as unknown) === true
           ? undefined
-          : asMaybeString(row["end_date"] ?? payload.end_date),
+          : asMaybeString(row["end_date"] ?? usedPayload.end_date),
       description: asMaybeString(
-        row["job_description"] ?? payload.job_description
+        row["job_description"] ?? usedPayload.job_description
       ),
     };
 
     setCareerEvents((c) => [newEvent, ...c]);
     setCounts((c) => ({ ...c, employmentCount: (c.employmentCount ?? 0) + 1 }));
 
-    return res.data;
+    // No return value expected by caller; UI updated locally above.
+    return;
   };
 
-  const handleAddSkill = async (formData: Record<string, unknown>) => {
+  const handleAddSkill = async (
+    formData: Record<string, unknown>
+  ): Promise<void> => {
     if (loading) throw new Error("Auth loading");
     if (!user) throw new Error("Please sign in to add skills");
 
     const userCrud = crud.withUser(user.id);
 
-    // Map numeric slider (1-5) to proficiency enum expected by the DB
-    const num =
-      Number(formData.proficiency_level ?? formData.proficiency_level ?? 1) ||
-      1;
-    const numToEnum: Record<number, string> = {
-      1: "beginner",
-      2: "intermediate",
-      3: "advanced",
-      4: "expert",
-      5: "expert",
-    };
-
-    const payload = {
-      skill_name:
-        (formData.name as string) ?? (formData.skill_name as string) ?? "",
-      proficiency_level: numToEnum[num] ?? "beginner",
-      skill_category: (formData.category as string) ?? null,
-      meta: null,
-    };
-
-    const res = await userCrud.insertRow("skills", payload, "*");
+    const mapped = mapSkill(formData);
+    if (mapped.error) throw new Error(mapped.error);
+    const res = await userCrud.insertRow("skills", mapped.payload ?? {}, "*");
     if (res.error) {
       console.error("Add skill failed", res.error);
       throw new Error(res.error.message || "Failed to add skill");
@@ -236,20 +193,22 @@ const Dashboard: FC = () => {
     };
 
     const row = res.data as Record<string, unknown>;
+    const used = (mapped.payload ?? {}) as Record<string, unknown>;
     const skillName =
       typeof row["skill_name"] === "string"
         ? (row["skill_name"] as string)
-        : String(payload.skill_name);
+        : String(used.skill_name);
     const profEnum =
       typeof row["proficiency_level"] === "string"
         ? (row["proficiency_level"] as string)
-        : (payload.proficiency_level as string);
+        : (used.proficiency_level as string);
     const numeric = enumToNum[profEnum] ?? 1;
 
     setSkills((s) => [{ name: skillName, value: numeric }, ...s]);
     setCounts((c) => ({ ...c, skillsCount: (c.skillsCount ?? 0) + 1 }));
 
-    return res.data;
+    // No return value expected by caller; UI updated locally above.
+    return;
   };
   const handleAddEducation = async (
     formData: Record<string, unknown>
@@ -259,76 +218,39 @@ const Dashboard: FC = () => {
 
     const userCrud = crud.withUser(user.id);
 
-    const payload = {
-      institution_name:
-        (formData.institution as string) ??
-        (formData.institution_name as string) ??
-        "",
-      degree_type:
-        (formData.degree as string) ?? (formData.degree_type as string) ?? "",
-      field_of_study:
-        (formData.field_of_study as string) ?? (formData.major as string) ?? "",
-      graduation_date: formatToSqlDate(formData.end_date ?? formData.end),
-      start_date: formatToSqlDate(formData.start_date ?? formData.start),
-      gpa: formData.gpa == null ? null : Number(formData.gpa) || null,
-      enrollment_status:
-        (formData.is_current as unknown) === true ? "enrolled" : "not_enrolled",
-      education_level: undefined,
-      honors: (formData.awards as string) ?? null,
-      meta: null,
-    };
-
-    try {
-      const res = await userCrud.insertRow("education", payload, "*");
-      if (res.error) {
-        console.error("Add education failed", res.error);
-        throw new Error(res.error.message || "Failed to add education");
-      }
-
-      // update local counts immediately so UI reflects change
-      setCounts((c) => ({ ...c, educationCount: (c.educationCount ?? 0) + 1 }));
-
-      // notify other parts of the app to refresh if they listen
-      window.dispatchEvent(new Event("education:changed"));
-
-      return;
-    } catch (err) {
-      console.error("Error adding education from dashboard", err);
-      throw err;
+    // Use mapper to build and validate payload for education
+    const mapped = mapEducation(formData);
+    if (mapped.error) throw new Error(mapped.error);
+    const res = await userCrud.insertRow(
+      "education",
+      mapped.payload ?? {},
+      "*"
+    );
+    if (res.error) {
+      console.error("Add education failed", res.error);
+      throw new Error(res.error.message || "Failed to add education");
     }
+
+    // update local counts immediately so UI reflects change
+    setCounts((c) => ({ ...c, educationCount: (c.educationCount ?? 0) + 1 }));
+
+    // notify other parts of the app to refresh if they listen
+    window.dispatchEvent(new Event("education:changed"));
+
+    return;
   };
-  const handleAddProject = async (formData: Record<string, unknown>) => {
+  const handleAddProject = async (
+    formData: Record<string, unknown>
+  ): Promise<void> => {
     if (loading) throw new Error("Auth loading");
     if (!user) throw new Error("Please sign in to add a project");
 
     const userCrud = crud.withUser(user.id);
 
-    // Map modal form fields to projects table columns
-    const payload = {
-      proj_name:
-        (formData.title as string) ?? (formData.projectName as string) ?? "",
-      proj_description: (formData.description as string) ?? null,
-      start_date:
-        formatToSqlDate(formData.start_date ?? formData.startDate) ?? null,
-      end_date: formatToSqlDate(formData.end_date ?? formData.endDate) ?? null,
-      tech_and_skills:
-        typeof formData.technologies_input === "string"
-          ? (formData.technologies_input as string)
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : null,
-      project_url: (formData.url as string) ?? null,
-      team_size: null,
-      team_details: null,
-      industry_proj_type: null,
-      proj_outcomes: null,
-      status: (formData.is_ongoing as unknown) === true ? "ongoing" : "planned",
-      media_path: null,
-      meta: null,
-    };
-
-    const res = await userCrud.insertRow("projects", payload, "*");
+    // Use mapper to build and validate payload for projects
+    const mapped = mapProject(formData);
+    if (mapped.error) throw new Error(mapped.error);
+    const res = await userCrud.insertRow("projects", mapped.payload ?? {}, "*");
     if (res.error) {
       console.error("Add project failed", res.error);
       throw new Error(res.error.message || "Failed to add project");
@@ -338,7 +260,8 @@ const Dashboard: FC = () => {
     setCounts((c) => ({ ...c, projectsCount: (c.projectsCount ?? 0) + 1 }));
     window.dispatchEvent(new Event("projects:changed"));
 
-    return res.data;
+    // No return value expected by caller; UI updated locally above.
+    return;
   };
 
   const handleExport = () => {
@@ -379,7 +302,9 @@ const Dashboard: FC = () => {
         const profRes = await crud.getUserProfile(user.id);
         if (!mounted) return;
         const { name, email } = buildDisplayHeader(
-          profRes.error ? null : profRes.data ?? null,
+          profRes.error
+            ? null
+            : (profRes.data as Record<string, unknown> | null) ?? null,
           user
         );
         setDisplayName(name);
@@ -417,18 +342,18 @@ const Dashboard: FC = () => {
         const emp: EmploymentRow[] = empRes.error
           ? []
           : ((empRes.data ?? []) as EmploymentRow[]);
-        const sk: SkillRow[] = skillsRes.error
+        const sk: DbSkillRow[] = skillsRes.error
           ? []
-          : ((skillsRes.data ?? []) as SkillRow[]);
+          : ((skillsRes.data ?? []) as DbSkillRow[]);
 
         // Map to view models
         setActivities(docsToActivities(docs));
         // projects count should reflect rows in `projects`, not documents
         const projRows: { id?: string }[] =
-          projectsRes && !projectsRes.error
+          projectsRes && !projectsRes.error && projectsRes.data
             ? Array.isArray(projectsRes.data)
-              ? projectsRes.data
-              : [projectsRes.data]
+              ? (projectsRes.data as { id?: string }[])
+              : [projectsRes.data as unknown as { id?: string }]
             : [];
         setCounts((c) => ({ ...c, projectsCount: projRows.length }));
 
@@ -460,10 +385,10 @@ const Dashboard: FC = () => {
         setCounts((c) => ({ ...c, employmentCount: empEvents.length }));
         // Education count (ensure dashboard shows correct number on initial load)
         const eduRows: { id?: string }[] =
-          educationRes && !educationRes.error
+          educationRes && !educationRes.error && educationRes.data
             ? Array.isArray(educationRes.data)
-              ? educationRes.data
-              : [educationRes.data]
+              ? (educationRes.data as { id?: string }[])
+              : [educationRes.data as unknown as { id?: string }]
             : [];
         setCounts((c) => ({ ...c, educationCount: eduRows.length }));
       } catch (err) {

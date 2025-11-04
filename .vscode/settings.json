@@ -1,0 +1,21 @@
+{
+  "markdownlint.config": {
+    "default": true,
+    "MD033": false,
+    "MD041": false,
+    "no-inline-html": false,
+    "first-line-heading": false,
+    "line-length": false,
+    "MD013": false,
+    "MD024": false,
+    "no-duplicate-heading": false,
+    "MD036": false,
+    "no-emphasis-as-heading": false,
+    "MD040": false,
+    "fenced-code-language": false
+  },
+  "files.associations": {
+    "*.instructions.md": "markdown"
+  },
+  "markdownlint.ignore": ["**/*.instructions.md", ".github/instructions/**"]
+}

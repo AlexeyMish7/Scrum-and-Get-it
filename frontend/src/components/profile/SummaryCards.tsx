@@ -1,5 +1,6 @@
 // src/components/ProfileDashboard/SummaryCards.tsx
 import React, { useState } from "react";
+import { useErrorHandler, validateRequired } from "../../hooks/useErrorHandler";
 import {
   Card,
   CardContent,
@@ -15,6 +16,9 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
+  Snackbar,
+  Alert,
+  Autocomplete,
 } from "@mui/material";
 import {
   FaBriefcase,
@@ -64,6 +68,8 @@ const degreeOptions = [
   "PhD",
   "Certificate",
 ];
+const skillLevelOptions = ["Beginner", "Intermediate", "Advanced", "Expert"];
+const skillCategoryOptions = ["Technical", "Soft Skills", "Language", "Other"];
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({
   counts,
@@ -78,6 +84,15 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
     Record<string, string | number | boolean | undefined>
   >({});
   const [submitting, setSubmitting] = useState(false);
+  // Skill quick-add controlled fields (match AddSkills page UX)
+  const [skillInputValue, setSkillInputValue] = useState("");
+  const [skillName, setSkillName] = useState("");
+  const [skillCategory, setSkillCategory] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
+
+  // centralized error handler hook for snackbars
+  const { notification, closeNotification, showNotification, handleError } =
+    useErrorHandler();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -87,7 +102,75 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   const handleSubmit = async (card: (typeof cardsData)[0]) => {
+    // Client-side validation for required fields and simple numeric ranges
     try {
+      // Special-case Skills quick-add: validate the controlled skill fields
+      if (card.title === "Skills") {
+        if (!skillName || !skillCategory || !skillLevel) {
+          showNotification(
+            "Please fill out skill name, category and proficiency.",
+            "error"
+          );
+          return;
+        }
+        setSubmitting(true);
+        // Map UI-friendly skill inputs to the DB shape expected by the
+        // shared mappers / AddSkills page. Note: proficiency_level is stored
+        // in the DB as a lowercase enum (beginner|intermediate|advanced|expert).
+        const payload: Record<string, unknown> = {
+          skill_name: skillName,
+          skill_category: skillCategory,
+          proficiency_level: String(skillLevel).toLowerCase(),
+        };
+        await Promise.resolve(
+          card.onAdd(
+            payload as Record<string, string | number | boolean | undefined>
+          )
+        );
+        // reset skill quick-add fields as well
+        setSkillInputValue("");
+        setSkillName("");
+        setSkillCategory("");
+        setSkillLevel("");
+        setSubmitting(false);
+        setOpenDialog(null);
+        return;
+      }
+      // Build requiredFields map for validateRequired
+      const requiredFields: Record<string, unknown> = {};
+      for (const f of card.fields) {
+        if (f.required) requiredFields[f.name] = formData[f.name];
+      }
+
+      // Validate numeric ranges (e.g., proficiency)
+      for (const f of card.fields) {
+        if (f.required && f.type === "number") {
+          const raw = formData[f.name];
+          const n = raw === undefined || raw === null ? NaN : Number(raw);
+          if (Number.isNaN(n)) {
+            showNotification(
+              `Please provide a valid value for ${f.label}`,
+              "error"
+            );
+            return;
+          }
+          if (typeof f.min === "number" && n < f.min) {
+            showNotification(`${f.label} must be at least ${f.min}`, "error");
+            return;
+          }
+          if (typeof f.max === "number" && n > f.max) {
+            showNotification(`${f.label} must be at most ${f.max}`, "error");
+            return;
+          }
+        }
+      }
+
+      const validationMsg = validateRequired(requiredFields);
+      if (validationMsg) {
+        showNotification(validationMsg, "error");
+        return;
+      }
+
       setSubmitting(true);
       // Allow the parent handler to perform async work (DB insert). If it fails,
       // bubble the error so we don't close the dialog prematurely.
@@ -95,14 +178,14 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       setFormData({});
       setOpenDialog(null);
     } catch (e) {
+      // Log and surface errors using the shared error handler so messages are
+      // consistent across the app and map DB/Supabase errors to friendly text.
       console.error("Add handler failed", e);
-      // Simple user feedback for now; parent handler may also surface errors
-      alert("Failed to add item. See console for details.");
+      handleError(e);
     } finally {
       setSubmitting(false);
     }
   };
-
   const cardsData = [
     {
       title: "Employment",
@@ -111,9 +194,8 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       color: theme.palette.primary.main,
       onAdd: onAddEmployment,
       fields: [
+        { type: "text", name: "position", label: "Job title", required: true },
         { type: "text", name: "company", label: "Company", required: true },
-        { type: "text", name: "position", label: "Position", required: true },
-        { type: "text", name: "location", label: "Location" },
         {
           type: "date",
           name: "start_date",
@@ -124,9 +206,8 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
         {
           type: "checkbox",
           name: "is_current",
-          label: "Currently working here",
+          label: "Current position",
         },
-        { type: "textarea", name: "description", label: "Description" },
       ] as FieldBase[],
     },
     {
@@ -136,21 +217,22 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       color: theme.palette.success.main,
       onAdd: onAddSkill,
       fields: [
-        { type: "text", name: "name", label: "Skill Name", required: true },
+        { type: "text", name: "name", label: "Skill name", required: true },
         {
-          type: "select",
-          name: "category",
-          label: "Category",
-          options: ["Technical", "Soft Skills", "Language", "Other"],
-          required: true,
-        },
-        {
-          type: "range",
+          type: "number",
           name: "proficiency_level",
-          label: "Proficiency Level",
+          label: "Proficiency (1-5)",
           min: 1,
           max: 5,
           default: 1,
+          required: true,
+        },
+        {
+          type: "select",
+          name: "category",
+          label: "Skill category",
+          options: ["Technical", "Soft Skills", "Language", "Other"],
+          required: true,
         },
       ] as FieldBase[],
     },
@@ -162,35 +244,28 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       onAdd: onAddEducation,
       fields: [
         {
-          type: "select",
-          name: "degree",
-          label: "Degree Type",
-          options: degreeOptions,
-          required: true,
-        },
-        {
           type: "text",
           name: "institution",
           label: "Institution",
           required: true,
         },
         {
-          type: "text",
-          name: "field_of_study",
-          label: "Field of Study",
-          required: true,
+          type: "select",
+          name: "degree",
+          label: "Degree type (optional)",
+          options: degreeOptions,
         },
         {
           type: "text",
+          name: "field_of_study",
+          label: "Field of study (optional)",
+        },
+        {
+          type: "date",
           name: "start_date",
-          label: "Start Date (YYYY-MM)",
+          label: "Start date",
           required: true,
         },
-        { type: "checkbox", name: "is_current", label: "Currently Enrolled" },
-        { type: "text", name: "end_date", label: "End Date (YYYY-MM)" }, // hide in renderField if is_current
-        { type: "number", name: "gpa", label: "GPA (optional)" },
-        { type: "checkbox", name: "private_gpa", label: "Hide GPA" },
-        { type: "text", name: "awards", label: "Achievements / Honors" },
       ] as FieldBase[],
     },
     {
@@ -200,21 +275,15 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
       color: theme.palette.info.main,
       onAdd: onAddProject,
       fields: [
-        { type: "text", name: "title", label: "Project Title", required: true },
-        {
-          type: "text",
-          name: "technologies_input",
-          label: "Technologies (comma-separated)",
-        },
+        { type: "text", name: "title", label: "Project name", required: true },
         {
           type: "date",
           name: "start_date",
-          label: "Start Date",
+          label: "Start date",
           required: true,
         },
-        { type: "date", name: "end_date", label: "End Date" },
-        { type: "checkbox", name: "is_ongoing", label: "Ongoing project" },
-        { type: "text", name: "url", label: "Project URL (optional)" },
+        { type: "date", name: "end_date", label: "End date" },
+        { type: "checkbox", name: "is_ongoing", label: "Current project" },
       ] as FieldBase[],
     },
   ];
@@ -230,7 +299,8 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   };
 
   const renderField = (field: FieldBase) => {
-    const isEndDate = field.name === "end_date" && formData["is_current"]; // hide End Date if Currently Enrolled
+    // If the user marked the entry as current, hide/disable the end date field
+    const isEndDate = field.name === "end_date" && formData["is_current"];
 
     const commonProps = {
       name: field.name,
@@ -361,14 +431,70 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                 mb: 2,
               }}
             >
-              {card.fields.map((field) => (
-                // <React.Fragment key={field.name}>
-                //   {renderField(field)}
-                // </React.Fragment>
-                <Box key={field.name} sx={{ mt: 2 }}>
-                  {renderField(field)}
+              {card.title === "Skills" ? (
+                <Box>
+                  <Box sx={{ mt: 2 }}>
+                    <Autocomplete
+                      freeSolo
+                      options={[]}
+                      inputValue={skillInputValue}
+                      onInputChange={(_, v) => {
+                        setSkillInputValue(v);
+                        setSkillName(v);
+                      }}
+                      onChange={(_, v) => {
+                        const val = typeof v === "string" ? v : v ?? "";
+                        setSkillName(val as string);
+                        setSkillInputValue(val as string);
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Skill" fullWidth />
+                      )}
+                    />
+                  </Box>
+
+                  <Box sx={{ mt: 2 }}>
+                    <TextField
+                      label="Category"
+                      select
+                      fullWidth
+                      value={skillCategory}
+                      onChange={(e) => setSkillCategory(e.target.value)}
+                    >
+                      {skillCategoryOptions.map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+
+                  <Box sx={{ mt: 2 }}>
+                    <TextField
+                      label="Proficiency"
+                      select
+                      fullWidth
+                      value={skillLevel}
+                      onChange={(e) => setSkillLevel(e.target.value)}
+                    >
+                      {skillLevelOptions.map((lvl) => (
+                        <MenuItem key={lvl} value={lvl}>
+                          {lvl}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
                 </Box>
-              ))}
+              ) : (
+                card.fields.map((field) => (
+                  // <React.Fragment key={field.name}>
+                  //   {renderField(field)}
+                  // </React.Fragment>
+                  <Box key={field.name} sx={{ mt: 2 }}>
+                    {renderField(field)}
+                  </Box>
+                ))
+              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog} disabled={submitting}>
@@ -385,6 +511,20 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           </Dialog>
         </React.Fragment>
       ))}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={notification.autoHideDuration}
+        onClose={closeNotification}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={closeNotification}
+          severity={notification.severity}
+          sx={{ width: "100%" }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -1,28 +1,23 @@
 import React, { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
-import * as crud from "../../services/crud";
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  useTheme,
-} from "@mui/material";
 
-interface EmploymentEntry {
-  jobTitle: string;
-  companyName: string;
-  location: string;
-  startDate: string;
-  endDate?: string;
-  isCurrent: boolean;
-  description: string;
-}
+// AddEmployment — form to create a new employment entry
+// - Collects required fields, validates client-side, and sends a payload
+//   to the employment service. On success it navigates back to the list and
+//   uses navigation state to show a centralized success message.
+// Student notes: the component demonstrates form validation, controlled
+// components, and preparing a backend payload using snake_case keys.
+import { useAuth } from "../../context/AuthContext";
+import employmentService from "../../services/employment";
+import type { EmploymentFormData } from "../../types/employment";
+import EmploymentForm from "./EmploymentForm";
+import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { Button, Typography, useTheme } from "@mui/material";
+import "./employment.css";
+import { useNavigate } from "react-router-dom";
 
 const AddEmploymentForm: React.FC = () => {
-  const [formData, setFormData] = useState<EmploymentEntry>({
+  const [formData, setFormData] = useState<EmploymentFormData>({
     jobTitle: "",
     companyName: "",
     location: "",
@@ -31,81 +26,102 @@ const AddEmploymentForm: React.FC = () => {
     isCurrent: false,
     description: "",
   });
-
-  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
-    const name =
-      (target as HTMLInputElement).name || (target as HTMLTextAreaElement).name;
-    const value =
-      (target as HTMLInputElement).value ??
-      (target as HTMLTextAreaElement).value;
-    const type = (target as HTMLInputElement).type ?? "text";
-    const checked = (target as HTMLInputElement).checked;
-
-    setFormData((prev) => ({
-      ...prev,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore - dynamic key from form name (kept simple for this form)
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
+  const { handleError, notification, closeNotification } = useErrorHandler();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof EmploymentFormData, string>>
+  >({});
+
+  const handleFieldChange = (
+    name: keyof EmploymentFormData,
+    val: string | boolean
+  ) => {
+    setFormData((prev) => ({ ...(prev as EmploymentFormData), [name]: val }));
+    // clear field-level error when user types
+    setErrors((prev) => ({ ...(prev || {}), [name]: undefined }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
     setLoading(true);
 
-    // client-side validation
-    if (!formData.jobTitle || !formData.companyName || !formData.startDate) {
-      setMessage("Please fill in all required fields.");
-      setLoading(false);
-      return;
-    }
+    // Client-side validation: mark missing required fields and ensure date order.
+    // Inline errors are shown so the user can quickly correct input.
+    const newErrors: Partial<Record<keyof EmploymentFormData, string>> = {};
+    if (!formData.jobTitle) newErrors.jobTitle = "Required";
+    if (!formData.companyName) newErrors.companyName = "Required";
+    if (!formData.startDate) newErrors.startDate = "Required";
     if (
       !formData.isCurrent &&
       formData.endDate &&
       formData.startDate > formData.endDate
-    ) {
-      setMessage("Start date must be before end date.");
+    )
+      newErrors.endDate = "End date must be the same or after start date";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      handleError("Please correct the highlighted fields.");
       setLoading(false);
       return;
     }
 
     try {
       if (!user) {
-        setMessage("Please sign in before adding employment history.");
+        handleError("Please sign in before adding employment history.");
         setLoading(false);
         return;
       }
 
-      const userCrud = crud.withUser(user.id);
+      // If no end date provided, treat as current
+      const endDateRaw = (formData.endDate ?? "").toString().trim();
+      const isCurrent = endDateRaw === "" ? true : Boolean(formData.isCurrent);
+      const endDate = isCurrent ? null : endDateRaw || null;
+
+      // Validate start date present
+      const startDate = (formData.startDate ?? "").toString();
+      if (!startDate) {
+        handleError("Start date is required.");
+        setLoading(false);
+        return;
+      }
+
+      if (endDate && startDate && endDate < startDate) {
+        handleError("End date must be the same or after start date.");
+        setLoading(false);
+        return;
+      }
+
       const payload = {
-        job_title: formData.jobTitle,
-        company_name: formData.companyName,
+        job_title: formData.jobTitle || "",
+        company_name: formData.companyName || "",
         location: formData.location || null,
-        start_date: formData.startDate,
-        end_date: formData.isCurrent ? null : formData.endDate || null,
-        current_position: formData.isCurrent,
+        start_date: startDate,
+        end_date: endDate,
+        current_position: isCurrent,
         job_description: formData.description || null,
-      };
+      } as const;
 
-      const res = await userCrud.insertRow("employment", payload, "*");
+      const res = await employmentService.insertEmployment(user.id, payload);
 
+      // If the server returned an error, surface it via the centralized
+      // error handler and do not navigate. Previously this branch
+      // navigated with a success message on error which hid failures.
       if (res.error) {
-        console.error("Insert error:", res.error);
-        setMessage(`Something went wrong: ${res.error.message}`);
+        console.error(res.error);
+        handleError(res.error);
         setLoading(false);
         return;
       }
 
-      setMessage("Employment entry added successfully!");
+      // On success: navigate back to the list and pass a success message via
+      // navigation state. The list page will show a centralized snackbar so
+      // notifications are consistent across add/edit/delete flows.
+      navigate("/employment-history", {
+        state: { success: "Employment entry added successfully!" },
+      });
+
       setFormData({
         jobTitle: "",
         companyName: "",
@@ -117,33 +133,25 @@ const AddEmploymentForm: React.FC = () => {
       });
     } catch (err) {
       console.error("Unexpected error:", err);
-      setMessage("Unexpected error. See console for details.");
+      handleError(err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    window.history.back(); // simple navigation back to employment history view
+    // Navigate back to the previous page. This keeps the UX simple and
+    // predictable — the Cancel button behaves like the browser Back action.
+    window.history.back();
   };
 
-  const theme = useTheme(); 
-  
+  const theme = useTheme();
+
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit}
-      sx={{
-        maxWidth: 600,
-        mx: "auto",
-        p: 4,
-        borderRadius: 3,
-        boxShadow: 1,
-        bgcolor: theme.palette.background.paper,
-      }}
-    >
+    <form onSubmit={handleSubmit} className="glossy-card employment-form-paper">
       <Typography
         variant="h5"
+        className="glossy-title"
         fontWeight="bold"
         textAlign="center"
         mb={3}
@@ -152,84 +160,17 @@ const AddEmploymentForm: React.FC = () => {
         Add Employment History
       </Typography>
 
-      <TextField
-        label="Job Title *"
-        name="jobTitle"
-        value={formData.jobTitle}
-        onChange={handleChange}
-        fullWidth
-        required
-        margin="normal"
-      />
-
-      <TextField
-        label="Company Name *"
-        name="companyName"
-        value={formData.companyName}
-        onChange={handleChange}
-        fullWidth
-        required
-        margin="normal"
-      />
-
-      <TextField
-        label="Location"
-        name="location"
-        value={formData.location}
-        onChange={handleChange}
-        fullWidth
-        margin="normal"
-      />
-
-      <Box display="flex" gap={2}>
-        <TextField
-          label="Start Date *"
-          type="date"
-          name="startDate"
-          value={formData.startDate}
-          onChange={handleChange}
-          fullWidth
-          required
-          InputLabelProps={{ shrink: true }}
+      <div className="employment-form-fields">
+        <EmploymentForm
+          value={formData}
+          onFieldChange={handleFieldChange}
+          errors={errors}
         />
-        {!formData.isCurrent && (
-          <TextField
-            label="End Date"
-            type="date"
-            name="endDate"
-            value={formData.endDate}
-            onChange={handleChange}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-        )}
-      </Box>
+      </div>
 
-      <FormControlLabel
-        control={
-          <Checkbox
-            name="isCurrent"
-            checked={formData.isCurrent}
-            onChange={handleChange}
-          />
-        }
-        label="Current Position"
-        sx={{ mt: 1 }}
-      />
+      <ErrorSnackbar notification={notification} onClose={closeNotification} />
 
-      <TextField
-        label="Job Description (max 1000 characters)"
-        name="description"
-        value={formData.description}
-        onChange={handleChange}
-        fullWidth
-        multiline
-        rows={4}
-        inputProps={{ maxLength: 1000 }}
-        margin="normal"
-      />
-
-      <Box display="flex" justifyContent="space-between" mt={3}>
+      <div className="employment-form-actions">
         <Button
           type="submit"
           variant="contained"
@@ -238,22 +179,11 @@ const AddEmploymentForm: React.FC = () => {
         >
           {loading ? "Saving..." : "Save"}
         </Button>
-        <Button variant="secondary" onClick={handleCancel}>
+        <Button variant="outlined" onClick={handleCancel}>
           Cancel
         </Button>
-      </Box>
-
-      {message && (
-        <Typography
-          variant="body2"
-          textAlign="center"
-          mt={2}
-          color={theme.palette.text.secondary}
-        >
-          {message}
-        </Typography>
-      )}
-    </Box>
+      </div>
+    </form>
   );
 };
 

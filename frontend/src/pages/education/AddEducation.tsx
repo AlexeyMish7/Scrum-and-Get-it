@@ -1,7 +1,11 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isMonthAfter } from "../../utils/dateUtils";
 import { useAuth } from "../../context/AuthContext";
-import crud from "../../services/crud";
+import educationService from "../../services/education";
+import type { EducationEntry } from "../../types/education";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import {
   Box,
   Typography,
@@ -15,32 +19,18 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Divider,
+  Tooltip,
 } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import "./AddEducation.css";
 
-type SchoolItem = {
-  id: string;
-  level: string;
-  school: string;
-  major: string;
-  start: string;
-  end?: string;
-  gpa?: number;
-  privateGpa?: boolean;
-  awards?: string;
-  active?: boolean;
-};
-
-type DbEducationRow = {
-  id?: string;
-  institution_name?: string | null;
-  degree_type?: string | null;
-  field_of_study?: string | null;
-  graduation_date?: string | null;
-  start_date?: string | null;
-  gpa?: number | null;
-  honors?: string | null;
-};
-
+// List of education levels users can choose from
 const degreeOptions = [
   "High School",
   "Associate",
@@ -50,331 +40,440 @@ const degreeOptions = [
   "Certificate",
 ];
 
-const AddEducation = () => {
+const AddEducation: React.FC = () => {
+  // Get user info and login status from our authentication system
   const { user, loading } = useAuth();
+  // Function to navigate to different pages
   const navigate = useNavigate();
-  const [schoolList, setSchoolList] = useState<SchoolItem[]>([]);
-  const [formData, setFormData] = useState<SchoolItem>({
-    id: "",
-    level: "",
-    school: "",
-    major: "",
-    start: "",
-    end: "",
-    gpa: undefined,
-    privateGpa: false,
-    awards: "",
-    active: false,
-  });
 
+  // Centralized error handling
+  const {
+    notification,
+    closeNotification,
+    handleError,
+    showSuccess,
+    showWarning,
+  } = useErrorHandler();
+
+  // Keep track of all education entries the user has added
+  const [schoolList, setSchoolList] = useState<EducationEntry[]>([]);
+  // Track which entry user wants to delete (null means no deletion in progress)
   const [removeId, setRemoveId] = useState<string | null>(null);
 
-  const updateField = (
-    field: keyof SchoolItem,
-    value: string | number | boolean | undefined
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  // Store what the user is typing in the form
+  const [formData, setFormData] = useState<Partial<EducationEntry>>({
+    degree: "",
+    institution: "",
+    fieldOfStudy: "",
+    startDate: "",
+    endDate: undefined,
+    gpa: undefined,
+    gpaPrivate: false,
+    honors: undefined,
+    active: false, // true if currently enrolled
+  });
+
+  // Helper function to update any field in the form
+  const updateField = (k: keyof EducationEntry, v: unknown) =>
+    setFormData((s) => ({ ...(s ?? {}), [k]: v }));
+
+  // Check if form has required information before allowing submission
+  const validate = () => {
+    // User must provide either a degree type OR field of study (or both)
+    const hasDegreeOrField = Boolean(
+      (formData.degree && String(formData.degree).trim()) ||
+        (formData.fieldOfStudy && String(formData.fieldOfStudy).trim())
+    );
+
+    // All three pieces are required: institution, start date, and degree/field
+    const hasRequiredFields = Boolean(
+      formData.institution && formData.startDate && hasDegreeOrField
+    );
+
+    // If not currently enrolled and end date is provided, validate it's after start date
+    if (!formData.active && formData.endDate && formData.startDate) {
+      // If not active, and both dates provided, ensure endDate is after startDate
+      const isValid = isMonthAfter(formData.startDate, formData.endDate);
+      if (!isValid) return false;
+    }
+
+    return hasRequiredFields;
   };
 
-  // Convert a YYYY-MM or YYYY-MM-DD string from the UI into a SQL date (YYYY-MM-DD)
-  const formatToSqlDate = (v?: string | null) => {
-    if (!v) return null;
-    const trimmed = v.trim();
-    // If user entered YYYY-MM, append -01 (first of month)
-    if (/^\d{4}-\d{2}$/.test(trimmed)) return `${trimmed}-01`;
-    // If already full date, return as-is (basic validation)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-    // otherwise, attempt to coerce by taking first 7 chars and appending -01
-    if (/^\d{4}-\d{2}/.test(trimmed)) return `${trimmed.slice(0, 7)}-01`;
-    return null;
-  };
-
+  // Handle when user clicks "Add Education" button
   const addEntry = async () => {
-    if (
-      !formData.level ||
-      !formData.school ||
-      !formData.major ||
-      !formData.start
-    ) {
-      alert("Required fields missing.");
+    // Don't submit if required fields are missing
+    if (!validate()) {
+      // Check specific validation issues for better error messages
+      if (!formData.institution || !formData.startDate) {
+        showWarning(
+          "Please complete required fields: Institution and Start Date."
+        );
+      } else if (!formData.degree && !formData.fieldOfStudy) {
+        showWarning("Please provide either a Degree Type or Field of Study.");
+      } else if (!formData.active && formData.endDate && formData.startDate) {
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        if (endDate <= startDate) {
+          showWarning("End date must be after start date.");
+        }
+      } else {
+        showWarning("Please complete required fields.");
+      }
       return;
     }
 
-    // If not signed in, fall back to local behavior
+    // If user isn't logged in, just store locally (won't be saved permanently)
     if (loading || !user) {
-      const newEntry: SchoolItem = {
-        ...formData,
-        id: crypto.randomUUID(),
-        end: formData.active ? undefined : formData.end,
-      };
-      setSchoolList((s) => [...s, newEntry]);
-      resetForm();
+      // Create temporary ID for local storage
+      const id = crypto.randomUUID();
+      setSchoolList((s) => [
+        ...s,
+        {
+          id,
+          degree: formData.degree ?? "",
+          institution: formData.institution ?? "",
+          fieldOfStudy: formData.fieldOfStudy ?? "",
+          startDate: formData.startDate ?? "",
+          endDate: formData.endDate ?? undefined,
+          gpa: formData.gpa ?? undefined,
+          gpaPrivate: formData.gpaPrivate ?? false,
+          honors: formData.honors ?? undefined,
+          active: formData.active ?? false,
+        },
+      ]);
+      // Clear form for next entry
+      setFormData({
+        degree: "",
+        institution: "",
+        fieldOfStudy: "",
+        startDate: "",
+        endDate: undefined,
+        gpa: undefined,
+        gpaPrivate: false,
+        honors: undefined,
+        active: false,
+      });
+      showSuccess("Education added (local)");
       return;
     }
 
     try {
-      const userCrud = crud.withUser(user.id);
+      // Prepare data to send to database
       const payload = {
-        institution_name: formData.school,
-        degree_type: formData.level,
-        field_of_study: formData.major,
-        graduation_date: formatToSqlDate(formData.end),
-        start_date: formatToSqlDate(formData.start),
-        gpa: formData.gpa ?? null,
-        enrollment_status: formData.active ? "enrolled" : "not_enrolled",
-        education_level: undefined,
-        honors: formData.awards || null,
-        meta: null,
-      };
-      const res = await userCrud.insertRow("education", payload, "*");
+        institution: formData.institution,
+        degree: formData.degree,
+        fieldOfStudy: formData.fieldOfStudy,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        gpa: formData.gpa,
+        gpaPrivate: formData.gpaPrivate,
+        honors: formData.honors,
+        active: formData.active,
+      } as Record<string, unknown>;
+
+      // Save to database through our education service
+      const res = await educationService.createEducation(user.id, payload);
       if (res.error) {
         console.error("Failed to insert education", res.error);
-        alert("Failed to add education. See console for details.");
+        handleError(res.error);
         return;
       }
-      const row = res.data as DbEducationRow;
-      const newEntry: SchoolItem = {
-        id: row.id ?? crypto.randomUUID(),
-        level: row.degree_type ?? formData.level,
-        school: row.institution_name ?? formData.school,
-        major: row.field_of_study ?? formData.major,
-        start: row.start_date
-          ? String(row.start_date).slice(0, 7)
-          : String(formData.start),
-        // map DB full date back to YYYY-MM for UI
-        end: row.graduation_date
-          ? String(row.graduation_date).slice(0, 7)
-          : formData.end,
-        gpa: row.gpa ?? formData.gpa,
-        privateGpa: formData.privateGpa,
-        awards: row.honors ?? formData.awards,
-        active: formData.active,
-      };
-      setSchoolList((s) => [...s, newEntry]);
-      // notify other parts of the app
+
+      // Add to local list so user sees it immediately
+      setSchoolList((s) => [...s, res.data as EducationEntry]);
+      // Clear form for next entry
+      setFormData({
+        degree: "",
+        institution: "",
+        fieldOfStudy: "",
+        startDate: "",
+        endDate: undefined,
+        gpa: undefined,
+        gpaPrivate: false,
+        honors: undefined,
+        active: false,
+      });
+      // Tell other parts of app that education data changed
       window.dispatchEvent(new Event("education:changed"));
-      // after successful add, navigate back to the overview
-      try {
-        // Router defines the education overview at `/education`
-        navigate("/education");
-      } catch (navErr) {
-        // swallow navigation errors in test/dev environments
-        console.warn("Navigation failed:", navErr);
-      }
-      resetForm();
+      showSuccess("Education saved");
+      // Go back to education overview page
+      navigate("/education");
     } catch (err) {
       console.error("Error adding education", err);
-      alert("Failed to add education. See console for details.");
+      handleError(err);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      id: "",
-      level: "",
-      school: "",
-      major: "",
-      start: "",
-      end: "",
-      gpa: undefined,
-      privateGpa: false,
-      awards: "",
-      active: false,
-    });
-  };
-
+  // Handle deleting an education entry
   const deleteEntry = async () => {
+    // Don't do anything if no entry is selected for deletion
     if (!removeId) return;
-    // If not signed in, local-only
+
+    // If user isn't logged in, just remove from local list
     if (loading || !user) {
-      setSchoolList((s) => s.filter((item) => item.id !== removeId));
-      setRemoveId(null);
+      setSchoolList((s) => s.filter((x) => x.id !== removeId));
+      setRemoveId(null); // Close delete dialog
+      showSuccess("Entry removed");
       return;
     }
 
     try {
-      const userCrud = crud.withUser(user.id);
-      const res = await userCrud.deleteRow("education", {
-        eq: { id: removeId },
-      });
+      // Remove from database
+      const res = await educationService.deleteEducation(user.id, removeId);
       if (res.error) {
         console.error("Failed to delete education", res.error);
-        alert("Failed to delete education. See console for details.");
+        handleError(res.error);
         return;
       }
-      setSchoolList((s) => s.filter((item) => item.id !== removeId));
-      setRemoveId(null);
-      window.dispatchEvent(new Event("education:changed"));
+      // Remove from local list so user sees change immediately
+      setSchoolList((s) => s.filter((x) => x.id !== removeId));
+      setRemoveId(null); // Close delete dialog
+      showSuccess("Entry removed");
     } catch (err) {
       console.error("Error deleting education", err);
-      alert("Failed to delete education. See console for details.");
+      handleError(err);
     }
   };
 
-  // Load persisted education rows for current user
+  // Load user's existing education entries when page first opens
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+    // Don't load if still checking login status or user not logged in
+    if (loading || !user) return;
 
-    let mounted = true;
-    const load = async () => {
+    let mounted = true; // Prevent updating state if component unmounts
+    (async () => {
       try {
-        const userCrud = crud.withUser(user.id);
-        const res = await userCrud.listRows(
-          "education",
-          "id,institution_name,degree_type,field_of_study,graduation_date,gpa,education_level,honors"
-        );
+        // Get education entries from database
+        const res = await educationService.listEducation(user.id);
+        if (!mounted) return; // Component was unmounted, don't update
         if (res.error) {
           console.error("Failed to load education rows", res.error);
+          handleError(res.error);
           return;
         }
-        const rows = Array.isArray(res.data) ? res.data : [res.data];
-        const mapped: SchoolItem[] = (rows as DbEducationRow[]).map((r) => ({
-          id: r.id ?? crypto.randomUUID(),
-          level: r.degree_type ?? "",
-          school: r.institution_name ?? "",
-          major: r.field_of_study ?? "",
-          start: r.start_date ? String(r.start_date).slice(0, 7) : "",
-          // normalize DB date to YYYY-MM for the UI (remove day)
-          end: r.graduation_date
-            ? String(r.graduation_date).slice(0, 7)
-            : undefined,
-          gpa: r.gpa ?? undefined,
-          privateGpa: false,
-          awards: r.honors ?? "",
-          active: !(r.graduation_date ?? null),
-        }));
-        if (!mounted) return;
-        setSchoolList(mapped);
+        // Show entries in the list
+        setSchoolList(res.data ?? []);
       } catch (err) {
         console.error("Error loading education", err);
+        if (mounted) {
+          handleError(err);
+        }
       }
-    };
+    })();
 
-    load();
+    // Cleanup function to prevent memory leaks
     return () => {
       mounted = false;
     };
-  }, [user, loading]);
+  }, [user, loading, handleError]); // Run this when user or loading status changes
 
   return (
-    <Box p={4}>
-      <Typography variant="h4" mb={2} textAlign="center">
-        Education Manager
-      </Typography>
+    // Main page container - centers content and adds padding
+    <Box className="education-page-container">
+      <Box className="education-content-wrapper">
+        {/* Page title */}
+        <Typography variant="h4" mb={2} className="education-page-title">
+          Education Manager
+        </Typography>
 
-      {/* Form Fields */}
-      <Stack spacing={2} mb={3}>
-        {/* Dropdown */}
-        <TextField
-          select
-          label="Degree Type"
-          value={formData.level}
-          onChange={(e) => updateField("level", e.target.value)}
-        >
-          {degreeOptions.map((degree) => (
-            <MenuItem key={degree} value={degree}>
-              {degree}
-            </MenuItem>
-          ))}
-        </TextField>
+        {/* Main form container with glassmorphism styling */}
+        <Paper className="education-form-container" elevation={0}>
+          <Box sx={{ width: "100%" }}>
+            {/* Form fields container with hover effects */}
+            <Stack spacing={2}>
+              {/* Dropdown to select degree type */}
+              <TextField
+                select
+                fullWidth
+                size="small"
+                required
+                label="Degree Type"
+                value={formData.degree ?? ""}
+                onChange={(e) => updateField("degree", e.target.value)}
+              >
+                {degreeOptions.map((degree) => (
+                  <MenuItem key={degree} value={degree}>
+                    {degree}
+                  </MenuItem>
+                ))}
+              </TextField>
 
-        <TextField
-          label="Institution"
-          value={formData.school}
-          onChange={(e) => updateField("school", e.target.value)}
-        />
+              {/* School/university name field */}
+              <TextField
+                fullWidth
+                size="small"
+                label="Institution"
+                value={formData.institution ?? ""}
+                onChange={(e) => updateField("institution", e.target.value)}
+                helperText={!formData.institution ? "Required" : ""}
+                error={!formData.institution}
+              />
 
-        <TextField
-          label="Field of Study"
-          value={formData.major}
-          onChange={(e) => updateField("major", e.target.value)}
-        />
+              {/* What subject/major was studied */}
+              <TextField
+                fullWidth
+                size="small"
+                label="Field of Study"
+                value={formData.fieldOfStudy ?? ""}
+                onChange={(e) => updateField("fieldOfStudy", e.target.value)}
+              />
 
-        <TextField
-          label="Start Date (YYYY-MM)"
-          value={formData.start}
-          onChange={(e) => updateField("start", e.target.value)}
-        />
+              {/* Date inputs for when education started and ended */}
+              <Box>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Start Date"
+                  required
+                  inputProps={{ type: "month" }} // Shows month/year picker
+                  InputLabelProps={{ shrink: true }} // Keeps label above input
+                  value={formData.startDate ?? ""}
+                  onChange={(e) => updateField("startDate", e.target.value)}
+                  helperText={!formData.startDate ? "Required" : ""}
+                  error={!formData.startDate}
+                  sx={{ mb: 2 }}
+                />
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={formData.active}
-              onChange={(e) => updateField("active", e.target.checked)}
-            />
-          }
-          label="Currently Enrolled"
-        />
+                {/* Toggle for currently enrolled */}
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(formData.active)}
+                      onChange={(e) => updateField("active", e.target.checked)}
+                    />
+                  }
+                  label="Currently Enrolled"
+                  sx={{ mb: 2 }}
+                />
 
-        {!formData.active && (
-          <TextField
-            label="End Date (YYYY-MM)"
-            value={formData.end}
-            onChange={(e) => updateField("end", e.target.value)}
-          />
-        )}
+                {/* Only show end date if not currently enrolled */}
+                {!formData.active && (
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="End Date"
+                    inputProps={{ type: "month" }}
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.endDate ?? ""}
+                    onChange={(e) =>
+                      updateField("endDate", e.target.value || undefined)
+                    }
+                  />
+                )}
+              </Box>
 
-        <TextField
-          label="GPA (optional)"
-          type="number"
-          value={formData.gpa ?? ""}
-          onChange={(e) =>
-            updateField(
-              "gpa",
-              e.target.value ? parseFloat(e.target.value) : undefined
-            )
-          }
-        />
+              {/* Optional GPA field */}
+              <TextField
+                fullWidth
+                size="small"
+                label="GPA (optional)"
+                type="number"
+                value={formData.gpa ?? ""}
+                onChange={(e) =>
+                  updateField(
+                    "gpa",
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
+                }
+              />
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={formData.privateGpa ?? false}
-              onChange={(e) => updateField("privateGpa", e.target.checked)}
-            />
-          }
-          label="Hide GPA"
-        />
+              {/* Toggle to hide GPA from being displayed publicly */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(formData.gpaPrivate)}
+                    onChange={(e) =>
+                      updateField("gpaPrivate", e.target.checked)
+                    }
+                  />
+                }
+                label="Hide GPA"
+              />
 
-        <TextField
-          label="Achievements / Honors"
-          value={formData.awards}
-          onChange={(e) => updateField("awards", e.target.value)}
-        />
+              {/* Free text field for awards, honors, etc. */}
+              <TextField
+                fullWidth
+                size="small"
+                label="Achievements / Honors"
+                value={formData.honors ?? ""}
+                onChange={(e) => updateField("honors", e.target.value)}
+              />
 
-        <Button variant="contained" onClick={addEntry}>
-          Add Education
-        </Button>
-      </Stack>
+              {/* Submit button with gradient and hover effects */}
+              <Button
+                variant="contained"
+                onClick={addEntry}
+                className="education-submit-button"
+              >
+                Add Education
+              </Button>
+            </Stack>
+          </Box>
+        </Paper>
 
-      {/* Education Entries Display */}
-      <Stack spacing={2}>
-        {schoolList.map((item) => (
-          <Stack key={item.id} direction="row" spacing={2} alignItems="center">
-            <Typography>
-              {item.level} @ {item.school} — {item.major}
-            </Typography>
-            <Button color="error" onClick={() => setRemoveId(item.id)}>
-              Remove
+        {/* List of education entries the user has added */}
+        <Paper className="education-entries-container">
+          <Typography variant="subtitle1" className="education-entries-title">
+            Your entries
+          </Typography>
+          <List disablePadding>
+            {/* Show message if no entries exist yet */}
+            {schoolList.length === 0 && (
+              <Typography variant="body2" className="education-no-entries">
+                No entries yet.
+              </Typography>
+            )}
+            {/* Display each education entry with delete button */}
+            {schoolList.map((item, idx) => (
+              <React.Fragment key={item.id}>
+                <ListItem
+                  secondaryAction={
+                    <Tooltip title="Remove">
+                      <IconButton
+                        edge="end"
+                        aria-label="delete"
+                        onClick={() => setRemoveId(item.id)}
+                      >
+                        <DeleteOutlineIcon color="error" />
+                      </IconButton>
+                    </Tooltip>
+                  }
+                >
+                  <ListItemText
+                    primary={`${item.degree} @ ${item.institution}`}
+                    secondary={item.fieldOfStudy}
+                  />
+                </ListItem>
+                {/* Add divider between entries (except after last one) */}
+                {idx < schoolList.length - 1 && <Divider component="li" />}
+              </React.Fragment>
+            ))}
+          </List>
+        </Paper>
+
+        {/* Confirmation dialog when user wants to delete an entry */}
+        <Dialog open={!!removeId} onClose={() => setRemoveId(null)}>
+          <DialogTitle className="education-dialog-content">
+            Delete entry?
+          </DialogTitle>
+          <DialogContent className="education-dialog-content">
+            Are you sure you want to remove this education entry?
+          </DialogContent>
+          <DialogActions className="education-dialog-content">
+            <Button onClick={() => setRemoveId(null)}>Cancel</Button>
+            <Button color="error" onClick={deleteEntry}>
+              Delete
             </Button>
-          </Stack>
-        ))}
-      </Stack>
+          </DialogActions>
+        </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog open={!!removeId} onClose={() => setRemoveId(null)}>
-        <DialogTitle>Delete entry?</DialogTitle>
-        <DialogContent>
-          Are you sure you want to remove this education entry?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRemoveId(null)}>Cancel</Button>
-          <Button color="error" onClick={deleteEntry}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Centralized error/success notifications */}
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
+        />
+      </Box>
     </Box>
   );
 };

@@ -28,8 +28,10 @@ const Login = () => {
     const res = await signIn(userEmail, userPassword);
     setLoading(false);
 
-    // Log the raw response for easier debugging in dev
-    console.log("signIn result:", res);
+    // Dev-only debug: keep console noise out of production
+    if (import.meta.env.MODE === "development") {
+      console.debug("signIn result:", res);
+    }
 
     if (!res.ok) {
       // Show server-provided message when available (more informative)

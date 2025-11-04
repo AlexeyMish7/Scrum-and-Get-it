@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Register from "./pages/auth/Register";
-import ProfilePage from "./pages/profile/ProfilePage";
+import Dashboard from "./pages/dashboard/Dashboard";
 import EducationOverview from "./pages/education/EducationOverview";
 import Certifications from "./pages/certifications/Certifications";
 import AddSkills from "./pages/skills/AddSkills";
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MainLayout>
-          <ProfilePage />
+          <Dashboard />
         </MainLayout>
       </ProtectedRoute>
     ),
@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/add-projects",
+    path: "/projects/new",
     element: (
       <ProtectedRoute>
         <MainLayout>
@@ -169,6 +169,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <MainLayout>
           <ProjectDetails />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/projects/:id/edit",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AddProjectForm />
         </MainLayout>
       </ProtectedRoute>
     ),
