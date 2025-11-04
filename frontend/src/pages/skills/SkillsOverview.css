@@ -1,0 +1,67 @@
+.skills-overview {
+  padding: 24px;
+}
+
+.skills-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.skills-columns {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.skills-column {
+  flex: 1 1 250px;
+  min-width: 250px;
+  border-radius: 12px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.skills-column .MuiCardHeader-root {
+  padding: 16px 16px 8px 16px;
+}
+
+.skills-column-content {
+  padding: 12px 16px 20px 16px;
+  min-height: 120px;
+}
+
+.skills-header {
+  margin: 12px 0;
+}
+
+.skill-item {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Accessibility helpers */
+.skills-column[role="list"] {
+  list-style: none;
+}
+.skill-item[role="listitem"] {
+  outline: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .skills-columns {
+    flex-direction: column;
+  }
+}

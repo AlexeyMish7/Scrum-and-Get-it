@@ -1,0 +1,260 @@
+/* EducationOverview.css - cleaned and validated
+   - Compact header integrated with timeline
+   - Alternating timeline items preserved
+   - No duplicated or nested rules
+*/
+
+:root {
+  --primary-500: #4b8bff;
+  --primary-300: #6aa5ff;
+  --muted-600: #64748b;
+  --text-900: #1e293b;
+}
+
+/* Page container */
+.education-overview-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%);
+  padding: 0;
+  margin: 0;
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Header - compact and integrated */
+.education-header-section {
+  background: linear-gradient(
+    180deg,
+    rgba(75, 139, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  padding: 20px 28px;
+  margin: 0;
+  border-bottom: 1px solid rgba(75, 139, 255, 0.06);
+  display: flex;
+  align-items: center;
+}
+
+.education-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.education-header-text {
+  flex: 1;
+}
+.education-title {
+  font-weight: 700;
+  font-size: 1.45rem;
+  color: var(--text-900);
+  margin: 0 0 4px 0;
+}
+.education-subtitle {
+  font-size: 0.95rem;
+  color: var(--muted-600);
+  margin: 0;
+}
+.education-header-actions {
+  flex-shrink: 0;
+}
+
+/* Buttons use centralized MUI theme variants now (primary / destructive) */
+
+/* Content wrapper */
+.education-content-section {
+  padding: 28px 20px 48px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Timeline container */
+.education-timeline-container {
+  /* Remove heavy white card wrapper so timeline reads directly on the page background.
+     Cards remain white and keep focus; container only provides spacing. */
+  background: transparent;
+  border-radius: 0;
+  padding: 12px 0; /* reduce vertical whitespace */
+  max-width: 1100px;
+  width: 100%;
+  margin-top: -8px; /* subtle pulled-up effect */
+}
+
+/* Timeline items */
+.education-timeline-item {
+  margin-bottom: 24px; /* tighten vertical rhythm */
+}
+.education-timeline-content {
+  padding: 12px 16px;
+}
+
+/* Alternating visual offsets */
+.education-timeline-item:nth-child(odd) .education-card {
+  /* Offset the card to the right for odd items while keeping the
+     separator (dot/connector) centered. This preserves connector alignment. */
+  margin-left: 28px;
+}
+.education-timeline-item:nth-child(even) .education-card {
+  /* Offset the card to the left for even items */
+  margin-right: 28px;
+}
+
+/* Timeline visuals (MUI overrides) */
+.MuiTimelineDot-root {
+  width: 14px;
+  height: 14px;
+  background: var(--primary-500) !important;
+  box-shadow: 0 0 0 6px rgba(75, 139, 255, 0.08) !important;
+}
+.MuiTimelineConnector-root {
+  width: 3px;
+  background: rgba(
+    148,
+    163,
+    184,
+    0.25
+  ) !important; /* slightly darker for contrast */
+}
+
+/* Card */
+.education-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 22px; /* slightly larger padding for breathing room */
+  border: 1px solid rgba(16, 24, 40, 0.04);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.education-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 40px rgba(16, 24, 40, 0.08);
+}
+.education-card-field {
+  color: var(--muted-600);
+  margin: 0 0 10px;
+}
+.education-card-gpa {
+  display: inline-block;
+  background: rgba(75, 139, 255, 0.08);
+  color: var(--primary-500);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Buttons are themed via MUI variants (see theme.tsx) - no per-page button styles required */
+
+.education-timeline-dates {
+  min-width: 86px;
+  text-align: center;
+  color: var(--muted-600);
+  font-weight: 700;
+}
+
+/* Empty state text styling moved out of inline styles for consistency */
+.education-empty-text {
+  color: #64748b;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* Timeline dot and connector helpers (use classes from JSX to control visuals) */
+.timeline-dot-empty {
+  background-color: #94a3b8 !important;
+  border: none !important;
+}
+
+.education-timeline-content .timeline-dot,
+.education-timeline-content .timeline-dot-ongoing {
+  width: 12px !important;
+  height: 12px !important;
+  border: none !important;
+}
+
+.education-timeline-content .timeline-dot {
+  background-color: #3b82f6 !important; /* default */
+}
+
+.education-timeline-content .timeline-dot-ongoing {
+  background-color: #10b981 !important; /* ongoing */
+}
+
+.timeline-connector {
+  background-color: #e2e8f0 !important;
+  width: 3px !important;
+}
+
+.education-current-badge {
+  display: block;
+  color: #10b981;
+  font-weight: 600;
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.education-timeline-item {
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .education-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .education-timeline-item:nth-child(odd) .education-card,
+  .education-timeline-item:nth-child(even) .education-card {
+    margin: 0;
+  }
+  .education-timeline-dates {
+    display: none;
+  }
+  .education-timeline-container {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .education-title {
+    font-size: 1.1rem;
+  }
+  .education-subtitle {
+    font-size: 0.9rem;
+  }
+  .education-timeline-container {
+    padding: 14px;
+  }
+  .education-card-title {
+    font-size: 1.05rem;
+  }
+  .education-card-institution {
+    font-size: 1rem;
+  }
+}
+
+/* Extra mobile tweaks */
+@media (max-width: 380px) {
+  .education-header-section {
+    padding: 18px 14px;
+  }
+  /* Add button sizing handled by MUI theme (variant="primary") */
+}

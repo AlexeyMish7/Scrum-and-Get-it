@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import type { Result, ListOptions, FilterOptions } from "./types";
 
 // Helper to map Supabase/JS errors into our standard CrudError shape
@@ -124,11 +124,11 @@ function applyFilters(builder: any, opts?: ListOptions | FilterOptions) {
  *     limit: 10
  *   });
  */
-export async function listRows(
+export async function listRows<T = unknown>(
   table: string, // Name of the table to query
   select = "*", // Columns to fetch (default: all)
   opts?: ListOptions // Optional filters/sorting/pagination
-): Promise<Result<any[]>> {
+): Promise<Result<T[]>> {
   try {
     // Start building the query
     let query: any = supabase.from(table).select(select);
@@ -141,7 +141,7 @@ export async function listRows(
 
     // Return standardized Result<T> object
     return {
-      data: (data as any[]) ?? null,
+      data: (data as unknown as T[]) ?? null,
       error: mapSupabaseError(error),
       status: status ?? null,
     };
@@ -160,11 +160,11 @@ export async function listRows(
  * Example:
  *   const user = await getRow<User>("profiles", "*", { eq: { id: user.id }, single: true });
  */
-export async function getRow(
+export async function getRow<T = unknown>(
   table: string, // Table name (e.g., "profiles")
   select = "*", // Columns to fetch (default: all)
   opts?: ListOptions // Optional filters/settings
-): Promise<Result<any | null>> {
+): Promise<Result<T | null>> {
   try {
     // Start building the query
     let query: any = supabase.from(table).select(select);
@@ -176,7 +176,7 @@ export async function getRow(
     if (opts && opts.single) {
       const { data, error, status } = await query.maybeSingle();
       return {
-        data: data ?? null,
+        data: (data as unknown as T) ?? null,
         error: mapSupabaseError(error),
         status: status ?? null,
       };
@@ -202,11 +202,11 @@ export async function getRow(
  * Example:
  *   const res = await insertRow("profiles", { name: "Alex", email: "alex@test.com" });
  */
-export async function insertRow(
+export async function insertRow<T = unknown>(
   table: string, // Table name to insert into
   payload: unknown, // Object containing column-value pairs to insert
   returning = "*" // Columns to return after insertion (default: all)
-): Promise<Result<any>> {
+): Promise<Result<T>> {
   try {
     // Run the insert query and select the returned rows
     const { data, error, status } = await supabase
@@ -219,7 +219,7 @@ export async function insertRow(
 
     // Return standardized result object
     return {
-      data: first ?? null, // The inserted row or null
+      data: (first as unknown as T) ?? null, // The inserted row or null
       error: mapSupabaseError(error), // Normalized error shape
       status: status ?? null, // HTTP-like status code
     };
@@ -238,12 +238,12 @@ export async function insertRow(
  * Example:
  *   await upsertRow("profiles", { id: user.id, full_name: "Alex" }, "id");
  */
-export async function upsertRow(
+export async function upsertRow<T = unknown>(
   table: string, // Table name (e.g. "profiles")
   payload: unknown, // Data to insert or update
   onConflict?: string, // Column to check for conflicts (e.g. "id")
   returning = "*" // Columns to return (default: all)
-): Promise<Result<any>> {
+): Promise<Result<T>> {
   try {
     // Build the upsert query; include onConflict if provided
     const query = onConflict
@@ -258,7 +258,7 @@ export async function upsertRow(
 
     // Return standardized result
     return {
-      data: first ?? null, // Inserted/updated row
+      data: (first as unknown as T) ?? null, // Inserted/updated row
       error: mapSupabaseError(error), // Normalized error
       status: status ?? null, // HTTP-like status code
     };
@@ -273,12 +273,12 @@ export async function upsertRow(
  * Updates rows in a table using the provided filters and returns the first updated row.
  * NOTE: Always pass a filter (e.g., { eq: { id } }) to avoid updating all rows permitted by RLS.
  */
-export async function updateRow(
+export async function updateRow<T = unknown>(
   table: string, // Table to update
   payload: unknown, // Columns to change, e.g., { full_name: "Alex" }
   filters?: FilterOptions, // Which rows to update, e.g., { eq: { id: user.id } }
   returning = "*" // Columns to return (default: all)
-): Promise<Result<any>> {
+): Promise<Result<T>> {
   try {
     // Build the UPDATE ... RETURNING query
     let query: any = supabase.from(table).update(payload).select(returning);
@@ -294,7 +294,7 @@ export async function updateRow(
 
     // Standardized result
     return {
-      data: first ?? null,
+      data: (first as unknown as T) ?? null,
       error: mapSupabaseError(error),
       status: status ?? null,
     };
@@ -312,10 +312,10 @@ export async function updateRow(
  *   await deleteRow("profiles", { eq: { id: user.id } });
  *   // Deletes the profile where id matches the current user
  */
-export async function deleteRow(
+export async function deleteRow<T = null>(
   table: string, // Table name (e.g., "profiles")
   filters?: FilterOptions // Which rows to delete (e.g., { eq: { id: "123" } })
-): Promise<Result<null>> {
+): Promise<Result<T>> {
   try {
     // Start a DELETE query
     let query: any = supabase.from(table).delete();
@@ -328,7 +328,7 @@ export async function deleteRow(
 
     // Return standardized result (deletions typically have no data)
     return {
-      data: (data as any) ?? null,
+      data: (data as unknown as T) ?? null,
       error: mapSupabaseError(error),
       status: status ?? null,
     };
@@ -363,25 +363,44 @@ export function withUser(userId?: string | null) {
     if (opts && typeof (opts as any).offset === "number")
       output.offset = (opts as any).offset;
 
+    // Preserve common additional filter types (in, neq, like, ilike) so
+    // callers can pass complex filters while still scoping by user_id.
+    if (opts && (opts as any).in) output.in = { ...(opts as any).in };
+    if (opts && (opts as any).neq) output.neq = { ...(opts as any).neq };
+    if (opts && (opts as any).like) output.like = { ...(opts as any).like };
+    if (opts && (opts as any).ilike) output.ilike = { ...(opts as any).ilike };
+
     // Return the final options object with user_id injected
     return output as ListOptions;
   }
 
   // User-scoped wrappers: every call is automatically filtered/tagged with user_id
-  function scopedListRows(table: string, select = "*", opts?: ListOptions) {
+  function scopedListRows<T = unknown>(
+    table: string,
+    select = "*",
+    opts?: ListOptions
+  ) {
     // Read-for-user: inject eq.user_id = userId (plus keep order/limit/offset)
-    return listRows(table, select, ensureOpts(opts));
+    return listRows<T>(table, select, ensureOpts(opts));
   }
 
-  function scopedGetRow(table: string, select = "*", opts?: ListOptions) {
+  function scopedGetRow<T = unknown>(
+    table: string,
+    select = "*",
+    opts?: ListOptions
+  ) {
     // Read-one-for-user: also injects eq.user_id = userId
-    return getRow(table, select, ensureOpts(opts));
+    return getRow<T>(table, select, ensureOpts(opts));
   }
 
-  function scopedInsertRow(table: string, payload: any, returning = "*") {
+  function scopedInsertRow<T = unknown>(
+    table: string,
+    payload: any,
+    returning = "*"
+  ) {
     // Create-for-user: force user_id to the current user (overrides any payload.user_id)
     const p = { ...(payload ?? {}), user_id: userId };
-    return insertRow(table, p, returning);
+    return insertRow<T>(table, p, returning);
   }
 
   /**
@@ -389,7 +408,7 @@ export function withUser(userId?: string | null) {
    * Insert or update a record for the current user.
    * Automatically adds user_id to the payload so ownership is correct.
    */
-  function scopedUpsertRow(
+  function scopedUpsertRow<T = unknown>(
     table: string,
     payload: any,
     onConflict?: string,
@@ -397,7 +416,7 @@ export function withUser(userId?: string | null) {
   ) {
     // Merge user_id into the payload (overrides any spoofed value)
     const p = { ...(payload ?? {}), user_id: userId };
-    return upsertRow(table, p, onConflict, returning);
+    return upsertRow<T>(table, p, onConflict, returning);
   }
 
   /**
@@ -405,14 +424,14 @@ export function withUser(userId?: string | null) {
    * Update one or more rows for the current user only.
    * Injects eq.user_id = userId into filters to ensure user scoping.
    */
-  function scopedUpdateRow(
+  function scopedUpdateRow<T = unknown>(
     table: string,
     payload: any,
     filters?: FilterOptions,
     returning = "*"
   ) {
     // Pass filters through ensureOpts to append user_id condition
-    return updateRow(table, payload, ensureOpts(filters), returning);
+    return updateRow<T>(table, payload, ensureOpts(filters), returning);
   }
 
   /**
@@ -420,9 +439,9 @@ export function withUser(userId?: string | null) {
    * Delete one or more rows for the current user only.
    * Filters are automatically scoped to user_id = userId.
    */
-  function scopedDeleteRow(table: string, filters?: FilterOptions) {
+  function scopedDeleteRow<T = null>(table: string, filters?: FilterOptions) {
     // Prevent accidental deletion of other users' data
-    return deleteRow(table, ensureOpts(filters));
+    return deleteRow<T>(table, ensureOpts(filters));
   }
 
   // Return an object containing all user-scoped CRUD helpers

@@ -64,3 +64,19 @@ export type ListOptions = FilterOptions & {
   offset?: number; // Skip a number of rows before starting (Supabase .range())
   single?: boolean; // If true, return only one row using maybeSingle()
 };
+
+// Shared Project type used by the projects UI (moved from ProjectPortfolio.tsx)
+export interface Project {
+  id: string;
+  projectName: string;
+  description: string;
+  role: string;
+  startDate: string;
+  endDate: string;
+  technologies: string;
+  projectUrl?: string;
+  teamSize: string;
+  outcomes: string;
+  industry: string;
+  status: "Completed" | "Ongoing" | "Planned";
+}

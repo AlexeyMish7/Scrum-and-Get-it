@@ -1,0 +1,115 @@
+.skills-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 12px;
+  min-height: calc(100vh - 80px);
+}
+
+.skills-card {
+  width: calc(100% - 40px);
+  max-width: 1000px;
+  padding: 30px 32px;
+  border-radius: 12px;
+}
+
+.header-row {
+  gap: 12px;
+}
+
+.title-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-title {
+  font-weight: 800;
+  /* match the gradient title treatment from the global theme h1 */
+  font-size: 1.75rem;
+  margin: 0;
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-note {
+  font-size: 0.95rem;
+  color: #64748b; /* use theme body2 color for better contrast */
+}
+
+.back-btn {
+  padding: 8px 14px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.header-row {
+  /* visual divider under header */
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+  margin-bottom: 18px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.input-wide {
+  flex: 1 1 380px;
+  min-width: 260px;
+}
+
+.input-field {
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+
+.add-btn {
+  padding: 12px 22px;
+}
+
+.save-btn {
+  padding: 10px 18px;
+}
+
+.chips-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.skill-chip {
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* make chips align left on larger screens to match common layouts */
+@media (min-width: 900px) {
+  .chips-row {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .skills-card {
+    padding: 20px;
+  }
+  .form-row {
+    gap: 12px;
+  }
+  .input-field {
+    min-width: 140px;
+    flex: 1 1 140px;
+  }
+}
