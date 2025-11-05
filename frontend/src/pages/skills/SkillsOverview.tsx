@@ -11,7 +11,7 @@ import type {
   Skill,
   Category,
 } from "../../types/skill";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import {
   Box,

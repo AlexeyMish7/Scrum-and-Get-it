@@ -33,7 +33,7 @@ import type {
   CertificationRow,
   NewCert,
 } from "../../types/certification";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ConfirmDialog from "../../components/common/ConfirmDialog";

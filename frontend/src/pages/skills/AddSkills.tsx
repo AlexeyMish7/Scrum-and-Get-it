@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import skillsService from "../../services/skills";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import "./AddSkills.css";
 

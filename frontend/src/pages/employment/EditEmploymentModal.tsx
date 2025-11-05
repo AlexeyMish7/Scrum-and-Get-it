@@ -10,7 +10,7 @@ import type { RefObject } from "react";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData, EmploymentRow } from "../../types/employment";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import {
   Dialog,

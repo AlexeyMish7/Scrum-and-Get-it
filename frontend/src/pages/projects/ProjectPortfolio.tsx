@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import projectsService from "../../services/projects";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import type { Project } from "../../types/project";

@@ -24,7 +24,7 @@ import { useAuth } from "../../app/shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { supabase } from "../../app/shared/services/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
 import "./Projects.css";

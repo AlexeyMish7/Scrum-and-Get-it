@@ -123,6 +123,7 @@ src/
 ```
 
 Notes
+
 - `shared/` holds singleton infrastructure (AuthContext, supabase client, centralized CRUD, shared hooks and tiny common components).
 - `workspaces/profile/` contains all UI, domain services and types for the profile area (Sprint 1).
 - `workspaces/ai/` is a skeleton for Sprint 2 — create placeholder files as you implement AI features.

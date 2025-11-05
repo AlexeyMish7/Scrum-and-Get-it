@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";

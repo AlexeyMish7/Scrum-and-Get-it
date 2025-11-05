@@ -1,6 +1,6 @@
 import React from "react";
 import { Snackbar, Alert } from "@mui/material";
-import type { ErrorNotification } from "../../hooks/useErrorHandler";
+import type { ErrorNotification } from "../../app/shared/hooks/useErrorHandler";
 
 interface ErrorSnackbarProps {
   notification: ErrorNotification;

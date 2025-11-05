@@ -19,7 +19,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import { supabase } from "../../app/shared/services/supabaseClient";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import crud from "../../app/shared/services/crud";
-import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "./ErrorSnackbar";
 import ConfirmDialog from "./ConfirmDialog";
 
