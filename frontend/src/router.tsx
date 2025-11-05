@@ -22,7 +22,7 @@ import ProjectDetails from "./pages/projects/ProjectDetails";
 //import NavBar from "./components/NavigationBar/Navbar";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "./pages/profile/ProfileDetails";
-import MainLayout from "./components/navigation/MainLayout";
+import MainLayout from "./app/workspaces/profile/components/navigation/MainLayout";
 import Settings from "./pages/profile/Settings";
 
 export const router = createBrowserRouter([

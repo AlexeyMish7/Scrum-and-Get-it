@@ -83,12 +83,12 @@ function docsToActivities(
 }
 
 // App widgets for the dashboard layout/visuals (keep these imports so UI stays the same)
-import SummaryCards from "../../components/profile/SummaryCards";
-import RecentActivityTimeline from "../../components/profile/RecentActivityTimeline";
-import ProfileCompletion from "../../components/profile/ProfileCompletion";
-import SkillsDistributionChart from "../../components/profile/SkillsDistributionChart";
-import CareerTimeline from "../../components/profile/CareerTimeline";
-import ProfileStrengthTips from "../../components/profile/ProfileStrengthTips";
+import SummaryCards from "../../app/workspaces/profile/components/profile/SummaryCards.tsx";
+import RecentActivityTimeline from "../../app/workspaces/profile/components/profile/RecentActivityTimeline.tsx";
+import ProfileCompletion from "../../app/workspaces/profile/components/profile/ProfileCompletion.tsx";
+import SkillsDistributionChart from "../../app/workspaces/profile/components/profile/SkillsDistributionChart.tsx";
+import CareerTimeline from "../../app/workspaces/profile/components/profile/CareerTimeline.tsx";
+import ProfileStrengthTips from "../../app/workspaces/profile/components/profile/ProfileStrengthTips.tsx";
 
 const Dashboard: FC = () => {
   const theme = useTheme();

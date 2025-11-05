@@ -1,4 +1,4 @@
-import { useAuth } from "../../app/shared/context/AuthContext";
+import { useAuth } from "../../../../shared/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import {
   AppBar,
@@ -19,8 +19,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { supabase } from "../../app/shared/services/supabaseClient";
-import crud from "../../app/shared/services/crud";
+import { supabase } from "../../../../shared/services/supabaseClient";
+import crud from "../../../../shared/services/crud";
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
 
