@@ -15,7 +15,7 @@ import {
   DialogActions,
   Tooltip,
 } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";

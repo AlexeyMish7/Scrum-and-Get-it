@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 // Custom authentication context for managing session + signup logic
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 
 // MUI imports for styling + theme integration
 import {

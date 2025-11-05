@@ -17,7 +17,7 @@ import PhotoCamera from "@mui/icons-material/PhotoCamera";
 import ReactCrop, { type Crop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import crud from "../../services/crud";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
 import { ErrorSnackbar } from "./ErrorSnackbar";
@@ -77,55 +77,55 @@ async function resizeImageToSquare(file: File, size = TARGET_SIZE) {
   });
 }
 
-  // Create cropped image blob from an <img> element and a crop rect
-  // Notes: ReactCrop provides crop dimensions relative to the displayed
-  // image; we must scale those to the image's natural size before
-  // drawing to the canvas to preserve resolution.
-  async function getCroppedImg(image: HTMLImageElement, crop: Crop) {
-          return new Promise<{ blob: Blob; dataUrl: string }>((resolve, reject) => {
-            try {
-              const canvas = document.createElement("canvas");
-              const ctx = canvas.getContext("2d");
-              if (!ctx) return reject(new Error("Failed to get canvas context"));
+// Create cropped image blob from an <img> element and a crop rect
+// Notes: ReactCrop provides crop dimensions relative to the displayed
+// image; we must scale those to the image's natural size before
+// drawing to the canvas to preserve resolution.
+async function getCroppedImg(image: HTMLImageElement, crop: Crop) {
+  return new Promise<{ blob: Blob; dataUrl: string }>((resolve, reject) => {
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Failed to get canvas context"));
 
-              const scaleX = image.naturalWidth / image.width;
-              const scaleY = image.naturalHeight / image.height;
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
 
-              const px = crop.x ?? 0;
-              const py = crop.y ?? 0;
-              const pwidth = crop.width ?? image.width;
-              const pheight = crop.height ?? image.height;
+      const px = crop.x ?? 0;
+      const py = crop.y ?? 0;
+      const pwidth = crop.width ?? image.width;
+      const pheight = crop.height ?? image.height;
 
-              // Use pixel sizes for canvas
-              canvas.width = Math.round(pwidth);
-              canvas.height = Math.round(pheight);
+      // Use pixel sizes for canvas
+      canvas.width = Math.round(pwidth);
+      canvas.height = Math.round(pheight);
 
-              ctx.drawImage(
-                image,
-                px * scaleX,
-                py * scaleY,
-                pwidth * scaleX,
-                pheight * scaleY,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-              );
+      ctx.drawImage(
+        image,
+        px * scaleX,
+        py * scaleY,
+        pwidth * scaleX,
+        pheight * scaleY,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
 
-              canvas.toBlob(
-                (blob) => {
-                  if (!blob) return reject(new Error("Failed to produce blob"));
-                  const dataUrl = canvas.toDataURL("image/png");
-                  resolve({ blob, dataUrl });
-                },
-                "image/png",
-                0.9
-              );
-            } catch (err) {
-              reject(err);
-            }
-          });
-        }
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("Failed to produce blob"));
+          const dataUrl = canvas.toDataURL("image/png");
+          resolve({ blob, dataUrl });
+        },
+        "image/png",
+        0.9
+      );
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
 const ProfilePicture: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -157,22 +157,22 @@ const ProfilePicture: React.FC = () => {
     const load = async () => {
       if (!user || authLoading) return;
 
-  // Read the user's profile row to find avatar metadata. The profile's
-  // `meta` JSON column may contain avatar_path/avatar_bucket which we use
-  // to construct a signed URL for display.
-  const res = await crud.getUserProfile(user.id);
+      // Read the user's profile row to find avatar metadata. The profile's
+      // `meta` JSON column may contain avatar_path/avatar_bucket which we use
+      // to construct a signed URL for display.
+      const res = await crud.getUserProfile(user.id);
       if (res.error) return;
       const p = res.data as Record<string, unknown> | null;
-        // determine display initial from profile first_name/full_name or fallback to email
-        try {
-          const firstName = (p && (p.first_name as string)) ?? null;
-          const fullName = (p && (p.full_name as string)) ?? null;
-          const source = firstName || fullName || user.email || "";
-          const initial = String(source).trim().charAt(0)?.toUpperCase() || "U";
-          setDisplayInitial(initial);
-        } catch {
-          setDisplayInitial(user?.email?.charAt(0)?.toUpperCase() ?? "U");
-        }
+      // determine display initial from profile first_name/full_name or fallback to email
+      try {
+        const firstName = (p && (p.first_name as string)) ?? null;
+        const fullName = (p && (p.full_name as string)) ?? null;
+        const source = firstName || fullName || user.email || "";
+        const initial = String(source).trim().charAt(0)?.toUpperCase() || "U";
+        setDisplayInitial(initial);
+      } catch {
+        setDisplayInitial(user?.email?.charAt(0)?.toUpperCase() ?? "U");
+      }
       type ProfileMeta = {
         avatar_path?: string | null;
         avatar_bucket?: string | null;
@@ -264,12 +264,12 @@ const ProfilePicture: React.FC = () => {
   const handleFile = async (file?: File) => {
     if (!file) return;
     if (!ALLOWED_TYPES.includes(file.type)) {
-  handleError(new Error("Invalid file type. Use JPG, PNG or GIF."));
-  return;
+      handleError(new Error("Invalid file type. Use JPG, PNG or GIF."));
+      return;
     }
     if (file.size > MAX_BYTES) {
-  handleError(new Error("File is too large. Max size is 5MB."));
-  return;
+      handleError(new Error("File is too large. Max size is 5MB."));
+      return;
     }
 
     setProcessing(true);
@@ -319,7 +319,8 @@ const ProfilePicture: React.FC = () => {
       // persist meta in profiles.meta
       try {
         const profileRes = await crud.getUserProfile(user.id);
-        const existingMeta = (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
+        const existingMeta =
+          (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
         await crud.updateUserProfile(user.id, {
           meta: {
             ...(existingMeta as Record<string, unknown>),
@@ -375,7 +376,10 @@ const ProfilePicture: React.FC = () => {
           }
         } catch (e) {
           // non-fatal; proceed and let insert report if something else is wrong
-          console.warn("Failed to ensure profile exists before inserting document", e);
+          console.warn(
+            "Failed to ensure profile exists before inserting document",
+            e
+          );
         }
 
         const docRes = await userCrud.insertRow(
@@ -402,7 +406,9 @@ const ProfilePicture: React.FC = () => {
           if (docId) {
             try {
               const profileRes2 = await crud.getUserProfile(user.id);
-              const existingMeta2 = (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
+              const existingMeta2 =
+                (profileRes2.data as Record<string, unknown> | null)?.meta ??
+                {};
               await crud.updateUserProfile(user.id, {
                 meta: {
                   ...(existingMeta2 as Record<string, unknown>),
@@ -484,9 +490,11 @@ const ProfilePicture: React.FC = () => {
     try {
       // Delete documents row by avatar_document_id if present, otherwise by file_path
       const profileRes = await crud.getUserProfile(user.id);
-      const existingMeta = (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
-  const avatarDoc = (existingMeta as Record<string, unknown> | null)?.avatar_document_id;
-  const docId = typeof avatarDoc === "string" ? avatarDoc : null;
+      const existingMeta =
+        (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
+      const avatarDoc = (existingMeta as Record<string, unknown> | null)
+        ?.avatar_document_id;
+      const docId = typeof avatarDoc === "string" ? avatarDoc : null;
 
       const userCrud = crud.withUser(user.id);
       if (docId) {
@@ -497,7 +505,9 @@ const ProfilePicture: React.FC = () => {
         }
       } else {
         try {
-          await userCrud.deleteRow("documents", { eq: { file_path: metaPath } });
+          await userCrud.deleteRow("documents", {
+            eq: { file_path: metaPath },
+          });
         } catch (e) {
           console.warn("Failed to delete avatar document row by file_path", e);
         }
@@ -513,7 +523,8 @@ const ProfilePicture: React.FC = () => {
       // clear profile meta
       try {
         const profileRes2 = await crud.getUserProfile(user.id);
-        const existingMeta2 = (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
+        const existingMeta2 =
+          (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
         await crud.updateUserProfile(user.id, {
           meta: {
             ...(existingMeta2 as Record<string, unknown>),
@@ -614,12 +625,12 @@ const ProfilePicture: React.FC = () => {
               >
                 Confirm
               </Button>
-                  <Button
-                    color="inherit"
-                    onClick={() => {
-                      // cancel pending
-                      setPendingFile(null);
-                      closeNotification();
+              <Button
+                color="inherit"
+                onClick={() => {
+                  // cancel pending
+                  setPendingFile(null);
+                  closeNotification();
                   // reload current avatar preview if available
                   if (metaPath) {
                     // try to use cached signed url first
@@ -680,10 +691,18 @@ const ProfilePicture: React.FC = () => {
           </Box>
         )}
         {/* centralized notification snackbar */}
-        <ErrorSnackbar notification={notification} onClose={closeNotification} />
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
+        />
       </Box>
       {/* Crop Dialog - interactive crop before confirming upload */}
-      <Dialog open={showCropDialog} onClose={() => setShowCropDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={showCropDialog}
+        onClose={() => setShowCropDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Crop Your Avatar</DialogTitle>
         <DialogContent>
           {imgSrc && (

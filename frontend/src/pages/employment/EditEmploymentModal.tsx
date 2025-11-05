@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react";
 // Student note: mapping between DB row (snake_case) and form shape (camelCase)
 // is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData, EmploymentRow } from "../../types/employment";
 import { useErrorHandler } from "../../hooks/useErrorHandler";

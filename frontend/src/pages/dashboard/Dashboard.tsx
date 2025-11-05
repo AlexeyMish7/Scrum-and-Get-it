@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 
 import Icon from "../../components/common/Icon";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext.tsx";
 import * as crud from "../../services/crud";
 import type { EmploymentRow } from "../../types/employment";
 import type { DbSkillRow } from "../../types/skill";

@@ -8,7 +8,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import ProfilePicture from "../../components/common/ProfilePicture";
 import profileService from "../../services/profileService";
 import "./ProfileDetails.css";

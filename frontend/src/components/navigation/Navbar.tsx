@@ -1,4 +1,4 @@
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import {
   AppBar,

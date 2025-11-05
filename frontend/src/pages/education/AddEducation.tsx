@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isMonthAfter } from "../../utils/dateUtils";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import { useErrorHandler } from "../../hooks/useErrorHandler";

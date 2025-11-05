@@ -20,7 +20,7 @@ import ReactCrop, {
   makeAspectCrop,
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";

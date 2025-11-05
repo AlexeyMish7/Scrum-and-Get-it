@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { supabase } from "../../lib/supabaseClient";
 import crud from "../../services/crud";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const DeleteAccount: React.FC = () => {

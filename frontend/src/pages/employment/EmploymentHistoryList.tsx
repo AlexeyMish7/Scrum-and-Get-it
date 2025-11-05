@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // and a ref to keep track of the previous user id so we don't refetch
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../app/shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Button, Typography } from "@mui/material";
