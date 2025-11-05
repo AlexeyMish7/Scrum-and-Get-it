@@ -12,7 +12,7 @@ import type {
   Category,
 } from "../../types/skill";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import {
   Box,
   Card,
@@ -24,7 +24,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import "./SkillsOverview.css";
 

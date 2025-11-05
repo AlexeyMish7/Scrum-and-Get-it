@@ -10,7 +10,7 @@ import { useAuth } from "../../app/shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData } from "../../types/employment";
 import EmploymentForm from "./EmploymentForm";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { Button, Typography, useTheme } from "@mui/material";
 import "./employment.css";

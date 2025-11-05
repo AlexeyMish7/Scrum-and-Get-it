@@ -5,7 +5,7 @@ import { useAuth } from "../../app/shared/context/AuthContext";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import {
   Box,
   Typography,

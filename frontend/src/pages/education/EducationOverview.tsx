@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import {
@@ -31,7 +31,7 @@ import {
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 import "./EducationOverview.css";
 import { parseMonthToMs } from "../../utils/dateUtils";
 

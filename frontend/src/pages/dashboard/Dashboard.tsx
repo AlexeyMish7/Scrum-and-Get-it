@@ -10,7 +10,7 @@ import {
   Divider,
 } from "@mui/material";
 
-import Icon from "../../components/common/Icon";
+import Icon from "../../app/shared/components/common/Icon.tsx";
 import { useAuth } from "../../app/shared/context/AuthContext.tsx";
 import * as crud from "../../app/shared/services/crud.ts";
 import type { EmploymentRow } from "../../types/employment";
@@ -22,7 +22,7 @@ import {
   mapEducation,
   mapProject,
 } from "../../app/shared/services/dbMappers.ts";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner.tsx";
 // Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {
   id: string;

@@ -13,10 +13,10 @@ import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Button, Typography } from "@mui/material";
 import "./employment.css";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
 import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {

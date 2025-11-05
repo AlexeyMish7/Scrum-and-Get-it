@@ -18,8 +18,8 @@ import {
 import { useAuth } from "../../app/shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 import type { Project } from "../../types/project";
 import "./Projects.css";
 

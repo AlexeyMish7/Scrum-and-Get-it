@@ -34,9 +34,9 @@ import type {
   NewCert,
 } from "../../types/certification";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
+import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 

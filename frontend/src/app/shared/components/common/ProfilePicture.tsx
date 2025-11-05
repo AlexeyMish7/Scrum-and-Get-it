@@ -20,8 +20,8 @@ import { supabase } from "../../app/shared/services/supabaseClient";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import crud from "../../app/shared/services/crud";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "./ErrorSnackbar";
-import ConfirmDialog from "./ConfirmDialog";
+import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
 
 // ProfilePicture
 // Handles user avatar display, interactive cropping, upload to Supabase Storage,

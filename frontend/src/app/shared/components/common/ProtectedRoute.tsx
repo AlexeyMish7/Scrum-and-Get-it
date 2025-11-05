@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import LoadingSpinner from "./LoadingSpinner";
+import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 type Props = { children: React.ReactNode };
 
 /**
