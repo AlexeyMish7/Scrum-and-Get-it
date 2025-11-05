@@ -1,23 +1,23 @@
 # 🤝 Collaboration
 
-Concise developer guide for working in the repository. This document is focused on using `dev` as the integration branch for feature work.
+Concise developer guide for working in the repository. This document is focused on using `main` as the canonical branch for feature work.
 
 ---
 
 ## 🌿 Git Workflow Summary
 
 ```bash
-# start from dev (integration branch)
-git checkout dev
+# start from main (integration branch)
+git checkout main
 git pull                   # get latest code
 git checkout -b feat/short-descriptive-name   # create new branch
 # make edits
 git add . && git commit -m "feat(scope): short description"
-git pull --rebase origin dev   # update branch before push
+git pull --rebase origin main   # update branch before push
 git push -u origin feat/short-descriptive-name    # push branch
 ```
 
-Then open a **Pull Request** → request one review → **Squash & Merge** into `dev`.
+Then open a **Pull Request** → request one review → **Squash & Merge** into `main`.
 
 ---
 
@@ -51,8 +51,8 @@ Keep names lowercase, use hyphens, and keep branches short and focused.
 
 | Task                       | Command                        |
 | -------------------------- | ------------------------------ |
-| Update `dev`               | `git checkout dev && git pull` |
-| Update your feature branch | `git pull --rebase origin dev` |
+| Update `main`              | `git checkout main && git pull` |
+| Update your feature branch | `git pull --rebase origin main` |
 | Delete branch after merge  | `git branch -d feat/xxx`       |
 
 ---
