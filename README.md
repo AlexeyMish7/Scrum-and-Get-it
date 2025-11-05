@@ -1,9 +1,9 @@
-# 🧠 ATS for Candidates
+# 🧠 flow ATS
 
 _CS 490 Capstone Project – Fall 2025_
 
 > **Empowering job seekers with the same tools employers use.**
-> The ATS for Candidates platform provides job applicants with intelligent application tracking, AI-powered content generation, and organized career management—all in one place.
+> flow ATS provides job applicants with intelligent application tracking, AI-powered content generation, and organized career management—all in one place.
 
 ---
 
@@ -11,47 +11,34 @@ _CS 490 Capstone Project – Fall 2025_
 
 > **🎯 [Complete Documentation Hub →](docs/README.md)**
 
-### **Quick Links**
-
-- 🚀 **[Setup Guide](docs/getting-started/setup.md)** - Get started developing
-- 🏗️ **[Architecture](docs/getting-started/architecture-overview.md)** - System design overview
-- 📝 **[Component Docs](docs/features/education/add-education-component.md)** - Example implementation
-- 🤖 **[AI Assistant Guide](docs/development/tools/copilot-instructions.md)** - Copilot context
-
-### **For Developers**
-
-- [Development Standards](docs/development/standards/documentation-standards.md)
-- [Branching Workflow](docs/development/workflow/branching.md)
-- [Error Handling System](docs/api/services/error-handling.md)
-
-### **For Project Management**
-
-- [Sprint 1 Requirements](docs/project-management/sprints/sprint1-prd.md)
-- [Current Tasks](docs/project-management/tasks/todo.md)
-
 ---
 
-## Current Sprint – Sprint 1 (Fundamentals & Authentication)
+## Current status (mid Sprint 2 — Migration & AI scaffolding)
 
-**Sprint Objective**
-Establish the foundational infrastructure for the ATS for Candidates platform by implementing:
+We completed Sprint 1 foundations (auth, DB schema, profile flows) and are actively working through Sprint 2 work: job management and AI-powered content.
 
-- Core authentication (Email/Password + Google OAuth)
-- Database architecture (PostgreSQL via Supabase)
-- Brand identity and design system foundation
-- Basic user profiles and document upload
+Recent progress (high level):
 
-**Sprint Duration:** October 14 – October 28
-**Sprint 1 Demo:** October 28
-**Instructor:** Prof. Bill McCann
+- Frontend reorganization: `frontend/src` was restructured into `app/shared` and `app/workspaces/*` (profile + ai). Many imports were updated and a small codemod tool was added at `frontend/tools/convert-imports.cjs` to help migrate remaining imports to aliases.
+- Path aliases: `frontend/tsconfig.app.json` and `frontend/vite.config.ts` now expose helpful aliases (for example `@shared/*`, `@profile/*`, `@assets/*`) to make the codebase resilient to future moves.
+- AI workspace scaffold: `frontend/src/app/workspaces/ai/` now exists with a README and folders for components, pages, services, hooks, types, utils, tests and docs.
+- Type safety & linting: `npm run typecheck` and `npm run lint` have been run after the migration and the core repo is free of blocking TypeScript and lint errors (local verification).
+
+Next priorities for Sprint 2:
+
+- Implement the job management UI and CRUD flows (jobs, pipeline stages, deadlines).
+- Add the first AI features behind a feature flag: GenerateResume preview (client + serverless stub), prompt templates, and token accounting.
+- Harden CI: add unit tests for prompt templates and a lightweight integration test that uses an Edge Function stub for model calls.
+
+Sprint 2 target: Job Management & AI Content (demo target: Nov 11)
 
 ---
 
 ## 👥 Team Members
 
-- **Jane Kalla** (Product Manager)
 - **Alexey Mishin**
 - **Aliya Laliwala**
+- **Jane Kalla**
 - **Nafisa Ahmed**
 - **Nihaal Warraich**
 
@@ -79,20 +66,23 @@ Establish the foundational infrastructure for the ATS for Candidates platform by
 
 ---
 
-## 🧱 Project Structure
+## 🧱 Project structure (focused view)
+
+This repo contains several parts; during the migration we reorganized the frontend into a small app surface located under `frontend/src/app`. The structure below shows the current, recommended layout to focus on when developing features.
 
 ```
-Scrum-and-Get-it/
-├── frontend/                    # React + Vite frontend
-├── docs/                        # Organized documentation
-│   ├── getting-started/         # Setup, architecture
-│   ├── development/             # Standards, workflow
-│   ├── features/                # Component documentation
-│   ├── api/                     # Service documentation
-│   ├── design/                  # Colors, themes
-│   └── project-management/      # Sprints, tasks
-├── db/                          # Database migrations
-└── README.md                    # Project overview
+frontend/src/app/
+├── shared/                      # shared components, services, hooks, context, theme
+│   ├── components/              # reusable UI components (common, forms, layout)
+│   ├── context/                 # AuthContext, ThemeProvider, Error handling
+│   ├── services/                # supabase client wrapper, crud, dbMappers
+│   └── theme/                   # design tokens and theme provider
+├── workspaces/                  # feature workspaces (isolated feature areas)
+│   ├── profile/                 # profile workspace: pages, components, services, types
+│   └── ai/                      # ai workspace: pages, services, prompts, hooks, types
+├── types/                       # centralized types shared across workspaces
+├── utils/                       # shared utilities (formatters, validators)
+└── main.tsx / router.tsx        # app entry + top-level routing
 ```
 
 ---

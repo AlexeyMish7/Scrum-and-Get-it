@@ -1,29 +1,29 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import Register from "./pages/auth/Register";
-import Dashboard from "./pages/dashboard/Dashboard";
-import EducationOverview from "./pages/education/EducationOverview";
-import Certifications from "./pages/certifications/Certifications";
-import AddSkills from "./pages/skills/AddSkills";
-import SkillsOverview from "./pages/skills/SkillsOverview";
-import Login from "./pages/auth/Login";
+import Register from "@profile/pages/auth/Register";
+import Dashboard from "@profile/pages/dashboard/Dashboard";
+import EducationOverview from "@profile/pages/education/EducationOverview";
+import Certifications from "@profile/pages/certifications/Certifications";
+import AddSkills from "@profile/pages/skills/AddSkills";
+import SkillsOverview from "@profile/pages/skills/SkillsOverview";
+import Login from "@profile/pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
-import AddEducation from "./pages/education/AddEducation";
-import ForgotPassword from "./pages/auth/ForgetPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-import HomePage from "./pages/home/HomePage";
-import AuthCallback from "./pages/auth/AuthCallback";
+import AddEducation from "@profile/pages/education/AddEducation";
+import ForgotPassword from "@profile/pages/auth/ForgetPassword";
+import ResetPassword from "@profile/pages/auth/ResetPassword";
+import HomePage from "@profile/pages/home/HomePage";
+import AuthCallback from "@profile/pages/auth/AuthCallback";
 
-import ProtectedRoute from "./components/common/ProtectedRoute";
-import AddEmployment from "./pages/employment/AddEmployment";
-import EmploymentHistoryList from "./pages/employment/EmploymentHistoryList";
-import AddProjectForm from "./pages/projects/AddProjectForm";
-import ProjectPortfolio from "./pages/projects/ProjectPortfolio";
-import ProjectDetails from "./pages/projects/ProjectDetails";
+import ProtectedRoute from "@shared/components/common/ProtectedRoute";
+import AddEmployment from "@profile/pages/employment/AddEmployment";
+import EmploymentHistoryList from "@profile/pages/employment/EmploymentHistoryList";
+import AddProjectForm from "@profile/pages/projects/AddProjectForm";
+import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
+import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 //import NavBar from "./components/NavigationBar/Navbar";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
-import ProfileDetails from "./pages/profile/ProfileDetails";
-import MainLayout from "./components/navigation/MainLayout";
-import Settings from "./pages/profile/Settings";
+import ProfileDetails from "@profile/pages/profile/ProfileDetails";
+import MainLayout from "@profile/components/navigation/MainLayout";
+import Settings from "@profile/pages/profile/Settings";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
