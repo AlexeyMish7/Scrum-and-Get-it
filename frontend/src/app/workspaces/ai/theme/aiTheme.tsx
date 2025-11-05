@@ -1,16 +1,13 @@
 import { createTheme, alpha, type Shadows } from "@mui/material/styles";
 
-// Shadows tuned for glass
-const glassShadows: Shadows = (
-  [
-    "none",
-    "0 1px 3px rgba(0,0,0,0.2)",
-    "0 2px 6px rgba(0,0,0,0.24)",
-    "0 8px 20px rgba(0,229,255,0.08)",
-  ] as string[]
-).concat(
-  Array(21).fill("0 12px 28px rgba(0,229,255,0.06)")
-) as unknown as Shadows;
+// Shadows tuned for glass (kept concise)
+const glassShadows: Shadows = [
+  "none",
+  "0 1px 3px rgba(0,0,0,0.2)",
+  "0 2px 6px rgba(0,0,0,0.24)",
+  "0 8px 20px rgba(0,229,255,0.08)",
+  ...Array(21).fill("0 12px 28px rgba(0,229,255,0.06)"),
+] as unknown as Shadows;
 
 // AI Workspace Theme (dark, glassy, cyan/blue)
 const aiTheme = createTheme({
@@ -91,52 +88,31 @@ const aiTheme = createTheme({
           "--motion-hover-in": "220ms cubic-bezier(.22,.61,.36,1)",
           "--motion-hover-out": "180ms cubic-bezier(.4,0,.2,1)",
         },
+        html: {
+          scrollPaddingTop: "96px",
+          [theme.breakpoints.down("sm")]: { scrollPaddingTop: "80px" },
+        },
         "@keyframes underlineGrow": {
           "0%": { transform: "scaleX(0)" },
           "100%": { transform: "scaleX(1)" },
         },
-        "@keyframes flowShift": {
-          "0%": { backgroundPosition: "0% 50%" },
-          "100%": { backgroundPosition: "100% 50%" },
-        },
-        "@keyframes flowDrift": {
-          "0%": { transform: "translate(-20%, -10%)" },
-          "50%": { transform: "translate(6%, 12%)" },
-          "100%": { transform: "translate(18%, -18%)" },
-        },
+
         "html, body, #root": {
           height: "100%",
           backgroundColor: theme.palette.background.default,
-          backgroundImage:
-            `radial-gradient(1200px 600px at 0% 0%, ${alpha(
-              "#002A4D",
-              0.6
-            )}, transparent 60%),` +
-            `radial-gradient(900px 500px at 100% 0%, ${alpha(
-              "#001B2F",
-              0.55
-            )}, transparent 60%),` +
-            `radial-gradient(800px 500px at 50% 100%, ${alpha(
-              "#001224",
-              0.65
-            )}, transparent 60%)`,
+          backgroundImage: "none",
+        },
+        // Ensure root stacks above the decorative overlay
+        "#root": {
+          position: "relative",
+          zIndex: 1,
         },
         body: {
           position: "relative",
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
           textRendering: "optimizeLegibility",
-          "&::before": {
-            content: '""',
-            position: "fixed",
-            inset: 0,
-            pointerEvents: "none",
-            background:
-              "radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.05) 0, transparent 60%)," +
-              "radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.045) 0, transparent 60%)," +
-              "radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.04) 0, transparent 60%)",
-            zIndex: 0,
-          },
+          // Page background styling removed intentionally: use plain palette.background.default
           "@media (prefers-reduced-motion: reduce)": {
             "*": {
               animationDuration: "0.001ms !important",
@@ -150,31 +126,7 @@ const aiTheme = createTheme({
           textShadow: "0 0 8px rgba(76,157,255,0.38)",
           filter: "drop-shadow(0 0 10px rgba(63,123,255,0.26))",
         },
-        // Optional ATS "flow" motif (opt-in)
-        ".ats-flow-bg": {
-          backgroundImage:
-            "linear-gradient(120deg, rgba(36,82,255,0.12), rgba(13,33,96,0.32), rgba(63,123,255,0.12))",
-          backgroundSize: "300% 300%",
-          animation: "flowShift 28s ease-in-out infinite alternate",
-          borderRadius: "14px",
-          position: "relative",
-          overflow: "hidden",
-        },
-        ".ats-flow-bg::before": {
-          content: '""',
-          position: "absolute",
-          inset: "-40% -30%",
-          background:
-            "radial-gradient(circle at 18% 28%, rgba(80,140,255,0.28), transparent 60%), radial-gradient(circle at 78% 42%, rgba(0,229,255,0.18), transparent 65%)",
-          filter: "blur(60px)",
-          opacity: 0.85,
-          pointerEvents: "none",
-          animation: "flowDrift 36s ease-in-out infinite alternate",
-        },
-        "@media (prefers-reduced-motion: reduce)": {
-          ".ats-flow-bg": { animation: "none" },
-          ".ats-flow-bg::before": { animation: "none" },
-        },
+        // Page-level animated gaussian blur applied via body::before instead
       }),
     },
 
@@ -186,7 +138,7 @@ const aiTheme = createTheme({
           style: {
             color: "#7BAFFF",
             textShadow:
-              "0 0 18px rgba(76,157,255,.35), 0 0 32px rgba(0,229,255,.18)",
+              "0 0 10px rgba(76,157,255,.28), 0 0 20px rgba(0,229,255,.12)",
           },
         },
         {
@@ -194,7 +146,7 @@ const aiTheme = createTheme({
           style: {
             color: "#6CA5FF",
             textShadow:
-              "0 0 14px rgba(76,157,255,.3), 0 0 26px rgba(0,229,255,.16)",
+              "0 0 8px rgba(76,157,255,.24), 0 0 16px rgba(0,229,255,.1)",
           },
         },
         {
@@ -202,7 +154,7 @@ const aiTheme = createTheme({
           style: {
             color: "#5D97FF",
             textShadow:
-              "0 0 10px rgba(76,157,255,.26), 0 0 20px rgba(0,229,255,.14)",
+              "0 0 6px rgba(76,157,255,.2), 0 0 12px rgba(0,229,255,.08)",
           },
         },
         {
@@ -210,7 +162,7 @@ const aiTheme = createTheme({
           style: {
             color: "#4F86FF",
             textShadow:
-              "0 0 8px rgba(76,157,255,.22), 0 0 16px rgba(0,229,255,.12)",
+              "0 0 5px rgba(76,157,255,.18), 0 0 10px rgba(0,229,255,.08)",
           },
         },
         {
@@ -253,7 +205,6 @@ const aiTheme = createTheme({
       styleOverrides: {
         root: {
           position: "relative",
-          overflow: "hidden",
           borderRadius: 12,
           border: `1px solid ${alpha("#7BAFFF", 0.24)}`,
           background:
