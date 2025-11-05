@@ -7,9 +7,9 @@ import AddSkills from "@profile/pages/skills/AddSkills";
 import SkillsOverview from "@profile/pages/skills/SkillsOverview";
 import Login from "@profile/pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
-import AddEducation from "./app/workspaces/profile/pages/education/AddEducation";
-import ForgotPassword from "./app/workspaces/profile/pages/auth/ForgetPassword";
-import ResetPassword from "./app/workspaces/profile/pages/auth/ResetPassword";
+import AddEducation from "@profile/pages/education/AddEducation";
+import ForgotPassword from "@profile/pages/auth/ForgetPassword";
+import ResetPassword from "@profile/pages/auth/ResetPassword";
 import HomePage from "@profile/pages/home/HomePage";
 import AuthCallback from "@profile/pages/auth/AuthCallback";
 

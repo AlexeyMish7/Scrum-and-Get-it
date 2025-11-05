@@ -1,6 +1,6 @@
-import * as crud from "../../../shared/services/crud";
-import { supabase } from "../../../shared/services/supabaseClient";
-import type { ProjectRow, Project } from "../types/project";
+import * as crud from "@shared/services/crud";
+import { supabase } from "@shared/services/supabaseClient";
+import type { ProjectRow, Project } from "@profile/types/project";
 
 // Convert database row format to UI-friendly format
 const mapRowToProject = (r: ProjectRow): Project => {
