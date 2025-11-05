@@ -6,12 +6,12 @@ import React, { useState } from "react";
 //   uses navigation state to show a centralized success message.
 // Student notes: the component demonstrates form validation, controlled
 // components, and preparing a backend payload using snake_case keys.
-import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../app/workspaces/profile/services/employment";
-import type { EmploymentFormData } from "../../types/employment";
-import EmploymentForm from "./EmploymentForm";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import employmentService from "../../services/employment";
+import type { EmploymentFormData } from "../../../../../types/employment";
+import EmploymentForm from "../../../../../pages/employment/EmploymentForm";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { Button, Typography, useTheme } from "@mui/material";
 import "./employment.css";
 import { useNavigate } from "react-router-dom";

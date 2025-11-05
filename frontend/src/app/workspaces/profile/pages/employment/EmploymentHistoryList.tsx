@@ -8,16 +8,16 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // and a ref to keep track of the previous user id so we don't refetch
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../app/workspaces/profile/services/employment";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Button, Typography } from "@mui/material";
 import "./employment.css";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
-import type { EmploymentRow } from "../../types/employment";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import ConfirmDialog from "../../../../shared/components/common/ConfirmDialog";
+import type { EmploymentRow } from "../../../../../types/employment";
 
 export default function EmploymentHistoryList() {
   const { user, loading } = useAuth();

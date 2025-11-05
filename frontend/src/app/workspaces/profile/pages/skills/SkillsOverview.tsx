@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { levelLabels, skillCategoryOptions } from "../../constants/skills";
+import {
+  levelLabels,
+  skillCategoryOptions,
+} from "../../../../../constants/skills";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import skillsService from "../../app/workspaces/profile/services/skills";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import skillsService from "../../services/skills";
 import type {
   SkillItem,
   DropResult,
@@ -10,9 +13,9 @@ import type {
   DraggableProvided,
   Skill,
   Category,
-} from "../../types/skill";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+} from "../../../../../types/skill";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import {
   Box,
   Card,
@@ -24,7 +27,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import "./SkillsOverview.css";
 

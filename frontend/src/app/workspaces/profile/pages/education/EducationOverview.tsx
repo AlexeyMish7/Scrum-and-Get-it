@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import educationService from "../../app/workspaces/profile/services/education";
-import type { EducationEntry } from "../../types/education";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import educationService from "../../services/education";
+import type { EducationEntry } from "../../../../../types/education";
 import {
   Box,
   Typography,
@@ -31,9 +31,9 @@ import {
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
 import "./EducationOverview.css";
-import { parseMonthToMs } from "../../app/shared/utils/dateUtils";
+import { parseMonthToMs } from "../../../../shared/utils/dateUtils";
 
 /*
   EducationOverview
