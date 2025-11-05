@@ -22,7 +22,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { supabase } from "../../../../shared/services/supabaseClient";
 import crud from "../../../../shared/services/crud";
 import { NavLink, useNavigate } from "react-router-dom";
-import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
+import logo from "../../../../assets/logo/graphics_only.png"; // adjust path if needed
 
 const NavBar: React.FC = () => {
   const theme = useTheme();

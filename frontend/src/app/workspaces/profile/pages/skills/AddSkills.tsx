@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import skillsService from "../../app/workspaces/profile/services/skills";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import skillsService from "../../services/skills";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import "./AddSkills.css";
 
 import {
@@ -23,12 +23,12 @@ import {
   Select,
   Autocomplete,
 } from "@mui/material";
-import type { SkillItem, DbSkillRow } from "../../types/skill";
+import type { SkillItem, DbSkillRow } from "../../types/skill.ts";
 import {
   skillLevelOptions,
   skillCategoryOptions,
   levelLabels,
-} from "../../constants/skills";
+} from "../../../../constants/skills";
 
 /*
   AddSkills page — high level overview (non-technical)
@@ -590,7 +590,7 @@ const AddSkills = () => {
             size="small"
             className="input-field"
           >
-            {skillCategoryOptions.map((cat) => (
+            {skillCategoryOptions.map((cat: string) => (
               <MenuItem key={cat} value={cat}>
                 {cat}
               </MenuItem>
@@ -605,7 +605,7 @@ const AddSkills = () => {
             size="small"
             className="input-field"
           >
-            {skillLevelOptions.map((lvl) => (
+            {skillLevelOptions.map((lvl: string) => (
               <MenuItem key={lvl} value={lvl}>
                 {lvl}
               </MenuItem>
@@ -662,7 +662,7 @@ const AddSkills = () => {
                 label="Proficiency"
                 onChange={(e) => setTempEditLevel(e.target.value as string)}
               >
-                {skillLevelOptions.map((lvl) => (
+                {skillLevelOptions.map((lvl: string) => (
                   <MenuItem key={lvl} value={lvl}>
                     {lvl}
                   </MenuItem>

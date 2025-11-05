@@ -9,10 +9,10 @@ import {
   Alert,
 } from "@mui/material";
 import { useAuth } from "../../../../shared/context/AuthContext";
-import ProfilePicture from "../../components/common/ProfilePicture";
+import ProfilePicture from "../../../../shared/components/common/ProfilePicture";
 import profileService from "../../services/profileService";
 import "./ProfileDetails.css";
-import type { ProfileData } from "../../../../../types/profile";
+import type { ProfileData } from "../../types/profile";
 
 const industries = [
   "Technology",

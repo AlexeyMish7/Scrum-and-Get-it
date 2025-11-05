@@ -16,12 +16,12 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PhotoCamera from "@mui/icons-material/PhotoCamera";
 import ReactCrop, { type Crop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { supabase } from "../../app/shared/services/supabaseClient";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import crud from "../../app/shared/services/crud";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
+import { supabase } from "../../services/supabaseClient";
+import { useAuth } from "../../context/AuthContext";
+import crud from "../../services/crud";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
+import { ErrorSnackbar } from "./ErrorSnackbar";
+import ConfirmDialog from "./ConfirmDialog";
 
 // ProfilePicture
 // Handles user avatar display, interactive cropping, upload to Supabase Storage,

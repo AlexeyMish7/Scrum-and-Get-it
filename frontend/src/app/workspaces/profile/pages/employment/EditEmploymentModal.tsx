@@ -7,11 +7,14 @@ import { useState, useRef, useEffect } from "react";
 // Student note: mapping between DB row (snake_case) and form shape (camelCase)
 // is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../app/workspaces/profile/services/employment";
-import type { EmploymentFormData, EmploymentRow } from "../../types/employment";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import employmentService from "../../services/employment";
+import type {
+  EmploymentFormData,
+  EmploymentRow,
+} from "../../types/employment.ts";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import {
   Dialog,
   DialogTitle,
@@ -20,7 +23,7 @@ import {
   Button,
 } from "@mui/material";
 import "./employment.css";
-import EmploymentForm from "./EmploymentForm";
+import EmploymentForm from "./EmploymentForm.tsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface Props {
@@ -61,11 +64,17 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
 
   // Update a single form field; parent keeps the full form state.
   const handleFieldChange = (
-    name: keyof EmploymentFormData,
+    name: string | number | symbol,
     val: string | boolean
   ) => {
-    setFormData((prev) => ({ ...(prev as EmploymentFormData), [name]: val }));
-    setErrors((prev) => ({ ...(prev || {}), [name]: undefined }));
+    setFormData((prev: EmploymentFormData) => ({
+      ...(prev as EmploymentFormData),
+      [name as keyof EmploymentFormData]: val,
+    }));
+    setErrors((prev) => ({
+      ...(prev || {}),
+      [name as keyof EmploymentFormData]: undefined,
+    }));
   };
 
   const handleSave = async () => {

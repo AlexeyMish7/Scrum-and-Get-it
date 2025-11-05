@@ -13,9 +13,9 @@ import {
 import Icon from "../../../../shared/components/common/Icon.tsx";
 import { useAuth } from "../../../../shared/context/AuthContext.tsx";
 import * as crud from "../../../../shared/services/crud.ts";
-import type { EmploymentRow } from "../../../../../types/employment.ts";
-import type { DbSkillRow } from "../../../../../types/skill.ts";
-import type { DocumentRow } from "../../../../../types/document.ts";
+import type { EmploymentRow } from "../../types/employment.ts";
+import type { DbSkillRow } from "../../types/skill.ts";
+import type { DocumentRow } from "../../types/document.ts";
 import {
   mapEmployment,
   mapSkill,

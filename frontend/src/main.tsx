@@ -5,7 +5,7 @@ import { router } from "./router.tsx";
 import { RouterProvider } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import theme from "./theme/theme.tsx";
+import theme from "./app/workspaces/profile/theme/theme.tsx";
 import { AuthContextProvider } from "./app/shared/context/AuthContext.tsx";
 
 createRoot(document.getElementById("root")!).render(

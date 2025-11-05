@@ -8,8 +8,8 @@ import React, { useState } from "react";
 // components, and preparing a backend payload using snake_case keys.
 import { useAuth } from "../../../../shared/context/AuthContext";
 import employmentService from "../../services/employment";
-import type { EmploymentFormData } from "../../../../../types/employment";
-import EmploymentForm from "../../../../../pages/employment/EmploymentForm";
+import type { EmploymentFormData } from "../../types/employment";
+import EmploymentForm from "./EmploymentForm";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { Button, Typography, useTheme } from "@mui/material";
@@ -35,12 +35,18 @@ const AddEmploymentForm: React.FC = () => {
   >({});
 
   const handleFieldChange = (
-    name: keyof EmploymentFormData,
+    name: string | number | symbol,
     val: string | boolean
   ) => {
-    setFormData((prev) => ({ ...(prev as EmploymentFormData), [name]: val }));
+    setFormData((prev: EmploymentFormData) => ({
+      ...(prev as EmploymentFormData),
+      [name as keyof EmploymentFormData]: val,
+    }));
     // clear field-level error when user types
-    setErrors((prev) => ({ ...(prev || {}), [name]: undefined }));
+    setErrors((prev) => ({
+      ...(prev || {}),
+      [name as keyof EmploymentFormData]: undefined,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

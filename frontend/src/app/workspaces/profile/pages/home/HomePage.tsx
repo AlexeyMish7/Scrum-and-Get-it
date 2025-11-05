@@ -1,13 +1,12 @@
 import { Box, Button, Typography, Paper, Chip } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import logo from "../../assets/logo/logo-flow-ats.png";
+import logo from "../../../../assets/logo/logo-flow-ats.png";
 
 const HomePage = () => {
   const navigate = useNavigate();
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#F8F9FA" }}>
-      
       {/* 🔹 Top Blue Banner */}
       <Box
         sx={{
@@ -76,8 +75,8 @@ const HomePage = () => {
             </Typography>
 
             <Typography variant="h6" sx={{ mb: 4, lineHeight: 1.6 }}>
-              Take control of your career journey — organize your skills, 
-              education, projects, and employment history in one digital 
+              Take control of your career journey — organize your skills,
+              education, projects, and employment history in one digital
               professional profile. Track progress and showcase your strengths!
             </Typography>
 
@@ -88,7 +87,11 @@ const HomePage = () => {
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 4 }}>
               <Chip label="Build Profile" color="primary" variant="outlined" />
               <Chip label="Track Strength" color="primary" variant="outlined" />
-              <Chip label="Showcase Projects" color="primary" variant="outlined" />
+              <Chip
+                label="Showcase Projects"
+                color="primary"
+                variant="outlined"
+              />
               <Chip label="Certifications" color="primary" variant="outlined" />
             </Box>
           </Box>
@@ -105,7 +108,8 @@ const HomePage = () => {
           fontSize: "0.9rem",
         }}
       >
-        New here? Start by creating your account. Already with us? Sign in to continue your journey.
+        New here? Start by creating your account. Already with us? Sign in to
+        continue your journey.
       </Typography>
     </Box>
   );

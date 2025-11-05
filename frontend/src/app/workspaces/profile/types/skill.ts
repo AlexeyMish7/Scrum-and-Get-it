@@ -42,26 +42,21 @@ export type UiSkill = {
 
 // Drag & drop and UI helper types used by SkillsOverview
 import type { ReactNode } from "react";
+// Use the official types from the drag/drop library to avoid type mismatches
+// between our local definitions and the library's exported types.
+import type {
+  DroppableProvided as HPDroppableProvided,
+  DraggableProvided as HPDraggableProvided,
+  DropResult as HPDropResult,
+} from "@hello-pangea/dnd";
 
-export type DropResult = {
-  source: { droppableId: string; index: number };
-  destination?: { droppableId: string; index: number } | null;
-  // `draggableId` is provided by the drag/drop library and is useful when
-  // locating the moved item by id instead of relying on indices.
-  draggableId?: string;
-};
+export type DropResult = HPDropResult;
 
-export type DroppableProvided = {
-  innerRef: (el: HTMLElement | null) => void;
-  droppableProps: Record<string, unknown>;
+export type DroppableProvided = HPDroppableProvided & {
   placeholder?: ReactNode;
 };
 
-export type DraggableProvided = {
-  innerRef: (el: HTMLElement | null) => void;
-  draggableProps: Record<string, unknown>;
-  dragHandleProps?: Record<string, unknown>;
-};
+export type DraggableProvided = HPDraggableProvided;
 
 export type Skill = {
   id: string;

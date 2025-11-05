@@ -17,7 +17,7 @@ import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner"
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import ConfirmDialog from "../../../../shared/components/common/ConfirmDialog";
-import type { EmploymentRow } from "../../../../../types/employment";
+import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {
   const { user, loading } = useAuth();

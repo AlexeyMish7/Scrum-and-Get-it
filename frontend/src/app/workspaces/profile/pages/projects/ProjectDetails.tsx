@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import projectsService from "../../app/workspaces/profile/services/projects";
-import type { Project } from "../../types/project";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import projectsService from "../../services/projects";
+import type { Project } from "../../types/project.ts";
 import "./Projects.css";
 
 // Component to display detailed view of a single project

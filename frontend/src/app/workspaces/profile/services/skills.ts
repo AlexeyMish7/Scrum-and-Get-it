@@ -1,5 +1,5 @@
 import crud from "../../../shared/services/crud";
-import type { DbSkillRow, SkillItem } from "../../../../types/skill";
+import type { DbSkillRow, SkillItem } from "../types/skill";
 
 const PROJECTION =
   "id,skill_name,proficiency_level,skill_category,meta,created_at,updated_at";

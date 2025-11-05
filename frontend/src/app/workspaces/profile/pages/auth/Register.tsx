@@ -3,10 +3,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 // Supabase client instance (handles all database/auth requests)
-import { supabase } from "../../app/shared/services/supabaseClient";
+import { supabase } from "../../../../shared/services/supabaseClient";
 
 // Custom authentication context for managing session + signup logic
-import { useAuth } from "../../app/shared/context/AuthContext";
+import { useAuth } from "../../../../shared/context/AuthContext";
 
 // MUI imports for styling + theme integration
 import {
@@ -21,7 +21,7 @@ import {
   CssBaseline,
   ThemeProvider,
 } from "@mui/material";
-import theme from "../../theme/theme";
+import theme from "../../theme/theme.tsx";
 
 // Type for our registration form fields
 type RegisterForm = {

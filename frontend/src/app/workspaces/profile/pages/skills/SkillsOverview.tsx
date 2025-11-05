@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   levelLabels,
   skillCategoryOptions,
-} from "../../../../../constants/skills";
+} from "../../../../constants/skills";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../shared/context/AuthContext";
 import skillsService from "../../services/skills";
@@ -13,7 +13,7 @@ import type {
   DraggableProvided,
   Skill,
   Category,
-} from "../../../../../types/skill";
+} from "../../types/skill.ts";
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import {

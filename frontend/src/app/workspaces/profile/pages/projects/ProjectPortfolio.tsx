@@ -15,12 +15,12 @@ import {
   DialogActions,
   Tooltip,
 } from "@mui/material";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import projectsService from "../../app/workspaces/profile/services/projects";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
-import type { Project } from "../../types/project";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import projectsService from "../../services/projects";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
+import type { Project } from "../../types/project.ts";
 import "./Projects.css";
 
 // Main portfolio page showing all user's projects in a grid layout

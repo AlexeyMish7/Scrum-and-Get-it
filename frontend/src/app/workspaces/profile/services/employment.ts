@@ -1,5 +1,5 @@
 import * as crud from "../../../shared/services/crud";
-import type { EmploymentRow } from "../../../../types/employment";
+import type { EmploymentRow } from "../types/employment";
 
 const listEmployment = async (userId: string) => {
   const userCrud = crud.withUser(userId);

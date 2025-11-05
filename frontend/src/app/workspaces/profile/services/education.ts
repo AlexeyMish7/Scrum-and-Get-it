@@ -3,7 +3,7 @@ import type {
   DbEducationRow,
   EducationEntry,
   EducationFormData,
-} from "../../../../types/education";
+} from "../types/education";
 import { dbDateToYYYYMM, formatToSqlDate } from "../../../shared/utils/date";
 
 // Central place for education table access and mapping. This keeps SELECT strings,

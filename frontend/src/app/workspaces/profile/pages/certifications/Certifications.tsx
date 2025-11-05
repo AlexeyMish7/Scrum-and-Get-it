@@ -32,7 +32,7 @@ import type {
   Certification as CertificationType,
   CertificationRow,
   NewCert,
-} from "../../../../../types/certification";
+} from "../../types/certification";
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";

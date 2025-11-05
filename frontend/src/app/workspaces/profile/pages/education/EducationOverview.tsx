@@ -3,7 +3,7 @@ import { useAuth } from "../../../../shared/context/AuthContext";
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import educationService from "../../services/education";
-import type { EducationEntry } from "../../../../../types/education";
+import type { EducationEntry } from "../../types/education";
 import {
   Box,
   Typography,

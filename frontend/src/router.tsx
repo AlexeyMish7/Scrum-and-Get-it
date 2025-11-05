@@ -3,7 +3,7 @@ import Register from "./app/workspaces/profile/pages/auth/Register";
 import Dashboard from "./app/workspaces/profile/pages/dashboard/Dashboard";
 import EducationOverview from "./app/workspaces/profile/pages/education/EducationOverview";
 import Certifications from "./app/workspaces/profile/pages/certifications/Certifications";
-import AddSkills from "./pages/skills/AddSkills";
+import AddSkills from "./app/workspaces/profile/pages/skills/AddSkills";
 import SkillsOverview from "./app/workspaces/profile/pages/skills/SkillsOverview";
 import Login from "./app/workspaces/profile/pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
@@ -13,12 +13,12 @@ import ResetPassword from "./app/workspaces/profile/pages/auth/ResetPassword";
 import HomePage from "./app/workspaces/profile/pages/home/HomePage";
 import AuthCallback from "./app/workspaces/profile/pages/auth/AuthCallback";
 
-import ProtectedRoute from "./app/components/common/ProtectedRoute";
+import ProtectedRoute from "./app/shared/components/common/ProtectedRoute";
 import AddEmployment from "./app/workspaces/profile/pages/employment/AddEmployment";
 import EmploymentHistoryList from "./app/workspaces/profile/pages/employment/EmploymentHistoryList";
 import AddProjectForm from "./app/workspaces/profile/pages/projects/AddProjectForm";
-import ProjectPortfolio from "./pages/projects/ProjectPortfolio";
-import ProjectDetails from "./pages/projects/ProjectDetails";
+import ProjectPortfolio from "./app/workspaces/profile/pages/projects/ProjectPortfolio";
+import ProjectDetails from "./app/workspaces/profile/pages/projects/ProjectDetails";
 //import NavBar from "./components/NavigationBar/Navbar";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "./app/workspaces/profile/pages/profile/ProfileDetails";

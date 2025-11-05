@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { isMonthAfter } from "../../../../shared/utils/dateUtils";
 import { useAuth } from "../../../../shared/context/AuthContext";
 import educationService from "../../services/education";
-import type { EducationEntry } from "../../../../../types/education";
+import type { EducationEntry } from "../../types/education";
 import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
 import {
