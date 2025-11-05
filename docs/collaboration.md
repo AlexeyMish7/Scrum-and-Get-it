@@ -1,23 +1,23 @@
 # 🤝 Collaboration
 
-Concise developer guide for working in the repository. This document is focused on using `develop` as the integration branch for feature work.
+Concise developer guide for working in the repository. This document is focused on using `dev` as the integration branch for feature work.
 
 ---
 
 ## 🌿 Git Workflow Summary
 
 ```bash
-# start from develop (integration branch)
-git checkout develop
+# start from dev (integration branch)
+git checkout dev
 git pull                   # get latest code
 git checkout -b feat/short-descriptive-name   # create new branch
 # make edits
 git add . && git commit -m "feat(scope): short description"
-git pull --rebase origin develop   # update branch before push
+git pull --rebase origin dev   # update branch before push
 git push -u origin feat/short-descriptive-name    # push branch
 ```
 
-Then open a **Pull Request** → request one review → **Squash & Merge** into `develop`.
+Then open a **Pull Request** → request one review → **Squash & Merge** into `dev`.
 
 ---
 
@@ -49,11 +49,11 @@ Keep names lowercase, use hyphens, and keep branches short and focused.
 
 ## Quick pull & update guide
 
-| Task                       | Command                            |
-| -------------------------- | ---------------------------------- |
-| Update `develop`           | `git checkout develop && git pull` |
-| Update your feature branch | `git pull --rebase origin develop` |
-| Delete branch after merge  | `git branch -d feat/xxx`           |
+| Task                       | Command                        |
+| -------------------------- | ------------------------------ |
+| Update `dev`               | `git checkout dev && git pull` |
+| Update your feature branch | `git pull --rebase origin dev` |
+| Delete branch after merge  | `git branch -d feat/xxx`       |
 
 ---
 
@@ -67,7 +67,7 @@ If switching branches with uncommitted work, stash it:
 
 ```bash
 git stash push -m "wip: brief note"
-git checkout develop && git pull
+git checkout dev && git pull
 git checkout feat/xxx
 git stash pop
 ```
@@ -91,3 +91,6 @@ git stash pop
 - Maintainers: Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
 
 ---
+
+If you'd like a separate developer-only file (very short cheat-sheet) we can keep `docs/collabdev.md` as a quick-reference; otherwise I can remove it.
+_When:_ GitHub says your branch is behind and rejects the push; someone pushed to `main` (or your branch) since your last pull.
