@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import projectsService from "../../services/projects";
+import projectsService from "../../app/workspaces/profile/services/projects";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";

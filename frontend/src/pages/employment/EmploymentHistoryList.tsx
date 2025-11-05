@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../services/employment";
+import employmentService from "../../app/workspaces/profile/services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Button, Typography } from "@mui/material";
 import "./employment.css";

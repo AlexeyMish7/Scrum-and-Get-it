@@ -1,10 +1,10 @@
-import crud from "../app/shared/services/crud";
+import crud from "../../../shared/services/crud";
 import type {
   DbEducationRow,
   EducationEntry,
   EducationFormData,
-} from "../types/education";
-import { dbDateToYYYYMM, formatToSqlDate } from "../app/shared/utils/date";
+} from "../../../../types/education";
+import { dbDateToYYYYMM, formatToSqlDate } from "../../../shared/utils/date";
 
 // Central place for education table access and mapping. This keeps SELECT strings,
 // mapping logic and CRUD calls in one file so components remain simple.

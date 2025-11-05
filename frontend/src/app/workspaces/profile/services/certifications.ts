@@ -1,6 +1,9 @@
-import * as crud from "../app/shared/services/crud";
-import { supabase } from "../app/shared/services/supabaseClient";
-import type { CertificationRow, Certification } from "../types/certification";
+import * as crud from "../../../shared/services/crud";
+import { supabase } from "../../../shared/services/supabaseClient";
+import type {
+  CertificationRow,
+  Certification,
+} from "../../../../types/certification";
 
 const mapRowToCertification = (r: CertificationRow): Certification => ({
   id: r.id,

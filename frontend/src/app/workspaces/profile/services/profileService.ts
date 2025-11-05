@@ -1,5 +1,5 @@
-import crud from "../app/shared/services/crud";
-import type { ProfileData } from "../types/profile";
+import crud from "../../../shared/services/crud";
+import type { ProfileData } from "../../../../types/profile";
 
 /**
  * Map a DB profile row to the UI-friendly ProfileData shape

@@ -7,7 +7,7 @@ import React, { useState } from "react";
 // Student notes: the component demonstrates form validation, controlled
 // components, and preparing a backend payload using snake_case keys.
 import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../services/employment";
+import employmentService from "../../app/workspaces/profile/services/employment";
 import type { EmploymentFormData } from "../../types/employment";
 import EmploymentForm from "./EmploymentForm";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";

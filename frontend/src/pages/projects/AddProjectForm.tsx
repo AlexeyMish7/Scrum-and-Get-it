@@ -21,7 +21,7 @@ import ReactCrop, {
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import projectsService from "../../services/projects";
+import projectsService from "../../app/workspaces/profile/services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";

@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import ProfilePicture from "../../components/common/ProfilePicture";
-import profileService from "../../services/profileService";
+import profileService from "../../app/workspaces/profile/services/profileService";
 import "./ProfileDetails.css";
 import type { ProfileData } from "../../types/profile";
 

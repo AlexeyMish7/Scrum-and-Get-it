@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from "react";
 // is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import employmentService from "../../services/employment";
+import employmentService from "../../app/workspaces/profile/services/employment";
 import type { EmploymentFormData, EmploymentRow } from "../../types/employment";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";

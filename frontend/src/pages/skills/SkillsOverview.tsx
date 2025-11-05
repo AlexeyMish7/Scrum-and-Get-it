@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { levelLabels, skillCategoryOptions } from "../../constants/skills";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import skillsService from "../../services/skills";
+import skillsService from "../../app/workspaces/profile/services/skills";
 import type {
   SkillItem,
   DropResult,

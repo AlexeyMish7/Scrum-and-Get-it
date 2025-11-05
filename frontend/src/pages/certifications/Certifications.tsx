@@ -27,7 +27,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import dayjs from "dayjs";
 import "./Certifications.css";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import certificationsService from "../../services/certifications";
+import certificationsService from "../../app/workspaces/profile/services/certifications";
 import type {
   Certification as CertificationType,
   CertificationRow,

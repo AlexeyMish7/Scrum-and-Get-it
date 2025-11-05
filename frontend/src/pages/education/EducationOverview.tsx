@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import educationService from "../../services/education";
+import educationService from "../../app/workspaces/profile/services/education";
 import type { EducationEntry } from "../../types/education";
 import {
   Box,

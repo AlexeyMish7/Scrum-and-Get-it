@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isMonthAfter } from "../../app/shared/utils/dateUtils";
 import { useAuth } from "../../app/shared/context/AuthContext";
-import educationService from "../../services/education";
+import educationService from "../../app/workspaces/profile/services/education";
 import type { EducationEntry } from "../../types/education";
 import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
