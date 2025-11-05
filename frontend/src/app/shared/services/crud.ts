@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "./supabaseClient";
 import type { Result, ListOptions, FilterOptions } from "./types";
 
 // Helper to map Supabase/JS errors into our standard CrudError shape

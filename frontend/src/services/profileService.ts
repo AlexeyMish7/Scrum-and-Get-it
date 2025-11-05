@@ -1,4 +1,4 @@
-import crud from "./crud";
+import crud from "../app/shared/services/crud";
 import type { ProfileData } from "../types/profile";
 
 /**

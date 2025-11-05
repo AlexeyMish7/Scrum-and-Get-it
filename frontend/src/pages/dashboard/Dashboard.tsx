@@ -12,7 +12,7 @@ import {
 
 import Icon from "../../components/common/Icon";
 import { useAuth } from "../../app/shared/context/AuthContext.tsx";
-import * as crud from "../../services/crud";
+import * as crud from "../../app/shared/services/crud.ts";
 import type { EmploymentRow } from "../../types/employment";
 import type { DbSkillRow } from "../../types/skill";
 import type { DocumentRow } from "../../types/document.ts";
@@ -21,7 +21,7 @@ import {
   mapSkill,
   mapEducation,
   mapProject,
-} from "../../services/dbMappers";
+} from "../../app/shared/services/dbMappers.ts";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 // Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {

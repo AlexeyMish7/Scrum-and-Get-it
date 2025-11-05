@@ -19,8 +19,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { supabase } from "../../lib/supabaseClient";
-import crud from "../../services/crud";
+import { supabase } from "../../app/shared/services/supabaseClient";
+import crud from "../../app/shared/services/crud";
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo/graphics_only.png"; // adjust path if needed
 

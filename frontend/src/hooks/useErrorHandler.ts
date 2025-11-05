@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import type { CrudError } from "../services/types";
+import type { CrudError } from "../app/shared/services/types";
 
 // Types for our centralized error handling
 export type ErrorSeverity = "error" | "warning" | "info" | "success";

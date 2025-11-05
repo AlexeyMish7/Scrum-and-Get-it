@@ -25,7 +25,7 @@ import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "../../components/common/ErrorSnackbar";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../app/shared/services/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
 import "./Projects.css";
 
@@ -373,7 +373,7 @@ const AddProjectForm: React.FC = () => {
       // Create document record for uploaded file
       if (mediaPath && mediaFile) {
         try {
-          const userCrudModule = await import("../../services/crud");
+          const userCrudModule = await import("../../app/shared/services/crud");
           const userCrud = userCrudModule.withUser(user.id);
           const createdRow = res.data as ProjectRow | null;
           const createdId = createdRow?.id ?? null;

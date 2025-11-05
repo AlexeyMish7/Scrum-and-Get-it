@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../services/supabaseClient";
 import type {
   Session as SupabaseSession,
   User as SupabaseUser,

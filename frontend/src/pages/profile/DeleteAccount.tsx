@@ -11,8 +11,8 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { supabase } from "../../lib/supabaseClient";
-import crud from "../../services/crud";
+import { supabase } from "../../app/shared/services/supabaseClient";
+import crud from "../../app/shared/services/crud";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 

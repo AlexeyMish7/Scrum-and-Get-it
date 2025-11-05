@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 // Supabase client instance (handles all database/auth requests)
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../app/shared/services/supabaseClient";
 
 // Custom authentication context for managing session + signup logic
 import { useAuth } from "../../app/shared/context/AuthContext";
