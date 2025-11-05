@@ -49,11 +49,11 @@ Keep names lowercase, use hyphens, and keep branches short and focused.
 
 ## Quick pull & update guide
 
-| Task                       | Command                        |
-| -------------------------- | ------------------------------ |
+| Task                       | Command                         |
+| -------------------------- | ------------------------------- |
 | Update `main`              | `git checkout main && git pull` |
 | Update your feature branch | `git pull --rebase origin main` |
-| Delete branch after merge  | `git branch -d feat/xxx`       |
+| Delete branch after merge  | `git branch -d feat/xxx`        |
 
 ---
 

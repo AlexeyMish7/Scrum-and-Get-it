@@ -26,9 +26,12 @@ import MainLayout from "@profile/components/navigation/MainLayout";
 import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
+import AiThemeShowcase from "@workspaces/ai/theme/AiThemeShowcase";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
+  // Public AI theme showcase
+  { path: "/ai/theme", element: <AiThemeShowcase /> },
   { path: "/register", element: <Register /> },
   { path: "/cover-letters", element: <CoverLetterTemplates /> },
   { path: "/edit-cover-letters", element: <EditCoverLetter /> },
