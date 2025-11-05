@@ -1,132 +1,93 @@
 # 🤝 Collaboration
 
-**Goal:** Avoid merge conflicts and keep `main` clean.
-
----
-
-## 🧱 Basic Rules
-
-1. **Announce in chat** when working on an existing file.
-2. **Pull before pushing** so your branch is up to date.
-3. **Announce after pushing** so others can pull.
-4. **Never push directly to `main`** — always use feature branches.
-
-> Example: “Working on `AuthForm.tsx` — pushing soon.”
+Concise developer guide for working in the repository. This document is focused on using `develop` as the integration branch for feature work.
 
 ---
 
 ## 🌿 Git Workflow Summary
 
 ```bash
-git checkout main
+# start from develop (integration branch)
+git checkout develop
 git pull                   # get latest code
-git checkout -b feat/auth   # create new branch
+git checkout -b feat/short-descriptive-name   # create new branch
 # make edits
-git add . && git commit -m "feat(auth): add login"
-git pull --rebase origin main   # update branch
-git push -u origin feat/auth    # push branch
+git add . && git commit -m "feat(scope): short description"
+git pull --rebase origin develop   # update branch before push
+git push -u origin feat/short-descriptive-name    # push branch
 ```
 
-Then open a **Pull Request** → get one review → **Squash & Merge** into `main`.
+Then open a **Pull Request** → request one review → **Squash & Merge** into `develop`.
 
 ---
 
-## ⬇️ Quick Pull Guide
+## Branch naming suggestions
 
-| Task                       | Command                         |
-| -------------------------- | ------------------------------- |
-| Update `main`              | `git checkout main && git pull` |
-| Update your feature branch | `git pull --rebase origin main` |
-| Delete branch after merge  | `git branch -d feat/auth`       |
+- Feature: `feat/<short-descriptive-name>` (e.g. `feat/login-oauth`)
+- Bugfix: `fix/<short-descriptive-name>` (e.g. `fix/profile-avatar-upload`)
+- Chore/config: `chore/<what>` (e.g. `chore/lint-rules`)
+- Hotfix: `hotfix/<short-desc>` (used for urgent fixes merged into main/released branches)
 
----
-
-## ⚡ If You Get a Conflict
-
-1. Fix the file (look for `<<<<<<<` markers).
-2. `git add .`
-3. `git rebase --continue`
-
-If stuck: `git rebase --abort`
+Keep names lowercase, use hyphens, and keep branches short and focused.
 
 ---
 
-## 🧠 Merge vs Rebase (Simple)
+## Quick checks before opening a PR
 
-- **Merge:** Keeps all history, adds extra “merge commit.”
-- **Rebase:** Replays your work on top of main → cleaner history.
+- Run typecheck and lint in frontend:
 
-Use: `git pull --rebase origin main`
+  ```powershell
+  cd frontend
+  npm run typecheck
+  npm run lint
+  ```
 
----
-
-## ✅ Do’s & Don’ts
-
-**Do:** Pull often, keep PRs small, announce pushes.
-
-**Don’t:** Push to main, leave conflicts unresolved, or force-push shared branches.
+- Add or update tests where appropriate. Keep PRs small (1–3 files) when possible.
+- If the change touches DB schema, add a migration under `db/migrations/` and include rollback notes in the PR.
 
 ---
 
-## 🧪 Real-World Workflows & Scenarios
+## Quick pull & update guide
 
-### Scenario 1 — Start a new feature cleanly
+| Task                       | Command                            |
+| -------------------------- | ---------------------------------- |
+| Update `develop`           | `git checkout develop && git pull` |
+| Update your feature branch | `git pull --rebase origin develop` |
+| Delete branch after merge  | `git branch -d feat/xxx`           |
 
-_When:_ You’re beginning new work from scratch for a ticket and haven’t made local changes yet.
+---
+
+## Conflict tips
+
+1. Resolve `<<<<<<<` markers and keep the intended final code.
+2. `git add <file>` and `git rebase --continue`.
+3. If stuck, `git rebase --abort` and ask for help.
+
+If switching branches with uncommitted work, stash it:
 
 ```bash
-git checkout main
-git pull                      # sync main
-git checkout -b feat/auth-ui  # new branch
-# ...code, commit...
-```
-
-### Scenario 2 — Main changed while you were coding
-
-_When:_ Teammates merged PRs into `main` after you created your branch, and you want the latest code before pushing.
-
-```bash
-# on your feature branch
-git pull --rebase origin main   # replay your commits on latest main
-# fix any conflicts → git add . → git rebase --continue
-```
-
-### Scenario 3 — You and a teammate edited the same file (conflict)
-
-_When:_ Your rebase detects overlapping edits (e.g., both touched `App.tsx` or shared types) and stops with conflict markers.
-
-```bash
-git pull --rebase origin main
-# CONFLICT markers appear in file(s)
-# edit to final version, then:
-git add <file>
-git rebase --continue
-# if it goes sideways:
-# git rebase --abort
-```
-
-### Scenario 4 — Need to quickly switch branches but you have uncommitted changes
-
-_When:_ You must jump to another branch (e.g., urgent review or hotfix) but your current work isn’t ready to commit.
-
-```bash
-git stash push -m "wip: auth-ui before switching"
-git checkout main && git pull
-# later, back to your branch
-git checkout feat/auth-ui
+git stash push -m "wip: brief note"
+git checkout develop && git pull
+git checkout feat/xxx
 git stash pop
 ```
 
-### Scenario 5 — Your push is rejected (remote has new commits)
+---
 
-_When:_ GitHub says your branch is behind and rejects the push; someone pushed to `main` (or your branch) since your last pull.
+## Pull Request checklist (add to PR description)
 
-```bash
-# on your feature branch
-git pull --rebase origin main   # update first
-git push                        # now it succeeds
-```
+- Small change summary (one line)
+- Files changed (one-line per file)
+- Typecheck & lint status (include commands used):
+  - `cd frontend; npm run typecheck`
+  - `cd frontend; npm run lint`
+- Manual verification steps (happy path + one edge case)
+- Migration notes if DB/schema changes were added
 
 ---
 
-**Maintainers:** Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
+## Suggested reviewers & maintainers
+
+- Maintainers: Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
+
+---
