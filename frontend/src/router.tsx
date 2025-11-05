@@ -8,10 +8,10 @@ import SkillsOverview from "./pages/skills/SkillsOverview";
 import Login from "./pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import AddEducation from "./pages/education/AddEducation";
-import ForgotPassword from "./pages/auth/ForgetPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
+import ForgotPassword from "./app/workspaces/profile/pages/auth/ForgetPassword";
+import ResetPassword from "./app/workspaces/profile/pages/auth/ResetPassword";
 import HomePage from "./pages/home/HomePage";
-import AuthCallback from "./pages/auth/AuthCallback";
+import AuthCallback from "./app/workspaces/profile/pages/auth/AuthCallback";
 
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import AddEmployment from "./pages/employment/AddEmployment";

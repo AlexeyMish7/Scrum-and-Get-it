@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../../app/shared/services/supabaseClient";
+import { supabase } from "../../../../shared/services/supabaseClient";
 import {
   Button,
   TextField,

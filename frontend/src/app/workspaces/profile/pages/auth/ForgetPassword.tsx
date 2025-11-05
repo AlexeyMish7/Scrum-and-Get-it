@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../../app/shared/services/supabaseClient";
+import { supabase } from "../../../../shared/services/supabaseClient";
 import {
   Button,
   TextField,
