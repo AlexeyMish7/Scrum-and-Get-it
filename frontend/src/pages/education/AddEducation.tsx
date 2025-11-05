@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { isMonthAfter } from "../../utils/dateUtils";
+import { isMonthAfter } from "../../app/shared/utils/dateUtils";
 import { useAuth } from "../../app/shared/context/AuthContext";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";

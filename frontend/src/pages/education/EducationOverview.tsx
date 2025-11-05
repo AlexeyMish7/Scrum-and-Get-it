@@ -33,7 +33,7 @@ import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
 import "./EducationOverview.css";
-import { parseMonthToMs } from "../../utils/dateUtils";
+import { parseMonthToMs } from "../../app/shared/utils/dateUtils";
 
 /*
   EducationOverview
