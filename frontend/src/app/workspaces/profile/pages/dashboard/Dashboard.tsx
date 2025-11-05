@@ -10,19 +10,19 @@ import {
   Divider,
 } from "@mui/material";
 
-import Icon from "../../app/shared/components/common/Icon.tsx";
-import { useAuth } from "../../app/shared/context/AuthContext.tsx";
-import * as crud from "../../app/shared/services/crud.ts";
-import type { EmploymentRow } from "../../types/employment";
-import type { DbSkillRow } from "../../types/skill";
-import type { DocumentRow } from "../../types/document.ts";
+import Icon from "../../../../shared/components/common/Icon.tsx";
+import { useAuth } from "../../../../shared/context/AuthContext.tsx";
+import * as crud from "../../../../shared/services/crud.ts";
+import type { EmploymentRow } from "../../../../../types/employment.ts";
+import type { DbSkillRow } from "../../../../../types/skill.ts";
+import type { DocumentRow } from "../../../../../types/document.ts";
 import {
   mapEmployment,
   mapSkill,
   mapEducation,
   mapProject,
-} from "../../app/shared/services/dbMappers.ts";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner.tsx";
+} from "../../../../shared/services/dbMappers.ts";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner.tsx";
 // Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {
   id: string;
@@ -83,12 +83,12 @@ function docsToActivities(
 }
 
 // App widgets for the dashboard layout/visuals (keep these imports so UI stays the same)
-import SummaryCards from "../../app/workspaces/profile/components/profile/SummaryCards.tsx";
-import RecentActivityTimeline from "../../app/workspaces/profile/components/profile/RecentActivityTimeline.tsx";
-import ProfileCompletion from "../../app/workspaces/profile/components/profile/ProfileCompletion.tsx";
-import SkillsDistributionChart from "../../app/workspaces/profile/components/profile/SkillsDistributionChart.tsx";
-import CareerTimeline from "../../app/workspaces/profile/components/profile/CareerTimeline.tsx";
-import ProfileStrengthTips from "../../app/workspaces/profile/components/profile/ProfileStrengthTips.tsx";
+import SummaryCards from "../../components/profile/SummaryCards.tsx";
+import RecentActivityTimeline from "../../components/profile/RecentActivityTimeline.tsx";
+import ProfileCompletion from "../../components/profile/ProfileCompletion.tsx";
+import SkillsDistributionChart from "../../components/profile/SkillsDistributionChart.tsx";
+import CareerTimeline from "../../components/profile/CareerTimeline.tsx";
+import ProfileStrengthTips from "../../components/profile/ProfileStrengthTips.tsx";
 
 const Dashboard: FC = () => {
   const theme = useTheme();

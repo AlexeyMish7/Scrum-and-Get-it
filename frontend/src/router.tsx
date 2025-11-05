@@ -1,8 +1,8 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Register from "./pages/auth/Register";
-import Dashboard from "./pages/dashboard/Dashboard";
+import Dashboard from "./app/workspaces/profile/pages/dashboard/Dashboard";
 import EducationOverview from "./pages/education/EducationOverview";
-import Certifications from "./pages/certifications/Certifications";
+import Certifications from "./app/workspaces/profile/pages/certifications/Certifications";
 import AddSkills from "./pages/skills/AddSkills";
 import SkillsOverview from "./pages/skills/SkillsOverview";
 import Login from "./pages/auth/Login";

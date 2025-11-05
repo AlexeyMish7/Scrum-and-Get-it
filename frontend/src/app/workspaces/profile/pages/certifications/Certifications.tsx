@@ -26,17 +26,17 @@ import SearchIcon from "@mui/icons-material/Search";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import dayjs from "dayjs";
 import "./Certifications.css";
-import { useAuth } from "../../app/shared/context/AuthContext";
-import certificationsService from "../../app/workspaces/profile/services/certifications";
+import { useAuth } from "../../../../shared/context/AuthContext";
+import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
   CertificationRow,
   NewCert,
-} from "../../types/certification";
-import { useErrorHandler } from "../../app/shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../app/shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "../../app/shared/components/common/LoadingSpinner";
-import ConfirmDialog from "../../app/shared/components/common/ConfirmDialog";
+} from "../../../../../types/certification";
+import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
+import ConfirmDialog from "../../../../shared/components/common/ConfirmDialog";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
