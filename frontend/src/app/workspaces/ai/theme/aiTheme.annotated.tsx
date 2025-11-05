@@ -1,46 +1,53 @@
+// Annotated AI theme file: explains what each section and important lines do.
+// This file is a commented copy of `aiTheme.tsx`. It will not be imported by the app.
+
 import { createTheme, alpha, type Shadows } from "@mui/material/styles";
+// import createTheme and helpers from MUI; `alpha` helps make colors translucent.
 
-// Glass-tuned shadows used for elevated surfaces
+// Define a Shadows array tuned to look like glassy elevation shadows.
 const glassShadows: Shadows = [
-  "none",
-  "0 1px 3px rgba(0,0,0,0.2)",
-  "0 2px 6px rgba(0,0,0,0.24)",
-  "0 8px 20px rgba(0,229,255,0.08)",
-  ...Array(21).fill("0 12px 28px rgba(0,229,255,0.06)"),
-] as unknown as Shadows;
+  "none", // index 0: no shadow
+  "0 1px 3px rgba(0,0,0,0.2)", // small shadow for subtle depth
+  "0 2px 6px rgba(0,0,0,0.24)", // slightly larger shadow
+  "0 8px 20px rgba(0,229,255,0.08)", // colored bluish shadow for accent
+  ...Array(21).fill("0 12px 28px rgba(0,229,255,0.06)"), // replicate for remaining shadow indexes
+] as unknown as Shadows; // cast to Shadows type required by MUI theme
 
-// AI workspace theme: component tokens and sensible global styles.
+// Create the AI theme object containing palette, typography and component overrides.
 const aiThemeCore = createTheme({
+  // Palette defines colors used across components
   palette: {
-    mode: "dark",
+    mode: "dark", // use dark mode tokens
     primary: {
-      light: "#7BAFFF",
-      main: "#3F7BFF",
-      dark: "#1F4ED8",
-      contrastText: "#F5F8FF",
+      light: "#7BAFFF", // lighter primary tint
+      main: "#3F7BFF", // primary brand blue
+      dark: "#1F4ED8", // dark variant for active/hover
+      contrastText: "#F5F8FF", // text color for primary-colored surfaces
     },
     secondary: {
-      light: "#66FFF9",
+      light: "#66FFF9", // cyan accent
       main: "#00E5FF",
       dark: "#00ACC1",
       contrastText: "#061018",
     },
     // Provide a very dark cyan/blue background for AI pages.
     background: {
-      default: "#001F24",
-      paper: alpha("#061018", 0.6),
+      default: "#001F24", // page background color
+      paper: alpha("#061018", 0.6), // background for surfaces like Paper with slight transparency
     },
-    divider: alpha("#7BE9FF", 0.18),
+    divider: alpha("#7BE9FF", 0.18), // color used for dividers (semi-transparent cyan)
     text: {
-      primary: "#DDEBFF",
-      secondary: "rgba(189,214,255,.82)",
-      disabled: "rgba(189,214,255,.42)",
+      primary: "#DDEBFF", // primary text color
+      secondary: "rgba(189,214,255,.82)", // secondary text color
+      disabled: "rgba(189,214,255,.42)", // disabled text color
     },
-    info: { main: "#27C3FF" },
+    info: { main: "#27C3FF" }, // informational color
     success: { main: "#35F0B2" },
     warning: { main: "#FFC857" },
     error: { main: "#FF5573" },
   },
+
+  // Typography tokens: font family and base weights for headings and buttons
   typography: {
     fontFamily: [
       "Inter",
@@ -49,17 +56,18 @@ const aiThemeCore = createTheme({
       "Helvetica Neue",
       "Arial",
       "sans-serif",
-    ].join(","),
-    h1: { fontWeight: 800, letterSpacing: "-0.2px" },
+    ].join(","), // join fallback fonts into a single string
+    h1: { fontWeight: 800, letterSpacing: "-0.2px" }, // heading 1 weight
     h2: { fontWeight: 700, letterSpacing: "-0.2px" },
     h3: { fontWeight: 700, letterSpacing: "-0.1px" },
     h4: { fontWeight: 700 },
-    button: { textTransform: "none", fontWeight: 700 },
+    button: { textTransform: "none", fontWeight: 700 }, // disable uppercase for buttons
   },
 
-  shape: { borderRadius: 12 },
-  shadows: glassShadows,
+  shape: { borderRadius: 12 }, // global border radius used by components
+  shadows: glassShadows, // use the custom shadows defined earlier
 
+  // Transition timing/easing tokens used by interactive components
   transitions: {
     duration: {
       shortest: 100,
@@ -78,43 +86,45 @@ const aiThemeCore = createTheme({
     },
   },
 
+  // Component-level overrides: customize MUI components globally
   components: {
+    // Global CSS baseline overrides
     MuiCssBaseline: {
       styleOverrides: (theme) => ({
         ":root": {
-          "--motion-micro": "140ms ease-out",
-          "--motion-enter": "240ms cubic-bezier(.2,.8,.2,1)",
+          "--motion-micro": "140ms ease-out", // custom CSS variable for small motions
+          "--motion-enter": "240ms cubic-bezier(.2,.8,.2,1)", // entering timing
           "--motion-exit": "220ms cubic-bezier(.2,.8,.2,1)",
           "--motion-hover-in": "220ms cubic-bezier(.22,.61,.36,1)",
           "--motion-hover-out": "180ms cubic-bezier(.4,0,.2,1)",
         },
         html: {
-          scrollPaddingTop: "96px",
-          [theme.breakpoints.down("sm")]: { scrollPaddingTop: "80px" },
+          scrollPaddingTop: "96px", // offset for anchored element scrolling (accounting for appbar)
+          [theme.breakpoints.down("sm")]: { scrollPaddingTop: "80px" }, // smaller offset on small screens
         },
         "@keyframes underlineGrow": {
-          "0%": { transform: "scaleX(0)" },
+          "0%": { transform: "scaleX(0)" }, // keyframes to animate an underline grow effect
           "100%": { transform: "scaleX(1)" },
         },
 
         // Keep layout height; continuous background is applied to body
-        "html, body, #root": { height: "100%" },
+        "html, body, #root": { height: "100%" }, // ensure root elements fill viewport height
         // root should sit above decorative layers
         "#root": {
           position: "relative",
-          zIndex: 1,
+          zIndex: 1, // raise the app container above background decorations
         },
         body: {
           position: "relative",
-          WebkitFontSmoothing: "antialiased",
-          MozOsxFontSmoothing: "grayscale",
-          textRendering: "optimizeLegibility",
-          backgroundColor: theme.palette.background.default,
+          WebkitFontSmoothing: "antialiased", // improve font rendering on WebKit
+          MozOsxFontSmoothing: "grayscale", // improve font rendering on Firefox macOS
+          textRendering: "optimizeLegibility", // better text shaping
+          backgroundColor: theme.palette.background.default, // use theme background color
           backgroundImage:
-            "linear-gradient(180deg, #001F24 0%, #002935 45%, #00121A 100%)",
+            "linear-gradient(180deg, #001F24 0%, #002935 45%, #00121A 100%)", // dark cyan->blue gradient
           backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-          backgroundSize: "cover",
+          backgroundAttachment: "fixed", // fix background to viewport for a continuous backdrop
+          backgroundSize: "cover", // cover entire viewport
           backgroundPosition: "center center",
           "@media (prefers-reduced-motion: reduce)": {
             "*": {
@@ -127,12 +137,13 @@ const aiThemeCore = createTheme({
           },
         },
         ".ai-glow": {
-          textShadow: "0 0 10px rgba(76,157,255,0.5)",
+          textShadow: "0 0 10px rgba(76,157,255,0.5)", // reusable glow helper class
           filter: "drop-shadow(0 0 12px rgba(63,123,255,0.32))",
         },
       }),
     },
 
+    // Typography variants: add glow styles to headings
     MuiTypography: {
       variants: [
         {
@@ -182,12 +193,13 @@ const aiThemeCore = createTheme({
       ],
     },
 
+    // Paper surfaces: glassy backdrop with subtle border and highlight
     MuiPaper: {
       styleOverrides: {
         root: {
           background:
-            "linear-gradient(180deg, rgba(16,28,46,.78), rgba(9,16,28,.6))",
-          backdropFilter: "blur(18px)",
+            "linear-gradient(180deg, rgba(16,28,46,.78), rgba(9,16,28,.6))", // glass gradient
+          backdropFilter: "blur(18px)", // blur background behind surface
           WebkitBackdropFilter: "blur(18px)",
           border: `1px solid ${alpha("#7BAFFF", 0.22)}`,
           borderRadius: 12,
@@ -206,6 +218,8 @@ const aiThemeCore = createTheme({
         },
       },
     },
+
+    // Card component overrides: similar glass styling with hover effects
     MuiCard: {
       styleOverrides: {
         root: {
@@ -272,6 +286,7 @@ const aiThemeCore = createTheme({
       },
     },
 
+    // AppBar: glassy top bar with subtle border
     MuiAppBar: {
       styleOverrides: {
         root: {
@@ -284,6 +299,7 @@ const aiThemeCore = createTheme({
       },
     },
 
+    // Buttons: consistent sizing and motion tokens
     MuiButton: {
       styleOverrides: {
         root: {
@@ -556,9 +572,7 @@ const aiThemeCore = createTheme({
               borderColor: alpha("#00E5FF", 0.36),
               boxShadow: "0 0 12px rgba(63,123,255,0.28)",
             },
-          "&.MuiChip-outlined": {
-            borderColor: alpha("#3F7BFF", 0.28),
-          },
+          "&.MuiChip-outlined": { borderColor: alpha("#3F7BFF", 0.28) },
         },
       },
     },
