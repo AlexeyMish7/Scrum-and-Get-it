@@ -1,29 +1,29 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import Register from "./app/workspaces/profile/pages/auth/Register";
-import Dashboard from "./app/workspaces/profile/pages/dashboard/Dashboard";
-import EducationOverview from "./app/workspaces/profile/pages/education/EducationOverview";
-import Certifications from "./app/workspaces/profile/pages/certifications/Certifications";
-import AddSkills from "./app/workspaces/profile/pages/skills/AddSkills";
-import SkillsOverview from "./app/workspaces/profile/pages/skills/SkillsOverview";
-import Login from "./app/workspaces/profile/pages/auth/Login";
+import Register from "@profile/pages/auth/Register";
+import Dashboard from "@profile/pages/dashboard/Dashboard";
+import EducationOverview from "@profile/pages/education/EducationOverview";
+import Certifications from "@profile/pages/certifications/Certifications";
+import AddSkills from "@profile/pages/skills/AddSkills";
+import SkillsOverview from "@profile/pages/skills/SkillsOverview";
+import Login from "@profile/pages/auth/Login";
 // import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
 import AddEducation from "./app/workspaces/profile/pages/education/AddEducation";
 import ForgotPassword from "./app/workspaces/profile/pages/auth/ForgetPassword";
 import ResetPassword from "./app/workspaces/profile/pages/auth/ResetPassword";
-import HomePage from "./app/workspaces/profile/pages/home/HomePage";
-import AuthCallback from "./app/workspaces/profile/pages/auth/AuthCallback";
+import HomePage from "@profile/pages/home/HomePage";
+import AuthCallback from "@profile/pages/auth/AuthCallback";
 
-import ProtectedRoute from "./app/shared/components/common/ProtectedRoute";
-import AddEmployment from "./app/workspaces/profile/pages/employment/AddEmployment";
-import EmploymentHistoryList from "./app/workspaces/profile/pages/employment/EmploymentHistoryList";
-import AddProjectForm from "./app/workspaces/profile/pages/projects/AddProjectForm";
-import ProjectPortfolio from "./app/workspaces/profile/pages/projects/ProjectPortfolio";
-import ProjectDetails from "./app/workspaces/profile/pages/projects/ProjectDetails";
+import ProtectedRoute from "@shared/components/common/ProtectedRoute";
+import AddEmployment from "@profile/pages/employment/AddEmployment";
+import EmploymentHistoryList from "@profile/pages/employment/EmploymentHistoryList";
+import AddProjectForm from "@profile/pages/projects/AddProjectForm";
+import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
+import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 //import NavBar from "./components/NavigationBar/Navbar";
 //import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
-import ProfileDetails from "./app/workspaces/profile/pages/profile/ProfileDetails";
-import MainLayout from "./app/workspaces/profile/components/navigation/MainLayout";
-import Settings from "./app/workspaces/profile/pages/profile/Settings";
+import ProfileDetails from "@profile/pages/profile/ProfileDetails";
+import MainLayout from "@profile/components/navigation/MainLayout";
+import Settings from "@profile/pages/profile/Settings";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
