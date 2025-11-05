@@ -21,32 +21,14 @@ Then open a **Pull Request** → request one review → **Squash & Merge** into 
 
 ---
 
-## ⬇️ Quick Pull Guide
+## Branch naming suggestions
 
-| Task                       | Command                        |
-| -------------------------- | ------------------------------ |
-| Update `dev`               | `git checkout dev && git pull` |
-| Update your feature branch | `git pull --rebase origin dev` |
-| Delete branch after merge  | `git branch -d feat/auth`      |
+- Feature: `feat/<short-descriptive-name>` (e.g. `feat/login-oauth`)
+- Bugfix: `fix/<short-descriptive-name>` (e.g. `fix/profile-avatar-upload`)
+- Chore/config: `chore/<what>` (e.g. `chore/lint-rules`)
+- Hotfix: `hotfix/<short-desc>` (used for urgent fixes merged into main/released branches)
 
----
-
-## ⚡ If You Get a Conflict
-
-1. Fix the file (look for `<<<<<<<` markers).
-2. `git add .`
-3. `git rebase --continue`
-
-If stuck: `git rebase --abort`
-
----
-
-## 🧠 Merge vs Rebase (Simple)
-
-- **Merge:** Keeps all history, adds extra “merge commit.”
-- **Rebase:** Replays your work on top of main → cleaner history.
-
-Use: `git pull --rebase origin main`
+Keep names lowercase, use hyphens, and keep branches short and focused.
 
 ---
 
@@ -84,23 +66,31 @@ Use: `git pull --rebase origin main`
 If switching branches with uncommitted work, stash it:
 
 ```bash
-git stash push -m "wip: auth-ui before switching"
-git checkout main && git pull
-# later, back to your branch
-git checkout feat/auth-ui
+git stash push -m "wip: brief note"
+git checkout dev && git pull
+git checkout feat/xxx
 git stash pop
-```
-
-### Scenario 5 — Your push is rejected (remote has new commits)
-
-_When:_ GitHub says your branch is behind and rejects the push; someone pushed to `main` (or your branch) since your last pull.
-
-```bash
-# on your feature branch
-git pull --rebase origin main   # update first
-git push                        # now it succeeds
 ```
 
 ---
 
-**Maintainers:** Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
+## Pull Request checklist (add to PR description)
+
+- Small change summary (one line)
+- Files changed (one-line per file)
+- Typecheck & lint status (include commands used):
+  - `cd frontend; npm run typecheck`
+  - `cd frontend; npm run lint`
+- Manual verification steps (happy path + one edge case)
+- Migration notes if DB/schema changes were added
+
+---
+
+## Suggested reviewers & maintainers
+
+- Maintainers: Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
+
+---
+
+If you'd like a separate developer-only file (very short cheat-sheet) we can keep `docs/collabdev.md` as a quick-reference; otherwise I can remove it.
+_When:_ GitHub says your branch is behind and rejects the push; someone pushed to `main` (or your branch) since your last pull.

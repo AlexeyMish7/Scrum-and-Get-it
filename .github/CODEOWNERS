@@ -1,0 +1,5 @@
+# CODEOWNERS - single owner for the repository
+# Lines starting with '#' are comments.
+
+# Make Alexey the sole code owner for all files
+* @AlexeyMish7

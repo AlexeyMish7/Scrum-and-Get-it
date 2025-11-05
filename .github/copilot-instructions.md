@@ -1,3 +1,5 @@
+# PR Review Focus (for Copilot)
+
 ## Copilot instructions — Scrum-and-Get-it (concise)
 
 Audience
