@@ -25,11 +25,13 @@ import ProfileDetails from "@profile/pages/profile/ProfileDetails";
 import MainLayout from "@profile/components/navigation/MainLayout";
 import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
+import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
   { path: "/register", element: <Register /> },
   { path: "/cover-letters", element: <CoverLetterTemplates /> },
+  { path: "/edit-cover-letters", element: <EditCoverLetter /> },
   {
     path: "/profile",
     element: (
