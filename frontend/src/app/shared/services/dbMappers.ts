@@ -247,16 +247,31 @@ export async function updateJob(
   jobId: string | number,
   formData: Record<string, unknown>
 ): Promise<Result<unknown>> {
-  const mapped = mapJob(formData);
-  if (mapped.error) {
-    return {
-      data: null,
-      error: { message: mapped.error, status: null },
-      status: null,
-    } as Result<unknown>;
-  }
+  // Allow partial updates: if the payload includes core job fields (title/company)
+  // run through mapJob for validation/normalization. Otherwise treat as a patch
+  // and pass through directly so callers can update single columns like job_status.
+  const hasCoreField =
+    formData.job_title != null ||
+    formData.title != null ||
+    formData.company_name != null ||
+    formData.company != null;
+
   const userCrud = withUser(userId);
-  return userCrud.updateRow("jobs", mapped.payload ?? {}, { eq: { id: jobId } });
+
+  if (hasCoreField) {
+    const mapped = mapJob(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("jobs", mapped.payload ?? {}, { eq: { id: jobId } });
+  }
+
+  // Partial update: forward payload directly
+  return userCrud.updateRow("jobs", formData, { eq: { id: jobId } });
 }
 
 export async function deleteJob(
