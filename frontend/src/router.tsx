@@ -27,11 +27,21 @@ import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
 import AiThemeShowcase from "@workspaces/ai/theme/AiThemeShowcase";
+import AddJobForm from "@workspaces/ai/components/JobMatch/AddJobForm";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
   // Public AI theme showcase
   { path: "/ai/theme", element: <AiThemeShowcase /> },
+  //TESTING FOR NOW 
+  {
+    path: "/add-job-form",
+    element: (
+      <ProtectedRoute>
+          <AddJobForm />
+      </ProtectedRoute>
+    ),
+  },
   { path: "/register", element: <Register /> },
   { path: "/cover-letters", element: <CoverLetterTemplates /> },
   { path: "/edit-cover-letters", element: <EditCoverLetter /> },

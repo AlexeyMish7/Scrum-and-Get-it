@@ -156,3 +156,113 @@ export const mapProject = (
 
   return { payload };
 };
+
+// --- Jobs mapping + helpers ---
+import type { Result, ListOptions } from "./types";
+import { withUser } from "./crud";
+
+export const mapJob = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const job_title = String(formData.job_title ?? formData.title ?? "").trim();
+  const company_name = String(
+    formData.company_name ?? formData.company ?? ""
+  ).trim();
+
+  if (!job_title) return { error: "Job title is required" };
+  if (!company_name) return { error: "Company name is required" };
+
+  const start_salary_range =
+    formData.start_salary == null
+      ? formData.start_salary_range == null
+        ? null
+        : Number(formData.start_salary_range) || null
+      : Number(formData.start_salary) || null;
+
+  const end_salary_range =
+    formData.end_salary == null
+      ? formData.end_salary_range == null
+        ? null
+        : Number(formData.end_salary_range) || null
+      : Number(formData.end_salary) || null;
+
+  const payload: Record<string, unknown> = {
+    job_title,
+    company_name,
+    street_address: (formData.street_address as string) ?? null,
+    city_name: (formData.city_name as string) ?? null,
+    zipcode: (formData.zipcode as string) ?? null,
+    state_code: (formData.state_code as string) ?? null,
+    start_salary_range: start_salary_range,
+    end_salary_range: end_salary_range,
+    job_link: (formData.job_link as string) ?? null,
+    application_deadline: formatToSqlDate(
+      formData.application_deadline ?? formData.deadline
+    ),
+    job_description: (formData.job_description as string) ?? null,
+    industry: (formData.industry as string) ?? null,
+    job_type: (formData.job_type as string) ?? null,
+    // Default pipeline status when creating a job if not provided
+    job_status: (formData.job_status as string) ?? "Interested",
+  };
+
+  return { payload };
+};
+
+// CRUD helpers for Jobs table (user-scoped)
+export async function listJobs(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("jobs", "*", opts);
+}
+
+export async function getJob(
+  userId: string,
+  jobId: string | number
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("jobs", "*", { eq: { id: jobId }, single: true });
+}
+
+export async function createJob(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapJob(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("jobs", mapped.payload ?? {});
+}
+
+export async function updateJob(
+  userId: string,
+  jobId: string | number,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapJob(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.updateRow("jobs", mapped.payload ?? {}, { eq: { id: jobId } });
+}
+
+export async function deleteJob(
+  userId: string,
+  jobId: string | number
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("jobs", { eq: { id: jobId } });
+}
