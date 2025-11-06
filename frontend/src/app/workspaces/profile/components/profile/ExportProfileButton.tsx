@@ -2,12 +2,15 @@ import React from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { FaDownload } from "react-icons/fa";
+import { Box, Button } from "@mui/material";
 
 interface ExportProfileButtonProps {
   targetId?: string; // The HTML element ID you want to export
 }
 
-const ExportProfileButton: React.FC<ExportProfileButtonProps> = ({ targetId = "profile-dashboard" }) => {
+const ExportProfileButton: React.FC<ExportProfileButtonProps> = ({
+  targetId = "profile-dashboard",
+}) => {
   const handleExportPDF = async () => {
     const element = document.getElementById(targetId);
     if (!element) {
@@ -48,26 +51,16 @@ const ExportProfileButton: React.FC<ExportProfileButtonProps> = ({ targetId = "p
   };
 
   return (
-    <div style={{ margin: "2rem 0" }}>
-      <button
+    <Box sx={{ my: 4 }}>
+      <Button
         onClick={handleExportPDF}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          backgroundColor: "#2196f3",
-          color: "#fff",
-          border: "none",
-          borderRadius: "6px",
-          padding: "0.75rem 1.25rem",
-          cursor: "pointer",
-          fontSize: "1rem",
-        }}
+        variant="contained"
+        color="primary"
+        startIcon={<FaDownload />}
       >
-        <FaDownload />
         Export Profile Summary (PDF)
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 };
 

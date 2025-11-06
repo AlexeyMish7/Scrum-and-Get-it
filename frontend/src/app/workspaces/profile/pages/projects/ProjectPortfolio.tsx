@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Box,
   Card,
+  CardContent,
   Typography,
   Select,
   MenuItem,
@@ -14,14 +16,16 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
+  Chip,
+  Stack,
 } from "@mui/material";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import projectsService from "../../services/projects";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import type { Project } from "../../types/project.ts";
-import "./Projects.css";
+// Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx
 
 // Main portfolio page showing all user's projects in a grid layout
 const ProjectPortfolio: React.FC = () => {
@@ -129,7 +133,6 @@ const ProjectPortfolio: React.FC = () => {
     };
 
     load();
-    // Reload when projects change (after add/edit/delete)
     const handler = () => void load();
     window.addEventListener("projects:changed", handler);
 
@@ -208,188 +211,235 @@ const ProjectPortfolio: React.FC = () => {
   const handleAddProject = () => navigate("/projects/new");
 
   return (
-    <div className="projects-container">
-      <div className="projects-content-wrapper">
-        <div className="projects-portfolio-header">
-          <Typography variant="h2" className="projects-title">
-            My Projects Portfolio
-          </Typography>
-          <Typography variant="subtitle1" className="projects-subtitle">
+    <Box sx={{ width: "100%", p: 3 }}>
+      <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Box sx={{ textAlign: "center", mb: 3 }}>
+          <Typography variant="h3">My Projects Portfolio</Typography>
+          <Typography variant="subtitle1" color="text.secondary">
             Showcase of my professional work and achievements
           </Typography>
-        </div>
+        </Box>
 
         {/* Add Project Button */}
-        <div
-          style={{ textAlign: "center", marginBottom: "2rem" }}
-          className="no-print"
+        <Box
+          sx={{
+            textAlign: "center",
+            mb: 4,
+            "@media print": { display: "none" },
+          }}
         >
-          <Button
-            className="projects-btn-glossy projects-btn-large"
-            onClick={handleAddProject}
-          >
+          <Button variant="contained" size="large" onClick={handleAddProject}>
             Add Project
           </Button>
-        </div>
+        </Box>
 
         <Typography
           variant="body2"
-          className="projects-subtitle no-print"
-          style={{ textAlign: "center", marginBottom: "2rem" }}
+          sx={{
+            textAlign: "center",
+            mb: 4,
+            color: "text.secondary",
+            "@media print": { display: "none" },
+          }}
         >
           Click on any project to view details and copy its shareable link.
         </Typography>
 
         {/* Filters, search, and print */}
-        <div className="projects-controls no-print">
-          <div className="projects-form-field projects-search-field">
-            <TextField
-              label="Search Projects"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              fullWidth
-            />
-          </div>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", md: "flex-end" }}
+          sx={{ mb: 3, "@media print": { display: "none" } }}
+        >
+          <TextField
+            label="Search Projects"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            fullWidth
+          />
 
-          <div className="projects-form-field projects-filter-control">
-            <FormControl fullWidth>
-              <InputLabel>Technology</InputLabel>
-              <Select
-                value={filterTech}
-                label="Technology"
-                onChange={(e) => setFilterTech(e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="React">React</MenuItem>
-                <MenuItem value="TypeScript">TypeScript</MenuItem>
-                <MenuItem value="Python">Python</MenuItem>
-              </Select>
-            </FormControl>
-          </div>
+          <FormControl fullWidth>
+            <InputLabel>Technology</InputLabel>
+            <Select
+              value={filterTech}
+              label="Technology"
+              onChange={(e) => setFilterTech(e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="React">React</MenuItem>
+              <MenuItem value="TypeScript">TypeScript</MenuItem>
+              <MenuItem value="Python">Python</MenuItem>
+            </Select>
+          </FormControl>
 
-          <div className="projects-form-field projects-filter-control">
-            <FormControl fullWidth>
-              <InputLabel>Industry</InputLabel>
-              <Select
-                value={filterIndustry}
-                label="Industry"
-                onChange={(e) => setFilterIndustry(e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="Finance">Finance</MenuItem>
-                <MenuItem value="Healthcare">Healthcare</MenuItem>
-                <MenuItem value="Education">Education</MenuItem>
-                <MenuItem value="Productivity">Productivity</MenuItem>
-              </Select>
-            </FormControl>
-          </div>
+          <FormControl fullWidth>
+            <InputLabel>Industry</InputLabel>
+            <Select
+              value={filterIndustry}
+              label="Industry"
+              onChange={(e) => setFilterIndustry(e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="Finance">Finance</MenuItem>
+              <MenuItem value="Healthcare">Healthcare</MenuItem>
+              <MenuItem value="Education">Education</MenuItem>
+              <MenuItem value="Productivity">Productivity</MenuItem>
+            </Select>
+          </FormControl>
 
-          <div className="projects-form-field projects-filter-control">
-            <FormControl fullWidth>
-              <InputLabel>Sort</InputLabel>
-              <Select
-                value={sortOrder}
-                label="Sort"
-                onChange={(e) =>
-                  setSortOrder(e.target.value as "newest" | "oldest")
-                }
-              >
-                <MenuItem value="newest">Newest</MenuItem>
-                <MenuItem value="oldest">Oldest</MenuItem>
-              </Select>
-            </FormControl>
-          </div>
+          <FormControl fullWidth>
+            <InputLabel>Sort</InputLabel>
+            <Select
+              value={sortOrder}
+              label="Sort"
+              onChange={(e) =>
+                setSortOrder(e.target.value as "newest" | "oldest")
+              }
+            >
+              <MenuItem value="newest">Newest</MenuItem>
+              <MenuItem value="oldest">Oldest</MenuItem>
+            </Select>
+          </FormControl>
 
-          <Button className="projects-btn-secondary" onClick={handlePrint}>
+          <Button variant="outlined" onClick={handlePrint}>
             Print All Projects
           </Button>
-        </div>
+        </Stack>
 
         {/* Loading State */}
         {(loading || isLoading) && (
-          <div className="projects-loading">
+          <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
             <LoadingSpinner />
-            <Typography>Loading projects...</Typography>
-          </div>
+            <Typography sx={{ mt: 1 }}>Loading projects...</Typography>
+          </Box>
         )}
 
         {/* Empty State */}
         {!loading && !isLoading && filteredProjects.length === 0 && (
-          <div className="projects-empty">
-            <Typography variant="h4" className="projects-empty-title">
+          <Box sx={{ textAlign: "center", py: 6 }}>
+            <Typography variant="h4" sx={{ mb: 1 }}>
               No Projects Found
             </Typography>
-            <Typography className="projects-empty-text">
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
               {projects.length === 0
                 ? "Start building your portfolio by adding your first project!"
                 : "Try adjusting your search or filter criteria."}
             </Typography>
             {projects.length === 0 && (
               <Button
-                className="projects-btn-glossy projects-btn-large"
+                variant="contained"
+                size="large"
                 onClick={handleAddProject}
               >
                 Add Your First Project
               </Button>
             )}
-          </div>
+          </Box>
         )}
 
         {/* Project Cards */}
         {!loading && !isLoading && filteredProjects.length > 0 && (
-          <div className="projects-grid">
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "1fr 1fr",
+                lg: "1fr 1fr 1fr",
+              },
+            }}
+          >
             {filteredProjects.map((project) => (
               <Card
                 key={project.id}
-                className="project-card"
                 onClick={() => setSelectedProject(project)}
+                sx={{ cursor: "pointer", height: "100%" }}
               >
-                <div className="project-card-content">
-                  {/* Thumbnail on the left */}
-                  {project.mediaUrl ? (
-                    <img
-                      src={project.mediaUrl}
-                      alt={`${project.projectName} screenshot`}
-                      className={`project-thumbnail ${
-                        project.previewShape === "circle" ? "circle" : ""
-                      }`}
-                    />
-                  ) : (
-                    <div
-                      className={`project-thumbnail-placeholder ${
-                        project.previewShape === "circle" ? "circle" : ""
-                      }`}
-                    >
-                      📁
-                    </div>
-                  )}
+                <CardContent>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    {/* Thumbnail */}
+                    {project.mediaUrl ? (
+                      <Box
+                        sx={{
+                          width: 96,
+                          height: 96,
+                          borderRadius:
+                            project.previewShape === "circle" ? "50%" : 2,
+                          overflow: "hidden",
+                          flexShrink: 0,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={project.mediaUrl}
+                          alt={`${project.projectName} screenshot`}
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 96,
+                          height: 96,
+                          borderRadius:
+                            project.previewShape === "circle" ? "50%" : 2,
+                          display: "grid",
+                          placeItems: "center",
+                          bgcolor: "action.hover",
+                          color: "text.secondary",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          flexShrink: 0,
+                        }}
+                      >
+                        📁
+                      </Box>
+                    )}
 
-                  {/* Content on the right */}
-                  <div className="project-info">
-                    <Typography variant="h6" className="project-name">
-                      {project.projectName}
-                    </Typography>
-
-                    <div
-                      className={`project-status ${project.status.toLowerCase()}`}
-                    >
-                      {project.status}
-                    </div>
-
-                    <Typography className="project-description">
-                      {project.role} | {project.technologies}
-                    </Typography>
-
-                    <Typography className="project-tech">
-                      {project.description.length > 100
-                        ? `${project.description.substring(0, 100)}...`
-                        : project.description}
-                    </Typography>
-                  </div>
-                </div>
+                    {/* Content */}
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="h6" noWrap>
+                        {project.projectName}
+                      </Typography>
+                      <Box sx={{ my: 0.5 }}>
+                        <Chip
+                          label={project.status}
+                          size="small"
+                          color={
+                            project.status.toLowerCase() === "completed"
+                              ? "success"
+                              : ["in_progress", "ongoing"].includes(
+                                  project.status.toLowerCase()
+                                )
+                              ? "warning"
+                              : project.status.toLowerCase() === "archived"
+                              ? "default"
+                              : "info"
+                          }
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {project.role} | {project.technologies}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.5 }} noWrap>
+                        {project.description.length > 100
+                          ? `${project.description.substring(0, 100)}...`
+                          : project.description}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
               </Card>
             ))}
-          </div>
+          </Box>
         )}
 
         {/* Project Details Dialog */}
@@ -398,103 +448,107 @@ const ProjectPortfolio: React.FC = () => {
           onClose={() => setSelectedProject(null)}
           maxWidth="sm"
           fullWidth
-          className="projects-dialog"
         >
-          <DialogTitle className="projects-dialog-title">
-            {selectedProject?.projectName}
-          </DialogTitle>
-          <DialogContent className="projects-dialog-content" dividers>
+          <DialogTitle>{selectedProject?.projectName}</DialogTitle>
+          <DialogContent dividers>
             {selectedProject?.mediaUrl && (
-              <img
-                src={selectedProject.mediaUrl}
-                alt={`${selectedProject.projectName} screenshot`}
-                className="projects-dialog-image"
-              />
+              <Box sx={{ mb: 2 }}>
+                <Box
+                  component="img"
+                  src={selectedProject.mediaUrl}
+                  alt={`${selectedProject.projectName} screenshot`}
+                  sx={{
+                    width: "100%",
+                    maxHeight: 320,
+                    objectFit: "cover",
+                    borderRadius: 2,
+                  }}
+                />
+              </Box>
             )}
 
             {selectedProject?.role && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Role</div>
-                <div className="projects-detail-value">
-                  {selectedProject.role}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Role</Typography>
+                <Typography>{selectedProject.role}</Typography>
+              </Box>
             )}
 
             {(selectedProject?.startDate || selectedProject?.endDate) && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Dates</div>
-                <div className="projects-detail-value">
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Dates</Typography>
+                <Typography>
                   {selectedProject.startDate ?? ""}
                   {selectedProject.endDate
                     ? ` - ${selectedProject.endDate}`
                     : ""}
-                </div>
-              </div>
+                </Typography>
+              </Box>
             )}
 
             {selectedProject?.technologies && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Technologies</div>
-                <div className="projects-detail-value">
-                  {selectedProject.technologies}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Technologies</Typography>
+                <Typography>{selectedProject.technologies}</Typography>
+              </Box>
             )}
 
             {selectedProject?.description && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Description</div>
-                <div className="projects-detail-value">
-                  {selectedProject.description}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Description</Typography>
+                <Typography>{selectedProject.description}</Typography>
+              </Box>
             )}
 
             {selectedProject?.teamSize && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Team Size</div>
-                <div className="projects-detail-value">
-                  {selectedProject.teamSize}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Team Size</Typography>
+                <Typography>{selectedProject.teamSize}</Typography>
+              </Box>
             )}
 
             {selectedProject?.outcomes && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Outcomes</div>
-                <div className="projects-detail-value">
-                  {selectedProject.outcomes}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Outcomes</Typography>
+                <Typography>{selectedProject.outcomes}</Typography>
+              </Box>
             )}
 
             {selectedProject?.industry && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Industry</div>
-                <div className="projects-detail-value">
-                  {selectedProject.industry}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Industry</Typography>
+                <Typography>{selectedProject.industry}</Typography>
+              </Box>
             )}
 
             {selectedProject?.status && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Status</div>
-                <div
-                  className={`project-status ${selectedProject.status.toLowerCase()}`}
-                >
-                  {selectedProject.status}
-                </div>
-              </div>
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="overline">Status</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Chip
+                    label={selectedProject.status}
+                    size="small"
+                    color={
+                      selectedProject.status.toLowerCase() === "completed"
+                        ? "success"
+                        : ["in_progress", "ongoing"].includes(
+                            selectedProject.status.toLowerCase()
+                          )
+                        ? "warning"
+                        : selectedProject.status.toLowerCase() === "archived"
+                        ? "default"
+                        : "info"
+                    }
+                  />
+                </Box>
+              </Box>
             )}
 
             {selectedProject?.projectUrl && (
               <Button
                 href={selectedProject.projectUrl}
                 target="_blank"
-                className="projects-btn-glossy"
-                sx={{ mt: 2 }}
+                sx={{ mt: 1 }}
               >
                 View Project
               </Button>
@@ -503,18 +557,14 @@ const ProjectPortfolio: React.FC = () => {
             <Tooltip title="Copy unique shareable URL for this project">
               <Button
                 onClick={() => handleCopyLink(selectedProject!.id)}
-                className="projects-btn-secondary"
-                sx={{ mt: 2, ml: 2 }}
+                sx={{ mt: 1, ml: 2 }}
               >
                 Copy Shareable Link
               </Button>
             </Tooltip>
           </DialogContent>
           <DialogActions>
-            <Button
-              onClick={() => setSelectedProject(null)}
-              className="projects-btn-secondary"
-            >
+            <Button onClick={() => setSelectedProject(null)} variant="outlined">
               Close
             </Button>
             <Button
@@ -522,7 +572,7 @@ const ProjectPortfolio: React.FC = () => {
                 if (!selectedProject) return;
                 navigate(`/projects/${selectedProject.id}/edit`);
               }}
-              className="projects-btn-glossy"
+              variant="contained"
             >
               Edit
             </Button>
@@ -531,7 +581,7 @@ const ProjectPortfolio: React.FC = () => {
                 if (!selectedProject) return;
                 setConfirmDeleteProject(selectedProject);
               }}
-              className="projects-btn-danger"
+              color="error"
             >
               Delete
             </Button>
@@ -542,12 +592,9 @@ const ProjectPortfolio: React.FC = () => {
         <Dialog
           open={!!confirmDeleteProject}
           onClose={() => setConfirmDeleteProject(null)}
-          className="projects-dialog"
         >
-          <DialogTitle className="projects-dialog-title">
-            Confirm delete
-          </DialogTitle>
-          <DialogContent className="projects-dialog-content">
+          <DialogTitle>Confirm delete</DialogTitle>
+          <DialogContent>
             <Typography>
               {`Are you sure you want to delete "${
                 confirmDeleteProject?.projectName ?? "this project"
@@ -557,7 +604,7 @@ const ProjectPortfolio: React.FC = () => {
           <DialogActions>
             <Button
               onClick={() => setConfirmDeleteProject(null)}
-              className="projects-btn-secondary"
+              variant="outlined"
             >
               Cancel
             </Button>
@@ -567,7 +614,7 @@ const ProjectPortfolio: React.FC = () => {
                 performDelete(confirmDeleteProject.id);
               }}
               disabled={deleting}
-              className="projects-btn-danger"
+              color="error"
             >
               {deleting ? "Deleting..." : "Delete"}
             </Button>
@@ -578,8 +625,8 @@ const ProjectPortfolio: React.FC = () => {
           notification={notification}
           onClose={closeNotification}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

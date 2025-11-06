@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import type { Project } from "../../types/project.ts";
-import "./Projects.css";
+import { Box, Paper, Typography, Chip, Button } from "@mui/material";
 
 // Component to display detailed view of a single project
 const ProjectDetails: React.FC = () => {
@@ -61,102 +61,111 @@ const ProjectDetails: React.FC = () => {
   }, [id, user, loading]);
 
   // Show loading state while fetching data
-  if (loading) return <div className="projects-loading">Loading...</div>;
-  if (!project) return <div className="projects-empty">Project not found</div>;
+  if (loading) return <Typography sx={{ p: 3 }}>Loading...</Typography>;
+  if (!project) return <Typography sx={{ p: 3 }}>Project not found</Typography>;
 
   return (
-    <div className="projects-container">
-      <div className="projects-content-wrapper">
-        <div className="projects-details-container">
-          <h2 className="projects-details-title">{project.projectName}</h2>
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Box sx={{ maxWidth: 960, mx: "auto" }}>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h4" sx={{ mb: 2 }}>
+            {project.projectName}
+          </Typography>
 
           {/* Display project image if available */}
           {mediaUrl && (
-            <div className="projects-details-image-container">
-              <img
+            <Box sx={{ mb: 2 }}>
+              <Box
+                component="img"
                 src={mediaUrl}
                 alt={`${project.projectName} screenshot`}
-                className="projects-details-image"
+                sx={{
+                  width: "100%",
+                  maxHeight: 360,
+                  objectFit: "cover",
+                  borderRadius: 3,
+                }}
               />
-            </div>
+            </Box>
           )}
 
-          {/* Display project details in organized sections */}
-          <div className="projects-details-info">
+          {/* Display project details */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {project.role && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Role</div>
-                <div className="projects-detail-value">{project.role}</div>
-              </div>
+              <Box>
+                <Typography variant="overline">Role</Typography>
+                <Typography variant="body1">{project.role}</Typography>
+              </Box>
             )}
 
             {project.technologies && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Technologies</div>
-                <div className="projects-detail-value">
-                  {project.technologies}
-                </div>
-              </div>
+              <Box>
+                <Typography variant="overline">Technologies</Typography>
+                <Typography variant="body1">{project.technologies}</Typography>
+              </Box>
             )}
 
             {project.description && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Description</div>
-                <div className="projects-detail-value">
-                  {project.description}
-                </div>
-              </div>
+              <Box>
+                <Typography variant="overline">Description</Typography>
+                <Typography variant="body1">{project.description}</Typography>
+              </Box>
             )}
 
             {project.teamSize && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Team Size</div>
-                <div className="projects-detail-value">{project.teamSize}</div>
-              </div>
+              <Box>
+                <Typography variant="overline">Team Size</Typography>
+                <Typography variant="body1">{project.teamSize}</Typography>
+              </Box>
             )}
 
             {project.outcomes && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Outcomes</div>
-                <div className="projects-detail-value">{project.outcomes}</div>
-              </div>
+              <Box>
+                <Typography variant="overline">Outcomes</Typography>
+                <Typography variant="body1">{project.outcomes}</Typography>
+              </Box>
             )}
 
             {project.industry && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Industry</div>
-                <div className="projects-detail-value">{project.industry}</div>
-              </div>
+              <Box>
+                <Typography variant="overline">Industry</Typography>
+                <Typography variant="body1">{project.industry}</Typography>
+              </Box>
             )}
 
             {project.status && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Status</div>
-                <div
-                  className={`project-status ${project.status.toLowerCase()}`}
-                >
-                  {project.status}
-                </div>
-              </div>
+              <Box>
+                <Typography variant="overline">Status</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Chip
+                    label={project.status}
+                    color={
+                      project.status.toLowerCase() === "completed"
+                        ? "success"
+                        : project.status.toLowerCase() === "ongoing"
+                        ? "warning"
+                        : "default"
+                    }
+                    size="small"
+                  />
+                </Box>
+              </Box>
             )}
 
             {project.projectUrl && (
-              <div className="projects-detail-section">
-                <div className="projects-detail-label">Project Link</div>
-                <a
-                  href={project.projectUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="projects-detail-link"
-                >
-                  View Project
-                </a>
-              </div>
+              <Box>
+                <Typography variant="overline">Project Link</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Button href={project.projectUrl} target="_blank">
+                    View Project
+                  </Button>
+                </Box>
+              </Box>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
   );
 };
 

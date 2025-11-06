@@ -6,14 +6,14 @@ import React, { useState } from "react";
 //   uses navigation state to show a centralized success message.
 // Student notes: the component demonstrates form validation, controlled
 // components, and preparing a backend payload using snake_case keys.
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData } from "../../types/employment";
 import EmploymentForm from "./EmploymentForm";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { Button, Typography, useTheme } from "@mui/material";
-import "./employment.css";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { Button, Typography, Paper, Box, Stack } from "@mui/material";
+// Removed CSS overrides to respect global theme
 import { useNavigate } from "react-router-dom";
 
 const AddEmploymentForm: React.FC = () => {
@@ -151,45 +151,46 @@ const AddEmploymentForm: React.FC = () => {
     window.history.back();
   };
 
-  const theme = useTheme();
-
   return (
-    <form onSubmit={handleSubmit} className="glossy-card employment-form-paper">
-      <Typography
-        variant="h5"
-        className="glossy-title"
-        fontWeight="bold"
-        textAlign="center"
-        mb={3}
-        color={theme.palette.text.primary}
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Paper
+        variant="outlined"
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{ p: 3, maxWidth: 720, mx: "auto" }}
       >
-        Add Employment History
-      </Typography>
+        <Typography variant="h5" fontWeight="bold" textAlign="center" mb={3}>
+          Add Employment History
+        </Typography>
 
-      <div className="employment-form-fields">
-        <EmploymentForm
-          value={formData}
-          onFieldChange={handleFieldChange}
-          errors={errors}
-        />
-      </div>
+        <Stack spacing={2}>
+          <EmploymentForm
+            value={formData}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+          />
 
-      <ErrorSnackbar notification={notification} onClose={closeNotification} />
+          <ErrorSnackbar
+            notification={notification}
+            onClose={closeNotification}
+          />
 
-      <div className="employment-form-actions">
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          disabled={loading}
-        >
-          {loading ? "Saving..." : "Save"}
-        </Button>
-        <Button variant="outlined" onClick={handleCancel}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+          <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save"}
+            </Button>
+            <Button variant="outlined" onClick={handleCancel}>
+              Cancel
+            </Button>
+          </Box>
+        </Stack>
+      </Paper>
+    </Box>
   );
 };
 

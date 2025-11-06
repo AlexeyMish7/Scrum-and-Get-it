@@ -1,12 +1,12 @@
 // React state + router imports
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 // Supabase client instance (handles all database/auth requests)
-import { supabase } from "../../../../shared/services/supabaseClient";
+import { supabase } from "@shared/services/supabaseClient";
 
 // Custom authentication context for managing session + signup logic
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 
 // MUI imports for styling + theme integration
 import {
@@ -18,10 +18,15 @@ import {
   Stack,
   Alert,
   CircularProgress,
-  CssBaseline,
-  ThemeProvider,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Link as MuiLink,
 } from "@mui/material";
-import theme from "../../theme/theme.tsx";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import { useThemeContext } from "@shared/context/ThemeContext";
+// Uses global ThemeContext; no local ThemeProvider/CssBaseline here.
 
 // Type for our registration form fields
 type RegisterForm = {
@@ -64,6 +69,8 @@ export default function Register() {
     setInfo("");
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  const { mode, toggleMode } = useThemeContext();
 
   // Validation that collects ALL errors instead of returning early
   const validate = (): string => {
@@ -170,151 +177,159 @@ export default function Register() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
+      }}
+    >
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ mb: 2 }}
+      >
+        <Toolbar>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            onClick={toggleMode}
+            aria-label="Toggle theme"
+            color="inherit"
+          >
+            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
 
-      <Box
+      <Paper
+        elevation={4}
         sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "background.default",
-          padding: 2,
+          p: 4,
+          borderRadius: 3,
+          maxWidth: 450,
+          width: "100%",
+          textAlign: "center",
+          mx: "auto",
         }}
       >
-        <Paper
-          elevation={4}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-            maxWidth: 450,
-            width: "100%",
-            textAlign: "center",
-          }}
-        >
-          <Typography variant="h3" mb={3}>
-            Register
-          </Typography>
+        <Typography variant="h3" mb={3}>
+          Register
+        </Typography>
 
-          {/* Registration form with controlled inputs */}
-          <Stack
-            spacing={2}
-            component="form"
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            <TextField
-              label="First Name"
-              name="firstName"
-              type="text"
-              autoComplete="given-name"
-              onChange={handleChange}
-              value={form.firstName}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Last Name"
-              name="lastName"
-              type="text"
-              autoComplete="family-name"
-              onChange={handleChange}
-              value={form.lastName}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              onChange={handleChange}
-              value={form.email}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              onChange={handleChange}
-              value={form.password}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              onChange={handleChange}
-              value={form.confirmPassword}
-              required
-              fullWidth
-            />
-
-            {/* Disable submit button while loading */}
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              sx={{ mt: 1 }}
-            >
-              {loading ? (
-                <CircularProgress size={22} color="inherit" />
-              ) : (
-                "Create Account"
-              )}
-            </Button>
-
-            {/* Link to login for existing users */}
-            <Typography variant="body2">
-              Already have an account?{" "}
-              <Link
-                to="/Login"
-                style={{ textDecoration: "none", color: "#1976D2" }}
-              >
-                Sign in
-              </Link>
-            </Typography>
-          </Stack>
-
-          <Button
-            onClick={async () => {
-              setError("");
-              setInfo("");
-              setLoading(true);
-              const res = await signInWithOAuth("google");
-              setLoading(false);
-              if (!res.ok) setError(res.message || "OAuth error");
-            }}
-            variant="tertiary"
-            disabled={loading}
-            sx={{ mt: 2 }}
+        {/* Registration form with controlled inputs */}
+        <Stack spacing={2} component="form" onSubmit={handleSubmit} noValidate>
+          <TextField
+            label="First Name"
+            name="firstName"
+            type="text"
+            autoComplete="given-name"
+            onChange={handleChange}
+            value={form.firstName}
+            required
             fullWidth
+          />
+
+          <TextField
+            label="Last Name"
+            name="lastName"
+            type="text"
+            autoComplete="family-name"
+            onChange={handleChange}
+            value={form.lastName}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            onChange={handleChange}
+            value={form.email}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            onChange={handleChange}
+            value={form.password}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            onChange={handleChange}
+            value={form.confirmPassword}
+            required
+            fullWidth
+          />
+
+          {/* Disable submit button while loading */}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            sx={{ mt: 1 }}
           >
-            Sign in with Google
+            {loading ? (
+              <CircularProgress size={22} color="inherit" />
+            ) : (
+              "Create Account"
+            )}
           </Button>
 
-          {/* Show messages if present */}
-          {error && (
-            <Alert sx={{ mt: 2 }} severity="error">
-              {error}
-            </Alert>
-          )}
-          {info && (
-            <Alert sx={{ mt: 2 }} severity="success">
-              {info}
-            </Alert>
-          )}
-        </Paper>
-      </Box>
-    </ThemeProvider>
+          {/* Link to login for existing users */}
+          <Typography variant="body2">
+            Already have an account?{" "}
+            <MuiLink
+              component={RouterLink}
+              to="/Login"
+              sx={{ textDecoration: "none", color: "primary.main" }}
+            >
+              Sign in
+            </MuiLink>
+          </Typography>
+        </Stack>
+
+        <Button
+          onClick={async () => {
+            setError("");
+            setInfo("");
+            setLoading(true);
+            const res = await signInWithOAuth("google");
+            setLoading(false);
+            if (!res.ok) setError(res.message || "OAuth error");
+          }}
+          variant="outlined"
+          disabled={loading}
+          sx={{ mt: 2 }}
+          fullWidth
+        >
+          Sign in with Google
+        </Button>
+
+        {/* Show messages if present */}
+        {error && (
+          <Alert sx={{ mt: 2 }} severity="error">
+            {error}
+          </Alert>
+        )}
+        {info && (
+          <Alert sx={{ mt: 2 }} severity="success">
+            {info}
+          </Alert>
+        )}
+      </Paper>
+    </Box>
   );
 }

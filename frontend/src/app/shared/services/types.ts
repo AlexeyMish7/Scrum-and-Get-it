@@ -80,3 +80,21 @@ export interface Project {
   industry: string;
   status: "Completed" | "Ongoing" | "Planned";
 }
+
+// Minimal profile row type based on database schema docs
+// Only include fields TopNav and common UI care about right now.
+export interface ProfileRow {
+  id: string;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  professional_title?: string | null;
+  summary?: string | null;
+  experience_level?: string | null;
+  industry?: string | null;
+  city?: string | null;
+  state?: string | null;
+  // Loose meta bag; avatar info lives here per current app convention
+  meta?: Record<string, unknown> | null;
+}

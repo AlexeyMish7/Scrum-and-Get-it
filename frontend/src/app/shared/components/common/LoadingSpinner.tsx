@@ -1,5 +1,5 @@
 import { CircularProgress, Box } from "@mui/material";
-import theme from "../../../workspaces/profile/theme/theme";
+import theme from "../../theme/lightTheme";
 
 export default function LoadingSpinner() {
   return (

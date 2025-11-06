@@ -468,8 +468,8 @@ export function withUser(userId?: string | null) {
  *   const res = await getUserProfile(session.user.id);
  *   console.log(res.data); // { id: 'abc123', full_name: 'Alex', ... }
  */
-export async function getUserProfile(userId: string) {
-  return getRow("profiles", "*", { eq: { id: userId }, single: true });
+export async function getUserProfile<T = unknown>(userId: string) {
+  return getRow<T>("profiles", "*", { eq: { id: userId }, single: true });
 }
 
 /**

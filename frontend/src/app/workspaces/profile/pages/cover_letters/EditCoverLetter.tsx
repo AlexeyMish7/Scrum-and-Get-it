@@ -65,10 +65,16 @@ function getSentenceSuggestions(text: string) {
       });
     }
     if (/(\bwas\b|\bwere\b|\bis\b|\bare\b)\s+\w+ed\b/i.test(sentence)) {
-      suggestions.push({ sentence, suggestion: "Consider using active voice." });
+      suggestions.push({
+        sentence,
+        suggestion: "Consider using active voice.",
+      });
     }
     if (/very|really|just/i.test(sentence)) {
-      suggestions.push({ sentence, suggestion: "Consider removing filler words." });
+      suggestions.push({
+        sentence,
+        suggestion: "Consider removing filler words.",
+      });
     }
   });
 
@@ -88,7 +94,10 @@ const EditCoverLetter: React.FC = () => {
   const [versions, setVersions] = useState<VersionEntry[]>([]);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [readability, setReadability] = useState<{ score: string; suggestion: string }>({
+  const [readability, setReadability] = useState<{
+    score: string;
+    suggestion: string;
+  }>({
     score: "0",
     suggestion: "",
   });
@@ -120,12 +129,14 @@ const EditCoverLetter: React.FC = () => {
   const fetchSynonyms = async (word: string) => {
     if (!word) return;
     const res = await fetch(`https://api.datamuse.com/words?rel_syn=${word}`);
-    const data = await res.json();
-    setSynonyms(data.map((w: any) => w.word));
+    const data = (await res.json()) as Array<{ word: string }>;
+    setSynonyms(data.map((w) => w.word));
   };
 
   // Handle word selection
-  const handleSelection = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+  const handleSelection = (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>
+  ) => {
     const selection = window.getSelection()?.toString();
     if (selection) {
       fetchSynonyms(selection);
@@ -175,7 +186,10 @@ const EditCoverLetter: React.FC = () => {
         color="primary"
         onClick={() => {
           const timestamp = new Date().toISOString();
-          setVersions((prev) => [...prev, { timestamp, content: editor.getHTML() }]);
+          setVersions((prev) => [
+            ...prev,
+            { timestamp, content: editor.getHTML() },
+          ]);
           alert("Cover letter saved!");
         }}
       >
@@ -235,7 +249,9 @@ const EditCoverLetter: React.FC = () => {
         <List dense>
           {synonyms.map((syn) => (
             <ListItem key={syn} disablePadding>
-              <ListItemButton onClick={() => replaceWord(syn)}>{syn}</ListItemButton>
+              <ListItemButton onClick={() => replaceWord(syn)}>
+                {syn}
+              </ListItemButton>
             </ListItem>
           ))}
         </List>

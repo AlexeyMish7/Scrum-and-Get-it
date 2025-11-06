@@ -11,7 +11,6 @@ import {
   CardContent,
   CardHeader,
   Stack,
-  Chip,
   Divider,
   InputAdornment,
   Dialog,
@@ -20,23 +19,19 @@ import {
   DialogActions,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import VerifiedIcon from "@mui/icons-material/Verified";
-import PendingIcon from "@mui/icons-material/HourglassEmpty";
 import SearchIcon from "@mui/icons-material/Search";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import dayjs from "dayjs";
-import "./Certifications.css";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
   CertificationRow,
   NewCert,
 } from "../../types/certification";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
-import ConfirmDialog from "../../../../shared/components/common/ConfirmDialog";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import ConfirmDialog from "@shared/components/common/ConfirmDialog";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -389,460 +384,379 @@ const Certifications: React.FC = () => {
     date ? dayjs(date).diff(today, "day") <= 30 : false;
 
   return (
-    <Box className="cert-page">
-      <Typography variant="h2" className="page-title">
-        Manage Your Certifications
-      </Typography>
+    <Box sx={{ width: "100%", p: 3 }}>
+      <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Typography variant="h4" sx={{ mb: 2 }}>
+          Manage Your Certifications
+        </Typography>
 
-      {/* Add New Certification (opens dialog) */}
-      <Card className="add-card">
-        <CardHeader title="Add Certification" />
-        <Divider />
-        <CardContent className="add-card-content">
-          <Button
-            className="glossy-btn primary-btn"
-            onClick={() => setAddOpen(true)}
-            startIcon={<CloudUploadIcon />}
-          >
-            Add Certification
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Add dialog */}
-      <Dialog open={addOpen} onClose={closeAdd} fullWidth maxWidth="sm">
-        <DialogTitle>Add Certification</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2}>
-            <TextField
-              required
-              label="Certification Name"
-              fullWidth
-              value={newCert.name}
-              onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-            />
-
-            <TextField
-              required
-              label="Issuing Organization"
-              fullWidth
-              select
-              value={newCert.organization}
-              onChange={(e) =>
-                setNewCert({ ...newCert, organization: e.target.value })
-              }
-            >
-              {organizations.map((org) => (
-                <MenuItem key={org} value={org}>
-                  {org}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              label="Category"
-              select
-              fullWidth
-              value={newCert.category}
-              onChange={(e) =>
-                setNewCert({ ...newCert, category: e.target.value })
-              }
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField
-                required
-                label="Date Earned"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={newCert.dateEarned}
-                onChange={(e) =>
-                  setNewCert({ ...newCert, dateEarned: e.target.value })
-                }
-              />
-              {!newCert.doesNotExpire && (
-                <TextField
-                  label="Expiration Date"
-                  type="date"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  value={newCert.expirationDate}
-                  onChange={(e) =>
-                    setNewCert({ ...newCert, expirationDate: e.target.value })
-                  }
-                />
-              )}
-            </Stack>
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={newCert.doesNotExpire}
-                  onChange={(e) =>
-                    setNewCert({
-                      ...newCert,
-                      doesNotExpire: e.target.checked,
-                      expirationDate: e.target.checked
-                        ? ""
-                        : newCert.expirationDate,
-                    })
-                  }
-                />
-              }
-              label="Does not expire"
-            />
-
-            <TextField
-              label="Certification Number / ID"
-              fullWidth
-              value={newCert.certId}
-              onChange={(e) =>
-                setNewCert({ ...newCert, certId: e.target.value })
-              }
-            />
-
+        {/* Add New Certification (opens dialog) */}
+        <Card variant="outlined" sx={{ mb: 2 }}>
+          <CardHeader title="Add Certification" />
+          <Divider />
+          <CardContent sx={{ display: "flex", gap: 2 }}>
             <Button
-              variant="outlined"
-              component="label"
+              onClick={() => setAddOpen(true)}
               startIcon={<CloudUploadIcon />}
+              variant="contained"
             >
-              Upload Certification
-              <input type="file" hidden onChange={handleFileUpload} />
+              Add Certification
             </Button>
-            {newCert.file && (
-              <Typography variant="body2" color="text.secondary">
-                Uploaded: {newCert.file.name}
-              </Typography>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeAdd}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              await handleAddCert();
-              closeAdd();
-            }}
-            disabled={
-              !newCert.name || !newCert.organization || !newCert.dateEarned
-            }
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </CardContent>
+        </Card>
 
-      {/* Edit dialog */}
-      <Dialog open={editOpen} onClose={closeEdit} fullWidth maxWidth="sm">
-        <DialogTitle>Edit Certification</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2}>
-            <TextField
-              required
-              label="Certification Name"
-              fullWidth
-              value={editForm.name ?? ""}
-              onChange={(e) =>
-                setEditForm({ ...editForm, name: e.target.value })
-              }
-            />
-
-            <TextField
-              required
-              label="Issuing Organization"
-              fullWidth
-              select
-              value={editForm.organization ?? ""}
-              onChange={(e) =>
-                setEditForm({ ...editForm, organization: e.target.value })
-              }
-            >
-              {organizations.map((org) => (
-                <MenuItem key={org} value={org}>
-                  {org}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              label="Category"
-              select
-              fullWidth
-              value={editForm.category ?? ""}
-              onChange={(e) =>
-                setEditForm({ ...editForm, category: e.target.value })
-              }
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        {/* Add dialog */}
+        <Dialog open={addOpen} onClose={closeAdd} fullWidth maxWidth="sm">
+          <DialogTitle>Add Certification</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2}>
               <TextField
                 required
-                label="Date Earned"
-                type="date"
+                label="Certification Name"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={editForm.dateEarned ?? ""}
+                value={newCert.name}
                 onChange={(e) =>
-                  setEditForm({ ...editForm, dateEarned: e.target.value })
+                  setNewCert({ ...newCert, name: e.target.value })
                 }
               />
-              {!editForm.doesNotExpire && (
+
+              <TextField
+                required
+                label="Issuing Organization"
+                fullWidth
+                select
+                value={newCert.organization}
+                onChange={(e) =>
+                  setNewCert({ ...newCert, organization: e.target.value })
+                }
+              >
+                {organizations.map((org) => (
+                  <MenuItem key={org} value={org}>
+                    {org}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                label="Category"
+                select
+                fullWidth
+                value={newCert.category}
+                onChange={(e) =>
+                  setNewCert({ ...newCert, category: e.target.value })
+                }
+              >
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <TextField
-                  label="Expiration Date"
+                  required
+                  label="Date Earned"
                   type="date"
                   fullWidth
                   InputLabelProps={{ shrink: true }}
-                  value={editForm.expirationDate ?? ""}
+                  value={newCert.dateEarned}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, expirationDate: e.target.value })
+                    setNewCert({ ...newCert, dateEarned: e.target.value })
                   }
                 />
-              )}
-            </Stack>
+                {!newCert.doesNotExpire && (
+                  <TextField
+                    label="Expiration Date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={newCert.expirationDate}
+                    onChange={(e) =>
+                      setNewCert({ ...newCert, expirationDate: e.target.value })
+                    }
+                  />
+                )}
+              </Stack>
 
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={Boolean(editForm.doesNotExpire)}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      doesNotExpire: e.target.checked,
-                      expirationDate: e.target.checked
-                        ? ""
-                        : editForm.expirationDate,
-                    })
-                  }
-                />
-              }
-              label="Does not expire"
-            />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={newCert.doesNotExpire}
+                    onChange={(e) =>
+                      setNewCert({
+                        ...newCert,
+                        doesNotExpire: e.target.checked,
+                        expirationDate: e.target.checked
+                          ? ""
+                          : newCert.expirationDate,
+                      })
+                    }
+                  />
+                }
+                label="Does not expire"
+              />
 
-            <TextField
-              label="Certification Number / ID"
-              fullWidth
-              value={editForm.certId ?? ""}
-              onChange={(e) =>
-                setEditForm({ ...editForm, certId: e.target.value })
-              }
-            />
+              <TextField
+                label="Certification Number / ID"
+                fullWidth
+                value={newCert.certId}
+                onChange={(e) =>
+                  setNewCert({ ...newCert, certId: e.target.value })
+                }
+              />
 
-            {/* File replacement is currently not supported in edit — keep as informational */}
-            {editingCertId &&
-              certifications.find((c) => c.id === editingCertId)
-                ?.media_path && (
-                <Typography variant="caption">
-                  Existing file attached
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+              >
+                Upload Certification
+                <input type="file" hidden onChange={handleFileUpload} />
+              </Button>
+              {newCert.file && (
+                <Typography variant="body2" color="text.secondary">
+                  Uploaded: {newCert.file.name}
                 </Typography>
               )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            color="error"
-            variant="outlined"
-            onClick={() => setConfirmDeleteOpen(true)}
-          >
-            Delete
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button onClick={closeEdit}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              await handleSaveEdit();
-            }}
-            disabled={
-              !editForm.name || !editForm.organization || !editForm.dateEarned
-            }
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        title="Delete certification"
-        description="Delete this certification and its files? This cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onClose={() => setConfirmDeleteOpen(false)}
-        onConfirm={() => void handleDeleteCertification()}
-      />
-
-      {/* Search bar */}
-      <Stack
-        direction="row"
-        spacing={2}
-        alignItems="center"
-        className="search-row"
-      >
-        <TextField
-          placeholder="Search certifications by organization..."
-          size="small"
-          fullWidth
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </Stack>
-
-      {/* Certification list */}
-      <Stack spacing={2}>
-        {filteredCerts.map((cert) => {
-          const expiringSoon = isExpiringSoon(cert.expirationDate);
-          return (
-            <Card
-              key={cert.id}
-              className={`cert-card ${
-                cert.verification_status === "verified"
-                  ? "verified"
-                  : expiringSoon
-                  ? "expiring"
-                  : "default"
-              }`}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeAdd}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                await handleAddCert();
+                closeAdd();
+              }}
+              disabled={
+                !newCert.name || !newCert.organization || !newCert.dateEarned
+              }
             >
-              <CardContent>
-                <Stack direction="row" spacing={2} alignItems="flex-start">
-                  {/* no thumbnail preview here - users can open the file from actions */}
-                  <Box sx={{ flex: 1 }}>
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                    >
-                      <Typography variant="h6">{cert.name}</Typography>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        {cert.verification_status === "verified" ? (
-                          <Chip
-                            label="Verified"
-                            color="success"
-                            size="small"
-                            icon={<VerifiedIcon />}
-                          />
-                        ) : (
-                          <Chip
-                            label={
-                              cert.verification_status === "pending"
-                                ? "Pending Verification"
-                                : "Unverified"
-                            }
-                            color="warning"
-                            size="small"
-                            icon={<PendingIcon />}
-                          />
-                        )}
-                        <Button size="small" onClick={() => startEdit(cert)}>
-                          Edit
-                        </Button>
-                        {cert.media_path && (
-                          <Button
-                            size="small"
-                            className="glossy-btn"
-                            startIcon={<OpenInNewIcon />}
-                            onClick={async () => {
-                              try {
-                                // Use resolved URL if available, otherwise attempt to resolve on demand
-                                let url = cert.mediaUrl;
-                                if (!url && cert.media_path) {
-                                  url =
-                                    await certificationsService.resolveMediaUrl(
-                                      cert.media_path
-                                    );
-                                }
-                                if (!url)
-                                  throw new Error("Unable to resolve file URL");
-                                // open in new tab safely
-                                window.open(
-                                  url,
-                                  "_blank",
-                                  "noopener,noreferrer"
-                                );
-                              } catch (err) {
-                                handleError(
-                                  err,
-                                  "Failed to open certificate file"
-                                );
-                              }
-                            }}
-                            aria-label={`Open ${cert.name} in a new tab`}
-                          >
-                            Open
-                          </Button>
-                        )}
-                      </Stack>
-                    </Stack>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
 
+        {/* Edit dialog */}
+        <Dialog open={editOpen} onClose={closeEdit} fullWidth maxWidth="sm">
+          <DialogTitle>Edit Certification</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2}>
+              <TextField
+                required
+                label="Certification Name"
+                fullWidth
+                value={editForm.name ?? ""}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, name: e.target.value })
+                }
+              />
+
+              <TextField
+                required
+                label="Issuing Organization"
+                fullWidth
+                select
+                value={editForm.organization ?? ""}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, organization: e.target.value })
+                }
+              >
+                {organizations.map((org) => (
+                  <MenuItem key={org} value={org}>
+                    {org}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                label="Category"
+                select
+                fullWidth
+                value={editForm.category ?? ""}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, category: e.target.value })
+                }
+              >
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  required
+                  label="Date Earned"
+                  type="date"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={editForm.dateEarned ?? ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, dateEarned: e.target.value })
+                  }
+                />
+                {!editForm.doesNotExpire && (
+                  <TextField
+                    label="Expiration Date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={editForm.expirationDate ?? ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        expirationDate: e.target.value,
+                      })
+                    }
+                  />
+                )}
+              </Stack>
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={Boolean(editForm.doesNotExpire)}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        doesNotExpire: e.target.checked,
+                        expirationDate: e.target.checked
+                          ? ""
+                          : editForm.expirationDate,
+                      })
+                    }
+                  />
+                }
+                label="Does not expire"
+              />
+
+              <TextField
+                label="Certification Number / ID"
+                fullWidth
+                value={editForm.certId ?? ""}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, certId: e.target.value })
+                }
+              />
+
+              {/* File replacement is currently not supported in edit — keep as informational */}
+              {editingCertId &&
+                certifications.find((c) => c.id === editingCertId)
+                  ?.media_path && (
+                  <Typography variant="caption">
+                    Existing file attached
+                  </Typography>
+                )}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => setConfirmDeleteOpen(true)}
+            >
+              Delete
+            </Button>
+            <Box sx={{ flex: 1 }} />
+            <Button onClick={closeEdit}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                await handleSaveEdit();
+              }}
+              disabled={
+                !editForm.name || !editForm.organization || !editForm.dateEarned
+              }
+            >
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          title="Delete certification"
+          description="Delete this certification and its files? This cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onClose={() => setConfirmDeleteOpen(false)}
+          onConfirm={() => void handleDeleteCertification()}
+        />
+
+        {/* Search bar */}
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+          <TextField
+            placeholder="Search certifications by organization..."
+            size="small"
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </Stack>
+
+        {/* Certification list (minimal interactive version) */}
+        <Stack spacing={2}>
+          <Typography variant="body1">
+            You have {filteredCerts.length} certifications.
+          </Typography>
+          {filteredCerts.map((cert) => (
+            <Card key={cert.id} variant="outlined">
+              <CardContent>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Box>
+                    <Typography variant="h6">{cert.name}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {cert.organization} — {cert.category}
+                      {cert.organization}
                     </Typography>
-                    <Typography variant="body2">
-                      Earned: {cert.dateEarned}
-                      {!cert.doesNotExpire &&
-                        ` | Expires: ${cert.expirationDate || "N/A"}`}
-                    </Typography>
-                    {expiringSoon && !cert.doesNotExpire && (
-                      <Typography
-                        color="error"
-                        variant="body2"
-                        className="expiring-text"
-                      >
-                        Warning: This certification expires soon!
+                    {isExpiringSoon(cert.expirationDate) && (
+                      <Typography color="error" variant="body2">
+                        Expires soon
                       </Typography>
-                    )}
-                    {cert.certId && (
-                      <Typography variant="caption" color="text.secondary">
-                        ID: {cert.certId}
-                      </Typography>
-                    )}
-                    {cert.media_path && (
-                      <Typography variant="caption" display="block">
-                        📎 File stored at: {cert.media_path}
-                      </Typography>
-                    )}
-                    {cert.verification_status !== "verified" && (
-                      <Button
-                        className="verify-btn"
-                        size="small"
-                        onClick={() => void handleVerify(cert.id)}
-                      >
-                        Mark as Verified
-                      </Button>
                     )}
                   </Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Button size="small" onClick={() => startEdit(cert)}>
+                      Edit
+                    </Button>
+                    {cert.verification_status !== "verified" && (
+                      <Button
+                        size="small"
+                        onClick={() => void handleVerify(cert.id)}
+                        variant="outlined"
+                      >
+                        Mark Verified
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
               </CardContent>
             </Card>
-          );
-        })}
-        {filteredCerts.length === 0 && (
-          <Typography color="text.secondary" textAlign="center">
-            No certifications found.
-          </Typography>
-        )}
-      </Stack>
-      <ErrorSnackbar notification={notification} onClose={closeNotification} />
+          ))}
+          {filteredCerts.length === 0 && (
+            <Typography color="text.secondary" textAlign="center">
+              No certifications found.
+            </Typography>
+          )}
+        </Stack>
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
+        />
+      </Box>
     </Box>
   );
 };

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import "./AddSkills.css";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 
 import {
   Box,
@@ -22,6 +21,8 @@ import {
   InputLabel,
   Select,
   Autocomplete,
+  Paper,
+  Divider,
 } from "@mui/material";
 import type { SkillItem, DbSkillRow } from "../../types/skill.ts";
 import {
@@ -509,225 +510,222 @@ const AddSkills = () => {
   //  - Centralized snackbars and confirmation dialog
   // All actions use the shared services/hooks above for consistency.
   return (
-    <Box className="skills-page-container">
-      <Box className="skills-card glossy-card">
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          className="header-row"
-        >
-          <div className="title-block">
-            <Typography variant="h3" className="glossy-title header-title">
-              Add Skills
-            </Typography>
-            <Typography variant="body2" className="header-note">
-              Click a skill to edit or remove it. You can also use keyboard
-              (Enter/Space) when focused.
-            </Typography>
-          </div>
-
-          <Button
-            variant="secondary"
-            className="glossy-btn back-btn"
-            onClick={() => navigate("/skillsOverview")}
-            aria-label="Back to skills overview"
+    <Box sx={{ width: "100%", p: 3 }}>
+      <Box sx={{ maxWidth: 960, mx: "auto" }}>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            spacing={2}
+            sx={{ mb: 2 }}
           >
-            Back
-          </Button>
-        </Stack>
-
-        <Stack
-          className="form-row"
-          direction={{ xs: "column", sm: "row" }}
-          spacing={3}
-          justifyContent="center"
-          alignItems="center"
-        >
-          {/* Replaced select with Autocomplete */}
-          <div className="input-wide">
-            <Autocomplete
-              freeSolo
-              options={suggestedSkillList}
-              // Keep the displayed text and the selected value in sync but
-              // control the raw input separately so typing shows suggestions.
-              inputValue={inputValue}
-              onInputChange={(_, newInputValue) => {
-                setInputValue(newInputValue);
-                setSelectedSkill(newInputValue);
-              }}
-              onChange={(_, newValue) => {
-                const v =
-                  typeof newValue === "string" ? newValue : newValue || "";
-                setSelectedSkill(v);
-                setInputValue(v);
-              }}
-              filterOptions={(options, state) =>
-                options.filter((o) =>
-                  o
-                    .toLowerCase()
-                    .includes((state.inputValue || "").toLowerCase())
-                )
-              }
-              getOptionLabel={(option) => option}
-              noOptionsText="No matching skill"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Skill"
-                  size="small"
-                  className="input-field"
-                />
-              )}
-            />
-          </div>
-
-          <TextField
-            label="Category"
-            select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            size="small"
-            className="input-field"
-          >
-            {skillCategoryOptions.map((cat: string) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            label="Proficiency"
-            select
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-            size="small"
-            className="input-field"
-          >
-            {skillLevelOptions.map((lvl: string) => (
-              <MenuItem key={lvl} value={lvl}>
-                {lvl}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <Button
-            variant="primary"
-            onClick={handleAddSkill}
-            className="add-btn"
-          >
-            Add Skill
-          </Button>
-        </Stack>
-        <Stack className="chips-row">
-          {userSkills.map((skill, index) => (
-            <Chip
-              key={skill.id ?? `${skill.name}-${index}`}
-              label={`${skill.name} — ${skill.level}`}
-              color="primary"
+            <Box>
+              <Typography variant="h4" sx={{ mb: 0.5 }}>
+                Add Skills
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Click a skill to edit or remove it. You can also use keyboard
+                (Enter/Space) when focused.
+              </Typography>
+            </Box>
+            <Button
               variant="outlined"
-              onClick={() => openEditDialog(index)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Edit ${skill.name} skill`}
-              title={`Click to edit or remove ${skill.name}`}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openEditDialog(index);
+              onClick={() => navigate("/skillsOverview")}
+              aria-label="Back to skills overview"
+            >
+              Back
+            </Button>
+          </Stack>
+          <Divider sx={{ mb: 2 }} />
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            sx={{ mb: 2 }}
+          >
+            <Box sx={{ flex: 1, minWidth: 240 }}>
+              <Autocomplete
+                freeSolo
+                options={suggestedSkillList}
+                inputValue={inputValue}
+                onInputChange={(_, newInputValue) => {
+                  setInputValue(newInputValue);
+                  setSelectedSkill(newInputValue);
+                }}
+                onChange={(_, newValue) => {
+                  const v =
+                    typeof newValue === "string" ? newValue : newValue || "";
+                  setSelectedSkill(v);
+                  setInputValue(v);
+                }}
+                filterOptions={(options, state) =>
+                  options.filter((o) =>
+                    o
+                      .toLowerCase()
+                      .includes((state.inputValue || "").toLowerCase())
+                  )
                 }
-              }}
-              className="skill-chip"
-            />
-          ))}
-        </Stack>
+                getOptionLabel={(option) => option}
+                noOptionsText="No matching skill"
+                renderInput={(params) => (
+                  <TextField {...params} label="Skill" size="small" />
+                )}
+              />
+            </Box>
 
-        <Dialog
-          open={selectedSkillIndex !== null}
-          onClose={closeEditDialog}
-          aria-labelledby="edit-skill-title"
-        >
-          <DialogTitle id="edit-skill-title">Edit Skill</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ mb: 2, fontWeight: 500 }}>
-              {selectedSkillIndex !== null &&
-                userSkills[selectedSkillIndex].name}
-            </Typography>
+            <TextField
+              label="Category"
+              select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              size="small"
+              sx={{ minWidth: 180 }}
+            >
+              {skillCategoryOptions.map((cat: string) => (
+                <MenuItem key={cat} value={cat}>
+                  {cat}
+                </MenuItem>
+              ))}
+            </TextField>
 
-            <FormControl fullWidth>
-              <InputLabel>Proficiency</InputLabel>
-              <Select
-                value={tempEditLevel}
-                label="Proficiency"
-                onChange={(e) => setTempEditLevel(e.target.value as string)}
+            <TextField
+              label="Proficiency"
+              select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              size="small"
+              sx={{ minWidth: 160 }}
+            >
+              {skillLevelOptions.map((lvl: string) => (
+                <MenuItem key={lvl} value={lvl}>
+                  {lvl}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Button
+              variant="contained"
+              onClick={handleAddSkill}
+              sx={{ alignSelf: { xs: "stretch", sm: "auto" } }}
+            >
+              Add Skill
+            </Button>
+          </Stack>
+
+          <Stack direction="row" flexWrap="wrap" gap={1}>
+            {userSkills.map((skill, index) => (
+              <Chip
+                key={skill.id ?? `${skill.name}-${index}`}
+                label={`${skill.name} — ${skill.level}`}
+                color="primary"
+                variant="outlined"
+                onClick={() => openEditDialog(index)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Edit ${skill.name} skill`}
+                title={`Click to edit or remove ${skill.name}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openEditDialog(index);
+                  }
+                }}
+              />
+            ))}
+          </Stack>
+
+          <Dialog
+            open={selectedSkillIndex !== null}
+            onClose={closeEditDialog}
+            aria-labelledby="edit-skill-title"
+          >
+            <DialogTitle id="edit-skill-title">Edit Skill</DialogTitle>
+            <DialogContent>
+              <Typography sx={{ mb: 2, fontWeight: 500 }}>
+                {selectedSkillIndex !== null &&
+                  userSkills[selectedSkillIndex].name}
+              </Typography>
+
+              <FormControl fullWidth>
+                <InputLabel>Proficiency</InputLabel>
+                <Select
+                  value={tempEditLevel}
+                  label="Proficiency"
+                  onChange={(e) => setTempEditLevel(e.target.value as string)}
+                >
+                  {skillLevelOptions.map((lvl: string) => (
+                    <MenuItem key={lvl} value={lvl}>
+                      {lvl}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </DialogContent>
+
+            <DialogActions>
+              <Button variant="outlined" onClick={closeEditDialog}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteSkill}
+                disabled={isUpdating}
+                color="error"
               >
-                {skillLevelOptions.map((lvl: string) => (
-                  <MenuItem key={lvl} value={lvl}>
-                    {lvl}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </DialogContent>
+                Remove
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleUpdateLevel}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving..." : "Save"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+          {/* Global error/success snackbar from centralized handler */}
+          <ErrorSnackbar
+            notification={notification}
+            onClose={closeNotification}
+          />
 
-          <DialogActions>
-            <Button variant="tertiary" onClick={closeEditDialog}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteSkill}
-              disabled={isUpdating}
-            >
-              Remove
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleUpdateLevel}
-              disabled={isUpdating}
-              className="save-btn"
-            >
-              {isUpdating ? "Saving..." : "Save"}
-            </Button>
-          </DialogActions>
-        </Dialog>
-        {/* Global error/success snackbar from centralized handler */}
-        <ErrorSnackbar
-          notification={notification}
-          onClose={closeNotification}
-        />
-
-        {/* Confirm delete dialog to avoid window.confirm */}
-        <Dialog
-          open={confirmDeleteIndex !== null}
-          onClose={() => setConfirmDeleteIndex(null)}
-          aria-labelledby="confirm-delete-skill"
-        >
-          <DialogTitle id="confirm-delete-skill">Confirm delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              {`Are you sure you want to delete "${
-                confirmDeleteIndex !== null
-                  ? userSkills[confirmDeleteIndex]?.name
-                  : ""
-              }"? This action cannot be undone.`}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setConfirmDeleteIndex(null)}>Cancel</Button>
-            <Button
-              color="error"
-              onClick={() => {
-                if (confirmDeleteIndex !== null)
-                  performDelete(confirmDeleteIndex);
-              }}
-              disabled={isUpdating}
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
+          {/* Confirm delete dialog to avoid window.confirm */}
+          <Dialog
+            open={confirmDeleteIndex !== null}
+            onClose={() => setConfirmDeleteIndex(null)}
+            aria-labelledby="confirm-delete-skill"
+          >
+            <DialogTitle id="confirm-delete-skill">Confirm delete</DialogTitle>
+            <DialogContent>
+              <Typography>
+                {`Are you sure you want to delete "${
+                  confirmDeleteIndex !== null
+                    ? userSkills[confirmDeleteIndex]?.name
+                    : ""
+                }"? This action cannot be undone.`}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setConfirmDeleteIndex(null)}
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button
+                color="error"
+                onClick={() => {
+                  if (confirmDeleteIndex !== null)
+                    performDelete(confirmDeleteIndex);
+                }}
+                disabled={isUpdating}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Paper>
       </Box>
     </Box>
   );

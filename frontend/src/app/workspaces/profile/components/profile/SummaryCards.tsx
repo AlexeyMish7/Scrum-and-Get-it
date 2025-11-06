@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import {
   useErrorHandler,
   validateRequired,
-} from "../../../../shared/hooks/useErrorHandler";
+} from "@shared/hooks/useErrorHandler";
 import {
   Card,
   CardContent,

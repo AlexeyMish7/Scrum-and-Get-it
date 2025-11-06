@@ -8,15 +8,14 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // and a ref to keep track of the previous user id so we don't refetch
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
-import { Button, Typography } from "@mui/material";
-import "./employment.css";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "../../../../shared/components/common/ConfirmDialog";
+import { Box, Button, Typography, Paper, Stack } from "@mui/material";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import ConfirmDialog from "@shared/components/common/ConfirmDialog";
 import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {
@@ -155,33 +154,42 @@ export default function EmploymentHistoryList() {
   };
 
   return (
-    <div className="employment-container">
-      {/* ✅ Add Employment button top-left */}
-      <div className="employment-top">
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Typography variant="h4">Employment History</Typography>
         <Button
-          className="glossy-btn"
           variant="contained"
           color="primary"
           onClick={() => navigate("/add-employment")}
         >
           Add Employment
         </Button>
-      </div>
-
-      <Typography variant="h2" className="employment-title glossy-title">
-        Employment History
-      </Typography>
+      </Box>
 
       {entries !== null && entries.length === 0 && (
         <Typography variant="body1">No employment entries yet.</Typography>
       )}
 
-      <ul className="employment-list">
+      <Stack spacing={2} mt={2}>
         {(entries ?? []).map((entry) => (
-          <li key={entry.id} className="employment-item glossy-card">
-            <div className="employment-item-row">
-              <div>
-                <Typography variant="h5">
+          <Paper key={entry.id} variant="outlined" sx={{ p: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h6">
                   {entry.job_title} @ {entry.company_name}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -190,9 +198,8 @@ export default function EmploymentHistoryList() {
                     ? "Present"
                     : `${entry.start_date} – ${entry.end_date}`}
                 </Typography>
-              </div>
-
-              <div className="employment-actions">
+              </Box>
+              <Box sx={{ display: "flex", gap: 1 }}>
                 <Button
                   variant="text"
                   color="primary"
@@ -207,21 +214,17 @@ export default function EmploymentHistoryList() {
                 >
                   Delete
                 </Button>
-              </div>
-            </div>
+              </Box>
+            </Box>
 
             {entry.job_description && (
-              <Typography
-                variant="body1"
-                className="employment-description"
-                color="text.primary"
-              >
+              <Typography variant="body2" color="text.primary" sx={{ mt: 1 }}>
                 Job Description: {entry.job_description}
               </Typography>
             )}
-          </li>
+          </Paper>
         ))}
-      </ul>
+      </Stack>
 
       {editingEntry && (
         <EditEmploymentModal
@@ -244,6 +247,6 @@ export default function EmploymentHistoryList() {
         onConfirm={handleConfirmDelete}
       />
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
-    </div>
+    </Box>
   );
 }

@@ -11,6 +11,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  type SelectChangeEvent,
 } from "@mui/material";
 
 // ===== Default templates =====
@@ -21,7 +22,7 @@ const defaultTemplates = [
     category: "Corporate",
     sampleHtml: `
       <p>Dear Hiring Manager,</p>
-      <p>I am writing to apply for the [Position] role at [Company]. 
+      <p>I am writing to apply for the [Position] role at [Company].
       With my experience in [Field], I am confident in my ability to contribute effectively.</p>
       <p>Sincerely,<br/>[Your Name]</p>
     `,
@@ -32,7 +33,7 @@ const defaultTemplates = [
     category: "Design",
     sampleHtml: `
       <p>Hello [Company] Team,</p>
-      <p>As a creative professional passionate about innovation and visual storytelling, 
+      <p>As a creative professional passionate about innovation and visual storytelling,
       I’m thrilled by the opportunity to bring my ideas to your team.</p>
       <p>Warm regards,<br/>[Your Name]</p>
     `,
@@ -43,7 +44,7 @@ const defaultTemplates = [
     category: "Engineering",
     sampleHtml: `
       <p>Dear [Hiring Manager's Name],</p>
-      <p>As a software engineer with expertise in [Tech Stack], 
+      <p>As a software engineer with expertise in [Tech Stack],
       I’m eager to help [Company] build scalable, high-performing solutions.</p>
       <p>Best regards,<br/>[Your Name]</p>
     `,
@@ -62,12 +63,23 @@ const industryVariants: Record<string, string> = {
     "I am passionate about using technology to create meaningful learning experiences and improve accessibility.",
 };
 
+type Template = {
+  id?: number | string;
+  name: string;
+  category: string;
+  sampleHtml: string;
+};
+
 const CoverLetterTemplates = () => {
   const [view, setView] = useState<"gallery" | "preview" | "edit">("gallery");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null
+  );
   const [industry, setIndustry] = useState("");
   const [content, setContent] = useState("");
-  const [templates, setTemplates] = useState(defaultTemplates);
+  const [templates, setTemplates] = useState<Template[]>(
+    defaultTemplates as Template[]
+  );
 
   // 🔹 Analytics
   const [analytics, setAnalytics] = useState<{ [key: string]: number }>({});
@@ -76,10 +88,12 @@ const CoverLetterTemplates = () => {
   useEffect(() => {
     const savedAnalytics = JSON.parse(
       localStorage.getItem("templateAnalytics") || "{}"
-    );
-    const savedCustom = JSON.parse(localStorage.getItem("customTemplates") || "[]");
+    ) as { [key: string]: number };
+    const savedCustom = JSON.parse(
+      localStorage.getItem("customTemplates") || "[]"
+    ) as Template[];
     setAnalytics(savedAnalytics);
-    setTemplates([...defaultTemplates, ...savedCustom]);
+    setTemplates([...(defaultTemplates as Template[]), ...savedCustom]);
   }, []);
 
   // 🔹 Save analytics whenever updated
@@ -115,7 +129,7 @@ const CoverLetterTemplates = () => {
   }, [templates]);
 
   // 🔹 Handle template selection
-  const handleSelect = (template: any) => {
+  const handleSelect = (template: Template) => {
     setSelectedTemplate(template);
     setIndustry("");
     setView("preview");
@@ -128,10 +142,11 @@ const CoverLetterTemplates = () => {
   };
 
   // 🔹 Handle industry update
-  const handleIndustryChange = (e: any) => {
-    const chosen = e.target.value;
+
+  const handleIndustryChange = (e: SelectChangeEvent<string>) => {
+    const chosen = e.target.value as string;
     setIndustry(chosen);
-    const base = selectedTemplate.sampleHtml;
+    const base = selectedTemplate?.sampleHtml ?? "";
     const industryText = industryVariants[chosen] || "";
     const updated = base.replace(
       "</p>\n      <p>Sincerely",
@@ -141,6 +156,7 @@ const CoverLetterTemplates = () => {
   };
 
   const handleUse = () => {
+    if (!selectedTemplate) return;
     setAnalytics((prev) => ({
       ...prev,
       [`${selectedTemplate.name}-used`]:
@@ -165,7 +181,9 @@ const CoverLetterTemplates = () => {
       try {
         const imported = JSON.parse(event.target?.result as string);
         if (Array.isArray(imported)) {
-          const valid = imported.filter((t) => t.name && t.sampleHtml && t.category);
+          const valid = imported.filter(
+            (t) => t.name && t.sampleHtml && t.category
+          );
           const updatedTemplates = [...templates, ...valid];
           setTemplates(updatedTemplates);
           localStorage.setItem("customTemplates", JSON.stringify(valid));
@@ -218,7 +236,11 @@ const CoverLetterTemplates = () => {
                     <Typography variant="body2" color="text.secondary">
                       {t.category}
                     </Typography>
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      sx={{ mt: 1 }}
+                    >
                       Viewed: {analytics[t.name] || 0} times
                     </Typography>
                     <Typography variant="caption" display="block">
@@ -257,11 +279,12 @@ const CoverLetterTemplates = () => {
 
           <Box
             sx={{
-              border: "1px solid #ccc",
+              border: 1,
+              borderColor: "divider",
               borderRadius: 2,
               p: 2,
               mt: 3,
-              bgcolor: "#fafafa",
+              bgcolor: "background.paper",
               minHeight: 200,
             }}
             dangerouslySetInnerHTML={{
@@ -277,7 +300,9 @@ const CoverLetterTemplates = () => {
               <Button
                 variant="outlined"
                 onClick={() => {
-                  const shareUrl = `${window.location.origin}${window.location.pathname}?template=${encodeURIComponent(
+                  const shareUrl = `${window.location.origin}${
+                    window.location.pathname
+                  }?template=${encodeURIComponent(
                     selectedTemplate.name
                   )}&industry=${encodeURIComponent(industry)}`;
                   navigator.clipboard.writeText(shareUrl);
