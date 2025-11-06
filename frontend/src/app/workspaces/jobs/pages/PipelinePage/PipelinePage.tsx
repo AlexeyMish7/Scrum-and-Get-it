@@ -75,9 +75,9 @@ export default function PipelinePage() {
     }
   }
 
-  // Days since creation (today - created_at). Returns like "3d" or "-" if unknown
-  function daysSinceCreated(row: JobRow) {
-    const d = row.created_at;
+  // Days in current stage: difference between today and status_changed_at (or fallback)
+  function daysInStage(row: JobRow) {
+    const d = row.status_changed_at ?? row.updated_at ?? row.created_at;
     if (!d) return "-";
     try {
       const then = new Date(String(d));
@@ -139,11 +139,11 @@ export default function PipelinePage() {
     copy[to].splice(dstIdx, 0, moved);
     setJobsByStage(copy);
 
-    // persist change: update job_status and status_changed_at
+      // persist change: update job_status and status_changed_at
     (async () => {
       try {
   if (!user) throw new Error("Not signed in");
-  const payload: Record<string, unknown> = { job_status: to, created_at: new Date().toISOString() };
+    const payload: Record<string, unknown> = { job_status: to, status_changed_at: new Date().toISOString() };
   const jobId = String((moved && (moved.id as string | number)) ?? draggableId);
   const res = await updateJob(user.id, jobId, payload);
         if (res.error) {
@@ -189,7 +189,7 @@ export default function PipelinePage() {
       if (!user) throw new Error("Not signed in");
       // update each selected job (could be batched server-side later)
       await Promise.all(
-        ids.map((id) => updateJob(user.id, id, { job_status: to, created_at: new Date().toISOString() }))
+        ids.map((id) => updateJob(user.id, id, { job_status: to, status_changed_at: new Date().toISOString() }))
       );
       showSuccess(`Moved ${ids.length} job(s) to ${to}`);
       setSelectedIds({});
@@ -360,7 +360,7 @@ export default function PipelinePage() {
                                       {String(job.company_name ?? job.company ?? "Unknown")}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                                      {formatStatusDate(job)} · {daysSinceCreated(job)}
+                                      {formatStatusDate(job)} · {daysInStage(job)}
                                     </Typography>
                                   </Box>
                                 </Box>
