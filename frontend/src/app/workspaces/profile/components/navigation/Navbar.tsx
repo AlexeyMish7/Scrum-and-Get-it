@@ -196,6 +196,8 @@ const NavBar: React.FC = () => {
     { label: "Employment", path: "/employment-history" },
     { label: "Projects", path: "/portfolio" },
     { label: "Certifications", path: "/certifications" },
+    // AI workspace entry — routes to AI section (scoped theme applied there)
+    { label: "AI", path: "/ai" },
   ];
 
   return (

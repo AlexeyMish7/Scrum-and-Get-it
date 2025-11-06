@@ -27,18 +27,59 @@ import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
 import AiThemeShowcase from "@workspaces/ai/theme/AiThemeShowcase";
+import AiLayout from "@workspaces/ai/AiLayout";
+import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
+import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
+import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
+import JobsLayout from "@workspaces/jobs/JobsLayout";
+import PipelinePage from "@workspaces/jobs/pages/PipelinePage";
+import NewJobPage from "@workspaces/jobs/pages/NewJobPage";
+import DocumentsPage from "@workspaces/jobs/pages/DocumentsPage";
+import SavedSearchesPage from "@workspaces/jobs/pages/SavedSearchesPage";
+import AnalyticsPage from "@workspaces/jobs/pages/AnalyticsPage";
 import AddJobForm from "@workspaces/ai/components/JobMatch/AddJobForm";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
   // Public AI theme showcase
   { path: "/ai/theme", element: <AiThemeShowcase /> },
-  //TESTING FOR NOW 
+  // AI workspace (scoped theme). Index route shows a simple AI landing.
+  {
+    path: "/ai",
+    element: (
+      <ProtectedRoute>
+        <AiLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <DashboardAI /> },
+      { path: "resume", element: <GenerateResume /> },
+      { path: "cover-letter", element: <GenerateCoverLetter /> },
+    ],
+  },
+  // Jobs workspace (placeholder pages)
+  {
+    path: "/jobs",
+    element: (
+      <ProtectedRoute>
+        <JobsLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <PipelinePage /> },
+      { path: "pipeline", element: <PipelinePage /> },
+      { path: "new", element: <NewJobPage /> },
+      { path: "documents", element: <DocumentsPage /> },
+      { path: "saved-searches", element: <SavedSearchesPage /> },
+      { path: "analytics", element: <AnalyticsPage /> },
+    ],
+  },
+  //TESTING FOR NOW
   {
     path: "/add-job-form",
     element: (
       <ProtectedRoute>
-          <AddJobForm />
+        <AddJobForm />
       </ProtectedRoute>
     ),
   },

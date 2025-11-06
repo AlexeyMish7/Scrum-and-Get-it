@@ -136,7 +136,9 @@ let theme = createTheme({
       contrastText: "#FFFFFF",
     },
     background: {
-      default: designTokens.gradients.background,
+      // Simplify background for light mode to avoid heavy gradients that
+      // conflict with app content and spacing. Keep paper as a subtle glass.
+      default: "#f8fafc",
       paper: designTokens.surfaces.glass,
     },
     text: {
@@ -268,97 +270,22 @@ let theme = createTheme({
         body: {
           margin: 0,
           padding: 0,
-          background: `
-            ${designTokens.gradients.background},
-            radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 85% 25%, rgba(59, 130, 246, 0.12) 0%, transparent 45%),
-            radial-gradient(circle at 25% 85%, rgba(6, 182, 212, 0.1) 0%, transparent 40%),
-            radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.08) 0%, transparent 35%)
-          `,
-          backgroundAttachment: "fixed",
-          backgroundSize:
-            "100% 100%, 800px 800px, 600px 600px, 700px 700px, 500px 500px",
+          backgroundColor: themeParam.palette.background.default,
           fontFamily: themeParam.typography.fontFamily,
           overflowX: "hidden",
           minHeight: "100vh",
-          // Smooth font rendering
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
           textRendering: "optimizeLegibility",
         },
 
-        // ✅ Enhanced root container with floating effect
+        // Keep root minimal; let layouts control content padding.
         "#root": {
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
           boxSizing: "border-box",
-          padding: "8px 8px 32px 8px",
-          "@media (min-width:768px)": { padding: "12px 12px 40px 12px" },
-          "@media (min-width:1200px)": { padding: "16px 16px 48px 16px" },
           position: "relative",
-          // Floating glass overlay effect
-          "&::before": {
-            content: '""',
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `
-              linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%),
-              radial-gradient(circle at 20% 30%, rgba(255,255,255,0.2) 0%, transparent 60%),
-              radial-gradient(circle at 80% 70%, rgba(255,255,255,0.15) 0%, transparent 50%)
-            `,
-            backdropFilter: "blur(0.5px)",
-            pointerEvents: "none",
-            zIndex: -1,
-          },
-          // Animated particles effect
-          "&::after": {
-            content: '""',
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `
-              radial-gradient(1px 1px at 20% 30%, rgba(59, 130, 246, 0.6), transparent),
-              radial-gradient(1px 1px at 40% 70%, rgba(99, 102, 241, 0.4), transparent),
-              radial-gradient(1px 1px at 80% 10%, rgba(6, 182, 212, 0.5), transparent),
-              radial-gradient(1px 1px at 90% 90%, rgba(139, 92, 246, 0.3), transparent)
-            `,
-            backgroundSize:
-              "300px 300px, 250px 250px, 200px 200px, 180px 180px",
-            animation: "techyParticles 20s infinite linear",
-            pointerEvents: "none",
-            zIndex: -1,
-            opacity: 0.6,
-          },
-        },
-
-        // ✅ Particle animation keyframes
-        "@keyframes techyParticles": {
-          "0%": {
-            transform: "translate(0, 0)",
-            opacity: 0.3,
-          },
-          "25%": {
-            transform: "translate(-10px, -10px)",
-            opacity: 0.6,
-          },
-          "50%": {
-            transform: "translate(5px, -5px)",
-            opacity: 0.4,
-          },
-          "75%": {
-            transform: "translate(-5px, 5px)",
-            opacity: 0.7,
-          },
-          "100%": {
-            transform: "translate(0, 0)",
-            opacity: 0.3,
-          },
         },
 
         // ✅ Enhanced accessibility and interaction standards

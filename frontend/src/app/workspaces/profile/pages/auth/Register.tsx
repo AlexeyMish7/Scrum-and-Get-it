@@ -18,10 +18,8 @@ import {
   Stack,
   Alert,
   CircularProgress,
-  CssBaseline,
-  ThemeProvider,
 } from "@mui/material";
-import theme from "../../theme/theme.tsx";
+// Uses global ThemeContext; no local ThemeProvider/CssBaseline here.
 
 // Type for our registration form fields
 type RegisterForm = {
@@ -170,151 +168,142 @@ export default function Register() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-
-      <Box
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "background.default",
+        padding: 2,
+      }}
+    >
+      <Paper
+        elevation={4}
         sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "background.default",
-          padding: 2,
+          p: 4,
+          borderRadius: 3,
+          maxWidth: 450,
+          width: "100%",
+          textAlign: "center",
         }}
       >
-        <Paper
-          elevation={4}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-            maxWidth: 450,
-            width: "100%",
-            textAlign: "center",
-          }}
-        >
-          <Typography variant="h3" mb={3}>
-            Register
-          </Typography>
+        <Typography variant="h3" mb={3}>
+          Register
+        </Typography>
 
-          {/* Registration form with controlled inputs */}
-          <Stack
-            spacing={2}
-            component="form"
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            <TextField
-              label="First Name"
-              name="firstName"
-              type="text"
-              autoComplete="given-name"
-              onChange={handleChange}
-              value={form.firstName}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Last Name"
-              name="lastName"
-              type="text"
-              autoComplete="family-name"
-              onChange={handleChange}
-              value={form.lastName}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              onChange={handleChange}
-              value={form.email}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              onChange={handleChange}
-              value={form.password}
-              required
-              fullWidth
-            />
-
-            <TextField
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              onChange={handleChange}
-              value={form.confirmPassword}
-              required
-              fullWidth
-            />
-
-            {/* Disable submit button while loading */}
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              sx={{ mt: 1 }}
-            >
-              {loading ? (
-                <CircularProgress size={22} color="inherit" />
-              ) : (
-                "Create Account"
-              )}
-            </Button>
-
-            {/* Link to login for existing users */}
-            <Typography variant="body2">
-              Already have an account?{" "}
-              <Link
-                to="/Login"
-                style={{ textDecoration: "none", color: "#1976D2" }}
-              >
-                Sign in
-              </Link>
-            </Typography>
-          </Stack>
-
-          <Button
-            onClick={async () => {
-              setError("");
-              setInfo("");
-              setLoading(true);
-              const res = await signInWithOAuth("google");
-              setLoading(false);
-              if (!res.ok) setError(res.message || "OAuth error");
-            }}
-            variant="tertiary"
-            disabled={loading}
-            sx={{ mt: 2 }}
+        {/* Registration form with controlled inputs */}
+        <Stack spacing={2} component="form" onSubmit={handleSubmit} noValidate>
+          <TextField
+            label="First Name"
+            name="firstName"
+            type="text"
+            autoComplete="given-name"
+            onChange={handleChange}
+            value={form.firstName}
+            required
             fullWidth
+          />
+
+          <TextField
+            label="Last Name"
+            name="lastName"
+            type="text"
+            autoComplete="family-name"
+            onChange={handleChange}
+            value={form.lastName}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            onChange={handleChange}
+            value={form.email}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            onChange={handleChange}
+            value={form.password}
+            required
+            fullWidth
+          />
+
+          <TextField
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            onChange={handleChange}
+            value={form.confirmPassword}
+            required
+            fullWidth
+          />
+
+          {/* Disable submit button while loading */}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading}
+            sx={{ mt: 1 }}
           >
-            Sign in with Google
+            {loading ? (
+              <CircularProgress size={22} color="inherit" />
+            ) : (
+              "Create Account"
+            )}
           </Button>
 
-          {/* Show messages if present */}
-          {error && (
-            <Alert sx={{ mt: 2 }} severity="error">
-              {error}
-            </Alert>
-          )}
-          {info && (
-            <Alert sx={{ mt: 2 }} severity="success">
-              {info}
-            </Alert>
-          )}
-        </Paper>
-      </Box>
-    </ThemeProvider>
+          {/* Link to login for existing users */}
+          <Typography variant="body2">
+            Already have an account?{" "}
+            <Link
+              to="/Login"
+              style={{ textDecoration: "none", color: "#1976D2" }}
+            >
+              Sign in
+            </Link>
+          </Typography>
+        </Stack>
+
+        <Button
+          onClick={async () => {
+            setError("");
+            setInfo("");
+            setLoading(true);
+            const res = await signInWithOAuth("google");
+            setLoading(false);
+            if (!res.ok) setError(res.message || "OAuth error");
+          }}
+          variant="tertiary"
+          disabled={loading}
+          sx={{ mt: 2 }}
+          fullWidth
+        >
+          Sign in with Google
+        </Button>
+
+        {/* Show messages if present */}
+        {error && (
+          <Alert sx={{ mt: 2 }} severity="error">
+            {error}
+          </Alert>
+        )}
+        {info && (
+          <Alert sx={{ mt: 2 }} severity="success">
+            {info}
+          </Alert>
+        )}
+      </Paper>
+    </Box>
   );
 }

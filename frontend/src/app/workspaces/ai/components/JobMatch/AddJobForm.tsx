@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { TextField, Button, MenuItem, Box, Typography, CssBaseline } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
+import { TextField, Button, MenuItem, Box, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import aiTheme from "../../theme/aiTheme.tsx"; // <-- import your AI theme
+// Uses the global ThemeContext (dark/light). No local ThemeProvider here.
 import { useAuth } from "@shared/context/AuthContext";
 import { createJob } from "@shared/services/dbMappers";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
@@ -22,6 +22,7 @@ const industries = [
 const jobTypes = ["Full-time", "Part-time", "Internship", "Contract"];
 
 export default function JobForm() {
+  const theme = useTheme();
   const [form, setForm] = useState({
     job_title: "",
     company_name: "",
@@ -67,7 +68,10 @@ export default function JobForm() {
 
     setSaving(true);
     try {
-      const res = await createJob(user.id, form as unknown as Record<string, unknown>);
+      const res = await createJob(
+        user.id,
+        form as unknown as Record<string, unknown>
+      );
       if (res.error) {
         handleError(res.error);
       } else {
@@ -101,170 +105,174 @@ export default function JobForm() {
   };
 
   return (
-    <ThemeProvider theme={aiTheme}>
-      <CssBaseline />
-      <Box
-        sx={{
-          maxWidth: 700,
-          mx: "auto",
-          mt: 4,
-          p: 3,
-          borderRadius: 2,
-          boxShadow: aiTheme.shadows[3],
-          bgcolor: "background.paper",
-        }}
-      >
-        <Typography variant="h4" gutterBottom className="ai-glow">
-          Add Job Opportunity
-        </Typography>
+    <Box
+      sx={{
+        maxWidth: 700,
+        mx: "auto",
+        mt: 4,
+        p: 3,
+        borderRadius: 2,
+        boxShadow: theme.shadows[3],
+        bgcolor: "background.paper",
+      }}
+    >
+      <Typography variant="h4" gutterBottom className="ai-glow">
+        Add Job Opportunity
+      </Typography>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Job Title"
-            name="job_title"
-            value={form.job_title}
-            onChange={handleChange}
-            required
-          />
-          <TextField
-            label="Company Name"
-            name="company_name"
-            value={form.company_name}
-            onChange={handleChange}
-            required
-          />
-          <TextField
-            label="Street Address"
-            name="street_address"
-            value={form.street_address}
-            onChange={handleChange}
-            placeholder="123 Main St"
-          />
-          <TextField
-            label="City"
-            name="city_name"
-            value={form.city_name}
-            onChange={handleChange}
-          />
-          <TextField
-            label="State Code"
-            name="state_code"
-            value={form.state_code}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Zipcode"
-            name="zipcode"
-            value={form.zipcode}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Salary Range Start"
-            name="start_salary"
-            type="number"
-            value={form.start_salary}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Salary Range End"
-            name="end_salary"
-            type="number"
-            value={form.end_salary}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Job Posting URL"
-            name="job_link"
-            value={form.job_link}
-            onChange={handleChange}
-          />
-
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              label="Application Deadline"
-              value={form.application_deadline}
-              onChange={(newValue) =>
-                setForm((prev) => ({
-                  ...prev,
-                  application_deadline: newValue,
-                }))
-              }
-              slotProps={{
-                textField: { fullWidth: true },
-              }}
-            />
-          </LocalizationProvider>
-
-          <TextField
-            label="Job Description"
-            name="job_description"
-            value={form.job_description}
-            onChange={handleChange}
-            multiline
-            minRows={3}
-            inputProps={{ maxLength: 2000 }}
-            helperText={`${String(form.job_description ?? "").length}/2000 characters`}
-          />
-
-          <TextField
-            select
-            label="Industry"
-            name="industry"
-            value={form.industry}
-            onChange={handleChange}
-          >
-            {industries.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            label="Job Type"
-            name="job_type"
-            value={form.job_type}
-            onChange={handleChange}
-          >
-            {jobTypes.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-            <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>
-              Save
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={() => setConfirmOpen(true)}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Centralized notification (errors, warnings, success) */}
-        <ErrorSnackbar notification={notification} onClose={closeNotification} />
-
-        {/* Confirm cancel dialog */}
-        <ConfirmDialog
-          open={confirmOpen}
-          title="Discard changes?"
-          description="Are you sure you want to discard your changes? This will clear the form." 
-          confirmText="Discard"
-          cancelText="Keep editing"
-          onClose={() => setConfirmOpen(false)}
-          onConfirm={() => {
-            setConfirmOpen(false);
-            handleCancel();
-          }}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <TextField
+          label="Job Title"
+          name="job_title"
+          value={form.job_title}
+          onChange={handleChange}
+          required
         />
+        <TextField
+          label="Company Name"
+          name="company_name"
+          value={form.company_name}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          label="Street Address"
+          name="street_address"
+          value={form.street_address}
+          onChange={handleChange}
+          placeholder="123 Main St"
+        />
+        <TextField
+          label="City"
+          name="city_name"
+          value={form.city_name}
+          onChange={handleChange}
+        />
+        <TextField
+          label="State Code"
+          name="state_code"
+          value={form.state_code}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Zipcode"
+          name="zipcode"
+          value={form.zipcode}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Salary Range Start"
+          name="start_salary"
+          type="number"
+          value={form.start_salary}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Salary Range End"
+          name="end_salary"
+          type="number"
+          value={form.end_salary}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Job Posting URL"
+          name="job_link"
+          value={form.job_link}
+          onChange={handleChange}
+        />
+
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            label="Application Deadline"
+            value={form.application_deadline}
+            onChange={(newValue) =>
+              setForm((prev) => ({
+                ...prev,
+                application_deadline: newValue,
+              }))
+            }
+            slotProps={{
+              textField: { fullWidth: true },
+            }}
+          />
+        </LocalizationProvider>
+
+        <TextField
+          label="Job Description"
+          name="job_description"
+          value={form.job_description}
+          onChange={handleChange}
+          multiline
+          minRows={3}
+          inputProps={{ maxLength: 2000 }}
+          helperText={`${
+            String(form.job_description ?? "").length
+          }/2000 characters`}
+        />
+
+        <TextField
+          select
+          label="Industry"
+          name="industry"
+          value={form.industry}
+          onChange={handleChange}
+        >
+          {industries.map((option) => (
+            <MenuItem key={option} value={option}>
+              {option}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          label="Job Type"
+          name="job_type"
+          value={form.job_type}
+          onChange={handleChange}
+        >
+          {jobTypes.map((option) => (
+            <MenuItem key={option} value={option}>
+              {option}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            Save
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setConfirmOpen(true)}
+          >
+            Cancel
+          </Button>
+        </Box>
       </Box>
-    </ThemeProvider>
+
+      {/* Centralized notification (errors, warnings, success) */}
+      <ErrorSnackbar notification={notification} onClose={closeNotification} />
+
+      {/* Confirm cancel dialog */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Discard changes?"
+        description="Are you sure you want to discard your changes? This will clear the form."
+        confirmText="Discard"
+        cancelText="Keep editing"
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          handleCancel();
+        }}
+      />
+    </Box>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { Container, Box } from "@mui/material";
-import NavBar from "./Navbar";
+import { TopNav } from "@shared/components/TopNav";
 import BreadcrumbsBar from "./BreadcrumbsBar";
 
 interface MainLayoutProps {
@@ -11,7 +11,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <Box sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
       {/* ✅ Top navigation stays fixed at top of page layout */}
-      <NavBar />
+      <TopNav />
       <BreadcrumbsBar />
 
       {/* ✅ Page Content Container */}
