@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../../shared/services/supabaseClient";
+import { supabase } from "@shared/services/supabaseClient";
+import { Box, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import { useThemeContext } from "@shared/context/ThemeContext";
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -39,18 +43,51 @@ const AuthCallback: React.FC = () => {
     };
   }, [navigate]);
 
+  const { mode, toggleMode } = useThemeContext();
+
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Completing sign in...</h2>
-      {error ? (
-        <div style={{ color: "red" }}>
-          <p>Sign-in failed:</p>
-          <pre>{error}</pre>
-        </div>
-      ) : (
-        <p>Please wait while we complete sign in and redirect you.</p>
-      )}
-    </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
+      }}
+    >
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ mb: 2 }}
+      >
+        <Toolbar>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            onClick={toggleMode}
+            aria-label="Toggle theme"
+            color="inherit"
+          >
+            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Completing sign in...
+        </Typography>
+
+        {error ? (
+          <Box sx={{ color: "error.main" }}>
+            <Typography variant="body2">Sign-in failed:</Typography>
+            <pre>{error}</pre>
+          </Box>
+        ) : (
+          <Typography>
+            Please wait while we complete sign in and redirect you.
+          </Typography>
+        )}
+      </Box>
+    </Box>
   );
 };
 

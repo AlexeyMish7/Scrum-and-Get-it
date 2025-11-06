@@ -711,20 +711,20 @@ const ProfilePicture: React.FC = () => {
               onChange={(_, percentCrop) => setCrop(percentCrop)}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={1}
-              className="projects-crop-container"
             >
-              <img
+              <Box
+                component="img"
                 src={imgSrc}
                 onLoad={(e) => setImgRef(e.currentTarget as HTMLImageElement)}
                 alt="Crop preview"
-                style={{ maxWidth: "100%", maxHeight: 400 }}
+                sx={{ maxWidth: "100%", maxHeight: 400 }}
               />
             </ReactCrop>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowCropDialog(false)}>Cancel</Button>
-          <Button onClick={handleCropApply} className="projects-btn-glossy">
+          <Button onClick={handleCropApply} variant="contained">
             Apply Crop
           </Button>
         </DialogActions>

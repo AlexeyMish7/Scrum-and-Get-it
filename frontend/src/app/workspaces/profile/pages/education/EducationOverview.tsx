@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../../../../shared/context/AuthContext";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import { useAuth } from "@shared/context/AuthContext";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import {
@@ -31,9 +31,9 @@ import {
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
-import "./EducationOverview.css";
-import { parseMonthToMs } from "../../../../shared/utils/dateUtils";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+// Removed CSS overrides to respect global theme; rely on MUI defaults
+import { parseMonthToMs } from "@shared/utils/dateUtils";
 
 /*
   EducationOverview
@@ -191,60 +191,62 @@ const EducationOverview: React.FC = () => {
   }
 
   return (
-    <Box className="education-overview-container">
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
       The header is intentionally compact so it visually connects to the timeline below.
     */}
-      <div className="education-header-section">
-        <div className="education-header-content">
-          <div className="education-header-text">
-            <Typography variant="h4" component="h1" className="education-title">
-              Education Timeline
-            </Typography>
-            <Typography variant="body1" className="education-subtitle">
-              Track your academic journey and achievements
-            </Typography>
-          </div>
-          <div className="education-header-actions">
-            <Button
-              variant="primary"
-              startIcon={<Add />}
-              onClick={() => navigate("/education/manage")}
-              size="medium"
-            >
-              Add Education
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" component="h1">
+            Education Timeline
+          </Typography>
+          <Typography variant="body1">
+            Track your academic journey and achievements
+          </Typography>
+        </Box>
+        <Box>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => navigate("/education/manage")}
+            size="medium"
+          >
+            Add Education
+          </Button>
+        </Box>
+      </Box>
 
       {/* Content Section
       - Centered timeline area. Each entry is a card placed on alternating sides.
       - We render a friendly empty state when there are no entries.
     */}
-      <div className="education-content-section">
-        <Paper className="education-timeline-container" elevation={0}>
+      <Box>
+        <Paper variant="outlined" sx={{ p: 2 }}>
           <Timeline position="alternate">
             {education.length === 0 ? (
               <TimelineItem>
                 <TimelineOppositeContent />
                 <TimelineSeparator>
-                  {/* Empty-state dot: styled via CSS to keep visuals centralized */}
-                  <TimelineDot className="timeline-dot-empty" />
+                  {/* Empty-state dot */}
+                  <TimelineDot color="grey" />
                 </TimelineSeparator>
-                <TimelineContent className="education-timeline-content">
-                  <Box className="education-card">
-                    {/* Empty state: encourage the user to add their first entry */}
-                    <Typography
-                      variant="body1"
-                      className="education-empty-text"
-                    >
+                <TimelineContent>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="body1">
                       No education entries yet. Click "+ Add Education" to get
                       started building your academic profile.
                     </Typography>
-                  </Box>
+                  </Paper>
                 </TimelineContent>
               </TimelineItem>
             ) : (
@@ -258,44 +260,26 @@ const EducationOverview: React.FC = () => {
                 // Each timeline item shows dates on the side, a dot/connector,
                 // and a white card with the education details and action buttons.
                 return (
-                  <TimelineItem
-                    key={edu.id}
-                    className="education-timeline-item"
-                  >
-                    <TimelineOppositeContent className="education-timeline-dates">
+                  <TimelineItem key={edu.id}>
+                    <TimelineOppositeContent>
                       <Typography variant="body2">
                         {startYear}
                         {endYear && ` - ${endYear}`}
                       </Typography>
                       {ongoing && (
-                        <Typography
-                          variant="caption"
-                          className="education-current-badge"
-                        >
-                          Current
-                        </Typography>
+                        <Typography variant="caption">Current</Typography>
                       )}
                     </TimelineOppositeContent>
                     <TimelineSeparator>
-                      {/* Dot for each entry; CSS controls size and color */}
-                      <TimelineDot
-                        className={
-                          ongoing ? "timeline-dot-ongoing" : "timeline-dot"
-                        }
-                      />
+                      {/* Dot for each entry */}
+                      <TimelineDot color={ongoing ? "primary" : "secondary"} />
                       {index < education.length - 1 && (
                         /* Connector between timeline dots; shown for all but last item */
-                        <TimelineConnector className="timeline-connector" />
+                        <TimelineConnector />
                       )}
                     </TimelineSeparator>
-                    <TimelineContent className="education-timeline-content">
-                      <Box
-                        className={`education-card ${
-                          ongoing
-                            ? "education-card-ongoing"
-                            : "education-card-completed"
-                        }`}
-                      >
+                    <TimelineContent>
+                      <Paper variant="outlined" sx={{ p: 2 }}>
                         {/* Honors chip */}
                         {edu.honors && (
                           <Chip
@@ -312,64 +296,47 @@ const EducationOverview: React.FC = () => {
                                 🏆
                               </Avatar>
                             }
-                            className="education-honors-chip"
                           />
                         )}
 
                         {/* Main content with improved hierarchy */}
-                        <Typography
-                          variant="h6"
-                          className="education-card-title"
-                        >
-                          {edu.degree}
-                        </Typography>
+                        <Typography variant="h6">{edu.degree}</Typography>
 
-                        <Typography
-                          variant="subtitle1"
-                          className="education-card-institution"
-                        >
+                        <Typography variant="subtitle1">
                           {edu.institution}
                         </Typography>
 
-                        <Typography
-                          variant="body2"
-                          className="education-card-field"
-                        >
+                        <Typography variant="body2">
                           {edu.fieldOfStudy}
                         </Typography>
 
                         {/* GPA with better styling */}
                         {edu.gpa !== undefined && !edu.gpaPrivate && (
-                          <Typography
-                            variant="body2"
-                            className="education-card-gpa"
-                          >
+                          <Typography variant="body2">
                             GPA: {edu.gpa}
                           </Typography>
                         )}
 
                         {/* Action buttons: Edit opens the dialog; Delete asks for confirmation */}
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          className="education-card-actions"
-                        >
+                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                           <Button
                             size="small"
-                            variant="primary"
+                            variant="contained"
+                            color="primary"
                             onClick={() => setEditingEntry(edu)}
                           >
                             Edit
                           </Button>
                           <Button
                             size="small"
-                            variant="destructive"
+                            variant="contained"
+                            color="error"
                             onClick={() => setConfirmDeleteId(edu.id)}
                           >
                             Delete
                           </Button>
                         </Stack>
-                      </Box>
+                      </Paper>
                     </TimelineContent>
                   </TimelineItem>
                 );
@@ -377,7 +344,7 @@ const EducationOverview: React.FC = () => {
             )}
           </Timeline>
         </Paper>
-      </div>
+      </Box>
 
       {/* Error Handling: shared snackbar used across pages */}
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
@@ -429,17 +396,9 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
   };
 
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      className="education-dialog"
-    >
-      <DialogTitle className="education-dialog-title">
-        Edit Education
-      </DialogTitle>
-      <DialogContent className="education-dialog-content">
+    <Dialog open={true} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>Edit Education</DialogTitle>
+      <DialogContent>
         <Stack spacing={3} sx={{ mt: 2 }}>
           <TextField
             label="Degree Type"
@@ -448,7 +407,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             onChange={(e) =>
               setEditedEntry({ ...editedEntry, degree: e.target.value })
             }
-            className="education-dialog-field"
           />
           <TextField
             label="Institution Name"
@@ -457,7 +415,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             onChange={(e) =>
               setEditedEntry({ ...editedEntry, institution: e.target.value })
             }
-            className="education-dialog-field"
           />
           <TextField
             label="Field of Study"
@@ -466,7 +423,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             onChange={(e) =>
               setEditedEntry({ ...editedEntry, fieldOfStudy: e.target.value })
             }
-            className="education-dialog-field"
           />
           <TextField
             label="Start Date (YYYY-MM)"
@@ -475,7 +431,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             onChange={(e) =>
               setEditedEntry({ ...editedEntry, startDate: e.target.value })
             }
-            className="education-dialog-field"
           />
           <FormControlLabel
             control={
@@ -506,7 +461,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             }
             disabled={editedEntry.active}
             helperText="Leave empty if currently enrolled"
-            className="education-dialog-field"
           />
           <TextField
             label="GPA"
@@ -519,7 +473,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
                 gpa: parseFloat(e.target.value) || undefined,
               })
             }
-            className="education-dialog-field"
           />
           <FormControlLabel
             control={
@@ -544,30 +497,21 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
             onChange={(e) =>
               setEditedEntry({ ...editedEntry, honors: e.target.value })
             }
-            className="education-dialog-field"
           />
         </Stack>
       </DialogContent>
-      <DialogActions className="education-dialog-actions">
-        <Button
-          onClick={onClose}
-          variant="secondary"
-          className="education-dialog-cancel"
-        >
+      <DialogActions>
+        <Button onClick={onClose} variant="text" color="inherit">
           Cancel
         </Button>
         <Button
           onClick={() => onDelete(entry.id)}
-          variant="destructive"
-          className="education-dialog-delete"
+          variant="contained"
+          color="error"
         >
           Delete
         </Button>
-        <Button
-          onClick={handleSave}
-          variant="primary"
-          className="education-dialog-save"
-        >
+        <Button onClick={handleSave} variant="contained" color="primary">
           Save Changes
         </Button>
       </DialogActions>
@@ -597,10 +541,10 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         </Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel} variant="secondary">
+        <Button onClick={onCancel} variant="text" color="inherit">
           Cancel
         </Button>
-        <Button onClick={onConfirm} variant="destructive">
+        <Button onClick={onConfirm} variant="contained" color="error">
           Delete
         </Button>
       </DialogActions>

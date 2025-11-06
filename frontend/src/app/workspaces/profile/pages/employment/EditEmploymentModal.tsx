@@ -7,14 +7,14 @@ import { useState, useRef, useEffect } from "react";
 // Student note: mapping between DB row (snake_case) and form shape (camelCase)
 // is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type {
   EmploymentFormData,
   EmploymentRow,
 } from "../../types/employment.ts";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 import {
   Dialog,
   DialogTitle,
@@ -22,7 +22,6 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import "./employment.css";
 import EmploymentForm from "./EmploymentForm.tsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -173,7 +172,7 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
       aria-labelledby="edit-employment-title"
     >
       <DialogTitle id="edit-employment-title">Edit Employment</DialogTitle>
-      <DialogContent dividers className="glossy-card">
+      <DialogContent dividers>
         <EmploymentForm
           value={formData}
           onFieldChange={handleFieldChange}

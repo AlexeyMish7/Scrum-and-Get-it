@@ -1,12 +1,30 @@
-import { Box, Button, Typography, Paper, Chip } from "@mui/material";
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  Chip,
+  IconButton,
+} from "@mui/material";
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
+import { useThemeContext } from "@shared/context/ThemeContext";
 import { useNavigate } from "react-router-dom";
 import logo from "../../../../assets/logo/logo-flow-ats.png";
 
 const HomePage = () => {
   const navigate = useNavigate();
 
+  const { mode, toggleMode } = useThemeContext();
+
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#F8F9FA" }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
+      }}
+    >
       {/* 🔹 Top Blue Banner */}
       <Box
         sx={{
@@ -23,12 +41,31 @@ const HomePage = () => {
           zIndex: 1000,
         }}
       >
-        <Button variant="secondary" onClick={() => navigate("/register")}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          onClick={() => navigate("/register")}
+        >
           Register
         </Button>
-        <Button variant="secondary" onClick={() => navigate("/login")}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          onClick={() => navigate("/login")}
+        >
           Sign In
         </Button>
+        {/* Theme toggle */}
+        <IconButton
+          onClick={toggleMode}
+          color="inherit"
+          aria-label={
+            mode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          sx={{ ml: 1 }}
+        >
+          {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
+        </IconButton>
       </Box>
 
       {/* 🔹 Push content down to clear fixed header */}

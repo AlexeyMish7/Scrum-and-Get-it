@@ -1,42 +1,53 @@
+// Router imports grouped for clarity:
+// 1) react-router
+// 2) auth pages (public)
+// 3) profile pages and workspace routes
+// 4) layout & shared components
+// 5) AI and Jobs workspaces
 import { createBrowserRouter, Navigate } from "react-router-dom";
+
+// Auth / public pages
+import Login from "@profile/pages/auth/Login";
 import Register from "@profile/pages/auth/Register";
+import AuthCallback from "@profile/pages/auth/AuthCallback";
+import ForgotPassword from "@profile/pages/auth/ForgetPassword";
+import ResetPassword from "@profile/pages/auth/ResetPassword";
+
+// Profile workspace pages
+import HomePage from "@profile/pages/home/HomePage";
 import Dashboard from "@profile/pages/dashboard/Dashboard";
 import EducationOverview from "@profile/pages/education/EducationOverview";
+import AddEducation from "@profile/pages/education/AddEducation";
 import Certifications from "@profile/pages/certifications/Certifications";
 import AddSkills from "@profile/pages/skills/AddSkills";
 import SkillsOverview from "@profile/pages/skills/SkillsOverview";
-import Login from "@profile/pages/auth/Login";
-// import AddEducation from "./pages/AddEducation"; // unused - remove or wire a route when needed
-import AddEducation from "@profile/pages/education/AddEducation";
-import ForgotPassword from "@profile/pages/auth/ForgetPassword";
-import ResetPassword from "@profile/pages/auth/ResetPassword";
-import HomePage from "@profile/pages/home/HomePage";
-import AuthCallback from "@profile/pages/auth/AuthCallback";
-
-import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import AddEmployment from "@profile/pages/employment/AddEmployment";
 import EmploymentHistoryList from "@profile/pages/employment/EmploymentHistoryList";
 import AddProjectForm from "@profile/pages/projects/AddProjectForm";
 import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
 import ProjectDetails from "@profile/pages/projects/ProjectDetails";
-//import NavBar from "./components/NavigationBar/Navbar";
-//import BreadcrumbsBar from "./components/NavigationBar/BreadcrumbsBar";
 import ProfileDetails from "@profile/pages/profile/ProfileDetails";
-import MainLayout from "@profile/components/navigation/MainLayout";
 import Settings from "@profile/pages/profile/Settings";
+
+// Cover letter pages (kept using relative paths in repo layout)
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
+
+// Layouts and shared components
+import ProtectedRoute from "@shared/components/common/ProtectedRoute";
+import ProfileLayout from "@profile/ProfileLayout";
+
+// AI & Jobs workspaces
 import AiLayout from "@workspaces/ai/AiLayout";
 import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
 import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
 import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
 import JobsLayout from "@workspaces/jobs/JobsLayout";
-import PipelinePage from "@workspaces/jobs/pages/PipelinePage";
-import NewJobPage from "@workspaces/jobs/pages/NewJobPage";
-import DocumentsPage from "@workspaces/jobs/pages/DocumentsPage";
-import SavedSearchesPage from "@workspaces/jobs/pages/SavedSearchesPage";
-import AnalyticsPage from "@workspaces/jobs/pages/AnalyticsPage";
-import AddJobForm from "@workspaces/ai/components/JobMatch/AddJobForm";
+import PipelinePage from "./app/workspaces/jobs/pages/PipelinePage/PipelinePage";
+import NewJobPage from "./app/workspaces/jobs/pages/NewJobPage";
+import DocumentsPage from "./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage";
+import SavedSearchesPage from "./app/workspaces/jobs/pages/SavedSearchesPage";
+import AnalyticsPage from "./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
@@ -71,25 +82,35 @@ export const router = createBrowserRouter([
       { path: "analytics", element: <AnalyticsPage /> },
     ],
   },
-  //TESTING FOR NOW
+  // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.
+  { path: "/register", element: <Register /> },
   {
-    path: "/add-job-form",
+    path: "/cover-letters",
     element: (
       <ProtectedRoute>
-        <AddJobForm />
+        <ProfileLayout>
+          <CoverLetterTemplates />
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
-  { path: "/register", element: <Register /> },
-  { path: "/cover-letters", element: <CoverLetterTemplates /> },
-  { path: "/edit-cover-letters", element: <EditCoverLetter /> },
+  {
+    path: "/edit-cover-letters",
+    element: (
+      <ProtectedRoute>
+        <ProfileLayout>
+          <EditCoverLetter />
+        </ProfileLayout>
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/profile",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <Dashboard />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -97,9 +118,9 @@ export const router = createBrowserRouter([
     path: "/education",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <EducationOverview />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -107,9 +128,9 @@ export const router = createBrowserRouter([
     path: "/education/manage",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddEducation />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -117,9 +138,9 @@ export const router = createBrowserRouter([
     path: "/skillsOverview",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <SkillsOverview />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -131,9 +152,9 @@ export const router = createBrowserRouter([
     path: "/add-employment",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddEmployment />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -141,9 +162,9 @@ export const router = createBrowserRouter([
     path: "/add-skills",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddSkills />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -151,9 +172,9 @@ export const router = createBrowserRouter([
     path: "/skills/manage",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddSkills />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -162,9 +183,9 @@ export const router = createBrowserRouter([
     path: "/employment-history",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <EmploymentHistoryList />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -172,9 +193,9 @@ export const router = createBrowserRouter([
     path: "/portfolio",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <ProjectPortfolio />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -182,9 +203,9 @@ export const router = createBrowserRouter([
     path: "/certifications",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <Certifications />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -192,9 +213,9 @@ export const router = createBrowserRouter([
     path: "/profile-details",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <ProfileDetails />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -202,9 +223,9 @@ export const router = createBrowserRouter([
     path: "/settings",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <Settings />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -212,9 +233,9 @@ export const router = createBrowserRouter([
     path: "/projects/new",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddProjectForm />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -222,9 +243,9 @@ export const router = createBrowserRouter([
     path: "/projects/:id",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <ProjectDetails />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },
@@ -232,9 +253,9 @@ export const router = createBrowserRouter([
     path: "/projects/:id/edit",
     element: (
       <ProtectedRoute>
-        <MainLayout>
+        <ProfileLayout>
           <AddProjectForm />
-        </MainLayout>
+        </ProfileLayout>
       </ProtectedRoute>
     ),
   },

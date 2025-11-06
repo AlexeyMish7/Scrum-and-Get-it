@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { isMonthAfter } from "../../../../shared/utils/dateUtils";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { isMonthAfter } from "@shared/utils/dateUtils";
+import { useAuth } from "@shared/context/AuthContext";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 import {
   Box,
   Typography,
@@ -28,7 +28,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import "./AddEducation.css";
+// Removed CSS overrides to respect global theme; rely on MUI defaults
 
 // List of education levels users can choose from
 const degreeOptions = [
@@ -269,16 +269,16 @@ const AddEducation: React.FC = () => {
   }, [user, loading, handleError]); // Run this when user or loading status changes
 
   return (
-    // Main page container - centers content and adds padding
-    <Box className="education-page-container">
-      <Box className="education-content-wrapper">
+    // Layout-only styling: center content and add spacing; rely on theme for colors/visuals
+    <Box sx={{ width: "100%", minHeight: "100vh" }}>
+      <Box sx={{ maxWidth: 800, mx: "auto", p: 3 }}>
         {/* Page title */}
-        <Typography variant="h4" mb={2} className="education-page-title">
+        <Typography variant="h4" mb={2}>
           Education Manager
         </Typography>
 
         {/* Main form container with glassmorphism styling */}
-        <Paper className="education-form-container" elevation={0}>
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
           <Box sx={{ width: "100%" }}>
             {/* Form fields container with hover effects */}
             <Stack spacing={2}>
@@ -400,12 +400,8 @@ const AddEducation: React.FC = () => {
                 onChange={(e) => updateField("honors", e.target.value)}
               />
 
-              {/* Submit button with gradient and hover effects */}
-              <Button
-                variant="contained"
-                onClick={addEntry}
-                className="education-submit-button"
-              >
+              {/* Submit button */}
+              <Button variant="contained" color="primary" onClick={addEntry}>
                 Add Education
               </Button>
             </Stack>
@@ -413,16 +409,12 @@ const AddEducation: React.FC = () => {
         </Paper>
 
         {/* List of education entries the user has added */}
-        <Paper className="education-entries-container">
-          <Typography variant="subtitle1" className="education-entries-title">
-            Your entries
-          </Typography>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Typography variant="subtitle1">Your entries</Typography>
           <List disablePadding>
             {/* Show message if no entries exist yet */}
             {schoolList.length === 0 && (
-              <Typography variant="body2" className="education-no-entries">
-                No entries yet.
-              </Typography>
+              <Typography variant="body2">No entries yet.</Typography>
             )}
             {/* Display each education entry with delete button */}
             {schoolList.map((item, idx) => (
@@ -454,13 +446,11 @@ const AddEducation: React.FC = () => {
 
         {/* Confirmation dialog when user wants to delete an entry */}
         <Dialog open={!!removeId} onClose={() => setRemoveId(null)}>
-          <DialogTitle className="education-dialog-content">
-            Delete entry?
-          </DialogTitle>
-          <DialogContent className="education-dialog-content">
+          <DialogTitle>Delete entry?</DialogTitle>
+          <DialogContent>
             Are you sure you want to remove this education entry?
           </DialogContent>
-          <DialogActions className="education-dialog-content">
+          <DialogActions>
             <Button onClick={() => setRemoveId(null)}>Cancel</Button>
             <Button color="error" onClick={deleteEntry}>
               Delete

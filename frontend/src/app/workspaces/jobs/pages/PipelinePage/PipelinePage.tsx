@@ -1,6 +1,6 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useState } from "react";
-import RightDrawer from "../../../shared/components/common/RightDrawer";
+import RightDrawer from "@shared/components/common/RightDrawer";
 
 export default function PipelinePage() {
   const [open, setOpen] = useState(false);

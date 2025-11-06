@@ -279,11 +279,12 @@ const CoverLetterTemplates = () => {
 
           <Box
             sx={{
-              border: "1px solid #ccc",
+              border: 1,
+              borderColor: "divider",
               borderRadius: 2,
               p: 2,
               mt: 3,
-              bgcolor: "#fafafa",
+              bgcolor: "background.paper",
               minHeight: 200,
             }}
             dangerouslySetInnerHTML={{

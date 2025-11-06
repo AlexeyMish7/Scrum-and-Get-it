@@ -1,6 +1,6 @@
 import { responsiveFontSizes } from "@mui/material/styles";
 import createThemeFromTokens from "./factory";
-import lightPaletteTokens from "./lightPalette";
+import lightPaletteTokens from "./palettes/lightPalette";
 
 let theme = createThemeFromTokens(lightPaletteTokens);
 theme = responsiveFontSizes(theme);

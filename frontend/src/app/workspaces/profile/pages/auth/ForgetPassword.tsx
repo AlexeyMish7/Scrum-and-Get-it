@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../../../../shared/services/supabaseClient";
+import { supabase } from "@shared/services/supabaseClient";
 import {
   Button,
   TextField,
@@ -7,8 +7,15 @@ import {
   CardContent,
   Typography,
   Link as MuiLink,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Box,
 } from "@mui/material";
 import { Link } from "react-router-dom";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import { useThemeContext } from "@shared/context/ThemeContext";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -47,53 +54,81 @@ export default function ForgotPassword() {
     }
   };
 
+  const { mode, toggleMode } = useThemeContext();
+
   return (
-    <Card sx={{ maxWidth: 400, mx: "auto", mt: 8, p: 2 }}>
-      <CardContent>
-        <Typography variant="h5" gutterBottom>
-          Forgot Password
-        </Typography>
-        <form onSubmit={handleResetRequest} aria-live="polite">
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            sx={{ mb: 2 }}
-            disabled={loading}
-          />
-
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={loading}
-            fullWidth
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
+      }}
+    >
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ mb: 2 }}
+      >
+        <Toolbar>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            onClick={toggleMode}
+            aria-label="Toggle theme"
+            color="inherit"
           >
-            {loading ? "Sending..." : "Send Reset Link"}
-          </Button>
-        </form>
+            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
 
-        {message && (
-          <Typography
-            variant="body2"
-            sx={{ mt: 2, color: "green" }}
-            role="status"
-            aria-live="polite"
-          >
-            {message}
+      <Card sx={{ maxWidth: 400, mx: "auto", mt: 4, p: 2 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom>
+            Forgot Password
           </Typography>
-        )}
+          <form onSubmit={handleResetRequest} aria-live="polite">
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
+              disabled={loading}
+            />
 
-        <Typography variant="body2" sx={{ mt: 2 }}>
-          <MuiLink component={Link} to="/login">
-            Back to sign in
-          </MuiLink>
-        </Typography>
-      </CardContent>
-    </Card>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading}
+              fullWidth
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+            </Button>
+          </form>
+
+          {message && (
+            <Typography
+              variant="body2"
+              sx={{ mt: 2, color: "success.main" }}
+              role="status"
+              aria-live="polite"
+            >
+              {message}
+            </Typography>
+          )}
+
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            <MuiLink component={Link} to="/login">
+              Back to sign in
+            </MuiLink>
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }

@@ -15,6 +15,8 @@ interface ThemeContextValue {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
   toggleMode: () => void;
+  radiusMode: "tiny" | "default";
+  toggleRadiusMode: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -61,6 +63,11 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   const [mode, setModeState] = useState<ThemeMode>(
     () => readStoredMode() ?? detectPreferredMode()
   );
+  const [radiusMode, setRadiusMode] = useState<"tiny" | "default">(() => {
+    if (typeof window === "undefined") return "tiny";
+    const stored = window.localStorage.getItem("app.theme.radiusMode");
+    return stored === "default" ? "default" : "tiny";
+  });
 
   useEffect(() => {
     persistMode(mode);
@@ -70,6 +77,8 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       document.documentElement.style.colorScheme = mode;
     }
   }, [mode]);
+
+  const theme = mode === "dark" ? darkTheme : lightTheme;
 
   useEffect(() => {
     if (typeof window === "undefined" || readStoredMode() !== null) {
@@ -94,11 +103,46 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   }, []);
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ mode, setMode, toggleMode }),
-    [mode, setMode, toggleMode]
+    () => ({
+      mode,
+      setMode,
+      toggleMode,
+      radiusMode,
+      toggleRadiusMode: () =>
+        setRadiusMode((p) => (p === "tiny" ? "default" : "tiny")),
+    }),
+    [mode, setMode, toggleMode, radiusMode]
   );
 
-  const theme = mode === "dark" ? darkTheme : lightTheme;
+  // Apply corner radius mode via CSS variables overriding factory defaults
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    try {
+      window.localStorage.setItem("app.theme.radiusMode", radiusMode);
+    } catch {
+      // ignore storage errors
+    }
+    const root = document.documentElement;
+    const tokens = (
+      theme as unknown as {
+        designTokens?: {
+          effects?: {
+            borderRadius?: { sm?: number; md?: number; lg?: number };
+          };
+        };
+      }
+    ).designTokens;
+    const br = tokens?.effects?.borderRadius ?? { sm: 2, md: 4, lg: 6 };
+    if (radiusMode === "tiny") {
+      root.style.setProperty("--radius-sm", `2px`);
+      root.style.setProperty("--radius-md", `4px`);
+      root.style.setProperty("--radius-lg", `6px`);
+    } else {
+      root.style.setProperty("--radius-sm", `${br.sm ?? 2}px`);
+      root.style.setProperty("--radius-md", `${br.md ?? 4}px`);
+      root.style.setProperty("--radius-lg", `${br.lg ?? 6}px`);
+    }
+  }, [radiusMode, theme]);
 
   return (
     <ThemeContext.Provider value={value}>

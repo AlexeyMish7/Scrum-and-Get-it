@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useAuth } from "@shared/context/AuthContext";
+import { useThemeContext } from "@shared/context/ThemeContext";
 
 import {
   Box,
@@ -9,7 +10,13 @@ import {
   Typography,
   useTheme,
   Divider,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Link as MuiLink,
 } from "@mui/material";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -55,114 +62,142 @@ const Login = () => {
   };
 
   const theme = useTheme();
+  const { mode, toggleMode } = useThemeContext();
   return (
     <Box
       sx={{
-        maxWidth: 400,
-        mx: "auto",
-        mt: 10,
-        p: 4,
-        borderRadius: 3,
-        boxShadow: 2,
-        bgcolor: theme.palette.background.paper,
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
       }}
     >
-      <Typography
-        variant="h5"
-        textAlign="center"
-        fontWeight="bold"
-        mb={3}
-        color={theme.palette.text.primary}
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ mb: 2 }}
       >
-        Sign In
-      </Typography>
-
-      <Box component="form" onSubmit={submitLogin} aria-live="polite">
-        <TextField
-          type="email"
-          label="Email"
-          fullWidth
-          margin="normal"
-          value={userEmail}
-          onChange={(e) => setUserEmail(e.target.value)}
-          required
-          disabled={loading}
-        />
-
-        <TextField
-          type="password"
-          label="Password"
-          fullWidth
-          margin="normal"
-          value={userPassword}
-          onChange={(e) => setUserPassword(e.target.value)}
-          required
-          disabled={loading}
-        />
-
-        {loginError && (
-          <Typography
-            role="alert"
-            variant="body2"
-            color="error"
-            textAlign="center"
-            mt={1}
+        <Toolbar>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            onClick={toggleMode}
+            aria-label="Toggle theme"
+            color="inherit"
           >
-            {loginError}
-          </Typography>
-        )}
+            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      <Box
+        sx={{
+          maxWidth: 400,
+          mx: "auto",
+          mt: 4,
+          p: 4,
+          borderRadius: 3,
+          boxShadow: 2,
+          bgcolor: "background.paper",
+        }}
+      >
+        <Typography
+          variant="h5"
+          textAlign="center"
+          fontWeight="bold"
+          mb={3}
+          color={theme.palette.text.primary}
+        >
+          Sign In
+        </Typography>
+
+        <Box component="form" onSubmit={submitLogin} aria-live="polite">
+          <TextField
+            type="email"
+            label="Email"
+            fullWidth
+            margin="normal"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            required
+            disabled={loading}
+          />
+
+          <TextField
+            type="password"
+            label="Password"
+            fullWidth
+            margin="normal"
+            value={userPassword}
+            onChange={(e) => setUserPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+
+          {loginError && (
+            <Typography
+              role="alert"
+              variant="body2"
+              color="error"
+              textAlign="center"
+              mt={1}
+            >
+              {loginError}
+            </Typography>
+          )}
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            fullWidth
+            disabled={loading}
+            sx={{ mt: 3 }}
+          >
+            {loading ? "Signing in..." : "Log In"}
+          </Button>
+        </Box>
+
+        <Divider sx={{ my: 3 }}>OR</Divider>
 
         <Button
-          type="submit"
-          variant="contained"
-          color="primary"
+          onClick={handleGoogle}
+          variant="outlined"
+          color="secondary"
           fullWidth
-          disabled={loading}
-          sx={{ mt: 3 }}
         >
-          {loading ? "Signing in..." : "Log In"}
+          Sign in with Google
         </Button>
-      </Box>
 
-      <Divider sx={{ my: 3 }}>OR</Divider>
+        <Box textAlign="center" mt={2}>
+          <Typography variant="body2">
+            <MuiLink
+              component={RouterLink}
+              to="/forgot-password"
+              sx={{
+                color: "primary.main",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              Forgot password?
+            </MuiLink>
+          </Typography>
 
-      <Button
-        onClick={handleGoogle}
-        variant="outlined"
-        color="secondary"
-        fullWidth
-        disabled={loading}
-      >
-        Sign in with Google
-      </Button>
-
-      <Box textAlign="center" mt={2}>
-        <Typography variant="body2">
-          <Link
-            to="/forgot-password"
-            style={{
-              color: theme.palette.primary.main,
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
-          >
-            Forgot password?
-          </Link>
-        </Typography>
-
-        <Typography variant="body2" mt={1}>
-          Don’t have an account?{" "}
-          <Link
-            to="/register"
-            style={{
-              color: theme.palette.primary.main,
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
-          >
-            Register
-          </Link>
-        </Typography>
+          <Typography variant="body2" mt={1}>
+            Don’t have an account?{" "}
+            <MuiLink
+              component={RouterLink}
+              to="/register"
+              sx={{
+                color: "primary.main",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              Register
+            </MuiLink>
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

@@ -210,6 +210,21 @@ const getNavVariantStyles = (theme: Theme, highlight: boolean) => ({
 const TopNav = () => {
   const theme = useTheme();
   const { mode, toggleMode } = useThemeContext();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const appBarCfg = theme.designTokens?.palette.appBar;
+  const appBarBgBase = appBarCfg?.bg ?? theme.palette.background.default;
+  const appBarOpacity = appBarCfg?.glassOpacity ?? 0.85;
+  const appBarBlur = appBarCfg?.blur ?? 16;
+  const appBarColor = appBarCfg?.color ?? theme.palette.text.primary;
+  const appBarBorder = appBarCfg?.border ?? theme.palette.divider;
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -303,13 +318,17 @@ const TopNav = () => {
       color="transparent"
       elevation={0}
       sx={{
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        backgroundColor: alpha(theme.palette.background.default, 0.85),
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        backdropFilter: `blur(${appBarBlur}px)`,
+        WebkitBackdropFilter: `blur(${appBarBlur}px)`,
+        backgroundColor: alpha(
+          appBarBgBase,
+          Math.min(1, appBarOpacity + (scrolled ? 0.05 : 0))
+        ),
+        borderBottom: `1px solid ${alpha(appBarBorder, 0.6)}`,
+        color: appBarColor,
       }}
     >
-      <Toolbar sx={{ px: { xs: 2, md: 3 }, py: { xs: 1, md: 1.5 }, gap: 2 }}>
+      <Toolbar sx={{ px: { xs: 2, md: 3 }, py: { xs: 1, md: 1.25 }, gap: 2 }}>
         <Box
           component={NavLink}
           to="/profile"
@@ -326,7 +345,7 @@ const TopNav = () => {
             src={logo}
             alt="Flow ATS logo"
             sx={{
-              height: 44,
+              height: 52,
               width: "auto",
               filter: highlightAi
                 ? "drop-shadow(0 0 12px rgba(63,123,255,0.45))"
@@ -334,10 +353,13 @@ const TopNav = () => {
             }}
           />
           <Box>
-            <Typography variant="overline" sx={{ letterSpacing: "0.18em" }}>
+            <Typography
+              variant="overline"
+              sx={{ letterSpacing: "0.18em", fontSize: 12 }}
+            >
               Flow ATS
             </Typography>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h6" fontWeight={800}>
               {highlightAi ? "AI Workspace" : "Job Search Hub"}
             </Typography>
           </Box>
@@ -351,7 +373,15 @@ const TopNav = () => {
               color="inherit"
               startIcon={<WorkspacesIcon />}
               onClick={(event) => setWorkspaceAnchor(event.currentTarget)}
-              sx={getNavVariantStyles(theme, highlightAi)}
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightAi),
+                "& .MuiSvgIcon-root": { fontSize: 24 },
+                fontSize: 16,
+                px: 2,
+                py: 1,
+                borderRadius: 2,
+              }}
             >
               Workspaces
             </Button>
@@ -368,7 +398,15 @@ const TopNav = () => {
               color="inherit"
               startIcon={<BuildIcon />}
               onClick={(event) => setToolsAnchor(event.currentTarget)}
-              sx={getNavVariantStyles(theme, isToolsRoute)}
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, isToolsRoute),
+                "& .MuiSvgIcon-root": { fontSize: 24 },
+                fontSize: 16,
+                px: 2,
+                py: 1,
+                borderRadius: 2,
+              }}
             >
               Tools
             </Button>
@@ -392,6 +430,7 @@ const TopNav = () => {
                     backgroundColor: alpha(theme.palette.text.primary, 0.16),
                   },
                 }}
+                size="large"
               >
                 {themeToggleIcon}
               </IconButton>
@@ -440,6 +479,7 @@ const TopNav = () => {
           <IconButton
             color="inherit"
             onClick={handleDrawerToggle(true)}
+            size="large"
             sx={{ borderRadius: 2 }}
           >
             <MenuIcon />

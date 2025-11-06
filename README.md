@@ -7,6 +7,72 @@ _CS 490 Capstone Project – Fall 2025_
 
 ---
 
+## Quick start panel
+
+<div>
+<table border="1" cellpadding="8" cellspacing="0" width="100%">
+	<tr>
+		<td width="50%"><strong>🔀 Git workflow</strong>
+			<small><small><pre><code class="language-bash">
+git checkout main             # start from main
+git pull                      # get latest code
+
+git checkout -b feat/name # create new branch
+
+git add .
+git commit -m "feat:descr" # commit
+
+git pull --rebase origin main # update branch before push
+git push -u origin feat/name # push branch
+
+git rebase --continue # if conflicts during rebase:
+</code></pre></small></small>
+
+<p><small>Open a PR targeting <code>main</code> or the active integration branch. Attach screenshots and link related PRD items. Full guide: <a href="docs/development/workflow/branching.md">Branching workflow</a></small></p>
+</td>
+
+<td width="50%"><strong>🎨 Theme & frontend rules</strong>
+			<p><strong>Where:</strong> <code>frontend/src/app/shared/theme/</code> — edit palettes or <code>factory.ts</code>.</p>
+			<ul>
+				<li>Change visuals via tokens — edit <code>theme/palettes/*</code> or <code>factory.ts</code>. Don’t hardcode colors/radii/shadows/elevation.</li>
+				<li>Use MUI components and theme variants; use <code>sx</code> for layout only (spacing/sizing/display/positioning).</li>
+				<li>Prefer props (<code>variant</code>, <code>color</code>, <code>size</code>) over inline CSS; glow/depth/focus are palette-driven.</li>
+				<li>For DB code, use <code>useAuth()</code> + <code>withUser(user?.id)</code> to scope user-owned tables.</li>
+				<li>Guides: <a href="frontend/src/app/shared/theme/THEMING_GUIDE.md">Theming guide</a> • <a href="frontend/src/app/shared/theme/PALETTE_BLUEPRINT.md">Palette blueprint</a></li>
+			</ul>
+</td>
+
+</tr>
+<tr>
+	<td><strong>💼 Jobs workspace</strong>
+		<ul>
+			<li><strong>Path:</strong> <code>frontend/src/app/workspaces/jobs/</code></li>
+			<li>Focus: job entry, pipeline (Interested → Offer), deadlines, job details, URL import</li>
+			<li>Tip: match DB <code>public.jobs</code>; use <code>withUser(user.id)</code></li>
+			<li>More: <a href="docs/project-structure.md">Project structure</a></li>
+		</ul>
+	</td>
+	<td><strong>🤖 AI workspace</strong>
+		<ul>
+			<li><strong>Path:</strong> <code>frontend/src/app/workspaces/ai/</code></li>
+			<li>Focus: GenerateResume, GenerateCoverLetter, CompanyResearch, prompts, local AI theme</li>
+			<li>Tip: stub model calls; mock prompts in tests</li>
+			<li>More: <a href="docs/project-structure.md">Project structure</a></li>
+		</ul>
+	</td>
+</tr>
+
+</table>
+</div>
+
+---
+
+Links to full docs (also visible in the quadrants above):
+
+- Project structure (detailed): `docs/project-structure.md`
+- Theming guide: `frontend/src/app/shared/theme/THEMING_GUIDE.md`
+- Palette blueprint: `frontend/src/app/shared/theme/PALETTE_BLUEPRINT.md`
+
 ## 📚 **Documentation**
 
 > **🎯 [Complete Documentation Hub →](docs/README.md)**

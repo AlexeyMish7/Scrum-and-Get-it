@@ -1,18 +1,11 @@
 import { useEffect, useState, type FC } from "react";
 
 // MUI UI primitives + theming hook
-import {
-  Box,
-  Typography,
-  Avatar,
-  Button,
-  useTheme,
-  Divider,
-} from "@mui/material";
+import { Box, Typography, Avatar, Button, Divider } from "@mui/material";
 
-import Icon from "../../../../shared/components/common/Icon.tsx";
-import { useAuth } from "../../../../shared/context/AuthContext.tsx";
-import * as crud from "../../../../shared/services/crud.ts";
+import Icon from "@shared/components/common/Icon";
+import { useAuth } from "@shared/context/AuthContext";
+import * as crud from "@shared/services/crud";
 import type { EmploymentRow } from "../../types/employment.ts";
 import type { DbSkillRow } from "../../types/skill.ts";
 import type { DocumentRow } from "../../types/document.ts";
@@ -21,8 +14,8 @@ import {
   mapSkill,
   mapEducation,
   mapProject,
-} from "../../../../shared/services/dbMappers.ts";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner.tsx";
+} from "@shared/services/dbMappers";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 // Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {
   id: string;
@@ -91,8 +84,6 @@ import CareerTimeline from "../../components/profile/CareerTimeline.tsx";
 import ProfileStrengthTips from "../../components/profile/ProfileStrengthTips.tsx";
 
 const Dashboard: FC = () => {
-  const theme = useTheme();
-
   // Auth
   const { user, loading } = useAuth();
 
@@ -553,7 +544,6 @@ const Dashboard: FC = () => {
       sx={{
         width: "100%",
         minHeight: "100vh",
-        backgroundColor: theme.palette.grey[50],
       }}
     >
       {/* --- DASHBOARD HEADER --- */}
@@ -562,15 +552,11 @@ const Dashboard: FC = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          backgroundColor: "#fff",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          boxShadow: 1,
           p: 3,
         }}
       >
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+          <Avatar>
             {displayName ? displayName.charAt(0).toUpperCase() : "U"}
           </Avatar>
           <Box>
@@ -587,11 +573,11 @@ const Dashboard: FC = () => {
           variant="contained"
           startIcon={<Icon name="Download" color="inherit" />}
           onClick={handleExport}
-          sx={{ borderRadius: 2, textTransform: "none" }}
         >
           Export Profile
         </Button>
       </Box>
+      <Divider />
 
       {/* --- DASHBOARD CONTENT --- */}
       <Box sx={{ p: 4, maxWidth: "1200px", margin: "0 auto" }}>

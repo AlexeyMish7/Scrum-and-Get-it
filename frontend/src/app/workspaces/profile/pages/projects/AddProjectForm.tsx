@@ -13,21 +13,25 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Box,
+  Paper,
+  Stack,
 } from "@mui/material";
+// Use Stack/Box for responsive layout to avoid Grid dependency issues
 import ReactCrop, {
   type Crop,
   centerCrop,
   makeAspectCrop,
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { supabase } from "../../../../shared/services/supabaseClient";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { supabase } from "@shared/services/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
-import "./Projects.css";
+// Removed CSS overrides; rely on MUI theme for visuals
 
 // Form for adding new projects or editing existing ones
 const AddProjectForm: React.FC = () => {
@@ -373,9 +377,7 @@ const AddProjectForm: React.FC = () => {
       // Create document record for uploaded file
       if (mediaPath && mediaFile) {
         try {
-          const userCrudModule = await import(
-            "../../../../shared/services/crud"
-          );
+          const userCrudModule = await import("@shared/services/crud");
           const userCrud = userCrudModule.withUser(user.id);
           const createdRow = res.data as ProjectRow | null;
           const createdId = createdRow?.id ?? null;
@@ -435,43 +437,36 @@ const AddProjectForm: React.FC = () => {
   };
 
   return (
-    <div className="projects-container">
-      <div className="projects-content-wrapper">
-        <div className="projects-form-container">
-          <Typography variant="h5" className="projects-form-title">
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Box sx={{ maxWidth: 960, mx: "auto" }}>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h5" mb={2}>
             {editingId ? "Edit Project" : "Add Project"}
           </Typography>
 
-          <form onSubmit={handleSubmit} className="projects-form">
-            <div className="projects-form-fields">
-              {/* Project Name - Required field */}
-              <div className="projects-form-field">
-                <TextField
-                  label="Project Name"
-                  name="projectName"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  fullWidth
-                  required
-                />
-              </div>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Stack spacing={2}>
+              <TextField
+                label="Project Name"
+                name="projectName"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                fullWidth
+                required
+              />
 
-              {/* Description - Multi-line text area */}
-              <div className="projects-form-field">
-                <TextField
-                  label="Description"
-                  name="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  fullWidth
-                  multiline
-                  rows={4}
-                />
-              </div>
+              <TextField
+                label="Description"
+                name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                fullWidth
+                multiline
+                rows={4}
+              />
 
-              {/* Role and Date fields in a row */}
-              <div className="projects-form-row">
-                <div className="projects-form-field">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
                   <TextField
                     label="Your Role"
                     name="role"
@@ -479,9 +474,8 @@ const AddProjectForm: React.FC = () => {
                     onChange={(e) => setRole(e.target.value)}
                     fullWidth
                   />
-                </div>
-
-                <div className="projects-form-field projects-date-field">
+                </Box>
+                <Box sx={{ width: { xs: "100%", sm: "50%", md: 240 } }}>
                   <TextField
                     label="Start Date"
                     name="startDate"
@@ -492,9 +486,8 @@ const AddProjectForm: React.FC = () => {
                     fullWidth
                     required
                   />
-                </div>
-
-                <div className="projects-form-field projects-date-field">
+                </Box>
+                <Box sx={{ width: { xs: "100%", sm: "50%", md: 240 } }}>
                   <TextField
                     label="End Date"
                     name="endDate"
@@ -504,34 +497,27 @@ const AddProjectForm: React.FC = () => {
                     onChange={(e) => setEndDate(e.target.value)}
                     fullWidth
                   />
-                </div>
-              </div>
+                </Box>
+              </Stack>
 
-              {/* Technologies - Comma separated list */}
-              <div className="projects-form-field">
-                <TextField
-                  label="Technologies (comma separated)"
-                  name="technologies"
-                  value={technologies}
-                  onChange={(e) => setTechnologies(e.target.value)}
-                  fullWidth
-                />
-              </div>
+              <TextField
+                label="Technologies (comma separated)"
+                name="technologies"
+                value={technologies}
+                onChange={(e) => setTechnologies(e.target.value)}
+                fullWidth
+              />
 
-              {/* Project URL - Optional link */}
-              <div className="projects-form-field">
-                <TextField
-                  label="Project URL"
-                  name="projectUrl"
-                  value={projectUrl}
-                  onChange={(e) => setProjectUrl(e.target.value)}
-                  fullWidth
-                />
-              </div>
+              <TextField
+                label="Project URL"
+                name="projectUrl"
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+                fullWidth
+              />
 
-              {/* Team Size and Details in a row */}
-              <div className="projects-form-row">
-                <div className="projects-form-field projects-team-size-field">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
                   <TextField
                     label="Team Size"
                     name="teamSize"
@@ -539,9 +525,8 @@ const AddProjectForm: React.FC = () => {
                     onChange={(e) => setTeamSize(e.target.value)}
                     fullWidth
                   />
-                </div>
-
-                <div className="projects-form-field">
+                </Box>
+                <Box sx={{ flex: 1 }}>
                   <TextField
                     label="Team Details"
                     name="teamDetails"
@@ -549,34 +534,31 @@ const AddProjectForm: React.FC = () => {
                     onChange={(e) => setTeamDetails(e.target.value)}
                     fullWidth
                   />
-                </div>
-              </div>
+                </Box>
+              </Stack>
 
-              {/* Industry and Outcomes */}
-              <div className="projects-form-field">
-                <TextField
-                  label="Industry / Project Type"
-                  name="industry"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  fullWidth
-                />
-              </div>
+              <TextField
+                label="Industry / Project Type"
+                name="industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                fullWidth
+              />
 
-              <div className="projects-form-field">
-                <TextField
-                  label="Outcomes / Achievements"
-                  name="outcomes"
-                  value={outcomes}
-                  onChange={(e) => setOutcomes(e.target.value)}
-                  fullWidth
-                />
-              </div>
+              <TextField
+                label="Outcomes / Achievements"
+                name="outcomes"
+                value={outcomes}
+                onChange={(e) => setOutcomes(e.target.value)}
+                fullWidth
+              />
 
-              {/* Status and File Upload Section */}
-              <div className="projects-form-row projects-upload-section">
-                {/* Status dropdown */}
-                <div className="projects-form-field projects-status-field">
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                alignItems="flex-start"
+              >
+                <Box sx={{ width: { xs: "100%", sm: 240 } }}>
                   <FormControl fullWidth>
                     <InputLabel id="status-label">Status</InputLabel>
                     <Select
@@ -591,110 +573,116 @@ const AddProjectForm: React.FC = () => {
                       <MenuItem value="completed">Completed</MenuItem>
                     </Select>
                   </FormControl>
-                </div>
-
-                {/* File upload and preview controls */}
-                <div className="projects-form-field projects-upload-field">
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    fullWidth
-                    className="projects-upload-btn"
-                  >
-                    {mediaFile
-                      ? `Selected: ${mediaFile.name}`
-                      : "Upload Screenshot"}
-                    <input
-                      hidden
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      type="file"
-                      onChange={handleFileChange}
-                    />
-                  </Button>
-
-                  {/* Preview controls */}
-                  <div className="projects-preview-controls">
-                    <div className="projects-form-field projects-preview-shape-field">
-                      <FormControl size="small" fullWidth>
-                        <InputLabel id="preview-shape-label">
-                          Preview
-                        </InputLabel>
-                        <Select
-                          labelId="preview-shape-label"
-                          value={previewShape}
-                          label="Preview"
-                          onChange={(e) =>
-                            setPreviewShape(
-                              e.target.value as "rounded" | "circle"
-                            )
-                          }
-                        >
-                          <MenuItem value="rounded">Rounded</MenuItem>
-                          <MenuItem value="circle">Circle</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </div>
-
-                    {mediaFile && (
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            setImgSrc(reader.result as string);
-                            setShowCropDialog(true);
-                          };
-                          reader.readAsDataURL(mediaFile);
-                        }}
-                        className="projects-btn-secondary"
-                      >
-                        Crop Image
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Image preview */}
-                  {previewSrc && (
-                    <div className="projects-image-preview">
-                      <img
-                        src={previewSrc}
-                        alt="preview"
-                        className={`projects-preview-image ${
-                          previewShape === "circle" ? "circle" : ""
-                        }`}
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Stack spacing={1}>
+                    <Button variant="outlined" component="label" fullWidth>
+                      {mediaFile
+                        ? `Selected: ${mediaFile.name}`
+                        : "Upload Screenshot"}
+                      <input
+                        hidden
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        type="file"
+                        onChange={handleFileChange}
                       />
-                    </div>
-                  )}
-                </div>
-              </div>
+                    </Button>
 
-              {/* Form Actions */}
-              <div className="projects-form-actions">
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      alignItems="center"
+                    >
+                      <Box sx={{ width: { xs: "100%", sm: 200 } }}>
+                        <FormControl size="small" fullWidth>
+                          <InputLabel id="preview-shape-label">
+                            Preview
+                          </InputLabel>
+                          <Select
+                            labelId="preview-shape-label"
+                            value={previewShape}
+                            label="Preview"
+                            onChange={(e) =>
+                              setPreviewShape(
+                                e.target.value as "rounded" | "circle"
+                              )
+                            }
+                          >
+                            <MenuItem value="rounded">Rounded</MenuItem>
+                            <MenuItem value="circle">Circle</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                      {mediaFile && (
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setImgSrc(reader.result as string);
+                              setShowCropDialog(true);
+                            };
+                            reader.readAsDataURL(mediaFile);
+                          }}
+                        >
+                          Crop Image
+                        </Button>
+                      )}
+                    </Stack>
+
+                    {previewSrc && (
+                      <Box sx={{ mt: 1 }}>
+                        <img
+                          src={previewSrc}
+                          alt="preview"
+                          style={
+                            {
+                              width: 96,
+                              height: 96,
+                              objectFit: "cover",
+                              borderRadius:
+                                previewShape === "circle" ? "50%" : 8,
+                              border: "1px solid",
+                              borderColor:
+                                "var(--color-divider, rgba(0,0,0,0.12))",
+                            } as React.CSSProperties
+                          }
+                        />
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+              </Stack>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  justifyContent: "flex-end",
+                  mt: 1,
+                }}
+              >
                 <Button
                   type="submit"
                   disabled={submitting}
                   startIcon={submitting ? <CircularProgress size={18} /> : null}
-                  className="projects-btn-glossy projects-btn-large"
+                  variant="contained"
                 >
                   {submitting ? "Saving..." : "Save Project"}
                 </Button>
-
-                <Button
-                  onClick={() => navigate(-1)}
-                  className="projects-btn-secondary"
-                >
+                <Button onClick={() => navigate(-1)} variant="outlined">
                   Cancel
                 </Button>
-              </div>
-            </div>
-          </form>
+              </Box>
+            </Stack>
+          </Box>
 
           <ErrorSnackbar
             notification={notification}
             onClose={closeNotification}
           />
-        </div>
-      </div>
+        </Paper>
+      </Box>
 
       {/* Crop Dialog */}
       <Dialog
@@ -702,12 +690,9 @@ const AddProjectForm: React.FC = () => {
         onClose={() => setShowCropDialog(false)}
         maxWidth="md"
         fullWidth
-        className="projects-dialog"
       >
-        <DialogTitle className="projects-dialog-title">
-          Crop Your Image
-        </DialogTitle>
-        <DialogContent className="projects-dialog-content">
+        <DialogTitle>Crop Your Image</DialogTitle>
+        <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
             Drag to select the area you want to use for your project preview.
           </Typography>
@@ -717,13 +702,13 @@ const AddProjectForm: React.FC = () => {
               onChange={(_, percentCrop) => setCrop(percentCrop)}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={previewShape === "circle" ? 1 : 16 / 9}
-              className="projects-crop-container"
             >
-              <img
+              <Box
+                component="img"
                 src={imgSrc}
                 onLoad={onImageLoad}
                 alt="Crop preview"
-                style={{ maxWidth: "100%", maxHeight: "400px" }}
+                sx={{ maxWidth: "100%", maxHeight: 400 }}
               />
             </ReactCrop>
           )}
@@ -731,20 +716,21 @@ const AddProjectForm: React.FC = () => {
         <DialogActions>
           <Button
             onClick={() => setShowCropDialog(false)}
-            className="projects-btn-secondary"
+            variant="text"
+            color="inherit"
           >
             Cancel
           </Button>
           <Button
             onClick={handleCropComplete}
             disabled={!completedCrop}
-            className="projects-btn-glossy"
+            variant="contained"
           >
             Apply Crop
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 };
 

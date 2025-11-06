@@ -3,7 +3,6 @@ import { TextField, Button, MenuItem, Box, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-// Uses the global ThemeContext (dark/light). No local ThemeProvider here.
 import { useAuth } from "@shared/context/AuthContext";
 import { createJob } from "@shared/services/dbMappers";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
@@ -39,7 +38,6 @@ export default function JobForm() {
     job_type: "",
   });
 
-  // Notifications (success/error) are shown centrally via useErrorHandler()
   const [saving, setSaving] = useState(false);
 
   const { user } = useAuth();
@@ -76,7 +74,6 @@ export default function JobForm() {
         handleError(res.error);
       } else {
         showSuccess("Job saved successfully!");
-        // clear form
         handleCancel();
       }
     } catch (e) {
@@ -116,7 +113,7 @@ export default function JobForm() {
         bgcolor: "background.paper",
       }}
     >
-      <Typography variant="h4" gutterBottom className="ai-glow">
+      <Typography variant="h4" gutterBottom>
         Add Job Opportunity
       </Typography>
 
@@ -257,10 +254,8 @@ export default function JobForm() {
         </Box>
       </Box>
 
-      {/* Centralized notification (errors, warnings, success) */}
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
 
-      {/* Confirm cancel dialog */}
       <ConfirmDialog
         open={confirmOpen}
         title="Discard changes?"

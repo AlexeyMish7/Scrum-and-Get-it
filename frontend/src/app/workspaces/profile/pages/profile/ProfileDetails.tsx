@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  Box,
   TextField,
   MenuItem,
   Typography,
@@ -8,10 +9,10 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import { useAuth } from "../../../../shared/context/AuthContext";
-import ProfilePicture from "../../../../shared/components/common/ProfilePicture";
+import { useAuth } from "@shared/context/AuthContext";
+import ProfilePicture from "@shared/components/common/ProfilePicture";
 import profileService from "../../services/profileService";
-import "./ProfileDetails.css";
+// Note: removed legacy ProfileDetails.css to rely on theme tokens and MUI sx props
 import type { ProfileData } from "../../types/profile";
 
 const industries = [
@@ -228,18 +229,19 @@ const ProfileDetails: React.FC = () => {
   };
 
   return (
-    <div className="profile-container">
-      <Paper className="profile-paper">
-        <Typography className="profile-header" variant="h4" gutterBottom>
+    <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, sm: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+        <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
           {editMode ? "Edit Profile" : "Profile Details"}
         </Typography>
 
         {editMode ? (
           <>
-            {/* ---- EDIT MODE ---- */}
             <ProfilePicture />
-            <div className="profile-row">
-              <div className="profile-col">
+
+            {/* Row: Full name + Email */}
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+              <Box sx={{ flex: 1, minWidth: 240 }}>
                 <TextField
                   label="Full Name"
                   name="fullName"
@@ -250,8 +252,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.fullName}
                   helperText={errors.fullName}
                 />
-              </div>
-              <div className="profile-col">
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 240 }}>
                 <TextField
                   label="Email"
                   name="email"
@@ -265,11 +267,12 @@ const ProfileDetails: React.FC = () => {
                   disabled
                   inputProps={{ "aria-readonly": true }}
                 />
-              </div>
-            </div>
+              </Box>
+            </Box>
 
-            <div className="profile-row profile-single">
-              <div className="profile-col">
+            {/* Row: Phone / City / State */}
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+              <Box sx={{ flex: 1, minWidth: 200 }}>
                 <TextField
                   label="Phone"
                   name="phone"
@@ -280,8 +283,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.phone}
                   helperText={errors.phone}
                 />
-              </div>
-              <div className="profile-col-sm">
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 160 }}>
                 <TextField
                   label="City"
                   name="city"
@@ -292,8 +295,8 @@ const ProfileDetails: React.FC = () => {
                   error={!!errors.city}
                   helperText={errors.city}
                 />
-              </div>
-              <div className="profile-col-sm">
+              </Box>
+              <Box sx={{ width: 160 }}>
                 <TextField
                   select
                   label="State"
@@ -311,10 +314,10 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </div>
-            </div>
+              </Box>
+            </Box>
 
-            <div className="profile-single">
+            <Box sx={{ mb: 2 }}>
               <TextField
                 label="Professional Headline / Title"
                 name="headline"
@@ -325,9 +328,9 @@ const ProfileDetails: React.FC = () => {
                 error={!!errors.headline}
                 helperText={errors.headline}
               />
-            </div>
+            </Box>
 
-            <div className="profile-single">
+            <Box sx={{ mb: 2 }}>
               <TextField
                 label="Brief Bio / Summary"
                 name="bio"
@@ -339,10 +342,10 @@ const ProfileDetails: React.FC = () => {
                 inputProps={{ maxLength: 500 }}
                 helperText={`${bioCount} / 500 characters`}
               />
-            </div>
+            </Box>
 
-            <div className="profile-row profile-single">
-              <div className="profile-col">
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+              <Box sx={{ flex: 1, minWidth: 240 }}>
                 <TextField
                   select
                   label="Industry"
@@ -360,8 +363,8 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </div>
-              <div className="profile-col">
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 240 }}>
                 <TextField
                   select
                   label="Experience Level"
@@ -379,26 +382,25 @@ const ProfileDetails: React.FC = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-              </div>
-            </div>
+              </Box>
+            </Box>
 
-            <div className="actions">
-              <Button className="btn btn-secondary" onClick={handleCancel}>
+            <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
+              <Button variant="outlined" onClick={handleCancel}>
                 Cancel
               </Button>
               <Button
-                className="btn btn-primary"
+                variant="contained"
                 onClick={handleSave}
                 disabled={saving}
               >
                 {saving ? "Saving..." : "Save"}
               </Button>
-            </div>
+            </Box>
           </>
         ) : (
           <>
-            {/* ---- VIEW MODE ---- */}
-            <div className="profile-single">
+            <Box sx={{ mb: 2 }}>
               <Typography variant="h6">Basic Information</Typography>
               <Typography>
                 <strong>Full Name:</strong> {formData.fullName || "—"}
@@ -413,9 +415,9 @@ const ProfileDetails: React.FC = () => {
                 <strong>Location:</strong>{" "}
                 {`${formData.city || "—"}, ${formData.state || "—"}`}
               </Typography>
-            </div>
+            </Box>
 
-            <div className="profile-single">
+            <Box sx={{ mb: 2 }}>
               <Typography variant="h6">Professional Details</Typography>
               <Typography>
                 <strong>Headline:</strong> {formData.headline || "—"}
@@ -426,20 +428,17 @@ const ProfileDetails: React.FC = () => {
               <Typography>
                 <strong>Experience:</strong> {formData.experience || "—"}
               </Typography>
-              <Typography className="bio-title">
+              <Typography sx={{ mt: 1 }}>
                 <strong>Bio:</strong>
               </Typography>
               <Typography variant="body2">{formData.bio || "—"}</Typography>
-            </div>
+            </Box>
 
-            <div className="actions" style={{ marginTop: 16 }}>
-              <Button
-                className="btn btn-primary"
-                onClick={() => setEditMode(true)}
-              >
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+              <Button variant="contained" onClick={() => setEditMode(true)}>
                 Edit
               </Button>
-            </div>
+            </Box>
           </>
         )}
       </Paper>
@@ -453,7 +452,7 @@ const ProfileDetails: React.FC = () => {
         <Alert
           onClose={() => setOpenSnackbar(false)}
           severity="success"
-          className="full-width-alert"
+          sx={{ width: "100%" }}
         >
           Profile saved successfully!
         </Alert>
@@ -467,12 +466,12 @@ const ProfileDetails: React.FC = () => {
         <Alert
           onClose={() => setOpenErrorSnackbar(false)}
           severity="error"
-          className="full-width-alert"
+          sx={{ width: "100%" }}
         >
           {errorMsg || "Failed to save profile"}
         </Alert>
       </Snackbar>
-    </div>
+    </Box>
   );
 };
 

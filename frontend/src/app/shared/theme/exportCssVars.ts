@@ -24,6 +24,7 @@ export function exportCssVars(tokens: DesignTokens) {
   root.style.setProperty("--on-success", p.onSuccess);
   root.style.setProperty("--color-warning", p.warning);
   root.style.setProperty("--on-warning", p.onWarning);
+  root.style.setProperty("--color-divider", p.divider);
   if (p.gradientPrimary)
     root.style.setProperty("--gradient-primary", p.gradientPrimary);
   if (p.gradientAccent)

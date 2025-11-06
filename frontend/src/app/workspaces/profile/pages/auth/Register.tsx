@@ -1,12 +1,12 @@
 // React state + router imports
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 // Supabase client instance (handles all database/auth requests)
-import { supabase } from "../../../../shared/services/supabaseClient";
+import { supabase } from "@shared/services/supabaseClient";
 
 // Custom authentication context for managing session + signup logic
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 
 // MUI imports for styling + theme integration
 import {
@@ -18,7 +18,14 @@ import {
   Stack,
   Alert,
   CircularProgress,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Link as MuiLink,
 } from "@mui/material";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import { useThemeContext } from "@shared/context/ThemeContext";
 // Uses global ThemeContext; no local ThemeProvider/CssBaseline here.
 
 // Type for our registration form fields
@@ -62,6 +69,8 @@ export default function Register() {
     setInfo("");
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+
+  const { mode, toggleMode } = useThemeContext();
 
   // Validation that collects ALL errors instead of returning early
   const validate = (): string => {
@@ -171,13 +180,28 @@ export default function Register() {
     <Box
       sx={{
         minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "background.default",
-        padding: 2,
+        bgcolor: "background.default",
+        color: "text.primary",
       }}
     >
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ mb: 2 }}
+      >
+        <Toolbar>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            onClick={toggleMode}
+            aria-label="Toggle theme"
+            color="inherit"
+          >
+            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
       <Paper
         elevation={4}
         sx={{
@@ -186,6 +210,7 @@ export default function Register() {
           maxWidth: 450,
           width: "100%",
           textAlign: "center",
+          mx: "auto",
         }}
       >
         <Typography variant="h3" mb={3}>
@@ -252,7 +277,7 @@ export default function Register() {
           {/* Disable submit button while loading */}
           <Button
             type="submit"
-            variant="primary"
+            variant="contained"
             disabled={loading}
             sx={{ mt: 1 }}
           >
@@ -266,12 +291,13 @@ export default function Register() {
           {/* Link to login for existing users */}
           <Typography variant="body2">
             Already have an account?{" "}
-            <Link
+            <MuiLink
+              component={RouterLink}
               to="/Login"
-              style={{ textDecoration: "none", color: "#1976D2" }}
+              sx={{ textDecoration: "none", color: "primary.main" }}
             >
               Sign in
-            </Link>
+            </MuiLink>
           </Typography>
         </Stack>
 
@@ -284,7 +310,7 @@ export default function Register() {
             setLoading(false);
             if (!res.ok) setError(res.message || "OAuth error");
           }}
-          variant="tertiary"
+          variant="outlined"
           disabled={loading}
           sx={{ mt: 2 }}
           fullWidth

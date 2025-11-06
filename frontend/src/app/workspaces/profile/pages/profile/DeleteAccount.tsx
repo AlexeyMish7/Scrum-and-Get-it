@@ -11,9 +11,9 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { supabase } from "../../../../shared/services/supabaseClient";
-import crud from "../../../../shared/services/crud";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { supabase } from "@shared/services/supabaseClient";
+import crud from "@shared/services/crud";
+import { useAuth } from "@shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const DeleteAccount: React.FC = () => {

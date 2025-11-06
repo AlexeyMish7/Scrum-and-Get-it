@@ -4,7 +4,7 @@ import {
   skillCategoryOptions,
 } from "../../../../constants/skills";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../shared/context/AuthContext";
+import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
 import type {
   SkillItem,
@@ -14,8 +14,8 @@ import type {
   Skill,
   Category,
 } from "../../types/skill.ts";
-import { useErrorHandler } from "../../../../shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "../../../../shared/components/common/ErrorSnackbar";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 import {
   Box,
   Card,
@@ -27,9 +27,8 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import LoadingSpinner from "../../../../shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import "./SkillsOverview.css";
 
 /*
   SkillsOverview — plain-language notes
@@ -530,112 +529,146 @@ const SkillsOverview: React.FC = () => {
   if (isLoading || loading) return <LoadingSpinner />;
 
   return (
-    <Box className="skills-overview">
-      {/* ✅ Button moved ABOVE the title */}
-      <Button
-        variant="primary"
-        className="glossy-btn"
-        onClick={() => navigate("/skills/manage")}
-      >
-        Manage skills
-      </Button>
+    <Box sx={{ width: "100%", p: 3 }}>
+      <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <Button
+            variant="contained"
+            onClick={() => navigate("/skills/manage")}
+          >
+            Manage skills
+          </Button>
+          <Stack direction="row" spacing={2}>
+            <TextField
+              aria-label="Search skills"
+              label="Search skills..."
+              variant="outlined"
+              size="small"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Button variant="outlined" onClick={handleExport}>
+              Export Skills
+            </Button>
+          </Stack>
+        </Stack>
 
-      <div className="skills-header">
-        <Typography variant="h2" className="glossy-title">
-          Skills Overview
-        </Typography>
-        <Typography className="glossy-subtitle">
-          Organize and reorder your skills.
-        </Typography>
-      </div>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h3">Skills Overview</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Organize and reorder your skills.
+          </Typography>
+        </Box>
 
-      <Stack direction="row" spacing={2} mb={3} className="skills-actions">
-        <TextField
-          aria-label="Search skills"
-          label="Search skills..."
-          variant="outlined"
-          size="small"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Button variant="secondary" onClick={handleExport}>
-          Export Skills
-        </Button>
-      </Stack>
+        <DragDropContext
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragUpdate={handleDragUpdate}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 1fr",
+                md: "1fr 1fr 1fr",
+                lg: "1fr 1fr 1fr 1fr",
+              },
+            }}
+          >
+            {filteredCategories.map((category) => {
+              const avgLevel =
+                category.skills.length > 0
+                  ? (
+                      category.skills.reduce(
+                        (sum, s) => sum + (s?.level ?? 0),
+                        0
+                      ) / category.skills.length
+                    ).toFixed(1)
+                  : "N/A";
 
-      <DragDropContext
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragUpdate={handleDragUpdate}
-      >
-        <div className="skills-columns">
-          {filteredCategories.map((category) => {
-            const avgLevel =
-              category.skills.length > 0
-                ? (
-                    category.skills.reduce(
-                      (sum, s) => sum + (s?.level ?? 0),
-                      0
-                    ) / category.skills.length
-                  ).toFixed(1)
-                : "N/A";
-
-            return (
-              <Droppable key={category.id} droppableId={category.id}>
-                {(provided: DroppableProvided) => (
-                  <Card
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="glossy-card skills-column"
-                  >
-                    <CardHeader
-                      title={`${category.name} (${category.skills.length})`}
-                      subheader={`Avg Level: ${avgLevel}`}
-                    />
-                    <Divider />
-                    <CardContent className="skills-column-content" role="list">
-                      {category.skills.length === 0 && (
-                        <Typography color="text.secondary" fontStyle="italic">
-                          No skills found.
-                        </Typography>
-                      )}
-                      {category.skills.map((skill, index) => (
-                        <Draggable
-                          key={skill.id}
-                          draggableId={skill.id}
-                          index={index}
-                        >
-                          {(provided: DraggableProvided) => (
-                            <Box
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="skill-item"
-                              role="listitem"
-                              tabIndex={0}
-                            >
-                              <Typography>{skill.name}</Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
+              return (
+                <Droppable key={category.id} droppableId={category.id}>
+                  {(provided: DroppableProvided) => (
+                    <Card
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      variant="outlined"
+                    >
+                      <CardHeader
+                        title={`${category.name} (${category.skills.length})`}
+                        subheader={`Avg Level: ${avgLevel}`}
+                      />
+                      <Divider />
+                      <CardContent
+                        role="list"
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        {category.skills.length === 0 && (
+                          <Typography color="text.secondary" fontStyle="italic">
+                            No skills found.
+                          </Typography>
+                        )}
+                        {category.skills.map((skill, index) => (
+                          <Draggable
+                            key={skill.id}
+                            draggableId={skill.id}
+                            index={index}
+                          >
+                            {(provided: DraggableProvided) => (
+                              <Box
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                role="listitem"
+                                tabIndex={0}
+                                sx={{
+                                  border: "1px solid",
+                                  borderColor: "divider",
+                                  borderRadius: 1,
+                                  p: 1,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 1,
+                                }}
                               >
-                                Level: {levelLabels[skill.level] || "Unknown"}
-                              </Typography>
-                            </Box>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </CardContent>
-                  </Card>
-                )}
-              </Droppable>
-            );
-          })}
-        </div>
-      </DragDropContext>
-      {/* Global error/success snackbar (centralized) */}
-      <ErrorSnackbar notification={notification} onClose={closeNotification} />
+                                <Typography>{skill.name}</Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Level: {levelLabels[skill.level] || "Unknown"}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </CardContent>
+                    </Card>
+                  )}
+                </Droppable>
+              );
+            })}
+          </Box>
+        </DragDropContext>
+        {/* Global error/success snackbar (centralized) */}
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
+        />
+      </Box>
     </Box>
   );
 };
