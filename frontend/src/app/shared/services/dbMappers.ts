@@ -204,6 +204,10 @@ export const mapJob = (
     job_type: (formData.job_type as string) ?? null,
     // Default pipeline status when creating a job if not provided
     job_status: (formData.job_status as string) ?? "Interested",
+    // Track when the status last changed. If caller provided one, use it;
+    // otherwise set to now when creating/updating via the mapper.
+    status_changed_at:
+      (formData.status_changed_at as string) ?? new Date().toISOString(),
   };
 
   return { payload };
