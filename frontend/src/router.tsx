@@ -26,7 +26,6 @@ import MainLayout from "@profile/components/navigation/MainLayout";
 import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
-import AiThemeShowcase from "@workspaces/ai/theme/AiThemeShowcase";
 import AiLayout from "@workspaces/ai/AiLayout";
 import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
 import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
@@ -41,8 +40,6 @@ import AddJobForm from "@workspaces/ai/components/JobMatch/AddJobForm";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
-  // Public AI theme showcase
-  { path: "/ai/theme", element: <AiThemeShowcase /> },
   // AI workspace (scoped theme). Index route shows a simple AI landing.
   {
     path: "/ai",

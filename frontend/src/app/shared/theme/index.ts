@@ -1,5 +1,5 @@
-import profileTheme from "@profile/theme/theme";
-import aiTheme from "@workspaces/ai/theme/aiTheme";
+import profileTheme from "@/app/shared/theme/lightTheme";
+import aiTheme from "@/app/shared/theme/darkTheme";
 
 export type ThemeMode = "light" | "dark";
 
