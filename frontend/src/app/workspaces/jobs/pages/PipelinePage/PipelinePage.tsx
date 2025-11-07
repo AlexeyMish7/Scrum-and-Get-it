@@ -22,6 +22,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import type { ListOptions } from "@shared/services/types";
 import { listJobs, updateJob } from "@shared/services/dbMappers";
+import JobDetails from "../../components/JobDetails/JobDetails";
 
 const STAGES = [
   "Interested",
@@ -42,6 +43,9 @@ export default function PipelinePage() {
     useErrorHandler();
 
   const [open, setOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
+    null
+  );
   const [jobsByStage, setJobsByStage] = useState<Record<Stage, JobRow[]>>(() =>
     STAGES.reduce<Record<Stage, JobRow[]>>((acc, s) => {
       acc[s] = [];
@@ -198,12 +202,14 @@ export default function PipelinePage() {
       if (!user) throw new Error("Not signed in");
       // update each selected job (could be batched server-side later)
       await Promise.all(
-        ids.map((id) =>
-          updateJob(user.id, id, {
+        ids.map(async (id) => {
+          const changed_at = new Date().toISOString();
+          const r = await updateJob(user.id, id, {
             job_status: to,
-            status_changed_at: new Date().toISOString(),
-          })
-        )
+            status_changed_at: changed_at,
+          });
+          if (r.error) throw r.error;
+        })
       );
       showSuccess(`Moved ${ids.length} job(s) to ${to}`);
       setSelectedIds({});
@@ -449,9 +455,9 @@ export default function PipelinePage() {
                                   <IconButton
                                     size="small"
                                     onClick={() => {
-                                      setOpen(
-                                        true
-                                      ); /* could set selected job into a details drawer */
+                                      setSelectedJobId(String(job.id));
+                                      setOpen(true);
+                                      /* could set selected job into a details drawer */
                                     }}
                                   >
                                     <svg
@@ -482,8 +488,15 @@ export default function PipelinePage() {
           </Box>
         </DragDropContext>
 
-        <RightDrawer title="Details" open={open} onClose={() => setOpen(false)}>
-          <Typography>Job details and editors will appear here.</Typography>
+        <RightDrawer
+          title="Details"
+          open={open}
+          onClose={() => {
+            setOpen(false);
+            setSelectedJobId(null);
+          }}
+        >
+          <JobDetails jobId={selectedJobId} />
         </RightDrawer>
 
         <ErrorSnackbar
