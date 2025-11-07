@@ -1,5 +1,5 @@
 // EditCoverLetter.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -9,6 +9,12 @@ import {
   List,
   ListItem,
   ListItemButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  CircularProgress,
 } from "@mui/material";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -94,13 +100,22 @@ const EditCoverLetter: React.FC = () => {
   const [versions, setVersions] = useState<VersionEntry[]>([]);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [readability, setReadability] = useState<{
-    score: string;
-    suggestion: string;
-  }>({
+  const [readability, setReadability] = useState<{ score: string; suggestion: string }>({
     score: "0",
     suggestion: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // AI tone & style settings
+  const [tone, setTone] = useState("formal");
+  const [industry, setIndustry] = useState("software");
+  const [culture, setCulture] = useState("startup");
+  const [style, setStyle] = useState("direct");
+  const [length, setLength] = useState("standard");
+  const [customInstructions, setCustomInstructions] = useState("");
+
+  // Store original text separately to prevent repeated rewrites
+  const [originalText, setOriginalText] = useState(defaultCoverLetter);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -112,20 +127,47 @@ const EditCoverLetter: React.FC = () => {
     },
   });
 
-  // Autosave every 2 seconds after typing
   const handleAutosave = useDebouncedCallback((content: string) => {
     const timestamp = new Date().toISOString();
     setVersions((prev) => [...prev, { timestamp, content }]);
     console.log("Auto-saved at", timestamp);
   }, 2000);
 
+  useEffect(() => {
+    if (editor) {
+      setOriginalText(editor.getHTML());
+    }
+  }, [editor]);
+
   if (!editor) return null;
 
   const plainText = editor.getText();
   const charCount = plainText.length;
   const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+  const sentenceSuggestions = getSentenceSuggestions(plainText);
 
-  // Fetch synonyms for selected word
+  // Mock AI rewrite function — always rewrites from the *originalText*
+  const handleAIRewrite = async () => {
+    setIsLoading(true);
+
+    // Simulate API delay
+    await new Promise((res) => setTimeout(res, 1500));
+
+    const cleanText = originalText.replace(/<[^>]*>?/gm, ""); // strip HTML tags
+    const rewritten = `
+[${tone.toUpperCase()} | ${industry} | ${culture} | ${style} | ${length}]
+${customInstructions ? "Custom: " + customInstructions + "\n" : ""}
+${cleanText
+  .replace(/I am/g, "I'm")
+  .replace(/the /g, "the esteemed ")
+  .replace(/\s+/g, " ")}
+`;
+
+    editor.commands.setContent(`<p>${rewritten}</p>`);
+    setIsLoading(false);
+  };
+
+  // Synonym-related logic
   const fetchSynonyms = async (word: string) => {
     if (!word) return;
     const res = await fetch(`https://api.datamuse.com/words?rel_syn=${word}`);
@@ -133,10 +175,7 @@ const EditCoverLetter: React.FC = () => {
     setSynonyms(data.map((w) => w.word));
   };
 
-  // Handle word selection
-  const handleSelection = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) => {
+  const handleSelection = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const selection = window.getSelection()?.toString();
     if (selection) {
       fetchSynonyms(selection);
@@ -146,7 +185,6 @@ const EditCoverLetter: React.FC = () => {
     }
   };
 
-  // Replace selected word with synonym
   const replaceWord = (syn: string) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -156,8 +194,6 @@ const EditCoverLetter: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const sentenceSuggestions = getSentenceSuggestions(plainText);
-
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
@@ -165,11 +201,7 @@ const EditCoverLetter: React.FC = () => {
       </Typography>
 
       <Paper sx={{ p: 2, minHeight: 300, mb: 2 }}>
-        <EditorContent
-          editor={editor}
-          spellCheck={true}
-          onMouseUp={handleSelection}
-        />
+        <EditorContent editor={editor} spellCheck={true} onMouseUp={handleSelection} />
       </Paper>
 
       {/* Stats */}
@@ -181,20 +213,79 @@ const EditCoverLetter: React.FC = () => {
         </Typography>
       </Box>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => {
-          const timestamp = new Date().toISOString();
-          setVersions((prev) => [
-            ...prev,
-            { timestamp, content: editor.getHTML() },
-          ]);
-          alert("Cover letter saved!");
-        }}
-      >
-        Save
-      </Button>
+      {/* Tone & Style Settings */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Tone & Style Adjuster
+        </Typography>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+          <FormControl>
+            <InputLabel>Tone</InputLabel>
+            <Select value={tone} onChange={(e) => setTone(e.target.value)}>
+              <MenuItem value="formal">Formal</MenuItem>
+              <MenuItem value="casual">Casual</MenuItem>
+              <MenuItem value="enthusiastic">Enthusiastic</MenuItem>
+              <MenuItem value="analytical">Analytical</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Industry</InputLabel>
+            <Select value={industry} onChange={(e) => setIndustry(e.target.value)}>
+              <MenuItem value="software">Software</MenuItem>
+              <MenuItem value="finance">Finance</MenuItem>
+              <MenuItem value="healthcare">Healthcare</MenuItem>
+              <MenuItem value="education">Education</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Culture</InputLabel>
+            <Select value={culture} onChange={(e) => setCulture(e.target.value)}>
+              <MenuItem value="startup">Startup</MenuItem>
+              <MenuItem value="corporate">Corporate</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Style</InputLabel>
+            <Select value={style} onChange={(e) => setStyle(e.target.value)}>
+              <MenuItem value="direct">Direct</MenuItem>
+              <MenuItem value="narrative">Narrative</MenuItem>
+              <MenuItem value="bullet-points">Bullet Points</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Length</InputLabel>
+            <Select value={length} onChange={(e) => setLength(e.target.value)}>
+              <MenuItem value="brief">Brief</MenuItem>
+              <MenuItem value="standard">Standard</MenuItem>
+              <MenuItem value="detailed">Detailed</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        <TextField
+          label="Custom Tone Instructions"
+          fullWidth
+          multiline
+          rows={2}
+          value={customInstructions}
+          onChange={(e) => setCustomInstructions(e.target.value)}
+          sx={{ mt: 2 }}
+        />
+
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleAIRewrite}
+          sx={{ mt: 2 }}
+          disabled={isLoading}
+        >
+          {isLoading ? <CircularProgress size={24} /> : "Apply AI Rewrite"}
+        </Button>
+      </Paper>
 
       {/* Version History */}
       <Box sx={{ mt: 3 }}>
@@ -239,7 +330,7 @@ const EditCoverLetter: React.FC = () => {
         ))}
       </Box>
 
-      {/* Synonym Suggestions Popover */}
+      {/* Synonym Popover */}
       <Popover
         open={Boolean(anchorEl) && synonyms.length > 0}
         anchorEl={anchorEl}
