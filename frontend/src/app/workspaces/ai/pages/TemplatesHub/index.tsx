@@ -1,18 +1,19 @@
 import { Box, Typography } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
 
-export default function GenerateResume() {
+export default function TemplatesHub() {
   return (
     <Box>
       <RegionAnchor
-        id="[F]"
-        desc="Resume editor, templates, and ATS-optimization tools"
+        id="[E]"
+        desc="Template library and previews for resumes & cover letters"
       />
       <Typography variant="h4" sx={{ mb: 1 }}>
-        Resume Editor
+        Templates Hub
       </Typography>
       <Typography color="text.secondary">
-        TODO: AI-powered resume generation and editing tools will live here.
+        TODO: Resume and cover letter template library, previews, and management
+        (UC-046, UC-055).
       </Typography>
     </Box>
   );
