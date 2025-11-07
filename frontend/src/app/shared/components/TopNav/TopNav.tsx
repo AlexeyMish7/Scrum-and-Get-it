@@ -21,7 +21,7 @@ import {
 import { alpha, useTheme, type Theme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import WorkspacesIcon from "@mui/icons-material/DashboardCustomize";
-import BuildIcon from "@mui/icons-material/Build";
+// BuildIcon (Tools) removed — quick actions live in GlobalTopBar
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -207,7 +207,7 @@ const getNavVariantStyles = (theme: Theme, highlight: boolean) => ({
   },
 });
 
-const TopNav = () => {
+const TopNav = ({ quickActions }: { quickActions?: React.ReactNode }) => {
   const theme = useTheme();
   const { mode, toggleMode } = useThemeContext();
   const [scrolled, setScrolled] = useState(false);
@@ -233,7 +233,6 @@ const TopNav = () => {
   const [workspaceAnchor, setWorkspaceAnchor] = useState<HTMLElement | null>(
     null
   );
-  const [toolsAnchor, setToolsAnchor] = useState<HTMLElement | null>(null);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
 
   const avatarUrl = useAvatar(user?.id);
@@ -255,10 +254,7 @@ const TopNav = () => {
     }
   }, [currentWorkspace]);
 
-  const isToolsRoute = useMemo(
-    () => toolItems.some((item) => location.pathname.startsWith(item.path)),
-    [location.pathname, toolItems]
-  );
+  // tools menu removed from topnav; toolItems still used in mobile drawer
 
   const handleDrawerToggle = useCallback(
     (open: boolean) => () => {
@@ -394,30 +390,11 @@ const TopNav = () => {
               {renderMenuItems(WORKSPACE_ITEMS, () => setWorkspaceAnchor(null))}
             </Menu>
 
-            <Button
-              color="inherit"
-              startIcon={<BuildIcon />}
-              onClick={(event) => setToolsAnchor(event.currentTarget)}
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, isToolsRoute),
-                "& .MuiSvgIcon-root": { fontSize: 24 },
-                fontSize: 16,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-              }}
-            >
-              Tools
-            </Button>
-            <Menu
-              anchorEl={toolsAnchor}
-              open={Boolean(toolsAnchor)}
-              onClose={() => setToolsAnchor(null)}
-              MenuListProps={{ sx: { width: 240 } }}
-            >
-              {renderMenuItems(toolItems, () => setToolsAnchor(null))}
-            </Menu>
+            {/* If the parent chooses to hide the Tools dropdown, render any
+                provided quick action buttons in its place. The legacy Tools
+                button has been removed from the desktop header; mobile drawer
+                still exposes tool links. */}
+            {quickActions ?? null}
 
             <Tooltip title={themeToggleLabel}>
               <IconButton

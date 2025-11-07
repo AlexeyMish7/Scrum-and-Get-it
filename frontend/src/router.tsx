@@ -40,6 +40,9 @@ import ProfileLayout from "@profile/ProfileLayout";
 // AI & Jobs workspaces
 import AiLayout from "@workspaces/ai/AiLayout";
 import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
+import JobMatching from "@workspaces/ai/pages/JobMatching/index";
+import CompanyResearch from "@workspaces/ai/pages/CompanyResearch/index";
+import TemplatesHub from "@workspaces/ai/pages/TemplatesHub/index";
 import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
 import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
 import JobsLayout from "@workspaces/jobs/JobsLayout";
@@ -48,6 +51,7 @@ import NewJobPage from "./app/workspaces/jobs/pages/NewJobPage";
 import DocumentsPage from "./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage";
 import SavedSearchesPage from "./app/workspaces/jobs/pages/SavedSearchesPage";
 import AnalyticsPage from "./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage";
+import AutomationsPage from "./app/workspaces/jobs/pages/AutomationsPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
@@ -63,6 +67,9 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardAI /> },
       { path: "resume", element: <GenerateResume /> },
       { path: "cover-letter", element: <GenerateCoverLetter /> },
+      { path: "job-match", element: <JobMatching /> },
+      { path: "company-research", element: <CompanyResearch /> },
+      { path: "templates", element: <TemplatesHub /> },
     ],
   },
   // Jobs workspace (placeholder pages)
@@ -80,6 +87,7 @@ export const router = createBrowserRouter([
       { path: "documents", element: <DocumentsPage /> },
       { path: "saved-searches", element: <SavedSearchesPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      { path: "automations", element: <AutomationsPage /> },
     ],
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.

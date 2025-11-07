@@ -81,7 +81,9 @@ export default function PipelinePage() {
     if (!d) return "-";
     try {
       const then = new Date(String(d));
-      const diff = Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24));
+      const diff = Math.floor(
+        (Date.now() - then.getTime()) / (1000 * 60 * 60 * 24)
+      );
       return `${diff}d`;
     } catch {
       return "-";
@@ -91,7 +93,9 @@ export default function PipelinePage() {
   useEffect(() => {
     let mounted = true;
     if (!user) return;
-    const opts: ListOptions = { order: { column: "created_at", ascending: false } };
+    const opts: ListOptions = {
+      order: { column: "created_at", ascending: false },
+    };
     (async () => {
       try {
         const res = await listJobs(user.id, opts);
@@ -139,13 +143,18 @@ export default function PipelinePage() {
     copy[to].splice(dstIdx, 0, moved);
     setJobsByStage(copy);
 
-      // persist change: update job_status and status_changed_at
+    // persist change: update job_status and status_changed_at
     (async () => {
       try {
-  if (!user) throw new Error("Not signed in");
-    const payload: Record<string, unknown> = { job_status: to, status_changed_at: new Date().toISOString() };
-  const jobId = String((moved && (moved.id as string | number)) ?? draggableId);
-  const res = await updateJob(user.id, jobId, payload);
+        if (!user) throw new Error("Not signed in");
+        const payload: Record<string, unknown> = {
+          job_status: to,
+          status_changed_at: new Date().toISOString(),
+        };
+        const jobId = String(
+          (moved && (moved.id as string | number)) ?? draggableId
+        );
+        const res = await updateJob(user.id, jobId, payload);
         if (res.error) {
           throw res.error;
         }
@@ -155,7 +164,7 @@ export default function PipelinePage() {
         handleError(err);
         if (preDragRef.current) setJobsByStage(preDragRef.current);
       } finally {
-  preDragRef.current = undefined;
+        preDragRef.current = undefined;
       }
     })();
   };
@@ -189,7 +198,12 @@ export default function PipelinePage() {
       if (!user) throw new Error("Not signed in");
       // update each selected job (could be batched server-side later)
       await Promise.all(
-        ids.map((id) => updateJob(user.id, id, { job_status: to, status_changed_at: new Date().toISOString() }))
+        ids.map((id) =>
+          updateJob(user.id, id, {
+            job_status: to,
+            status_changed_at: new Date().toISOString(),
+          })
+        )
       );
       showSuccess(`Moved ${ids.length} job(s) to ${to}`);
       setSelectedIds({});
@@ -216,7 +230,10 @@ export default function PipelinePage() {
   };
 
   // derive counts
-  const counts = STAGES.reduce((acc, s) => ({ ...acc, [s]: jobsByStage[s]?.length ?? 0 }), {} as Record<string, number>);
+  const counts = STAGES.reduce(
+    (acc, s) => ({ ...acc, [s]: jobsByStage[s]?.length ?? 0 }),
+    {} as Record<string, number>
+  );
 
   // stages to render based on filter: when a specific stage is selected, only show that column
   const stagesToRender: readonly Stage[] =
@@ -225,15 +242,22 @@ export default function PipelinePage() {
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1400, mx: "auto" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
           <Typography variant="h4">Jobs Pipeline</Typography>
           <Stack direction="row" spacing={2} alignItems="center">
-              <TextField
+            <TextField
               select
               label="Filter"
               size="medium"
               value={filter}
-              onChange={(e) => setFilter(e.target.value as 'All' | Stage | 'Selected')}
+              onChange={(e) =>
+                setFilter(e.target.value as "All" | Stage | "Selected")
+              }
               sx={{ minWidth: 180 }}
             >
               <MenuItem value="All">All</MenuItem>
@@ -262,10 +286,14 @@ export default function PipelinePage() {
         </Stack>
 
         <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Drag cards between columns to update status. Use the checkboxes to select jobs for bulk actions.
+          Drag cards between columns to update status. Use the checkboxes to
+          select jobs for bulk actions.
         </Typography>
 
-        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DragDropContext
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
           <Box
             sx={{
               display: "grid",
@@ -291,10 +319,20 @@ export default function PipelinePage() {
               return (
                 <Droppable droppableId={stage} key={stage}>
                   {(provided) => (
-                    <Card ref={provided.innerRef} {...provided.droppableProps} variant="outlined">
+                    <Card
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      variant="outlined"
+                    >
                       <CardHeader
                         title={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
                             <Typography>{stage}</Typography>
                             <Chip label={counts[stage]} size="small" />
                           </Box>
@@ -302,14 +340,25 @@ export default function PipelinePage() {
                         subheader={`${visible.length} shown`}
                       />
                       <Divider />
-                      <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1, minHeight: 120 }}>
+                      <CardContent
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          minHeight: 120,
+                        }}
+                      >
                         {visible.length === 0 && (
                           <Typography color="text.secondary" fontStyle="italic">
                             No jobs
                           </Typography>
                         )}
                         {visible.map((job: JobRow, idx: number) => (
-                          <Draggable key={String(job.id)} draggableId={String(job.id)} index={idx}>
+                          <Draggable
+                            key={String(job.id)}
+                            draggableId={String(job.id)}
+                            index={idx}
+                          >
                             {(prov) => (
                               <Box
                                 ref={prov.innerRef}
@@ -325,48 +374,98 @@ export default function PipelinePage() {
                                   justifyContent: "space-between",
                                   gap: 1,
                                   bgcolor: (theme) => {
-                                    // Use semantic palette tokens and apply a subtle alpha so the
-                                    // background adapts to light/dark themes per THEME guide.
-                                    const pal = theme.palette as Record<string, any>;
-                                    const pick = (key: string) => pal[key]?.main ?? pal[key];
-                                    const col = (() => {
+                                    // Map stages to semantic palette tokens. Keep this simple
+                                    // and explicit to avoid using `any` typed casts.
+                                    const token = (() => {
                                       switch (stage) {
                                         case "Interested":
-                                          return pick("info");
+                                          return theme.palette.info;
                                         case "Applied":
-                                          return pick("primary");
+                                          return theme.palette.primary;
                                         case "Phone Screen":
-                                          return pick("warning");
+                                          return theme.palette.warning;
                                         case "Interview":
-                                          // prefer tertiary if present, fallback to secondary
-                                          return pick("tertiary") ?? pick("secondary");
+                                          return theme.palette.secondary;
                                         case "Offer":
-                                          return pick("success");
+                                          return theme.palette.success;
                                         case "Rejected":
-                                          return pick("error");
+                                          return theme.palette.error;
                                         default:
-                                          return null;
+                                          return undefined;
                                       }
                                     })();
-                                    return col ? alpha(col, 0.40) : "transparent";
+                                    return token?.main
+                                      ? alpha(token.main, 0.4)
+                                      : "transparent";
                                   },
                                 }}
                               >
-                                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                                  <Checkbox checked={!!selectedIds[String(job.id)]} onChange={() => toggleSelect(String(job.id))} />
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 1,
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={!!selectedIds[String(job.id)]}
+                                    onChange={() =>
+                                      toggleSelect(String(job.id))
+                                    }
+                                  />
                                   <Box>
-                                    <Typography sx={{ fontWeight: 600 }}>{String(job.job_title ?? job.title ?? "Untitled")}</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {String(job.company_name ?? job.company ?? "Unknown")}
+                                    <Typography sx={{ fontWeight: 600 }}>
+                                      {String(
+                                        job.job_title ?? job.title ?? "Untitled"
+                                      )}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                                      {formatStatusDate(job)} · {daysInStage(job)}
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {String(
+                                        job.company_name ??
+                                          job.company ??
+                                          "Unknown"
+                                      )}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: "block", mt: 0.5 }}
+                                    >
+                                      {formatStatusDate(job)} ·{" "}
+                                      {daysInStage(job)}
                                     </Typography>
                                   </Box>
                                 </Box>
-                                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                                  <IconButton size="small" onClick={() => { setOpen(true); /* could set selected job into a details drawer */ }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z" fill="currentColor"/></svg>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 1,
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setOpen(
+                                        true
+                                      ); /* could set selected job into a details drawer */
+                                    }}
+                                  >
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <path
+                                        d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z"
+                                        fill="currentColor"
+                                      />
+                                    </svg>
                                   </IconButton>
                                 </Box>
                               </Box>
@@ -382,12 +481,15 @@ export default function PipelinePage() {
             })}
           </Box>
         </DragDropContext>
-        
+
         <RightDrawer title="Details" open={open} onClose={() => setOpen(false)}>
           <Typography>Job details and editors will appear here.</Typography>
         </RightDrawer>
 
-        <ErrorSnackbar notification={notification} onClose={closeNotification} />
+        <ErrorSnackbar
+          notification={notification}
+          onClose={closeNotification}
+        />
       </Box>
     </Box>
   );
