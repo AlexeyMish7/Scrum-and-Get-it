@@ -30,8 +30,8 @@ import ProfileDetails from "@profile/pages/profile/ProfileDetails";
 import Settings from "@profile/pages/profile/Settings";
 
 // Cover letter pages (kept using relative paths in repo layout)
-import CoverLetterTemplates from "./app/workspaces/profile/pages/cover_letters/CoverLetterTemplates";
-import EditCoverLetter from "./app/workspaces/profile/pages/cover_letters/EditCoverLetter";
+import CoverLetterTemplates from "./app/workspaces/ai/pages/cover_letters/CoverLetterTemplates";
+import EditCoverLetter from "./app/workspaces/ai/pages/cover_letters/EditCoverLetter";
 
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
