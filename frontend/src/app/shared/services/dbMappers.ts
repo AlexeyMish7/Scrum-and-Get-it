@@ -285,3 +285,89 @@ export async function deleteJob(
   const userCrud = withUser(userId);
   return userCrud.deleteRow("jobs", { eq: { id: jobId } });
 }
+
+// --- Job notes mapping + helpers ---
+export const mapJobNote = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  // No required fields by default — notes can be sparse. Normalize common fields.
+  const payload: Record<string, unknown> = {
+    job_id: formData.job_id == null ? null : Number(formData.job_id) || null,
+    personal_notes: (formData.personal_notes as string) ?? null,
+    recruiter_name: (formData.recruiter_name as string) ?? null,
+    recruiter_email: (formData.recruiter_email as string) ?? null,
+    recruiter_phone: (formData.recruiter_phone as string) ?? null,
+    hiring_manager_name: (formData.hiring_manager_name as string) ?? null,
+    hiring_manager_email: (formData.hiring_manager_email as string) ?? null,
+    hiring_manager_phone: (formData.hiring_manager_phone as string) ?? null,
+    // application_history is stored as jsonb; accept object or JSON string
+    application_history:
+      typeof formData.application_history === "string"
+        ? (() => {
+            try {
+              return JSON.parse(formData.application_history as string);
+            } catch {
+              return null;
+            }
+          })()
+        : (formData.application_history as Record<string, unknown>) ?? null,
+    salary_negotiation_notes:
+      (formData.salary_negotiation_notes as string) ?? null,
+    interview_notes: (formData.interview_notes as string) ?? null,
+    interview_feedback: (formData.interview_feedback as string) ?? null,
+    updated_at: (formData.updated_at as string) ?? null,
+  };
+
+  return { payload };
+};
+
+export async function listJobNotes(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("job_notes", "*", opts);
+}
+
+export async function getJobNote(
+  userId: string,
+  noteId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("job_notes", "*", { eq: { id: noteId }, single: true });
+}
+
+export async function createJobNote(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapJobNote(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("job_notes", mapped.payload ?? {});
+}
+
+export async function updateJobNote(
+  userId: string,
+  noteId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  // Allow partial updates — callers can patch specific fields
+  const userCrud = withUser(userId);
+  return userCrud.updateRow("job_notes", formData, { eq: { id: noteId } });
+}
+
+export async function deleteJobNote(
+  userId: string,
+  noteId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("job_notes", { eq: { id: noteId } });
+}
+
