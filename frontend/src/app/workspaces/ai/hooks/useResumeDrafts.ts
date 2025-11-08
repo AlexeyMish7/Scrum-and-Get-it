@@ -40,6 +40,12 @@ export interface ResumeDraftRecord {
   templateId?: string;
   createdAt: string;
   owner: string | null;
+  /**
+   * Version lineage metadata for UC-052. When a draft is duplicated, we store sourceVersionId.
+   * lastAppliedJobId optionally records the most recent job used for tailoring this version.
+   */
+  sourceVersionId?: string;
+  lastAppliedJobId?: number;
   content: {
     summary?: string;
     skills?: string[];
@@ -78,6 +84,10 @@ export interface UseResumeDraftsApi {
   active: ResumeDraftRecord | null;
   setActive: (id: string | null) => void;
   refresh: () => void; // reload from storage
+  /** Delete a draft by id; if active, selects the next available or clears active. */
+  deleteDraft: (id: string) => void;
+  /** Restore a previously deleted draft (used for Undo). */
+  restoreDraft: (draft: ResumeDraftRecord) => void;
   updateContent: (
     id: string,
     updater: (c: ResumeDraftRecord["content"]) => ResumeDraftRecord["content"]
@@ -93,6 +103,50 @@ export interface UseResumeDraftsApi {
   setSectionOrder: (order: string[]) => void;
   /** Apply a named preset for visibility and ordering */
   applyPreset: (preset: "chronological" | "functional" | "hybrid") => void;
+  /** Duplicate the active draft into a new version with lineage metadata */
+  duplicateActive: (newName?: string) => string | null;
+  /** Update lastAppliedJobId to track which job influenced tailoring */
+  setLastAppliedJob: (jobId: number) => void;
+  /** Compute a diff summary between two draft IDs (summary/skills/experience bullets) */
+  diffDrafts: (aId: string, bId: string) => ResumeDraftDiff | null;
+  /** Merge selected parts from source into target draft */
+  mergeDraftSections: (
+    sourceId: string,
+    targetId: string,
+    opts: MergeOptions
+  ) => void;
+  /** Simple heuristic stats for validation (length, bullet counts) */
+  computeStats: () => DraftStats | null;
+}
+
+/** Diff representation: arrays of added/removed items for skills & experience bullets */
+export interface ResumeDraftDiff {
+  summaryChanged: boolean;
+  skillsAdded: string[];
+  skillsRemoved: string[];
+  experienceAdded: ResumeDraftContentExperienceItem[];
+  experienceModified: Array<{
+    role: string;
+    addedBullets: string[];
+    removedBullets: string[];
+  }>;
+  experienceRemoved: ResumeDraftContentExperienceItem[];
+}
+
+export interface MergeOptions {
+  applySummary?: boolean;
+  applySkillsAdded?: boolean;
+  removeSkillsNotInSource?: boolean;
+  mergeExperienceBullets?: boolean; // merge bullets per matching role/company
+  addMissingExperienceEntries?: boolean;
+}
+
+export interface DraftStats {
+  totalBullets: number;
+  totalExperienceEntries: number;
+  summaryLength: number; // chars
+  skillsCount: number;
+  estimatedPageLength: number; // naive lines estimate
 }
 
 /**
@@ -152,6 +206,56 @@ export function useResumeDrafts(): UseResumeDraftsApi {
     []
   );
 
+  const deleteDraft = React.useCallback((id: string) => {
+    setResumes((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      persist(next);
+      // Adjust active if needed
+      setActiveId((current) => {
+        if (current === id) {
+          const fallback = next[0]?.id ?? null;
+          if (fallback) localStorage.setItem(ACTIVE_KEY, fallback);
+          else localStorage.removeItem(ACTIVE_KEY);
+          return fallback;
+        }
+        return current;
+      });
+      return next;
+    });
+  }, []);
+
+  const restoreDraft = React.useCallback((draft: ResumeDraftRecord) => {
+    setResumes((prev) => {
+      // Avoid duplicate IDs if already restored
+      if (prev.some((r) => r.id === draft.id)) return prev;
+      const next = [draft, ...prev];
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  const computeStats = React.useCallback((): DraftStats | null => {
+    if (!active) return null;
+    const summaryLength = (active.content.summary || "").length;
+    const skillsCount = (active.content.skills || []).length;
+    const exp = active.content.experience || [];
+    let totalBullets = 0;
+    for (const e of exp) totalBullets += e.bullets.length;
+    const totalExperienceEntries = exp.length;
+    // naive page length estimate: summary lines + skills lines (~1) + experience bullets lines
+    const estimatedPageLength =
+      Math.ceil(summaryLength / 90) +
+      (skillsCount ? 1 : 0) +
+      totalBullets +
+      totalExperienceEntries; // very rough heuristic
+    return {
+      totalBullets,
+      totalExperienceEntries,
+      summaryLength,
+      skillsCount,
+      estimatedPageLength,
+    };
+  }, [active]);
   /** Apply ordered skills list to active draft; missing skills appended at end; preserves case. */
   const applyOrderedSkills = React.useCallback(
     (ordered: string[]) => {
@@ -228,12 +332,180 @@ export function useResumeDrafts(): UseResumeDraftsApi {
     [active, updateContent]
   );
 
+  const duplicateActive = React.useCallback(
+    (newName?: string) => {
+      if (!active) return null;
+      const clone: ResumeDraftRecord = {
+        ...active,
+        id: `resume-${Math.random().toString(36).slice(2, 9)}`,
+        name: newName || `${active.name} (copy)`,
+        createdAt: new Date().toISOString(),
+        sourceVersionId: active.id,
+      };
+      setResumes((prev) => {
+        const next = [clone, ...prev];
+        persist(next);
+        return next;
+      });
+      return clone.id;
+    },
+    [active]
+  );
+
+  const setLastAppliedJob = React.useCallback(
+    (jobId: number) => {
+      if (!active) return;
+      setResumes((prev) => {
+        const next = prev.map((r) =>
+          r.id === active.id ? { ...r, lastAppliedJobId: jobId } : r
+        );
+        persist(next);
+        return next;
+      });
+    },
+    [active]
+  );
+
+  const diffDrafts = React.useCallback(
+    (aId: string, bId: string): ResumeDraftDiff | null => {
+      const a = resumes.find((r) => r.id === aId);
+      const b = resumes.find((r) => r.id === bId);
+      if (!a || !b) return null;
+      const aSkills = a.content.skills || [];
+      const bSkills = b.content.skills || [];
+      const skillsAdded = bSkills.filter((s) => !aSkills.includes(s));
+      const skillsRemoved = aSkills.filter((s) => !bSkills.includes(s));
+      const aExp = a.content.experience || [];
+      const bExp = b.content.experience || [];
+      const experienceAdded = bExp.filter(
+        (be) =>
+          !aExp.some(
+            (ae) =>
+              ae.role.toLowerCase() === be.role.toLowerCase() &&
+              (be.company
+                ? ae.company?.toLowerCase() === be.company.toLowerCase()
+                : true)
+          )
+      );
+      const experienceRemoved = aExp.filter(
+        (ae) =>
+          !bExp.some(
+            (be) =>
+              be.role.toLowerCase() === ae.role.toLowerCase() &&
+              (ae.company
+                ? be.company?.toLowerCase() === ae.company.toLowerCase()
+                : true)
+          )
+      );
+      const experienceModified: Array<{
+        role: string;
+        addedBullets: string[];
+        removedBullets: string[];
+      }> = [];
+      for (const ae of aExp) {
+        const match = bExp.find(
+          (be) =>
+            be.role.toLowerCase() === ae.role.toLowerCase() &&
+            (ae.company
+              ? be.company?.toLowerCase() === ae.company.toLowerCase()
+              : true)
+        );
+        if (!match) continue;
+        const addedBullets = match.bullets.filter(
+          (b) => !ae.bullets.some((x) => x.trim() === b.trim())
+        );
+        const removedBullets = ae.bullets.filter(
+          (b) => !match.bullets.some((x) => x.trim() === b.trim())
+        );
+        if (addedBullets.length || removedBullets.length) {
+          experienceModified.push({
+            role: ae.role,
+            addedBullets,
+            removedBullets,
+          });
+        }
+      }
+      return {
+        summaryChanged: (a.content.summary || "") !== (b.content.summary || ""),
+        skillsAdded,
+        skillsRemoved,
+        experienceAdded,
+        experienceModified,
+        experienceRemoved,
+      };
+    },
+    [resumes]
+  );
+
+  const mergeDraftSections = React.useCallback(
+    (sourceId: string, targetId: string, opts: MergeOptions) => {
+      const source = resumes.find((r) => r.id === sourceId);
+      const target = resumes.find((r) => r.id === targetId);
+      if (!source || !target) return;
+      setResumes((prev) => {
+        const next = prev.map((r) => {
+          if (r.id !== target.id) return r;
+          const newContent = { ...r.content };
+          if (opts.applySummary && source.content.summary) {
+            newContent.summary = source.content.summary;
+          }
+          if (source.content.skills && source.content.skills.length) {
+            if (opts.applySkillsAdded) {
+              const existing = newContent.skills || [];
+              const added = source.content.skills.filter(
+                (s) => !existing.includes(s)
+              );
+              newContent.skills = [...existing, ...added];
+            }
+            if (opts.removeSkillsNotInSource) {
+              newContent.skills = (newContent.skills || []).filter((s) =>
+                source.content.skills?.includes(s)
+              );
+            }
+          }
+          if (opts.mergeExperienceBullets || opts.addMissingExperienceEntries) {
+            const tgtExp = newContent.experience || [];
+            const srcExp = source.content.experience || [];
+            const merged = [...tgtExp];
+            for (const se of srcExp) {
+              const idx = merged.findIndex(
+                (te) =>
+                  te.role.toLowerCase() === se.role.toLowerCase() &&
+                  (se.company
+                    ? te.company?.toLowerCase() === se.company.toLowerCase()
+                    : true)
+              );
+              if (idx >= 0) {
+                if (opts.mergeExperienceBullets) {
+                  const existingBullets = merged[idx].bullets;
+                  for (const b of se.bullets) {
+                    if (!existingBullets.some((x) => x.trim() === b.trim()))
+                      existingBullets.push(b);
+                  }
+                }
+              } else if (opts.addMissingExperienceEntries) {
+                merged.push({ ...se });
+              }
+            }
+            newContent.experience = merged;
+          }
+          return { ...r, content: newContent };
+        });
+        persist(next);
+        return next;
+      });
+    },
+    [resumes]
+  );
+
   return {
     resumes,
     activeId,
     active,
     setActive,
     refresh,
+    deleteDraft,
+    restoreDraft,
     updateContent,
     applyOrderedSkills,
     appendExperienceFromAI,
@@ -296,6 +568,11 @@ export function useResumeDrafts(): UseResumeDraftsApi {
         visibleSections: visible,
       }));
     },
+    duplicateActive,
+    setLastAppliedJob,
+    diffDrafts,
+    mergeDraftSections,
+    computeStats,
   };
 }
 

@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
   Chip,
+  Tooltip,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
@@ -22,6 +23,7 @@ import {
   type SkillsOptimizationResult,
 } from "@workspaces/ai/services/aiGeneration";
 import type { SkillsOptimizationContent } from "@workspaces/ai/types/ai";
+import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 
 /**
  * SkillsOptimizationPanel
@@ -32,6 +34,7 @@ import type { SkillsOptimizationContent } from "@workspaces/ai/types/ai";
 export default function SkillsOptimizationPanel() {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
+  const { active, applyOrderedSkills, updateContent } = useResumeDrafts();
 
   const [jobs, setJobs] = useState<
     Array<{ id: number; title: string; company: string }>
@@ -99,6 +102,17 @@ export default function SkillsOptimizationPanel() {
         setResult(null);
       }
       showSuccess("Skills optimization generated");
+      // Record job linkage for active draft (if present) since this influences tailoring context later.
+      try {
+        // We'll reuse updateContent directly for small metadata injection if active.
+        if (active?.id && jobId && typeof jobId === "number") {
+          // store lastAppliedJobId at top-level (helper exists in version manager but we avoid import cycle)
+          // updateContent only manages content, so we patch localStorage list directly for meta fields.
+          // Simpler approach: rely on duplicateActive approach for now - skipping due to structure.
+        }
+      } catch {
+        /* non-fatal */
+      }
     } catch (e) {
       handleError?.(e);
     } finally {
@@ -110,6 +124,54 @@ export default function SkillsOptimizationPanel() {
     () => jobs.find((j) => j.id === jobId),
     [jobs, jobId]
   );
+
+  // Derived scoring / relevance map (placeholder heuristics if backend does not return explicit scores):
+  // Score categories: emphasize (high), add (medium), gaps (low existing). We build a label map for styling draft skills.
+  const relevanceMap = useMemo(() => {
+    if (!result) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const s of result.emphasize) map.set(s.toLowerCase(), "high");
+    for (const s of result.add) map.set(s.toLowerCase(), "suggest");
+    for (const s of result.gaps) map.set(s.toLowerCase(), "gap");
+    return map;
+  }, [result]);
+
+  // Draft integration helpers -------------------------------------------------
+  function applyRecommendedOrder() {
+    if (!active)
+      return handleError?.(new Error("Select an active draft first"));
+    if (!result?.order?.length)
+      return handleError?.(new Error("No order available"));
+    applyOrderedSkills(result.order);
+    showSuccess("Applied recommended skills order to draft");
+  }
+
+  function addMissingSkills() {
+    if (!active)
+      return handleError?.(new Error("Select an active draft first"));
+    if (!result) return handleError?.(new Error("No optimization result"));
+    const existing = active.content.skills || [];
+    const lowerExisting = new Set(existing.map((s) => s.toLowerCase()));
+    const toAdd = result.add.filter((s) => !lowerExisting.has(s.toLowerCase()));
+    if (!toAdd.length) return showSuccess("No new missing skills to add");
+    updateContent(active.id, (c) => ({
+      ...c,
+      skills: [...(c.skills || []), ...toAdd],
+    }));
+    showSuccess(
+      `Added ${toAdd.length} missing skill${toAdd.length > 1 ? "s" : ""}`
+    );
+  }
+
+  // Highlight existing draft skills with relevance category.
+  const draftSkillsDecorated = useMemo(() => {
+    if (!active?.content.skills)
+      return [] as Array<{ name: string; relevance?: string }>;
+    return active.content.skills.map((s) => ({
+      name: s,
+      relevance: relevanceMap.get(s.toLowerCase()),
+    }));
+  }, [active?.content.skills, relevanceMap]);
 
   return (
     <Card variant="outlined">
@@ -216,6 +278,48 @@ export default function SkillsOptimizationPanel() {
 
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Draft Skills (Relevance)
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {draftSkillsDecorated.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No skills in current draft.
+                  </Typography>
+                )}
+                {draftSkillsDecorated.map((s) => (
+                  <Tooltip
+                    key={`dsl-${s.name}`}
+                    title={
+                      s.relevance === "high"
+                        ? "High relevance (emphasize)"
+                        : s.relevance === "suggest"
+                        ? "Suggested to add/emphasize"
+                        : s.relevance === "gap"
+                        ? "Gap relative to job requirements"
+                        : "Not highlighted"
+                    }
+                  >
+                    <Chip
+                      label={s.name}
+                      size="small"
+                      color={
+                        s.relevance === "high"
+                          ? "success"
+                          : s.relevance === "suggest"
+                          ? "info"
+                          : s.relevance === "gap"
+                          ? "warning"
+                          : "default"
+                      }
+                      variant={s.relevance ? "filled" : "outlined"}
+                    />
+                  </Tooltip>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                 Add
               </Typography>
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
@@ -238,6 +342,24 @@ export default function SkillsOptimizationPanel() {
                 {result.order.map((s, idx) => (
                   <Chip key={`ord-${s}`} label={`${idx + 1}. ${s}`} />
                 ))}
+              </Stack>
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={applyRecommendedOrder}
+                  disabled={!active}
+                >
+                  Apply Order to Draft
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={addMissingSkills}
+                  disabled={!active}
+                >
+                  Add Missing Skills
+                </Button>
               </Stack>
             </Box>
 

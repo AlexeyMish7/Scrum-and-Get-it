@@ -27,6 +27,7 @@ import BulletMergeDialog from "./BulletMergeDialog";
 import { aiGeneration } from "@workspaces/ai/services/aiGeneration";
 import type {
   AIArtifactSummary,
+  AIArtifact,
   ResumeArtifactContent,
 } from "@workspaces/ai/types/ai";
 
@@ -44,8 +45,10 @@ export default function ArtifactsHistoryPanel() {
 
   const [artifacts, setArtifacts] = React.useState<AIArtifactSummary[]>([]);
   const [loadingArtifacts, setLoadingArtifacts] = React.useState(false);
-  const [selectedArtifact, setSelectedArtifact] =
-    React.useState<AIArtifactSummary | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = React.useState<
+    AIArtifactSummary | AIArtifact | null
+  >(null);
+  const [loadingSelected, setLoadingSelected] = React.useState(false);
   const [mergeOpen, setMergeOpen] = React.useState(false);
 
   // Load jobs
@@ -113,8 +116,22 @@ export default function ArtifactsHistoryPanel() {
     };
   }, [user?.id, jobId, handleError]);
 
-  function selectArtifact(a: AIArtifactSummary) {
+  async function selectArtifact(a: AIArtifactSummary) {
     setSelectedArtifact(a);
+    // If content is missing/partial, attempt to fetch the full artifact
+    const hasContent = a && typeof a.content === "object" && a.content !== null;
+    if (!user?.id) return;
+    if (!hasContent) {
+      setLoadingSelected(true);
+      try {
+        const full = await aiGeneration.getArtifact(user.id, a.id);
+        setSelectedArtifact(full.artifact);
+      } catch (e) {
+        handleError?.(e);
+      } finally {
+        setLoadingSelected(false);
+      }
+    }
   }
 
   // Artifact content may be partial; attempt to coerce
@@ -246,35 +263,53 @@ export default function ArtifactsHistoryPanel() {
             </Stack>
           )}
 
-          {selectedArtifact && resumeContent && (
+          {selectedArtifact && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>
                 Selected Artifact Preview
               </Typography>
-              {resumeContent.summary && (
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Summary:</strong> {resumeContent.summary}
+              {loadingSelected && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  Loading artifact…
                 </Typography>
               )}
-              {resumeContent.ordered_skills && (
+              {!loadingSelected && !resumeContent && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  No preview content available for this artifact.
+                </Typography>
+              )}
+              {resumeContent?.summary && (
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Summary:</strong> {resumeContent?.summary}
+                </Typography>
+              )}
+              {resumeContent?.ordered_skills && (
                 <Box sx={{ mb: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     Ordered Skills
                   </Typography>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5}>
-                    {resumeContent.ordered_skills.map((s, i) => (
+                    {resumeContent?.ordered_skills.map((s, i) => (
                       <Chip key={s + i} label={`${i + 1}. ${s}`} size="small" />
                     ))}
                   </Stack>
                 </Box>
               )}
-              {resumeContent.sections?.experience && (
+              {resumeContent?.sections?.experience && (
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Experience (tailored bullets)
                   </Typography>
                   <Stack spacing={0.75} mt={0.5}>
-                    {resumeContent.sections.experience
+                    {resumeContent?.sections?.experience
                       .slice(0, 3)
                       .map((e, idx) => (
                         <Typography key={idx} variant="body2">
@@ -290,7 +325,9 @@ export default function ArtifactsHistoryPanel() {
                   variant="outlined"
                   size="small"
                   onClick={applySummaryToDraft}
-                  disabled={!active || !resumeContent.summary}
+                  disabled={
+                    !active || !resumeContent?.summary || loadingSelected
+                  }
                 >
                   Apply Summary
                 </Button>
@@ -298,7 +335,11 @@ export default function ArtifactsHistoryPanel() {
                   variant="outlined"
                   size="small"
                   onClick={applySkills}
-                  disabled={!active || !resumeContent.ordered_skills?.length}
+                  disabled={
+                    !active ||
+                    !resumeContent?.ordered_skills?.length ||
+                    loadingSelected
+                  }
                 >
                   Apply Ordered Skills
                 </Button>
@@ -307,7 +348,9 @@ export default function ArtifactsHistoryPanel() {
                   size="small"
                   onClick={mergeExperience}
                   disabled={
-                    !active || !resumeContent.sections?.experience?.length
+                    !active ||
+                    !resumeContent?.sections?.experience?.length ||
+                    loadingSelected
                   }
                 >
                   Merge Experience

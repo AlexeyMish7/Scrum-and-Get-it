@@ -10,6 +10,9 @@ import DraftSelectorBar from "../resume/DraftSelectorBar";
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 import BulletMergeDialog from "../resume/BulletMergeDialog";
 import SectionControlsPanel from "../resume/SectionControlsPanel";
+import VersionManagerPanel from "../resume/VersionManagerPanel";
+import ResumeValidationPanel from "../resume/ResumeValidationPanel";
+import ResumeDraftPreviewPanel from "../resume/ResumeDraftPreviewPanel";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useState, useEffect } from "react";
@@ -23,11 +26,17 @@ import { useState, useEffect } from "react";
  */
 export default function GenerateResume() {
   const { handleError, showSuccess } = useErrorHandler();
-  const { active, applyOrderedSkills, appendExperienceFromAI, applySummary } =
-    useResumeDrafts();
+  const {
+    active,
+    applyOrderedSkills,
+    appendExperienceFromAI,
+    applySummary,
+    setLastAppliedJob,
+  } = useResumeDrafts();
   const [lastContent, setLastContent] = useState<ResumeArtifactContent | null>(
     null
   );
+  const [lastJobId, setLastJobId] = useState<number | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
 
   // Listen for generation events dispatched by ResumeGenerationPanel
@@ -35,8 +44,10 @@ export default function GenerateResume() {
     function onGenerated(e: Event) {
       const detail = (e as CustomEvent).detail as {
         content?: ResumeArtifactContent;
+        jobId?: number;
       };
       if (detail?.content) setLastContent(detail.content);
+      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
     }
     window.addEventListener(
       "sgt:resumeGenerated",
@@ -56,6 +67,7 @@ export default function GenerateResume() {
       return handleError?.(new Error("No ordered skills available"));
     applyOrderedSkills(lastContent.ordered_skills);
     showSuccess("Applied ordered skills to draft");
+    if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
   }
 
   function applySummaryToDraft() {
@@ -65,6 +77,7 @@ export default function GenerateResume() {
       return handleError?.(new Error("No summary available"));
     applySummary(lastContent.summary);
     showSuccess("Applied summary to draft");
+    if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
   }
 
   function mergeExperience() {
@@ -96,6 +109,9 @@ export default function GenerateResume() {
         <ExperienceTailoringPanel />
         <ResumeVariationsPanel />
         <SectionControlsPanel />
+        <ResumeDraftPreviewPanel />
+        <VersionManagerPanel />
+        <ResumeValidationPanel />
         <ArtifactsHistoryPanel />
         {lastContent && (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -142,6 +158,7 @@ export default function GenerateResume() {
             }[]
           );
           showSuccess("Selected bullets merged");
+          if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
         }}
       />
     </Box>
