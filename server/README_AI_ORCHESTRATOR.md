@@ -17,6 +17,7 @@ Files
 - `src/index.ts` — minimal HTTP server exposing `/api/health` and `/api/generate/resume`.
 - `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, and `/api/generate/cover-letter`.
 - `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, `/api/generate/cover-letter`, and `/api/generate/skills-optimization`.
+- `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, `/api/generate/cover-letter`, `/api/generate/skills-optimization`, `/api/artifacts*`, and job materials endpoints.
 - `utils/*` — `logger`, `errors`, `rateLimiter` utilities.
 - `.env.example` — example env vars to configure.
 
@@ -88,9 +89,22 @@ Endpoints
   - Notes: Returns empty list when persistence is disabled (mock mode)
 
 - GET `/api/artifacts/:id`
+
   - Headers: `X-User-Id: <uuid>`
   - Output: `{ artifact: { id, user_id, job_id, kind, title, prompt, model, content, metadata, created_at } }`
   - Enforces ownership (user_id must match header)
+
+- POST `/api/job-materials`
+
+  - Headers: `X-User-Id: <uuid>`
+  - Body: `{ jobId: number, resume_artifact_id?: string, resume_document_id?: string, cover_artifact_id?: string, cover_document_id?: string, metadata?: object }`
+  - Validates ownership of job and artifacts/documents; inserts a `job_materials` row for historical tracking.
+  - Output: `{ material: { id, user_id, job_id, resume_*_id, cover_*_id, metadata, created_at } }`
+
+- GET `/api/jobs/:jobId/materials?limit=10`
+  - Headers: `X-User-Id: <uuid>`
+  - Lists recent `job_materials` rows for the given job (owned by the user), newest first.
+  - Output: `{ items: [...], persisted: boolean }`
 
 Rate limiting
 
@@ -119,6 +133,6 @@ Notes
 
 Next recommended steps
 
-1. Extend endpoints for cover letters and company research using the same orchestrator pattern and prompt builders.
-2. Add unit/integration tests with `FAKE_AI=true` to validate end-to-end flow and DB insertion.
+1. Extend endpoints for company research and matching using the same orchestrator pattern and prompt builders.
+2. Add unit/integration tests with `FAKE_AI=true` to validate generation + job_materials flows and DB insertion.
 3. Add CI lint/typecheck and minimal test runs for the `server/` package.

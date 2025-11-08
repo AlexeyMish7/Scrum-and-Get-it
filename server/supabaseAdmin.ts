@@ -117,3 +117,66 @@ export async function getAiArtifactForUser(userId: string, id: string) {
   if (error) throw error;
   return data;
 }
+
+/** Fetch a document by id for the given user (enforces ownership). */
+export async function getDocumentForUser(userId: string, id: string) {
+  const { data, error } = await supabaseAdmin
+    .from("documents")
+    .select(
+      "id, user_id, kind, file_name, file_path, mime_type, bytes, uploaded_at"
+    )
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Insert a job_materials row linking chosen resume/cover to a job. */
+export async function insertJobMaterials(payload: {
+  user_id: string;
+  job_id: number;
+  resume_document_id?: string | null;
+  resume_artifact_id?: string | null;
+  cover_document_id?: string | null;
+  cover_artifact_id?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  const row: Record<string, unknown> = {
+    user_id: payload.user_id,
+    job_id: payload.job_id,
+    resume_document_id: payload.resume_document_id ?? null,
+    resume_artifact_id: payload.resume_artifact_id ?? null,
+    cover_document_id: payload.cover_document_id ?? null,
+    cover_artifact_id: payload.cover_artifact_id ?? null,
+    metadata: payload.metadata ?? {},
+  };
+  const { data, error } = await supabaseAdmin
+    .from("job_materials")
+    .insert([row])
+    .select(
+      "id, user_id, job_id, resume_document_id, resume_artifact_id, cover_document_id, cover_artifact_id, metadata, created_at"
+    )
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** List job_materials rows for a job (owned by user), newest first. */
+export async function listJobMaterialsForJob(
+  userId: string,
+  jobId: number,
+  limit = 10
+) {
+  const { data, error } = await supabaseAdmin
+    .from("job_materials")
+    .select(
+      "id, user_id, job_id, resume_document_id, resume_artifact_id, cover_document_id, cover_artifact_id, metadata, created_at"
+    )
+    .eq("user_id", userId)
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}

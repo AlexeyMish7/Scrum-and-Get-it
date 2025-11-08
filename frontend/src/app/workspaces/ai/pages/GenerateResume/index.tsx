@@ -16,21 +16,54 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
-import GenerationCard from "../resume/GenerationCard";
-import ArtifactsHistoryPanel from "../resume/ArtifactsHistoryPanel";
-import ResumeVariationsPanel from "../resume/ResumeVariationsPanel";
-import DraftSelectorBar from "../resume/DraftSelectorBar";
+import { lazy, Suspense } from "react";
+import GenerationCard from "../resume/GenerationCard"; // kept eager (small)
+import ResumeTutorial from "../resume/ResumeTutorial"; // tutorial quick load
+import VersionsExportAside from "../resume/VersionsExportAside"; // moderate size
+import { Packer, Document, Paragraph, TextRun } from "docx";
+import DraftSelectorBar from "../resume/DraftSelectorBar"; // small
+// Lazy heavy/optional panels (loaded only when step 3/4 or advanced open)
+const ResumeVariationsPanel = lazy(
+  () => import("../resume/ResumeVariationsPanel")
+);
+const ArtifactsHistoryPanel = lazy(
+  () => import("../resume/ArtifactsHistoryPanel")
+);
+const VersionManagerPanel = lazy(() => import("../resume/VersionManagerPanel"));
+const ResumeValidationPanel = lazy(
+  () => import("../resume/ResumeValidationPanel")
+);
+const ResumeDraftPreviewPanel = lazy(
+  () => import("../resume/ResumeDraftPreviewPanel")
+);
+const AIResumePreview = lazy(() => import("../resume/AIResumePreview"));
+const SkillsAnalysisPreview = lazy(
+  () => import("../resume/SkillsAnalysisPreview")
+);
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
+import { useAuth } from "@shared/context/AuthContext";
+import {
+  aiGeneration,
+  createDocumentAndLink,
+} from "@workspaces/ai/services/aiGeneration";
+import DiffCompareDialog from "@workspaces/ai/components/DiffCompareDialog";
+import type { AIArtifactSummary, AIArtifact } from "@workspaces/ai/types/ai";
 import BulletMergeDialog from "../resume/BulletMergeDialog";
-import SectionControlsPanel from "../resume/SectionControlsPanel";
-import VersionManagerPanel from "../resume/VersionManagerPanel";
-import ResumeValidationPanel from "../resume/ResumeValidationPanel";
-import ResumeDraftPreviewPanel from "../resume/ResumeDraftPreviewPanel";
-import AIResumePreview from "../resume/AIResumePreview";
-import SkillsAnalysisPreview from "../resume/SkillsAnalysisPreview";
+import SectionControlsPanel from "../resume/SectionControlsPanel"; // lightweight
+import ResumeFullPreview from "@workspaces/ai/components/ResumeFullPreview";
+import {
+  toPreviewModel,
+  diffPreviewModels,
+} from "@workspaces/ai/utils/previewModel";
+// SkillsAnalysisPreview now lazy
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
-import { useState, useEffect, useRef } from "react";
+import type {
+  FlowState,
+  SegmentStatus,
+} from "@workspaces/ai/hooks/useResumeGenerationFlow";
+import { useState, useEffect, useRef, useCallback } from "react";
+// Listen optionally for segment events to enable early (base-only) preview.
 
 /**
  * GenerateResume unified page (streamlined):
@@ -39,7 +72,8 @@ import { useState, useEffect, useRef } from "react";
  * This reduces initial cognitive load while retaining power features.
  */
 export default function GenerateResume() {
-  const { showSuccess } = useErrorHandler();
+  const { showSuccess, handleError } = useErrorHandler();
+  const { user } = useAuth();
   const {
     active,
     applyOrderedSkills,
@@ -51,16 +85,44 @@ export default function GenerateResume() {
     null
   );
   const [lastJobId, setLastJobId] = useState<number | null>(null);
+  const [lastSegments, setLastSegments] = useState<FlowState | null>(null);
+  const [newBullets, setNewBullets] = useState<Set<string> | null>(null);
+  const prevContentRef = useRef<ResumeArtifactContent | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
+  // Version compare & attach state
+  const [selectedContent, setSelectedContent] =
+    useState<ResumeArtifactContent | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = useState<
+    AIArtifactSummary | AIArtifact | null
+  >(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+  // Screen reader live message announcements for key actions (export, attach, link)
+  const [srMessage, setSrMessage] = useState("");
+  // Track last artifact element for focus restoration when closing compare dialog
+  const lastFocusArtifactIdRef = useRef<string | null>(null);
   // Controls visibility of advanced tool suite to declutter initial view.
   const [showAdvanced, setShowAdvanced] = useState(false);
   // Preview tabs: ai (generated), draft (current draft), variations (quick alt generations)
   const [previewTab, setPreviewTab] = useState<
-    "ai" | "draft" | "variations" | "skills" | "raw"
+    "ai" | "formatted" | "draft" | "variations" | "skills" | "raw"
   >("ai");
 
   // Track the freshest generation event to guard against out-of-order delivery
   const lastGenTsRef = useRef<number>(0);
+
+  /** Emit telemetry about actions users take in Step 3. */
+  const emitApplyEvent = useCallback((detail: Record<string, unknown>) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.dispatchEvent(
+        new CustomEvent("sgt:resumeApplication", {
+          detail: { ts: Date.now(), ...detail },
+        })
+      );
+    } catch (err) {
+      console.warn("sgt:resumeApplication dispatch failed", err);
+    }
+  }, []);
 
   // Listen for generation events dispatched by ResumeGenerationPanel
   useEffect(() => {
@@ -76,19 +138,131 @@ export default function GenerateResume() {
       if (detail?.content) setLastContent(detail.content);
       if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
     }
+    function onComplete(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        state?: FlowState;
+        jobId?: number;
+        ts?: number;
+      };
+      const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
+      if (ts < lastGenTsRef.current) return;
+      lastGenTsRef.current = ts;
+      if (detail?.state) setLastSegments(detail.state);
+      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
+    }
+    // Early segment success (base) -> show partial preview immediately.
+    function onSegment(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        segment?: string;
+        status?: string;
+        content?: ResumeArtifactContent;
+        jobId?: number;
+        ts?: number;
+      };
+      if (
+        detail.segment === "base" &&
+        detail.status === "success" &&
+        detail.content
+      ) {
+        const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
+        if (ts < lastGenTsRef.current) return;
+        lastGenTsRef.current = ts;
+        setLastContent(detail.content);
+        if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
+      }
+    }
+    function onReset() {
+      setLastContent(null);
+      setLastSegments(null);
+      setLastJobId(null);
+      lastGenTsRef.current = 0;
+    }
     window.addEventListener(
       "sgt:resumeGenerated",
       onGenerated as EventListener
     );
-    return () =>
+    window.addEventListener(
+      "sgt:resumeGeneration:complete",
+      onComplete as EventListener
+    );
+    window.addEventListener(
+      "sgt:resumeGeneration:segment",
+      onSegment as EventListener
+    );
+    window.addEventListener(
+      "sgt:resumeGeneration:reset",
+      onReset as EventListener
+    );
+    return () => {
       window.removeEventListener(
         "sgt:resumeGenerated",
         onGenerated as EventListener
       );
+      window.removeEventListener(
+        "sgt:resumeGeneration:complete",
+        onComplete as EventListener
+      );
+      window.removeEventListener(
+        "sgt:resumeGeneration:segment",
+        onSegment as EventListener
+      );
+      window.removeEventListener(
+        "sgt:resumeGeneration:reset",
+        onReset as EventListener
+      );
+    };
   }, []);
 
-  // Derive a coarse step index for the Stepper guide (purely UX guidance)
-  const stepIndex = !active ? 0 : !lastContent ? 1 : 2;
+  // Diff tracking: whenever final merged content updates after base success, compute added bullets
+  useEffect(() => {
+    if (!lastContent) {
+      prevContentRef.current = null;
+      setNewBullets(null);
+      return;
+    }
+    const prev = prevContentRef.current;
+    if (prev) {
+      const diff = diffPreviewModels(
+        toPreviewModel(prev),
+        toPreviewModel(lastContent)
+      );
+      const added = new Set<string>();
+      for (const r of diff.experience) for (const b of r.added) added.add(b);
+      setNewBullets(added.size ? added : null);
+    }
+    prevContentRef.current = lastContent;
+  }, [lastContent]);
+
+  // Progressive step rendering state (0 Select, 1 Generate, 2 Apply, 3 Preview)
+  const [currentStep, setCurrentStep] = useState(0);
+  // Guard: auto-advance from Select to Generate when draft chosen
+  useEffect(() => {
+    if (active && currentStep === 0) setCurrentStep(1);
+  }, [active, currentStep]);
+  // Guard: auto-advance from Generate to Apply when content first appears
+  useEffect(() => {
+    if (lastContent && currentStep === 1) setCurrentStep(2);
+  }, [lastContent, currentStep]);
+  const stepIndex = currentStep; // for Stepper
+
+  function canNext() {
+    switch (currentStep) {
+      case 0:
+        return !!active; // need draft
+      case 1:
+        return !!lastContent; // need generated content
+      case 2:
+        return true; // apply step can proceed any time after generation
+      default:
+        return false;
+    }
+  }
+  function nextStep() {
+    if (currentStep < 3 && canNext()) setCurrentStep((s) => s + 1);
+  }
+  function prevStep() {
+    if (currentStep > 0) setCurrentStep((s) => s - 1);
+  }
 
   // Apply skill ordering from AI output to draft
   function applySkills() {
@@ -109,6 +283,11 @@ export default function GenerateResume() {
       isSame ? "No changes to apply" : "Applied ordered skills to draft"
     );
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
+    emitApplyEvent({
+      action: "apply-skills",
+      jobId: lastJobId ?? undefined,
+      changed: !isSame,
+    });
   }
 
   function applySummaryToDraft() {
@@ -117,6 +296,11 @@ export default function GenerateResume() {
     applySummary(lastContent.summary);
     showSuccess(isSame ? "No changes to apply" : "Applied summary to draft");
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
+    emitApplyEvent({
+      action: "apply-summary",
+      jobId: lastJobId ?? undefined,
+      changed: !isSame,
+    });
   }
 
   function mergeExperience() {
@@ -124,10 +308,56 @@ export default function GenerateResume() {
     const exp = lastContent?.sections?.experience;
     if (!exp?.length) return;
     setMergeOpen(true);
+    emitApplyEvent({
+      action: "open-experience-merge",
+      jobId: lastJobId ?? undefined,
+      entries: exp.length,
+    });
+  }
+
+  /** Map segment status codes into human-friendly labels for summary UI. */
+  function segmentStatusLabel(status?: SegmentStatus | null) {
+    switch (status) {
+      case "success":
+        return "success";
+      case "running":
+        return "in progress";
+      case "error":
+        return "error";
+      case "skipped":
+        return "skipped";
+      case "idle":
+      default:
+        return "pending";
+    }
   }
 
   return (
     <Box>
+      {/* Skip links for keyboard users */}
+      <Box
+        component="nav"
+        sx={{
+          position: "absolute",
+          left: -9999,
+          top: 0,
+          "&:focus-within": {
+            left: 8,
+            top: 8,
+            zIndex: 1200,
+            backgroundColor: "background.paper",
+            boxShadow: 3,
+            p: 1,
+            borderRadius: 1,
+          },
+        }}
+      >
+        <Stack direction="row" spacing={1}>
+          <a href="#generation-controls">Skip to generation controls</a>
+          <a href="#resume-preview-main">Skip to preview</a>
+          <a href="#versions-export-aside">Skip to versions & export</a>
+        </Stack>
+      </Box>
       <RegionAnchor
         id="[F]"
         desc="Resume editor, templates, and ATS-optimization tools"
@@ -140,6 +370,7 @@ export default function GenerateResume() {
         optional Focus). Outputs appear as a preview and can be applied to your
         active draft in Step 3.
       </Typography>
+      <ResumeTutorial />
       <Stepper activeStep={stepIndex} alternativeLabel sx={{ mb: 2 }}>
         <Step>
           <StepLabel>Select Draft</StepLabel>
@@ -157,211 +388,470 @@ export default function GenerateResume() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          gridTemplateColumns:
+            currentStep < 3
+              ? { xs: "1fr", md: "1fr" }
+              : { xs: "1fr", md: "1.1fr 1fr 0.9fr" },
           gap: 2,
+          alignItems: "start",
+          transition: "grid-template-columns .25s",
         }}
       >
         {/* LEFT COLUMN: Steps 1-3 */}
-        <Box>
+        <Box role="navigation" aria-label="Resume steps and apply actions">
           <Stack spacing={3}>
             {/* STEP 1 */}
-            <Typography variant="overline">Step 1 — Select Draft</Typography>
-            <DraftSelectorBar />
-            {/* STEP 2 */}
-            <Typography variant="overline">
-              Step 2 — Generate Content
-            </Typography>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Inputs: choose the target Job, adjust Tone, and optional Focus.
-                Click Generate to produce AI-tailored content.
-              </Alert>
-              <Stack spacing={2}>
-                <GenerationCard />
-              </Stack>
-            </Paper>
-            {/* STEP 3 */}
-            <Typography variant="overline">Step 3 — Apply to Draft</Typography>
-            <Paper
-              variant="outlined"
-              sx={{
-                p: 2,
-                position: { md: "sticky" },
-                top: { md: 64 },
-                zIndex: 1,
-              }}
-            >
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Outputs: ordered skills, a tailored summary, and selected
-                experience bullets. Use the buttons below to apply them.
-              </Alert>
-              <SectionControlsPanel />
-              {lastContent && (
-                <Stack spacing={1.5} sx={{ mt: 1 }}>
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ flexWrap: "wrap" }}
-                  >
-                    <Tooltip title="Apply AI-ordered skill list to active draft">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          onClick={applySkills}
-                          disabled={!active}
-                        >
-                          Apply Skills
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Replace summary with AI generated version">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          onClick={applySummaryToDraft}
-                          disabled={!active}
-                        >
-                          Apply Summary
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Select and merge tailored experience bullets">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          onClick={mergeExperience}
-                          disabled={!active}
-                        >
-                          Merge Experience
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Copy ordered skills + emphasize/add lists to clipboard">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          onClick={() => {
-                            if (!lastContent) return;
-                            const payload = {
-                              ordered: lastContent.ordered_skills || [],
-                              emphasize: lastContent.emphasize_skills || [],
-                              add: lastContent.add_skills || [],
-                            };
-                            navigator.clipboard
-                              .writeText(JSON.stringify(payload, null, 2))
-                              .catch(() => {});
-                            showSuccess("Copied skill sets to clipboard");
-                          }}
-                          disabled={
-                            !active || !lastContent?.ordered_skills?.length
-                          }
-                        >
-                          Copy Keywords
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                  <Paper variant="outlined" sx={{ p: 1.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Output summary
-                    </Typography>
-                    <Typography variant="body2">
-                      Skills ordered: {lastContent?.ordered_skills?.length ?? 0}
-                    </Typography>
-                    <Typography variant="body2">
-                      Summary: {lastContent?.summary ? "present" : "none"}
-                    </Typography>
-                    <Typography variant="body2">
-                      Experience entries:{" "}
-                      {lastContent?.sections?.experience?.length ?? 0}
-                    </Typography>
-                  </Paper>
-                </Stack>
-              )}
-              {!lastContent && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  Generate content in Step 2 to enable Apply actions.
+            {currentStep === 0 && (
+              <>
+                <Typography variant="overline">
+                  Step 1 — Select Draft
                 </Typography>
+                <DraftSelectorBar />
+              </>
+            )}
+            {/* STEP 2 */}
+            {currentStep === 1 && (
+              <>
+                <Typography variant="overline">
+                  Step 2 — Generate Content
+                </Typography>
+                <Paper
+                  id="generation-controls"
+                  variant="outlined"
+                  sx={{ p: 2 }}
+                >
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Inputs: choose the target Job, adjust Tone, and optional
+                    Focus. Click Generate to produce AI-tailored content.
+                  </Alert>
+                  <Stack spacing={2}>
+                    <GenerationCard />
+                  </Stack>
+                </Paper>
+              </>
+            )}
+            {/* STEP 3 */}
+            {currentStep === 2 && (
+              <>
+                <Typography variant="overline">
+                  Step 3 — Apply to Draft
+                </Typography>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    position: { md: "sticky" },
+                    top: { md: 72 },
+                    maxHeight: { md: "calc(100vh - 96px)" },
+                    overflow: { md: "auto" },
+                    alignSelf: { md: "start" },
+                    zIndex: 1,
+                  }}
+                >
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    Outputs: ordered skills, a tailored summary, and selected
+                    experience bullets. Use the buttons below to apply them.
+                  </Alert>
+                  <SectionControlsPanel />
+                  {lastContent && (
+                    <Stack spacing={1.5} sx={{ mt: 1 }}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        sx={{ flexWrap: "wrap" }}
+                      >
+                        <Tooltip title="Apply AI-ordered skill list to active draft">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              onClick={applySkills}
+                              disabled={!active}
+                              sx={{ width: { xs: "100%", sm: "auto" } }}
+                            >
+                              Apply Skills
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Replace summary with AI generated version">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              onClick={applySummaryToDraft}
+                              disabled={!active}
+                              sx={{ width: { xs: "100%", sm: "auto" } }}
+                            >
+                              Apply Summary
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Select and merge tailored experience bullets">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              onClick={mergeExperience}
+                              disabled={!active}
+                              sx={{ width: { xs: "100%", sm: "auto" } }}
+                            >
+                              Merge Experience
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Copy ordered skills + emphasize/add lists to clipboard">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              onClick={() => {
+                                if (!lastContent) return;
+                                const payload = {
+                                  ordered: lastContent.ordered_skills || [],
+                                  emphasize: lastContent.emphasize_skills || [],
+                                  add: lastContent.add_skills || [],
+                                };
+                                navigator.clipboard
+                                  .writeText(JSON.stringify(payload, null, 2))
+                                  .catch(() => {});
+                                showSuccess("Copied skill sets to clipboard");
+                                emitApplyEvent({
+                                  action: "copy-keywords",
+                                  jobId: lastJobId ?? undefined,
+                                  ordered: payload.ordered.length,
+                                });
+                              }}
+                              disabled={
+                                !active || !lastContent?.ordered_skills?.length
+                              }
+                              sx={{ width: { xs: "100%", sm: "auto" } }}
+                            >
+                              Copy Keywords
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Stack>
+                      <Paper variant="outlined" sx={{ p: 1.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Output summary
+                        </Typography>
+                        <Typography variant="body2">
+                          Skills ordered:{" "}
+                          {lastContent?.ordered_skills?.length ?? 0}
+                        </Typography>
+                        <Typography variant="body2">
+                          Summary: {lastContent?.summary ? "present" : "none"}
+                        </Typography>
+                        <Typography variant="body2">
+                          Experience entries:{" "}
+                          {lastContent?.sections?.experience?.length ?? 0}
+                        </Typography>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          Segment status
+                        </Typography>
+                        {lastSegments ? (
+                          <>
+                            <Typography variant="body2">
+                              Base resume:{" "}
+                              {segmentStatusLabel(lastSegments.base)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Skills optimization:{" "}
+                              {segmentStatusLabel(lastSegments.skills)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Experience tailoring:{" "}
+                              {segmentStatusLabel(lastSegments.experience)}
+                            </Typography>
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No runs yet. Generate content to see segment
+                            outcomes.
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Stack>
+                  )}
+                  {!lastContent && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      Generate content in Step 2 to enable Apply actions.
+                    </Typography>
+                  )}
+                </Paper>
+              </>
+            )}
+            {/* Navigation buttons */}
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Button
+                variant="outlined"
+                onClick={prevStep}
+                disabled={currentStep === 0}
+              >
+                Back
+              </Button>
+              {currentStep < 3 && (
+                <Button
+                  variant="contained"
+                  onClick={nextStep}
+                  disabled={!canNext()}
+                >
+                  Next
+                </Button>
               )}
-            </Paper>
+            </Stack>
           </Stack>
         </Box>
-        {/* RIGHT COLUMN: Preview tabs */}
-        <Box>
-          <Typography variant="overline">Step 4 — Preview</Typography>
-          <Tabs
-            value={previewTab}
-            onChange={(_, v) => setPreviewTab(v)}
-            aria-label="Resume preview tabs"
-            sx={{
-              mb: 1,
-              flexWrap: "wrap",
-              ".MuiTab-root": { textTransform: "none", minHeight: 36 },
-            }}
+        {/* MIDDLE COLUMN: Preview tabs */}
+        {currentStep === 3 && (
+          <Box
+            id="resume-preview-main"
+            role="main"
+            aria-labelledby="resume-editor-heading"
           >
-            <Tab label="AI Tailored" value="ai" />
-            <Tab label="Current Draft" value="draft" />
-            <Tab label="Variations" value="variations" />
-            <Tab label="Skills" value="skills" />
-            <Tab label="Raw JSON" value="raw" />
-          </Tabs>
-          {previewTab === "ai" && <AIResumePreview content={lastContent} />}
-          {previewTab === "draft" && <ResumeDraftPreviewPanel />}
-          {previewTab === "variations" && <ResumeVariationsPanel />}
-          {previewTab === "skills" && (
-            <SkillsAnalysisPreview content={lastContent} />
-          )}
-          {previewTab === "raw" && (
-            <Paper
-              variant="outlined"
-              sx={{ p: 2, fontSize: 12, maxHeight: 360, overflow: "auto" }}
-            >
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                {lastContent
-                  ? JSON.stringify(lastContent, null, 2)
-                  : "No content yet."}
-              </pre>
-            </Paper>
-          )}
-        </Box>
-      </Box>
-      {/* Advanced tools */}
-      <Box>
-        <Divider sx={{ my: 2 }} />
-        <Button
-          startIcon={
-            <ExpandMoreIcon
+            <Typography variant="overline">Step 4 — Preview</Typography>
+            <Tabs
+              value={previewTab}
+              onChange={(_, v) => setPreviewTab(v)}
+              aria-label="Resume preview tabs"
               sx={{
-                transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "0.2s",
+                mb: 1,
+                flexWrap: "wrap",
+                ".MuiTab-root": { textTransform: "none", minHeight: 36 },
+              }}
+              variant="scrollable"
+              allowScrollButtonsMobile
+            >
+              <Tab label="AI Tailored" value="ai" />
+              <Tab label="Formatted" value="formatted" />
+              <Tab label="Current Draft" value="draft" />
+              <Tab label="Variations" value="variations" />
+              <Tab label="Skills" value="skills" />
+              <Tab label="Raw JSON" value="raw" />
+            </Tabs>
+            <Suspense
+              fallback={
+                <Typography variant="body2">Loading preview…</Typography>
+              }
+            >
+              {previewTab === "ai" && <AIResumePreview content={lastContent} />}
+              {previewTab === "formatted" && (
+                <Box id="resume-formatted-preview">
+                  <ResumeFullPreview
+                    content={lastContent}
+                    headerTitle="Formatted Preview"
+                    loadingSkills={lastSegments?.skills === "running"}
+                    loadingExperience={lastSegments?.experience === "running"}
+                    newBullets={newBullets || undefined}
+                  />
+                </Box>
+              )}
+              {previewTab === "draft" && <ResumeDraftPreviewPanel />}
+              {previewTab === "variations" && <ResumeVariationsPanel />}
+              {previewTab === "skills" && (
+                <SkillsAnalysisPreview content={lastContent} />
+              )}
+              {previewTab === "raw" && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, fontSize: 12, maxHeight: 360, overflow: "auto" }}
+                >
+                  <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                    {lastContent
+                      ? JSON.stringify(lastContent, null, 2)
+                      : "No content yet."}
+                  </pre>
+                </Paper>
+              )}
+            </Suspense>
+          </Box>
+        )}
+        {/* RIGHT COLUMN: Versions & Export */}
+        {currentStep === 3 && (
+          <Box
+            id="versions-export-aside"
+            role="complementary"
+            aria-label="Versions and export actions"
+          >
+            <VersionsExportAside
+              lastContent={lastContent}
+              jobId={lastJobId}
+              onOpenVersions={() => setShowAdvanced(true)}
+              onExportPDF={async () => {
+                try {
+                  // Lazy import to keep bundle lean
+                  const [{ default: html2canvas }, { jsPDF }] =
+                    await Promise.all([
+                      import("html2canvas"),
+                      import("jspdf") as unknown as Promise<{
+                        jsPDF: typeof import("jspdf").jsPDF;
+                      }>,
+                    ]);
+                  const el = document.getElementById(
+                    "resume-formatted-preview"
+                  );
+                  if (!el) throw new Error("Formatted preview not available");
+                  const canvas = await html2canvas(el, {
+                    scale: Math.min(window.devicePixelRatio || 1.5, 2),
+                    backgroundColor: "#ffffff",
+                  });
+                  const imgData = canvas.toDataURL("image/png");
+                  const pdf = new jsPDF({
+                    orientation: "p",
+                    unit: "pt",
+                    format: "a4",
+                  });
+                  // Fit image onto A4 with aspect ratio
+                  const pageWidth = pdf.internal.pageSize.getWidth();
+                  const pageHeight = pdf.internal.pageSize.getHeight();
+                  const imgWidth = pageWidth - 48; // margins
+                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                  const y = 24;
+                  if (imgHeight > pageHeight - 48) {
+                    // scale down to fit height
+                    const h = pageHeight - 48;
+                    const w = (canvas.width * h) / canvas.height;
+                    pdf.addImage(imgData, "PNG", (pageWidth - w) / 2, 24, w, h);
+                  } else {
+                    pdf.addImage(imgData, "PNG", 24, y, imgWidth, imgHeight);
+                  }
+                  const fname = `resume_${lastJobId ?? "preview"}.pdf`;
+                  // Create blob for optional storage linking
+                  const blob = pdf.output("blob");
+                  pdf.save(fname);
+                  setSrMessage("Resume exported as PDF");
+                  showSuccess("Exported PDF");
+                  // If user & job present, persist and link document row
+                  if (user?.id && lastJobId) {
+                    const linked = await createDocumentAndLink({
+                      userId: user.id,
+                      jobId: lastJobId,
+                      file: blob,
+                      filename: fname,
+                      mime: "application/pdf",
+                      kind: "resume",
+                      linkType: "resume",
+                    });
+                    if (linked) {
+                      showSuccess("PDF stored & linked to job materials");
+                      setSrMessage("PDF stored and linked to job materials");
+                    }
+                  }
+                } catch (e) {
+                  handleError(e);
+                }
+              }}
+              onAttachToJob={async () => {
+                try {
+                  if (!user?.id) throw new Error("Not signed in");
+                  if (!lastJobId) throw new Error("No job selected");
+                  if (!selectedArtifact || !("id" in selectedArtifact))
+                    throw new Error("Select a version from the list");
+                  await aiGeneration.linkJobMaterials(user.id, {
+                    jobId: lastJobId,
+                    resume_artifact_id: (selectedArtifact as AIArtifactSummary)
+                      .id,
+                  });
+                  showSuccess("Attached selected version to job");
+                  setSrMessage("Selected version attached to job");
+                } catch (e) {
+                  handleError(e);
+                }
+              }}
+              onSelectVersion={(content, artifact) => {
+                setSelectedContent(content ?? null);
+                setSelectedArtifact(artifact ?? null);
+                if (content) setCompareOpen(true);
+                if (artifact && "id" in artifact && artifact.id) {
+                  lastFocusArtifactIdRef.current = artifact.id as string;
+                }
+              }}
+              onExportDOCX={async () => {
+                try {
+                  if (!lastContent) throw new Error("No content to export");
+                  const doc = new Document({
+                    sections: [
+                      {
+                        properties: {},
+                        children: buildDocxFromResume(lastContent),
+                      },
+                    ],
+                  });
+                  const blob = await Packer.toBlob(doc);
+                  const fname = `resume_${lastJobId ?? "preview"}.docx`;
+                  // Trigger download
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = fname;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  showSuccess("Exported DOCX");
+                  setSrMessage("Resume exported as DOCX");
+                  if (user?.id && lastJobId) {
+                    const linked = await createDocumentAndLink({
+                      userId: user.id,
+                      jobId: lastJobId,
+                      file: blob,
+                      filename: fname,
+                      mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                      kind: "resume",
+                      linkType: "resume",
+                    });
+                    if (linked) {
+                      showSuccess("DOCX stored & linked to job materials");
+                      setSrMessage("DOCX stored and linked to job materials");
+                    }
+                  }
+                } catch (e) {
+                  handleError(e);
+                }
               }}
             />
-          }
-          variant="text"
-          onClick={() => setShowAdvanced((v) => !v)}
-        >
-          {showAdvanced ? "Hide Advanced Tools" : "Show Advanced Tools"}
-        </Button>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          display="block"
-          sx={{ mt: 0.5 }}
-        >
-          Advanced: versions, validation, artifacts history.
-        </Typography>
-        <Collapse in={showAdvanced} unmountOnExit>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            <VersionManagerPanel />
-            <ResumeValidationPanel />
-            <ArtifactsHistoryPanel />
-          </Stack>
-        </Collapse>
+          </Box>
+        )}
       </Box>
+      {/* Advanced tools */}
+      {currentStep === 3 && (
+        <Box>
+          <Divider sx={{ my: 2 }} />
+          <Button
+            startIcon={
+              <ExpandMoreIcon
+                sx={{
+                  transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "0.2s",
+                }}
+              />
+            }
+            variant="text"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
+            {showAdvanced ? "Hide Advanced Tools" : "Show Advanced Tools"}
+          </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: 0.5 }}
+          >
+            Advanced: versions, validation, artifacts history.
+          </Typography>
+          <Collapse in={showAdvanced} unmountOnExit>
+            <Suspense
+              fallback={
+                <Typography variant="body2">Loading advanced tools…</Typography>
+              }
+            >
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                <VersionManagerPanel />
+                <ResumeValidationPanel />
+                <ArtifactsHistoryPanel />
+              </Stack>
+            </Suspense>
+          </Collapse>
+        </Box>
+      )}
       <BulletMergeDialog
         open={mergeOpen}
         onClose={() => setMergeOpen(false)}
@@ -383,8 +873,187 @@ export default function GenerateResume() {
           );
           showSuccess("Selected bullets merged");
           if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
+          emitApplyEvent({
+            action: "merge-experience",
+            jobId: lastJobId ?? undefined,
+            applied: rows.length,
+          });
         }}
       />
+      <DiffCompareDialog
+        open={compareOpen}
+        left={lastContent}
+        right={selectedContent}
+        onClose={() => setCompareOpen(false)}
+        onChoose={async () => {
+          try {
+            if (selectedContent) setLastContent(selectedContent);
+            if (
+              user?.id &&
+              lastJobId &&
+              selectedArtifact &&
+              "id" in selectedArtifact
+            ) {
+              await aiGeneration.linkJobMaterials(user.id, {
+                jobId: lastJobId,
+                resume_artifact_id: (selectedArtifact as AIArtifactSummary).id,
+              });
+              showSuccess("Selected version linked to job");
+              setSrMessage("Selected version linked to job");
+              setSrMessage("Selected version linked to job");
+            }
+          } catch (e) {
+            handleError(e);
+          } finally {
+            setCompareOpen(false);
+            // Restore keyboard focus to previously selected artifact list item
+            if (lastFocusArtifactIdRef.current) {
+              const el = document.querySelector<HTMLElement>(
+                `[data-artifact-id="${lastFocusArtifactIdRef.current}"]`
+              );
+              el?.focus();
+            }
+          }
+        }}
+      />
+      {/* Visually hidden live region for screen reader announcements */}
+      <Box
+        aria-live="polite"
+        role="status"
+        sx={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          p: 0,
+          m: 0,
+          overflow: "hidden",
+          clip: "rect(0 0 0 0)",
+        }}
+      >
+        {srMessage}
+      </Box>
     </Box>
   );
+}
+
+/**
+ * buildDocxFromResume
+ * WHAT: Convert ResumeArtifactContent into docx Paragraph blocks.
+ * WHY: Provide basic DOCX export (simple formatting, bullet lists).
+ * INPUT: ResumeArtifactContent
+ * OUTPUT: Array<Paragraph>
+ */
+function buildDocxFromResume(content: ResumeArtifactContent) {
+  const out: Paragraph[] = [];
+  if (content.summary) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Summary", bold: true, size: 24 })],
+        spacing: { after: 120 },
+      })
+    );
+    out.push(new Paragraph({ text: content.summary }));
+  }
+  if (content.ordered_skills?.length) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Skills", bold: true, size: 24 })],
+        spacing: { before: 240, after: 120 },
+      })
+    );
+    out.push(
+      new Paragraph({
+        text: content.ordered_skills.join(", "),
+      })
+    );
+  }
+  const exp = content.sections?.experience || [];
+  if (exp.length) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Experience", bold: true, size: 24 })],
+        spacing: { before: 240, after: 120 },
+      })
+    );
+    for (const row of exp) {
+      out.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: [row.role, row.company, row.dates]
+                .filter(Boolean)
+                .join(" · "),
+              bold: true,
+            }),
+          ],
+          spacing: { after: 60 },
+        })
+      );
+      for (const b of row.bullets || []) {
+        out.push(new Paragraph({ text: b, bullet: { level: 0 } }));
+      }
+    }
+  }
+  const education = content.sections?.education || [];
+  if (education.length) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Education", bold: true, size: 24 })],
+        spacing: { before: 240, after: 120 },
+      })
+    );
+    for (const row of education) {
+      out.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: [row.institution, row.degree, row.graduation_date]
+                .filter(Boolean)
+                .join(" · "),
+              bold: true,
+            }),
+          ],
+          spacing: { after: 60 },
+        })
+      );
+      for (const d of row.details || []) {
+        out.push(new Paragraph({ text: d, bullet: { level: 0 } }));
+      }
+    }
+  }
+  const projects = content.sections?.projects || [];
+  if (projects.length) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Projects", bold: true, size: 24 })],
+        spacing: { before: 240, after: 120 },
+      })
+    );
+    for (const row of projects) {
+      out.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: [row.name, row.role].filter(Boolean).join(" · "),
+              bold: true,
+            }),
+          ],
+          spacing: { after: 60 },
+        })
+      );
+      for (const d of row.bullets || []) {
+        out.push(new Paragraph({ text: d, bullet: { level: 0 } }));
+      }
+    }
+  }
+  if (content.ats_keywords?.length) {
+    out.push(
+      new Paragraph({
+        children: [new TextRun({ text: "ATS Keywords", bold: true, size: 24 })],
+        spacing: { before: 240, after: 120 },
+      })
+    );
+    out.push(new Paragraph({ text: content.ats_keywords.join(", ") }));
+  }
+  return out;
 }

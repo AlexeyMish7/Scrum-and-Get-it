@@ -15,7 +15,13 @@ import type {
 export async function generateResume(
   userId: string,
   jobId: number,
-  options?: { tone?: string; focus?: string; variant?: number }
+  options?: {
+    tone?: string;
+    focus?: string;
+    variant?: number;
+    model?: string;
+    prompt?: string;
+  }
 ): Promise<GenerateResumeResult> {
   // POST /api/generate/resume (returns full content when available)
   return aiClient.postJson<GenerateResumeResult>(
@@ -99,8 +105,148 @@ export const aiGeneration = {
   generateCoverLetter,
   generateSkillsOptimization,
   generateExperienceTailoring,
+  // New job materials endpoints
+  linkJobMaterials,
+  listJobMaterials,
   listArtifacts,
   getArtifact,
+  createDocumentAndLink,
 };
 
 export default aiGeneration;
+
+/**
+ * createDocumentAndLink
+ * WHAT: Convenience helper to upload a generated artifact (Blob/File) to a storage bucket, create a documents row, then link it in job_materials.
+ * WHY: Streamlines export → attach workflow for resume artifacts (PDF/DOCX) without duplicating logic in UI.
+ * INPUT:
+ *  userId: current user
+ *  jobId: job to link materials to
+ *  file: Blob or File produced by export pipeline
+ *  filename: desired stored file name
+ *  kind: documents.kind (resume|cover_letter|other)
+ *  linkType: 'resume' | 'cover' (which column in job_materials to set)
+ * OUTPUT: { docId, materialId }
+ */
+import { supabase } from "@shared/services/supabaseClient";
+import { withUser } from "@shared/services/crud";
+
+/** Lightweight type representing the inserted documents row we care about */
+interface ExportDocumentRow {
+  id: string;
+  file_name: string;
+  file_path: string;
+  mime_type?: string | null;
+  bytes?: number | null;
+}
+export async function createDocumentAndLink(params: {
+  userId: string;
+  jobId: number;
+  file: Blob;
+  filename: string;
+  mime: string;
+  kind?: "resume" | "cover_letter" | "other";
+  linkType?: "resume" | "cover";
+}): Promise<{ docId: string; materialId: string } | null> {
+  const {
+    userId,
+    jobId,
+    file,
+    filename,
+    mime,
+    kind = "resume",
+    linkType = "resume",
+  } = params;
+  try {
+    const key = `${userId}/exports/${Date.now()}_${filename}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("documents")
+      .upload(key, file, { contentType: mime });
+    if (uploadErr) throw uploadErr;
+    const userCrud = withUser(userId);
+    // Insert the new exported document row (scoped by withUser)
+    const docRes = await userCrud.insertRow<ExportDocumentRow>("documents", {
+      kind: kind === "cover_letter" ? "cover_letter" : kind,
+      file_name: filename,
+      file_path: key,
+      mime_type: mime,
+      bytes: (file as File).size || undefined,
+      meta: { source: "export", linkType },
+    });
+    if (docRes.error || !docRes.data)
+      throw new Error(docRes.error?.message || "Failed to create document row");
+    const docId = docRes.data.id as string;
+    const materialRes = await linkJobMaterials(userId, {
+      jobId,
+      ...(linkType === "resume"
+        ? { resume_document_id: docId }
+        : { cover_document_id: docId }),
+    });
+    return { docId, materialId: materialRes.material.id };
+  } catch (e) {
+    console.warn("createDocumentAndLink failed", e);
+    return null;
+  }
+}
+
+// ---------------- Job Materials Linking -----------------------
+/** Link selected resume/cover artifact or document to a job (version selection). */
+export async function linkJobMaterials(
+  userId: string,
+  payload: {
+    jobId: number;
+    resume_artifact_id?: string;
+    resume_document_id?: string;
+    cover_artifact_id?: string;
+    cover_document_id?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<{
+  material: {
+    id: string;
+    user_id: string;
+    job_id: number;
+    resume_artifact_id?: string | null;
+    resume_document_id?: string | null;
+    cover_artifact_id?: string | null;
+    cover_document_id?: string | null;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+  };
+}> {
+  return aiClient.postJson(
+    "/api/job-materials",
+    {
+      jobId: payload.jobId,
+      resume_artifact_id: payload.resume_artifact_id,
+      resume_document_id: payload.resume_document_id,
+      cover_artifact_id: payload.cover_artifact_id,
+      cover_document_id: payload.cover_document_id,
+      metadata: payload.metadata,
+    },
+    userId
+  );
+}
+
+/** List recently linked materials for a job. */
+export async function listJobMaterials(
+  userId: string,
+  jobId: number,
+  limit = 10
+): Promise<{
+  items: Array<{
+    id: string;
+    created_at: string;
+    resume_artifact_id?: string | null;
+    resume_document_id?: string | null;
+    cover_artifact_id?: string | null;
+    cover_document_id?: string | null;
+    metadata?: Record<string, unknown>;
+  }>;
+  persisted: boolean;
+}> {
+  return aiClient.getJson(
+    `/api/jobs/${encodeURIComponent(String(jobId))}/materials?limit=${limit}`,
+    userId
+  );
+}

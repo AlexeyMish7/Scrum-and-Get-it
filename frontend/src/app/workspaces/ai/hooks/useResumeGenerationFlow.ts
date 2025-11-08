@@ -12,13 +12,32 @@ import type {
   SkillsOptimizationContent,
 } from "@workspaces/ai/types/ai";
 
-export type SegmentStatus = "idle" | "running" | "success" | "error";
+export type SegmentStatus =
+  | "idle"
+  | "running"
+  | "success"
+  | "error"
+  | "skipped";
 
 export interface FlowOptions {
   tone?: string;
   focus?: string;
   includeSkills?: boolean;
   includeExperience?: boolean;
+  model?: string;
+  prompt?: string;
+  /** Optional preview rendering hint (no behavior change yet) */
+  previewMode?: "live" | "final";
+  /** Optional per-section visibility toggles (UI only) */
+  sectionToggles?: {
+    summary?: boolean;
+    skills?: boolean;
+    experience?: boolean;
+    education?: boolean;
+    projects?: boolean;
+  };
+  /** Optional output formatting hint for later export paths */
+  outputFormatIntent?: "screen" | "pdf" | "docx";
 }
 
 export interface FlowState {
@@ -50,10 +69,20 @@ export default function useResumeGenerationFlow(userId?: string) {
   const [result, setResult] = useState<UnifiedResult>({ content: null });
   const runningRef = useRef(false);
 
+  const emit = useCallback((event: string, detail: Record<string, unknown>) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.dispatchEvent(new CustomEvent(event, { detail }));
+    } catch (err) {
+      console.warn(`${event} dispatch failed`, err);
+    }
+  }, []);
+
   const reset = useCallback(() => {
     setState({ base: "idle", skills: "idle", experience: "idle" });
     setResult({ content: null });
-  }, []);
+    emit("sgt:resumeGeneration:reset", { ts: Date.now() });
+  }, [emit]);
 
   const merge = useCallback(
     (
@@ -98,19 +127,38 @@ export default function useResumeGenerationFlow(userId?: string) {
       if (!userId || !jobId) return;
       if (runningRef.current) return;
       runningRef.current = true;
-      setState({ base: "running", skills: "idle", experience: "idle" });
+      const wantSkills = Boolean(options?.includeSkills);
+      const wantExp = Boolean(options?.includeExperience);
+      emit("sgt:resumeGeneration:start", {
+        jobId,
+        options,
+        ts: Date.now(),
+      });
+      // Pre-mark optional segments as skipped so UI reflects toggles disabled.
+      setState({
+        base: "running",
+        skills: wantSkills ? "idle" : "skipped",
+        experience: wantExp ? "idle" : "skipped",
+      });
+      let skillsStatus: SegmentStatus = wantSkills ? "idle" : "skipped";
+      let experienceStatus: SegmentStatus = wantExp ? "idle" : "skipped";
       try {
         // 1) Base resume
         const base = await generateResume(userId, jobId, {
           tone: options?.tone,
           focus: options?.focus,
+          model: options?.model,
+          prompt: options?.prompt,
         });
         setState((s) => ({ ...s, base: "success" }));
+        emit("sgt:resumeGeneration:segment", {
+          jobId,
+          segment: "base",
+          status: "success",
+          ts: Date.now(),
+        });
 
         // 2) Parallelize optional segments
-        const wantSkills = Boolean(options?.includeSkills);
-        const wantExp = Boolean(options?.includeExperience);
-
         if (!wantSkills && !wantExp) {
           const mergedOnly = merge(base.content);
           setResult({
@@ -120,15 +168,22 @@ export default function useResumeGenerationFlow(userId?: string) {
             experience: null,
           });
           // Broadcast fresh content for consumers
-          try {
-            window.dispatchEvent(
-              new CustomEvent("sgt:resumeGenerated", {
-                detail: { content: mergedOnly, jobId, ts: Date.now() },
-              })
-            );
-          } catch (err) {
-            console.warn("resumeGenerated event dispatch failed", err);
-          }
+          emit("sgt:resumeGenerated", {
+            content: mergedOnly,
+            jobId,
+            ts: Date.now(),
+          });
+          emit("sgt:resumeGeneration:complete", {
+            jobId,
+            state: {
+              base: "success",
+              skills: "skipped",
+              experience: "skipped",
+            },
+            ts: Date.now(),
+          });
+          showSuccess("Generation complete");
+          return;
         } else {
           const promises: Array<Promise<unknown>> = [];
           let skillsContent: SkillsOptimizationContent | null = null;
@@ -136,30 +191,60 @@ export default function useResumeGenerationFlow(userId?: string) {
 
           if (wantSkills) {
             setState((s) => ({ ...s, skills: "running" }));
+            skillsStatus = "running";
             promises.push(
               generateSkillsOptimization(userId, jobId)
                 .then((r) => {
                   skillsContent = r.content ?? null;
                   setState((s) => ({ ...s, skills: "success" }));
+                  skillsStatus = "success";
+                  emit("sgt:resumeGeneration:segment", {
+                    jobId,
+                    segment: "skills",
+                    status: "success",
+                    ts: Date.now(),
+                  });
                 })
                 .catch((e) => {
                   handleError?.(e);
                   setState((s) => ({ ...s, skills: "error" }));
+                  skillsStatus = "error";
+                  emit("sgt:resumeGeneration:segment", {
+                    jobId,
+                    segment: "skills",
+                    status: "error",
+                    ts: Date.now(),
+                  });
                 })
             );
           }
 
           if (wantExp) {
             setState((s) => ({ ...s, experience: "running" }));
+            experienceStatus = "running";
             promises.push(
               generateExperienceTailoring(userId, jobId)
                 .then((r) => {
                   expContent = r.content ?? null;
                   setState((s) => ({ ...s, experience: "success" }));
+                  experienceStatus = "success";
+                  emit("sgt:resumeGeneration:segment", {
+                    jobId,
+                    segment: "experience",
+                    status: "success",
+                    ts: Date.now(),
+                  });
                 })
                 .catch((e) => {
                   handleError?.(e);
                   setState((s) => ({ ...s, experience: "error" }));
+                  experienceStatus = "error";
+                  emit("sgt:resumeGeneration:segment", {
+                    jobId,
+                    segment: "experience",
+                    status: "error",
+                    ts: Date.now(),
+                  });
                 })
             );
           }
@@ -173,26 +258,41 @@ export default function useResumeGenerationFlow(userId?: string) {
             experience: expContent,
           });
           // Broadcast fresh content for consumers
-          try {
-            window.dispatchEvent(
-              new CustomEvent("sgt:resumeGenerated", {
-                detail: { content: merged, jobId, ts: Date.now() },
-              })
-            );
-          } catch (err) {
-            console.warn("resumeGenerated event dispatch failed", err);
-          }
+          emit("sgt:resumeGenerated", {
+            content: merged,
+            jobId,
+            ts: Date.now(),
+          });
+          emit("sgt:resumeGeneration:complete", {
+            jobId,
+            state: {
+              base: "success",
+              skills: wantSkills ? skillsStatus : "skipped",
+              experience: wantExp ? experienceStatus : "skipped",
+            },
+            ts: Date.now(),
+          });
+          showSuccess("Generation complete");
+          return;
         }
-
-        showSuccess("Generation complete");
       } catch (e) {
         handleError?.(e);
         setState((s) => ({ ...s, base: "error" }));
+        emit("sgt:resumeGeneration:complete", {
+          jobId,
+          state: {
+            base: "error",
+            skills: wantSkills ? skillsStatus : "skipped",
+            experience: wantExp ? experienceStatus : "skipped",
+          },
+          ts: Date.now(),
+          error: e instanceof Error ? e.message : "unknown",
+        });
       } finally {
         runningRef.current = false;
       }
     },
-    [userId, handleError, merge, showSuccess]
+    [userId, handleError, merge, showSuccess, emit]
   );
 
   return useMemo(

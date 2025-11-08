@@ -99,3 +99,52 @@ export interface AIArtifact extends AIArtifactSummary {
   model?: string | null;
   metadata?: Record<string, unknown> | null;
 }
+
+// ---------------- Preview modeling (UI-focused) ---------------------------
+/**
+ * ResumePreviewModel
+ * A UI-friendly shape for rendering the resume preview consistently.
+ * Derived from ResumeArtifactContent with minor normalization.
+ */
+export interface ResumePreviewModel {
+  summary?: string;
+  skills?: string[];
+  emphasize_skills?: string[];
+  add_skills?: string[];
+  experience?: Array<{
+    employment_id?: string;
+    role?: string;
+    company?: string;
+    dates?: string;
+    bullets: string[];
+  }>;
+  education?: Array<{
+    education_id?: string;
+    institution?: string;
+    degree?: string;
+    graduation_date?: string;
+    details?: string[];
+  }>;
+  projects?: Array<{
+    project_id?: string;
+    name?: string;
+    role?: string;
+    bullets: string[];
+  }>;
+  ats_keywords?: string[];
+  score?: number;
+  meta?: Record<string, unknown>;
+}
+
+/** Optional UI hints for output formatting intent */
+export type OutputFormatIntent = "screen" | "pdf" | "docx";
+/** Optional preview mode for the editor */
+export type PreviewMode = "live" | "final";
+/** Optional per-section visibility toggles */
+export interface SectionToggles {
+  summary?: boolean;
+  skills?: boolean;
+  experience?: boolean;
+  education?: boolean;
+  projects?: boolean;
+}

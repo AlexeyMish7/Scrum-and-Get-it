@@ -5,13 +5,34 @@
 export interface GenerateResumeRequest {
   userId: string; // authenticated user id (validated server-side)
   jobId: number; // target job id
-  options?: { tone?: string; focus?: string; variant?: number }; // variant index for multi-generation UI
+  /**
+   * Optional generation tuning parameters provided by the client.
+   * tone: stylistic direction (e.g., "professional", "enthusiastic")
+   * focus: optional emphasis keyword (e.g., "leadership", "backend")
+   * variant: numeric index for multi-generation UX (select different seed)
+   * model: request override for AI model (validated against allow-list)
+   * prompt: user-supplied additive snippet appended to the base prompt
+   */
+  options?: {
+    tone?: string;
+    focus?: string;
+    variant?: number;
+    model?: string;
+    prompt?: string;
+  };
 }
 
 export interface GenerateCoverLetterRequest {
   userId: string; // authenticated user id (validated server-side)
   jobId: number; // target job id
-  options?: { tone?: string; focus?: string; variant?: number };
+  /** See GenerateResumeRequest.options for field semantics */
+  options?: {
+    tone?: string;
+    focus?: string;
+    variant?: number;
+    model?: string;
+    prompt?: string;
+  };
 }
 
 export interface GenerateSkillsOptimizationRequest {

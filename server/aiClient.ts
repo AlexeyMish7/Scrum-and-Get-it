@@ -14,6 +14,7 @@
  * - Keep provider specifics isolated here. If you add Azure or Anthropic, add a sendToX function and route in selectProvider.
  * - Avoid leaking SDK types outward; return a simple typed object.
  */
+import { logError, logInfo } from "./utils/logger.js";
 
 type Provider = "openai" | "azure" | "mock";
 
@@ -141,7 +142,12 @@ async function sendToOpenAI(
 
       const raw: any = await resp.json();
       clearTimeout(id);
-
+      if (!resp.ok) {
+        const errMsg = raw?.error?.message || `OpenAI HTTP ${resp.status}`;
+        const err: any = new Error(errMsg);
+        (err.status as any) = resp.status;
+        throw err;
+      }
       // Compose text from choices if present
       const text =
         raw?.choices
@@ -193,11 +199,51 @@ export async function generate(
   prompt: string,
   opts: GenerateOptions = {}
 ): Promise<GenerateResult> {
+  if (!prompt || typeof prompt !== "string" || prompt.trim().length < 10) {
+    throw new Error("prompt too short or invalid");
+  }
+  if (prompt.length > 20000) {
+    throw new Error("prompt exceeds maximum length (20k chars)");
+  }
   const provider = selectProvider();
-  if (provider === "mock") return randomSampleForKind(kind);
-  if (provider === "openai") return sendToOpenAI(prompt, opts);
-  if (provider === "azure") return sendToAzureAI(prompt, opts);
-  throw new Error("Unsupported AI provider: " + provider);
+  logInfo("ai_generate_start", {
+    kind,
+    provider,
+    model: opts.model,
+    len: prompt.length,
+  });
+  try {
+    if (provider === "mock") return randomSampleForKind(kind);
+    if (provider === "openai") {
+      const r = await sendToOpenAI(prompt, opts);
+      logInfo("ai_generate_ok", {
+        kind,
+        provider,
+        tokens: r.tokens,
+        model: opts.model,
+      });
+      return r;
+    }
+    if (provider === "azure") {
+      const r = await sendToAzureAI(prompt, opts);
+      logInfo("ai_generate_ok", {
+        kind,
+        provider,
+        tokens: r.tokens,
+        model: opts.model,
+      });
+      return r;
+    }
+    throw new Error("Unsupported AI provider: " + provider);
+  } catch (e: any) {
+    logError("ai_generate_error", {
+      kind,
+      provider,
+      model: opts.model,
+      error: e?.message ?? String(e),
+    });
+    throw e;
+  }
 }
 
 export default { generate };

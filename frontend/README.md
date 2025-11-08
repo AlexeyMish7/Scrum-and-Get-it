@@ -17,57 +17,55 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+  # Frontend — Scrum-and-Get-it
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+  React 19 + TypeScript + Vite app using MUI 7 and Supabase.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
+  ## Develop
+
+  - Start dev server: `npm run dev`
+  - Typecheck: `npm run typecheck`
+  - Lint: `npm run lint`
+
+  ## Resume Editor — Progressive Flow
+
+  The AI Resume Editor guides users through four steps with minimal clutter. Only the current step’s UI renders; heavy panels lazy-load when needed.
+
+  Steps:
+  1. Select Draft — choose the draft to tailor.
+  2. Generate — pick Job/Tone/Focus and run generation.
+  3. Apply — apply ordered skills, summary, and merge experience bullets.
+  4. Preview — view tabs (AI/Formatted/Draft/Variations/Skills/Raw), manage versions, export PDF/DOCX, and attach to job.
+
+  Tips:
+  - Skip links at the top jump to generation controls, preview, or versions/export.
+  - Compare dialog supports keyboard navigation and traps focus; Escape closes.
+  - Exports also persist a document row and auto-link to the job when possible.
+
+  ## Tutorial
+
+  The tutorial banner appears for first-time users and is dismissible.
+
+  - Start: focuses Step 2 (generation controls) and scrolls into view.
+  - Skip: hides the tutorial (stored in localStorage under `resumeTutorialCompleted`).
+  - Accessibility: the tutorial region is focusable with `aria-labelledby` and announces when opened.
+
+  To reset the tutorial, remove `resumeTutorialCompleted` from localStorage.
+
+  ## Environment
+
+  Required env variables (do not commit):
+
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+
+  ## Theming
+
+  - MUI theme controls light/dark mode and border radius.
+  - Preview honors theme text/background; dividers and chips adjust for dark mode.
+
+  ## Notes
+
+  - Path aliases are defined in `tsconfig.app.json` and `vite.config.ts`.
     },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```

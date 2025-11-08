@@ -771,6 +771,19 @@ const server = http.createServer(async (req, res) => {
       await handleHealth(url, res);
       return;
     }
+    // ROUTE: Create job materials linkage
+    if (req.method === "POST" && url.pathname === "/api/job-materials") {
+      await handleCreateJobMaterials(req, res, url, reqId);
+      return;
+    }
+    // ROUTE: List job materials for a job
+    if (
+      req.method === "GET" &&
+      /^\/api\/jobs\/\d+\/materials$/.test(url.pathname)
+    ) {
+      await handleListJobMaterialsForJob(req, res, url);
+      return;
+    }
     // ROUTE: List AI Artifacts
     if (req.method === "GET" && url.pathname === "/api/artifacts") {
       await handleListArtifacts(req, res, url);
@@ -901,6 +914,191 @@ async function handleGetArtifact(
       500,
       e?.message || "artifact fetch failed",
       "artifact_fetch_failed"
+    );
+  }
+}
+
+// ---------------------------------------------------------------
+// Job Materials handlers
+// ---------------------------------------------------------------
+/**
+ * POST /api/job-materials
+ * Body: {
+ *   jobId: number,
+ *   resume_artifact_id?: string,
+ *   resume_document_id?: string,
+ *   cover_artifact_id?: string,
+ *   cover_document_id?: string,
+ *   metadata?: Record<string, unknown>
+ * }
+ * Validates ownership and creates a job_materials row.
+ */
+async function handleCreateJobMaterials(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL,
+  reqId: string
+) {
+  const userId = req.headers["x-user-id"] as string | undefined;
+  if (!userId)
+    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+
+  let body: any;
+  try {
+    body = await readJson(req);
+  } catch (e: any) {
+    throw new ApiError(400, "invalid JSON body", "bad_json");
+  }
+
+  const jobId = Number(body?.jobId);
+  if (!Number.isFinite(jobId)) {
+    throw new ApiError(
+      400,
+      "jobId is required and must be a number",
+      "bad_request"
+    );
+  }
+
+  const resume_artifact_id = body?.resume_artifact_id as string | undefined;
+  const cover_artifact_id = body?.cover_artifact_id as string | undefined;
+  const resume_document_id = body?.resume_document_id as string | undefined;
+  const cover_document_id = body?.cover_document_id as string | undefined;
+  const metadata =
+    (body?.metadata as Record<string, unknown> | undefined) ?? {};
+
+  if (
+    !resume_artifact_id &&
+    !cover_artifact_id &&
+    !resume_document_id &&
+    !cover_document_id
+  ) {
+    throw new ApiError(
+      400,
+      "at least one of resume/cover artifact/document id must be provided",
+      "bad_request"
+    );
+  }
+
+  let mod: any;
+  try {
+    mod = await import("../supabaseAdmin.js");
+  } catch (e: any) {
+    throw new ApiError(
+      500,
+      "server not configured for persistence",
+      "server_config"
+    );
+  }
+
+  const job = await mod.getJob(jobId);
+  if (!job) throw new ApiError(404, "job not found", "not_found");
+  if (job.user_id && job.user_id !== userId) {
+    throw new ApiError(403, "job does not belong to user", "forbidden");
+  }
+
+  if (resume_artifact_id) {
+    const a = await mod.getAiArtifactForUser(userId, resume_artifact_id);
+    if (!a) throw new ApiError(404, "resume artifact not found", "not_found");
+    if (a.kind !== "resume") {
+      throw new ApiError(
+        400,
+        "resume_artifact_id must point to kind=resume",
+        "bad_request"
+      );
+    }
+  }
+  if (cover_artifact_id) {
+    const a = await mod.getAiArtifactForUser(userId, cover_artifact_id);
+    if (!a) throw new ApiError(404, "cover artifact not found", "not_found");
+    if (a.kind !== "cover_letter") {
+      throw new ApiError(
+        400,
+        "cover_artifact_id must point to kind=cover_letter",
+        "bad_request"
+      );
+    }
+  }
+  if (resume_document_id) {
+    const d = await mod.getDocumentForUser(userId, resume_document_id);
+    if (!d) throw new ApiError(404, "resume document not found", "not_found");
+    if (d.kind && d.kind !== "resume") {
+      throw new ApiError(
+        400,
+        "resume_document_id must be a resume document",
+        "bad_request"
+      );
+    }
+  }
+  if (cover_document_id) {
+    const d = await mod.getDocumentForUser(userId, cover_document_id);
+    if (!d) throw new ApiError(404, "cover document not found", "not_found");
+    if (d.kind && d.kind !== "cover_letter") {
+      throw new ApiError(
+        400,
+        "cover_document_id must be a cover_letter document",
+        "bad_request"
+      );
+    }
+  }
+
+  try {
+    const row = await mod.insertJobMaterials({
+      user_id: userId,
+      job_id: jobId,
+      resume_artifact_id: resume_artifact_id ?? null,
+      cover_artifact_id: cover_artifact_id ?? null,
+      resume_document_id: resume_document_id ?? null,
+      cover_document_id: cover_document_id ?? null,
+      metadata,
+    });
+    logInfo("job_materials_created", { reqId, userId, jobId, id: row.id });
+    jsonReply(res, 201, { material: row });
+  } catch (e: any) {
+    logError("job_materials_insert_failed", {
+      reqId,
+      userId,
+      jobId,
+      error: e?.message,
+    });
+    throw new ApiError(500, "failed to create job materials", "insert_failed");
+  }
+}
+
+/** GET /api/jobs/:jobId/materials?limit=10 */
+async function handleListJobMaterialsForJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL
+) {
+  const userId = req.headers["x-user-id"] as string | undefined;
+  if (!userId)
+    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  const m = url.pathname.match(/^\/api\/jobs\/(\d+)\/materials$/);
+  const jobId = m ? Number(m[1]) : NaN;
+  if (!Number.isFinite(jobId)) {
+    throw new ApiError(400, "jobId must be numeric", "bad_request");
+  }
+  const limit = Number(url.searchParams.get("limit") || 10);
+  const canPersist = Boolean(
+    process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (!canPersist) {
+    jsonReply(res, 200, { items: [], persisted: false });
+    return;
+  }
+  try {
+    const mod = await import("../supabaseAdmin.js");
+    const items = await (mod as any).listJobMaterialsForJob(
+      userId,
+      jobId,
+      limit
+    );
+    jsonReply(res, 200, { items, persisted: true });
+  } catch (e: any) {
+    throw new ApiError(
+      500,
+      e?.message || "materials list failed",
+      "materials_list_failed"
     );
   }
 }

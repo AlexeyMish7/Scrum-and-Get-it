@@ -13,6 +13,7 @@ This file is a scaffold: adapt to your server framework (Next.js API routes, Ver
 
 import type { GenerateResult } from "./aiClient.js";
 import aiClient from "./aiClient.js";
+import { logError, logInfo } from "./utils/logger.js";
 // Use dynamic import for supabase to avoid throwing at module load when env is missing
 // import supabaseAdmin from "./supabaseAdmin.js"; // do not import statically
 // Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
@@ -35,6 +36,8 @@ import type {
 export async function handleGenerateResume(
   req: GenerateResumeRequest
 ): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  // Lightweight contract guard + structured logging
+  logInfo("orc_resume_start", { userId: req?.userId, jobId: req?.jobId });
   // 1) Basic validation
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
@@ -138,7 +141,7 @@ export async function handleGenerateResume(
   } catch {}
 
   // 4) Prompt composition with enriched context
-  const prompt = buildResumePrompt({
+  const rawPrompt = buildResumePrompt({
     profile,
     job,
     tone: req.options?.tone ?? "professional",
@@ -149,15 +152,43 @@ export async function handleGenerateResume(
     projects,
     certifications,
   });
+  // If client provided a custom prompt snippet, append as user additions
+  // Optional user-supplied additive prompt snippet (validated & sanitized later)
+  const custom = req.options?.prompt?.trim() ?? "";
+  const combined = custom
+    ? `${rawPrompt}\n\nUser Additions:\n${custom}`
+    : rawPrompt;
+  const prompt = sanitizePrompt(combined);
+
+  // Model and generation options (env-driven defaults, allow-list override from req)
+  const model = selectModel(req.options);
+  const aiOpts = {
+    model,
+    temperature: envNumber("AI_TEMPERATURE", 0.2),
+    maxTokens: envNumber("AI_MAX_TOKENS", 800),
+    timeoutMs: envNumber("AI_TIMEOUT_MS", 30_000),
+    maxRetries: envNumber("AI_MAX_RETRIES", 2),
+  } as const;
 
   // 5) Call AI
   let gen: GenerateResult;
   try {
-    gen = await aiClient.generate("resume", prompt, {
-      model: process.env.AI_MODEL ?? undefined,
+    gen = await aiClient.generate("resume", prompt, aiOpts);
+    logInfo("orc_resume_ai_ok", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      tokens: gen.tokens,
     });
   } catch (e: any) {
-    return { error: `AI error: ${e?.message ?? e}` };
+    const msg = `AI error: ${e?.message ?? e}`;
+    logError("orc_resume_ai_error", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      error: msg,
+    });
+    return { error: msg };
   }
 
   // 6) Post-process / construct artifact row (pseudo id)
@@ -168,7 +199,7 @@ export async function handleGenerateResume(
     kind: "resume",
     title: `AI Resume for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
-    model: process.env.AI_MODEL ?? "",
+    model,
     content: gen.json ?? { text: gen.text },
     metadata: {
       generated_at: new Date().toISOString(),
@@ -198,6 +229,7 @@ export async function handleGenerateResume(
 export async function handleGenerateCoverLetter(
   req: GenerateCoverLetterRequest
 ): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  logInfo("orc_cover_letter_start", { userId: req?.userId, jobId: req?.jobId });
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
 
@@ -235,20 +267,41 @@ export async function handleGenerateCoverLetter(
   if (job.user_id && job.user_id !== req.userId)
     return { error: "job does not belong to user" };
 
-  const prompt = buildCoverLetterPrompt({
+  const rawPrompt = buildCoverLetterPrompt({
     profile,
     job,
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
   });
+  const prompt = sanitizePrompt(rawPrompt);
+
+  const model = selectModel(req.options as any);
+  const aiOpts = {
+    model,
+    temperature: envNumber("AI_TEMPERATURE", 0.2),
+    maxTokens: envNumber("AI_MAX_TOKENS", 800),
+    timeoutMs: envNumber("AI_TIMEOUT_MS", 30_000),
+    maxRetries: envNumber("AI_MAX_RETRIES", 2),
+  } as const;
 
   let gen: GenerateResult;
   try {
-    gen = await aiClient.generate("cover_letter", prompt, {
-      model: process.env.AI_MODEL ?? undefined,
+    gen = await aiClient.generate("cover_letter", prompt, aiOpts);
+    logInfo("orc_cover_letter_ai_ok", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      tokens: gen.tokens,
     });
   } catch (e: any) {
-    return { error: `AI error: ${e?.message ?? e}` };
+    const msg = `AI error: ${e?.message ?? e}`;
+    logError("orc_cover_letter_ai_error", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      error: msg,
+    });
+    return { error: msg };
   }
 
   const artifact: ArtifactRow = {
@@ -258,7 +311,7 @@ export async function handleGenerateCoverLetter(
     kind: "cover_letter",
     title: `Cover Letter for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
-    model: process.env.AI_MODEL ?? "",
+    model,
     content: gen.json ?? { text: gen.text },
     metadata: {
       generated_at: new Date().toISOString(),
@@ -281,6 +334,7 @@ export async function handleGenerateCoverLetter(
 export async function handleSkillsOptimization(
   req: GenerateSkillsOptimizationRequest
 ): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  logInfo("orc_skills_opt_start", { userId: req?.userId, jobId: req?.jobId });
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
 
@@ -331,15 +385,36 @@ export async function handleSkillsOptimization(
     return { error: `skills query failed: ${e?.message ?? e}` };
   }
 
-  const prompt = buildSkillsOptimizationPrompt({ profile, job, skills });
+  const rawPrompt = buildSkillsOptimizationPrompt({ profile, job, skills });
+  const prompt = sanitizePrompt(rawPrompt);
+
+  const model = selectModel(undefined);
+  const aiOpts = {
+    model,
+    temperature: envNumber("AI_TEMPERATURE", 0.2),
+    maxTokens: envNumber("AI_MAX_TOKENS", 800),
+    timeoutMs: envNumber("AI_TIMEOUT_MS", 30_000),
+    maxRetries: envNumber("AI_MAX_RETRIES", 2),
+  } as const;
 
   let gen: GenerateResult;
   try {
-    gen = await aiClient.generate("skills_optimization", prompt, {
-      model: process.env.AI_MODEL ?? undefined,
+    gen = await aiClient.generate("skills_optimization", prompt, aiOpts);
+    logInfo("orc_skills_opt_ai_ok", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      tokens: gen.tokens,
     });
   } catch (e: any) {
-    return { error: `AI error: ${e?.message ?? e}` };
+    const msg = `AI error: ${e?.message ?? e}`;
+    logError("orc_skills_opt_ai_error", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      error: msg,
+    });
+    return { error: msg };
   }
 
   const artifact: ArtifactRow = {
@@ -349,7 +424,7 @@ export async function handleSkillsOptimization(
     kind: "skills_optimization",
     title: `Skills Optimization for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
-    model: process.env.AI_MODEL ?? "",
+    model,
     content: gen.json ?? { text: gen.text },
     metadata: {
       generated_at: new Date().toISOString(),
@@ -376,6 +451,10 @@ export async function handleExperienceTailoring(req: {
   userId: string;
   jobId: number;
 }): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  logInfo("orc_experience_tailoring_start", {
+    userId: req?.userId,
+    jobId: req?.jobId,
+  });
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
 
@@ -427,19 +506,40 @@ export async function handleExperienceTailoring(req: {
     return { error: `employment query failed: ${e?.message ?? e}` };
   }
 
-  const prompt = buildExperienceTailoringPrompt({
+  const rawPrompt = buildExperienceTailoringPrompt({
     profile,
     job,
     employment,
   });
+  const prompt = sanitizePrompt(rawPrompt);
+
+  const model = selectModel(undefined);
+  const aiOpts = {
+    model,
+    temperature: envNumber("AI_TEMPERATURE", 0.2),
+    maxTokens: envNumber("AI_MAX_TOKENS", 800),
+    timeoutMs: envNumber("AI_TIMEOUT_MS", 30_000),
+    maxRetries: envNumber("AI_MAX_RETRIES", 2),
+  } as const;
 
   let gen: GenerateResult;
   try {
-    gen = await aiClient.generate("resume", prompt, {
-      model: process.env.AI_MODEL ?? undefined,
+    gen = await aiClient.generate("resume", prompt, aiOpts);
+    logInfo("orc_experience_tailoring_ai_ok", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      tokens: gen.tokens,
     });
   } catch (e: any) {
-    return { error: `AI error: ${e?.message ?? e}` };
+    const msg = `AI error: ${e?.message ?? e}`;
+    logError("orc_experience_tailoring_ai_error", {
+      userId: req.userId,
+      jobId: req.jobId,
+      model,
+      error: msg,
+    });
+    return { error: msg };
   }
 
   const artifact: ArtifactRow = {
@@ -449,7 +549,7 @@ export async function handleExperienceTailoring(req: {
     kind: "resume", // persist as 'resume' due to DB CHECK constraint; mark subkind below
     title: `Experience Tailoring for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
-    model: process.env.AI_MODEL ?? "",
+    model,
     content: gen.json ?? { text: gen.text },
     metadata: {
       generated_at: new Date().toISOString(),
@@ -470,3 +570,47 @@ export default {
   handleSkillsOptimization,
   handleExperienceTailoring,
 };
+
+// -------------------------------------------------------------
+// Helpers: sanitization, model selection, env parsing
+// -------------------------------------------------------------
+
+/** Remove problematic control characters and cap prompt length */
+function sanitizePrompt(input: string, maxLen = 16_000): string {
+  try {
+    const noCtrl = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
+    const redacted = redactSecrets(noCtrl);
+    return redacted.length > maxLen
+      ? redacted.slice(0, maxLen - 1) + "…"
+      : redacted;
+  } catch {
+    return String(input ?? "");
+  }
+}
+
+/** Best-effort secret redaction for common key formats (e.g., sk-...) */
+function redactSecrets(s: string): string {
+  return s
+    .replace(/sk-[A-Za-z0-9_\-]{16,}/g, "[REDACTED_KEY]")
+    .replace(/(api[_-]?key)\s*[:=]\s*[A-Za-z0-9_\-]{12,}/gi, "$1=[REDACTED]");
+}
+
+/** Parse number env var with default */
+function envNumber(name: string, def: number): number {
+  const v = process.env[name];
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) ? (n as number) : def;
+}
+
+/** Select a model using allowed list from env and request override */
+function selectModel(options?: { model?: string } | null): string | undefined {
+  const reqModel = options?.model?.trim();
+  const allowed = (process.env.ALLOWED_AI_MODELS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (reqModel && (allowed.length === 0 || allowed.includes(reqModel))) {
+    return reqModel;
+  }
+  return process.env.AI_MODEL ?? undefined;
+}
