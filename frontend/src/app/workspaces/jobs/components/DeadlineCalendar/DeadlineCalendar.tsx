@@ -7,7 +7,7 @@ import { withUser } from "@shared/services/crud";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../JobDetails/JobDetails";
 
-type JobRow = { id: number | string; job_title?: string; application_deadline?: string };
+type JobRow = { id: number | string; job_title?: string; application_deadline?: string; job_status?: string };
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -46,9 +46,10 @@ export default function DeadlineCalendar() {
       if (!user?.id) return;
       try {
         const userCrud = withUser(user.id);
-        const res = await userCrud.listRows<JobRow>("jobs", "id, job_title, application_deadline");
-        if (!mounted) return;
-        const rows = (res.data ?? []).filter((r) => r.application_deadline);
+  const res = await userCrud.listRows<JobRow>("jobs", "id, job_title, application_deadline, job_status");
+  if (!mounted) return;
+  // Only care about deadlines for jobs we're still "Interested" in (not applied/archived)
+  const rows = (res.data ?? []).filter((r) => r.application_deadline && String(r.job_status ?? "").toLowerCase() === "interested");
         setJobs(rows);
       } catch (e) {
         setJobs([]);

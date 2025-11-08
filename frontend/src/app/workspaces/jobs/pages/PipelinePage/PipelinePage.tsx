@@ -21,6 +21,7 @@ import { alpha } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import ErrorSnackbar from "@shared/components/common/ErrorSnackbar";
+import ConfirmDialog from "@shared/components/common/ConfirmDialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import type { ListOptions } from "@shared/services/types";
@@ -152,6 +153,8 @@ export default function PipelinePage() {
     const f = filters ?? activeFilters ?? {};
 
     const filtered = source.filter((r) => {
+      // Exclude archived jobs from the active pipeline view
+      if (String(r.job_status ?? r.jobStatus ?? "").toLowerCase() === "archive") return false;
       // query search across title, company, description
       if (f.query) {
         const q = String(f.query).toLowerCase();
@@ -284,7 +287,10 @@ export default function PipelinePage() {
     setSelectedIds((s) => ({ ...s, [id]: !s[id] }));
   };
 
-  const bulkMove = async (to: Stage) => {
+  const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState<string | null>(null);
+
+  const bulkMove = async (to: string) => {
     const ids = Object.keys(selectedIds).filter((k) => selectedIds[k]);
     if (ids.length === 0) return handleError("No jobs selected");
     // optimistic update
@@ -302,7 +308,12 @@ export default function PipelinePage() {
         return true;
       });
     });
-    copy[to].unshift(...movedRows);
+    // If target is 'archive' we don't have a stage column in grouped map; just remove rows from their stages.
+    if (to === "archive") {
+      // no-op for adding to a stage column; they'll be removed from view
+    } else {
+      copy[to as Stage].unshift(...movedRows);
+    }
     setJobsByStage(copy);
 
     try {
@@ -318,7 +329,7 @@ export default function PipelinePage() {
           if (r.error) throw r.error;
         })
       );
-      showSuccess(`Moved ${ids.length} job(s) to ${to}`);
+      showSuccess(`${to === "archive" ? "Archived" : `Moved ${ids.length} job(s) to ${to}`}`);
       setSelectedIds({});
     } catch (err) {
       handleError(err);
@@ -333,6 +344,17 @@ export default function PipelinePage() {
       }
     }
   };
+
+  function handleBulkSelect(value: string) {
+    if (value === "archive") {
+      // open confirmation before archiving selected jobs
+      setBulkTarget("archive");
+      setConfirmBulkOpen(true);
+      return;
+    }
+    // normal stage move
+    bulkMove(value);
+  }
 
   // derive counts
   const counts = STAGES.reduce(
@@ -376,7 +398,7 @@ export default function PipelinePage() {
               select
               label="Bulk move"
               size="medium"
-              onChange={(e) => bulkMove(e.target.value as Stage)}
+              onChange={(e) => handleBulkSelect(e.target.value as string)}
               value={""}
               sx={{ minWidth: 180 }}
             >
@@ -386,6 +408,7 @@ export default function PipelinePage() {
                   {s}
                 </MenuItem>
               ))}
+              <MenuItem value="archive">Archive selected</MenuItem>
             </TextField>
           </Stack>
         </Stack>
@@ -677,6 +700,21 @@ export default function PipelinePage() {
             })}
           </Box>
         </DragDropContext>
+
+        <ConfirmDialog
+          open={confirmBulkOpen}
+          title="Archive selected jobs?"
+          description="This will move the selected jobs to the archive. You can unarchive them later. Continue?"
+          confirmText="Archive"
+          cancelText="Cancel"
+          onClose={() => setConfirmBulkOpen(false)}
+          onConfirm={() => {
+            // perform the bulk archive
+            bulkMove(bulkTarget ?? "archive");
+            setConfirmBulkOpen(false);
+            setBulkTarget(null);
+          }}
+        />
 
         <RightDrawer
           title="Details"

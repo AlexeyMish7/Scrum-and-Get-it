@@ -55,6 +55,7 @@ import DocumentsPage from "./app/workspaces/jobs/pages/DocumentsPage/DocumentsPa
 import SavedSearchesPage from "./app/workspaces/jobs/pages/SavedSearchesPage";
 import AnalyticsPage from "./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage";
 import AutomationsPage from "./app/workspaces/jobs/pages/AutomationsPage";
+import ViewArchivedJobs from "./app/workspaces/jobs/pages/ViewArchivedJobs";
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
       { path: "saved-searches", element: <SavedSearchesPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "automations", element: <AutomationsPage /> },
+      { path: "archived-jobs", element: <ViewArchivedJobs /> }
     ],
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.

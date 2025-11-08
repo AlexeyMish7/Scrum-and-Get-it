@@ -43,6 +43,9 @@ export default function JobsSidebar() {
         <ListItemButton component={NavLink} to="/jobs/automations">
           <ListItemText primary="Automations" />
         </ListItemButton>
+        <ListItemButton component={NavLink} to="/jobs/archived-jobs">
+          <ListItemText primary="Archived Jobs" />
+        </ListItemButton>
       </List>
     </Box>
   );

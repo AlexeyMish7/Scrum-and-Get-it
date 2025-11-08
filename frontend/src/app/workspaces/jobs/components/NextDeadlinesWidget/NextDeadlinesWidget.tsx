@@ -12,6 +12,7 @@ type JobRow = {
   application_deadline?: string | null;
   city_name?: string | null;
   state_code?: string | null;
+  job_status?: string | null;
 };
 
 function daysUntil(date: Date) {
@@ -48,12 +49,13 @@ export default function NextDeadlinesWidget() {
         const userCrud = withUser(user.id);
         const res = await userCrud.listRows<JobRow>(
           "jobs",
-          "id, job_title, company_name, application_deadline, city_name, state_code",
+          "id, job_title, company_name, application_deadline, city_name, state_code, job_status",
           { order: { column: "application_deadline", ascending: true } }
         );
         if (!mounted) return;
+        // Only include jobs that are still 'Interested' (we care about deadlines only before applying)
         const rows = (res.data ?? [])
-          .filter((r) => r.application_deadline)
+          .filter((r) => r.application_deadline && String(r.job_status ?? "").toLowerCase() === "interested")
           .map((r) => ({ ...r }))
           .sort((a, b) => {
             const da = a.application_deadline ? new Date(String(a.application_deadline)).getTime() : Infinity;
