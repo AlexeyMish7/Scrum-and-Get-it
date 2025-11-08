@@ -19,6 +19,7 @@ import aiClient from "./aiClient.js";
 import { buildResumePrompt } from "./prompts/resume.ts";
 import { buildCoverLetterPrompt } from "./prompts/coverLetter.ts";
 import { buildSkillsOptimizationPrompt } from "./prompts/skillsOptimization.ts";
+import { buildExperienceTailoringPrompt } from "./prompts/experienceTailoring.ts";
 import type {
   GenerateResumeRequest,
   GenerateCoverLetterRequest,
@@ -104,6 +105,9 @@ export async function handleGenerateResume(
       provider: process.env.AI_PROVIDER ?? "openai",
       tokens: gen.tokens,
       prompt_preview: prompt.slice(0, 400),
+      ...(req.options?.variant !== undefined
+        ? { variant: req.options.variant }
+        : {}),
     },
     created_at: new Date().toISOString(),
   };
@@ -289,8 +293,110 @@ export async function handleSkillsOptimization(
   return { artifact };
 }
 
+/**
+ * EXPERIENCE TAILORING (UC-050)
+ * WHAT: Tailor per-role experience bullets for a target job.
+ * FLOW: validate → fetch profile & job → fetch employment list → build prompt → AI generate → wrap artifact.
+ * INPUTS: { userId: string; jobId: number }
+ * OUTPUT: { artifact } with kind='resume' and metadata.subkind='experience_tailoring'.
+ * ERROR MODES: returns { error } for auth, missing entities, AI failure, or data fetch issues.
+ * NOTE: Uses kind='resume' (DB constraint) plus metadata.subkind for specialization.
+ */
+export async function handleExperienceTailoring(req: {
+  userId: string;
+  jobId: number;
+}): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  if (!req?.userId) return { error: "unauthenticated" };
+  if (!req?.jobId) return { error: "missing jobId" };
+
+  let getProfile: (userId: string) => Promise<any>;
+  let getJob: (jobId: number) => Promise<any>;
+  let supabase: any;
+  try {
+    const mod = await import("./supabaseAdmin.js");
+    getProfile = (mod as any).getProfile;
+    getJob = (mod as any).getJob;
+    supabase = (mod as any).default;
+  } catch (e: any) {
+    return {
+      error:
+        "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
+    };
+  }
+
+  let profile: any;
+  let job: any;
+  try {
+    profile = await getProfile(req.userId);
+  } catch (e: any) {
+    return { error: `profile query failed: ${e?.message ?? e}` };
+  }
+  if (!profile) return { error: "profile not found" };
+  try {
+    job = await getJob(req.jobId);
+  } catch (e: any) {
+    return { error: `job query failed: ${e?.message ?? e}` };
+  }
+  if (!job) return { error: "job not found" };
+  if (job.user_id && job.user_id !== req.userId)
+    return { error: "job does not belong to user" };
+
+  // Fetch employment history for this user (ordered chronologically)
+  let employment: Array<any> = [];
+  try {
+    const { data, error } = await supabase
+      .from("employment")
+      .select(
+        "id, job_title, company_name, start_date, end_date, job_description"
+      )
+      .eq("user_id", req.userId)
+      .order("start_date", { ascending: true });
+    if (error) throw error;
+    employment = data ?? [];
+  } catch (e: any) {
+    return { error: `employment query failed: ${e?.message ?? e}` };
+  }
+
+  const prompt = buildExperienceTailoringPrompt({
+    profile,
+    job,
+    employment,
+  });
+
+  let gen: GenerateResult;
+  try {
+    gen = await aiClient.generate("resume", prompt, {
+      model: process.env.AI_MODEL ?? undefined,
+    });
+  } catch (e: any) {
+    return { error: `AI error: ${e?.message ?? e}` };
+  }
+
+  const artifact: ArtifactRow = {
+    id: "generated-temp-id",
+    user_id: req.userId,
+    job_id: req.jobId,
+    kind: "resume", // persist as 'resume' due to DB CHECK constraint; mark subkind below
+    title: `Experience Tailoring for ${job.job_title ?? "Target Role"}`,
+    prompt: prompt.slice(0, 2000),
+    model: process.env.AI_MODEL ?? "",
+    content: gen.json ?? { text: gen.text },
+    metadata: {
+      generated_at: new Date().toISOString(),
+      provider: process.env.AI_PROVIDER ?? "openai",
+      tokens: gen.tokens,
+      prompt_preview: prompt.slice(0, 400),
+      subkind: "experience_tailoring",
+    },
+    created_at: new Date().toISOString(),
+  };
+
+  return { artifact };
+}
+
 export default {
   handleGenerateResume,
   handleGenerateCoverLetter,
   handleSkillsOptimization,
+  handleExperienceTailoring,
 };

@@ -7,12 +7,15 @@ import type {
   GenerateResponse,
   SkillsOptimizationContent,
   GenerateResumeResult,
+  ExperienceTailoringResult,
+  AIArtifactSummary,
+  AIArtifact,
 } from "../types/ai";
 
 export async function generateResume(
   userId: string,
   jobId: number,
-  options?: { tone?: string; focus?: string }
+  options?: { tone?: string; focus?: string; variant?: number }
 ): Promise<GenerateResumeResult> {
   // POST /api/generate/resume (returns full content when available)
   return aiClient.postJson<GenerateResumeResult>(
@@ -51,10 +54,53 @@ export async function generateSkillsOptimization(
   );
 }
 
+export async function generateExperienceTailoring(
+  userId: string,
+  jobId: number
+): Promise<ExperienceTailoringResult> {
+  // POST /api/generate/experience-tailoring
+  return aiClient.postJson<ExperienceTailoringResult>(
+    "/api/generate/experience-tailoring",
+    { jobId },
+    userId
+  );
+}
+
+// Artifacts listing / retrieval -------------------------------------------
+export async function listArtifacts(
+  userId: string,
+  params: { kind?: string; jobId?: number; limit?: number; offset?: number }
+): Promise<{ items: AIArtifactSummary[]; persisted: boolean }> {
+  const qs = new URLSearchParams();
+  if (params.kind) qs.set("kind", params.kind);
+  if (typeof params.jobId === "number") qs.set("jobId", String(params.jobId));
+  if (typeof params.limit === "number") qs.set("limit", String(params.limit));
+  if (typeof params.offset === "number")
+    qs.set("offset", String(params.offset));
+  const path = `/api/artifacts${qs.toString() ? `?${qs.toString()}` : ""}`;
+  return aiClient.getJson<{ items: AIArtifactSummary[]; persisted: boolean }>(
+    path,
+    userId
+  );
+}
+
+export async function getArtifact(
+  userId: string,
+  id: string
+): Promise<{ artifact: AIArtifact }> {
+  return aiClient.getJson<{ artifact: AIArtifact }>(
+    `/api/artifacts/${encodeURIComponent(id)}`,
+    userId
+  );
+}
+
 export const aiGeneration = {
   generateResume,
   generateCoverLetter,
   generateSkillsOptimization,
+  generateExperienceTailoring,
+  listArtifacts,
+  getArtifact,
 };
 
 export default aiGeneration;

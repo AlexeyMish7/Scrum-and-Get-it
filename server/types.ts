@@ -5,13 +5,13 @@
 export interface GenerateResumeRequest {
   userId: string; // authenticated user id (validated server-side)
   jobId: number; // target job id
-  options?: { tone?: string; focus?: string };
+  options?: { tone?: string; focus?: string; variant?: number }; // variant index for multi-generation UI
 }
 
 export interface GenerateCoverLetterRequest {
   userId: string; // authenticated user id (validated server-side)
   jobId: number; // target job id
-  options?: { tone?: string; focus?: string };
+  options?: { tone?: string; focus?: string; variant?: number };
 }
 
 export interface GenerateSkillsOptimizationRequest {

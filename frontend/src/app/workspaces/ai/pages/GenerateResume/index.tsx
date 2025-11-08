@@ -3,9 +3,13 @@ import RegionAnchor from "@shared/components/common/RegionAnchor";
 import TemplateManager from "../resume/TemplateManager";
 import ResumeGenerationPanel from "../resume/ResumeGenerationPanel";
 import SkillsOptimizationPanel from "../resume/SkillsOptimizationPanel";
+import ExperienceTailoringPanel from "../resume/ExperienceTailoringPanel";
+import ArtifactsHistoryPanel from "../resume/ArtifactsHistoryPanel";
+import ResumeVariationsPanel from "../resume/ResumeVariationsPanel";
 import DraftSelectorBar from "../resume/DraftSelectorBar";
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 import BulletMergeDialog from "../resume/BulletMergeDialog";
+import SectionControlsPanel from "../resume/SectionControlsPanel";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useState, useEffect } from "react";
@@ -89,6 +93,10 @@ export default function GenerateResume() {
       <Stack spacing={3}>
         <DraftSelectorBar />
         <ResumeGenerationPanel />
+        <ExperienceTailoringPanel />
+        <ResumeVariationsPanel />
+        <SectionControlsPanel />
+        <ArtifactsHistoryPanel />
         {lastContent && (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <Button variant="outlined" onClick={applySkills} disabled={!active}>

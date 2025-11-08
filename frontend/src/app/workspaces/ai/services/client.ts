@@ -49,6 +49,38 @@ async function postJson<T>(
   return data as T;
 }
 
-export const aiClient = { postJson };
+async function getJson<T>(path: string, userId: string): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const resp = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": userId,
+    },
+  });
+  let data: unknown = null;
+  try {
+    data = await resp.json();
+  } catch {
+    // ignore parse errors; will handle via resp.ok
+  }
+  if (!resp.ok) {
+    const anyData = data as Record<string, unknown> | null;
+    const message =
+      (anyData?.message as string) ||
+      (anyData?.error as string) ||
+      `Request failed (${resp.status})`;
+    const error = new Error(message) as Error & {
+      status?: number;
+      payload?: unknown;
+    };
+    error.status = resp.status;
+    error.payload = data;
+    throw error;
+  }
+  return data as T;
+}
+
+export const aiClient = { postJson, getJson };
 
 export default aiClient;

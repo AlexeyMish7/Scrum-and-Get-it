@@ -44,6 +44,10 @@ export interface ResumeDraftRecord {
     summary?: string;
     skills?: string[];
     experience?: ResumeDraftContentExperienceItem[];
+    /** Keys of sections that should be visible in preview/export */
+    visibleSections?: string[];
+    /** Canonical ordering of sections in preview/export */
+    sectionOrder?: string[];
   };
 }
 
@@ -83,6 +87,12 @@ export interface UseResumeDraftsApi {
     exp: NonNullable<ResumeArtifactContent["sections"]>["experience"]
   ) => void;
   applySummary: (summary?: string) => void;
+  /** Replace list of visible sections for active draft */
+  setVisibleSections: (sections: string[]) => void;
+  /** Replace section order for active draft */
+  setSectionOrder: (order: string[]) => void;
+  /** Apply a named preset for visibility and ordering */
+  applyPreset: (preset: "chronological" | "functional" | "hybrid") => void;
 }
 
 /**
@@ -228,6 +238,64 @@ export function useResumeDrafts(): UseResumeDraftsApi {
     applyOrderedSkills,
     appendExperienceFromAI,
     applySummary,
+    setVisibleSections: (sections: string[]) => {
+      if (!active) return;
+      updateContent(active.id, (c) => ({
+        ...c,
+        visibleSections: [...sections],
+      }));
+    },
+    setSectionOrder: (order: string[]) => {
+      if (!active) return;
+      updateContent(active.id, (c) => ({ ...c, sectionOrder: [...order] }));
+    },
+    applyPreset: (preset) => {
+      if (!active) return;
+      // Canonical known sections
+      const all = ["summary", "skills", "experience", "education", "projects"];
+      let order: string[] = [];
+      let visible: string[] = [];
+      switch (preset) {
+        case "chronological":
+          order = ["summary", "skills", "experience", "education", "projects"];
+          visible = [
+            "summary",
+            "skills",
+            "experience",
+            "education",
+            "projects",
+          ];
+          break;
+        case "functional":
+          order = ["summary", "skills", "projects", "experience", "education"];
+          visible = [
+            "summary",
+            "skills",
+            "projects",
+            "experience",
+            "education",
+          ];
+          break;
+        case "hybrid":
+        default:
+          order = ["summary", "skills", "experience", "projects", "education"];
+          visible = [
+            "summary",
+            "skills",
+            "experience",
+            "projects",
+            "education",
+          ];
+          break;
+      }
+      // Ensure all known sections appear at least once in order (append missing at end)
+      for (const s of all) if (!order.includes(s)) order.push(s);
+      updateContent(active.id, (c) => ({
+        ...c,
+        sectionOrder: order,
+        visibleSections: visible,
+      }));
+    },
   };
 }
 

@@ -2,7 +2,7 @@
  * Frontend types for AI service responses.
  */
 
-export type AIKind = "resume" | "cover_letter" | "skills_optimization" | string;
+export type AIKind = "resume" | "cover_letter" | "skills_optimization" | string; // future kinds or subkinds flagged via metadata
 
 export interface GenerateResponse {
   id: string;
@@ -58,4 +58,44 @@ export interface ResumeArtifactContent {
 
 export interface GenerateResumeResult extends GenerateResponse {
   content?: ResumeArtifactContent;
+}
+
+// Experience tailoring content (subset of resume, specialized for UC-050)
+export interface ExperienceTailoringContent {
+  roles: Array<{
+    employment_id?: string;
+    role?: string;
+    company?: string;
+    dates?: string;
+    original_bullets?: string[];
+    tailored_bullets: string[];
+    relevance_score: number; // 0..100
+    notes?: string[];
+  }>;
+  overall?: {
+    summary_suggestion?: string;
+    keywords?: string[];
+    global_score: number; // 0..100
+  };
+}
+
+export interface ExperienceTailoringResult extends GenerateResponse {
+  content?: ExperienceTailoringContent;
+}
+
+// AI Artifact listing (resume artifacts history) ---------------------------
+export interface AIArtifactSummary {
+  id: string;
+  kind: AIKind;
+  job_id?: number | null;
+  title?: string | null;
+  created_at?: string;
+  // content may be included by list endpoint (we request it) but can be partial.
+  content?: unknown; // will be narrowed when applying (cast to ResumeArtifactContent)
+}
+
+export interface AIArtifact extends AIArtifactSummary {
+  prompt?: string | null;
+  model?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
