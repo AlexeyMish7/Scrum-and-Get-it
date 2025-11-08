@@ -1,6 +1,8 @@
 import { Box, Typography, Paper } from "@mui/material";
 import JobSearchFilters, { type JobFilters } from "../../components/JobSearchFilters/JobSearchFilters";
 import JobCard from "../../components/JobCard/JobCard";
+import RightDrawer from "@shared/components/common/RightDrawer";
+import JobDetails from "../../components/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { listJobs } from "@shared/services/dbMappers";
@@ -11,6 +13,8 @@ export default function SavedSearchesPage() {
   const { handleError } = useErrorHandler();
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [matchedJobs, setMatchedJobs] = useState<any[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(null);
 
   async function handleApply(filters: JobFilters) {
     if (!user) return handleError("Not signed in");
@@ -65,9 +69,29 @@ export default function SavedSearchesPage() {
         ) : matchedJobs.length === 0 ? (
           <Typography color="text.secondary">No jobs match these criteria.</Typography>
         ) : (
-          matchedJobs.map((j) => <JobCard key={String((j as any).id)} job={j} />)
+          matchedJobs.map((j) => (
+            <JobCard
+              key={String((j as any).id)}
+              job={j}
+              onOpen={(id) => {
+                setSelectedJobId(id);
+                setOpen(true);
+              }}
+            />
+          ))
         )}
       </Box>
+
+      <RightDrawer
+        title="Job Details"
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setSelectedJobId(null);
+        }}
+      >
+        <JobDetails jobId={selectedJobId} />
+      </RightDrawer>
 
       <Typography color="text.secondary">TODO: List and manage saved job searches.</Typography>
     </Box>

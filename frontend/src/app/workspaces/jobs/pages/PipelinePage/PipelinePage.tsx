@@ -75,6 +75,7 @@ export default function PipelinePage() {
   } */
 
   // Format a date to a readable string; prefer status_changed_at then updated_at then created_at
+  /*
   function formatStatusDate(row: JobRow) {
     const d = row.status_changed_at ?? row.updated_at ?? row.created_at;
     if (!d) return "-";
@@ -84,8 +85,7 @@ export default function PipelinePage() {
     } catch {
       return String(d);
     }
-  }
-
+  }*/
   // Days in current stage: difference between today and status_changed_at (or fallback)
   function daysInStage(row: JobRow) {
     const d = row.status_changed_at ?? row.updated_at ?? row.created_at;
@@ -99,6 +99,27 @@ export default function PipelinePage() {
     } catch {
       return "-";
     }
+  }
+
+  // Days until application deadline (positive means days remaining, negative = past due)
+  function daysUntilDeadline(row: JobRow) {
+    const d = row.application_deadline ?? row.applicationDeadline;
+    if (!d) return null;
+    try {
+      const then = new Date(String(d));
+      const diff = Math.ceil((then.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return Number.isFinite(diff) ? diff : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function deadlineColor(days: number | null) {
+    if (days === null) return "grey";
+    if (days < 0) return "error";
+    if (days <= 7) return "error";
+    if (days <= 14) return "warning";
+    return "success";
   }
 
   useEffect(() => {
@@ -488,11 +509,12 @@ export default function PipelinePage() {
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
-                                sx={{
+                  sx={{
                                   border: "1px solid",
                                   borderColor: "divider",
                                   borderRadius: 1,
                                   p: 1,
+                                  position: "relative",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "space-between",
@@ -558,11 +580,61 @@ export default function PipelinePage() {
                                       color="text.secondary"
                                       sx={{ display: "block", mt: 0.5 }}
                                     >
-                                      {formatStatusDate(job)} ·{" "}
                                       {daysInStage(job)}
                                     </Typography>
                                   </Box>
                                 </Box>
+                                  {/* top-left deadline indicator for Interested stage */}
+                                  {stage === "Interested" && (
+                                    (() => {
+                                      const d = daysUntilDeadline(job);
+                                      if (d === null) return null;
+                                      const token = deadlineColor(d);
+                                      const label = d < 0 ? `Overdue` : `Due: ${d-1}d`;
+                                      return (
+                                        <Chip
+                                          label={label}
+                                          size="small"
+                                          sx={{
+                                            position: "absolute",
+                                            right: 4,
+                                            bottom: 8,
+                                            bgcolor: (theme) => {
+                                              const p = theme.palette as any;
+                                              switch (token) {
+                                                case "error":
+                                                  return p.error.main;
+                                                case "warning":
+                                                  return p.warning.main;
+                                                case "success":
+                                                  return p.success.main;
+                                                default:
+                                                  return p.grey?.[300] ?? p.divider;
+                                              }
+                                            },
+                                            color: (theme) => {
+                                              const p = theme.palette as any;
+                                              const bg =
+                                                token === "error"
+                                                  ? p.error.main
+                                                  : token === "warning"
+                                                  ? p.warning.main
+                                                  : token === "success"
+                                                  ? p.success.main
+                                                  : p.grey?.[300];
+                                              try {
+                                                return theme.palette.getContrastText(bg);
+                                              } catch {
+                                                return "#000";
+                                              }
+                                            },
+                                            fontWeight: 600,
+                                            fontSize: "0.65rem"
+                                          }}
+                                        />
+                                      );
+                                    })()
+                                  )}
                                 <Box
                                   sx={{
                                     display: "flex",
