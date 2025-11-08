@@ -84,6 +84,9 @@ function jsonReply(res: http.ServerResponse, status: number, payload: unknown) {
   res.writeHead(status, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(body).toString(),
+    "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
+    "Access-Control-Allow-Headers": "Content-Type, X-User-Id",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   });
   res.end(body);
 }
@@ -267,11 +270,14 @@ async function handleGenerateResume(
         jobId,
         latency_ms: latencyMs,
       });
+      // Include full content for resume to enable immediate UI rendering
       jsonReply(res, 201, {
         id: row.id,
         kind: row.kind,
         created_at: row.created_at,
         preview,
+        content: artifact.content,
+        persisted: true,
       });
       return;
     } catch (e: any) {
@@ -297,12 +303,14 @@ async function handleGenerateResume(
       jobId,
       latency_ms: latencyMs,
     });
+    // Include non-persisted content as well to keep UX consistent
     jsonReply(res, 200, {
       id: `tmp-${Date.now()}`,
       kind: artifact.kind,
       created_at: artifact.created_at,
       persisted: false,
       preview,
+      content: artifact.content,
       metadata,
     });
   } catch (e: any) {
@@ -599,9 +607,30 @@ const server = http.createServer(async (req, res) => {
     `http://${req.headers.host ?? `localhost:${PORT}`}`
   );
   try {
+    // CORS preflight
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
+        "Access-Control-Allow-Headers": "Content-Type, X-User-Id",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Max-Age": "86400",
+      });
+      res.end();
+      return;
+    }
     // ROUTE: Health
     if (req.method === "GET" && url.pathname === "/api/health") {
       await handleHealth(url, res);
+      return;
+    }
+    // ROUTE: List AI Artifacts
+    if (req.method === "GET" && url.pathname === "/api/artifacts") {
+      await handleListArtifacts(req, res, url);
+      return;
+    }
+    // ROUTE: Get Artifact by ID
+    if (req.method === "GET" && url.pathname.startsWith("/api/artifacts/")) {
+      await handleGetArtifact(req, res, url);
       return;
     }
     // ROUTE: Generate Resume
@@ -640,5 +669,84 @@ server.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`AI orchestrator listening on http://localhost:${PORT}`);
 });
+
+// ---------------------------------------------------------------
+// Artifact listing + retrieval handlers
+// ---------------------------------------------------------------
+async function handleListArtifacts(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL
+) {
+  const userId = req.headers["x-user-id"] as string | undefined;
+  if (!userId)
+    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  const kind = url.searchParams.get("kind") || undefined;
+  const jobIdParam = url.searchParams.get("jobId");
+  const jobId = jobIdParam ? Number(jobIdParam) : undefined;
+  const limit = Number(url.searchParams.get("limit") || 20);
+  const offset = Number(url.searchParams.get("offset") || 0);
+  if (jobIdParam && Number.isNaN(jobId)) {
+    throw new ApiError(400, "jobId must be numeric", "bad_request");
+  }
+  const canPersist = Boolean(
+    process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (!canPersist) {
+    // In mock mode, return empty list (no persistence available)
+    jsonReply(res, 200, { items: [], persisted: false });
+    return;
+  }
+  try {
+    const mod = await import("../supabaseAdmin.js");
+    const listFn = (mod as any).listAiArtifactsForUser;
+    if (typeof listFn !== "function") throw new Error("list function missing");
+    const data = await listFn({ userId, kind, jobId, limit, offset });
+    jsonReply(res, 200, { items: data, persisted: true });
+  } catch (e: any) {
+    throw new ApiError(
+      500,
+      e?.message || "artifact list failed",
+      "artifact_list_failed"
+    );
+  }
+}
+
+async function handleGetArtifact(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL
+) {
+  const userId = req.headers["x-user-id"] as string | undefined;
+  if (!userId)
+    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  const id = url.pathname.split("/api/artifacts/")[1];
+  if (!id) throw new ApiError(400, "missing artifact id", "bad_request");
+  const canPersist = Boolean(
+    process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (!canPersist) {
+    throw new ApiError(
+      404,
+      "artifact not found (persistence disabled)",
+      "not_found"
+    );
+  }
+  try {
+    const mod = await import("../supabaseAdmin.js");
+    const getFn = (mod as any).getAiArtifactForUser;
+    if (typeof getFn !== "function") throw new Error("get function missing");
+    const row = await getFn(userId, id);
+    if (!row) throw new ApiError(404, "artifact not found", "not_found");
+    jsonReply(res, 200, { artifact: row });
+  } catch (e: any) {
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(
+      500,
+      e?.message || "artifact fetch failed",
+      "artifact_fetch_failed"
+    );
+  }
+}
 
 export default server;

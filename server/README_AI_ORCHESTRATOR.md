@@ -38,7 +38,33 @@ Endpoints
   - Headers: `X-User-Id: <uuid>` (lightweight dev auth)
   - Body: `{ jobId: number, options?: { tone?: string, focus?: string } }`
   - Rate limit: 5 requests/min per user (in-memory dev limiter)
-  - Behavior: generates content via provider; if Supabase admin env is present, persists to `ai_artifacts`, otherwise returns a non-persisted mock response with a preview.
+  - Behavior: generates content via provider; if Supabase admin env is present, persists to `ai_artifacts`.
+  - JSON Contract in `ai_artifacts.content` (kind = `resume`):
+    ```jsonc
+    {
+      "summary": "string?",                  // optional rewritten summary
+      "bullets": [ { "text": "..." } ]?,    // flat bullet list (legacy/simple mode)
+      "ordered_skills": ["TypeScript", "React" ]?,
+      "emphasize_skills": ["TypeScript" ]?,   // subset to highlight
+      "add_skills": ["GraphQL" ]?,            // suggested additions
+      "ats_keywords": ["CI/CD", "microservices" ]?,
+      "score": 86?,                            // relevance / optimization score 0–100
+      "sections": {                            // richer structured mode for editors
+        "experience": [
+          { "employment_id": "uuid?", "role": "Senior Engineer", "company": "Acme", "dates": "2022–Present", "bullets": ["...", "..."] }
+        ],
+        "education": [
+          { "education_id": "uuid?", "institution": "State University", "degree": "B.S. CS", "graduation_date": "2018" }
+        ],
+        "projects": [
+          { "project_id": "uuid?", "name": "Inventory System", "role": "Lead", "bullets": ["..."] }
+        ]
+      }?,
+      "meta": { "model": "gpt-4o-mini", "version": "resume.v1" }
+    }
+    ```
+  - Response shape (success): `{ id, kind: 'resume', created_at, preview, persisted?, metadata?, content? }`
+    - `content` may be omitted in minimal preview responses for performance (frontend should fetch via artifact GET when absent).
 
 - POST `/api/generate/cover-letter`
 
@@ -47,10 +73,24 @@ Endpoints
   - Output: JSON containing `{ id, kind, created_at, preview }`, persisted when Supabase env present.
 
 - POST `/api/generate/skills-optimization` (UC-049)
+
   - Headers: `X-User-Id: <uuid>`
   - Body: `{ jobId: number }`
   - Output: JSON `{ id, kind: 'skills_optimization', created_at, preview }`.
   - Artifact content contract includes: `emphasize`, `add`, `order`, `categories` { technical, soft }, `gaps`, `score`.
+  - Planned extension: `industry_specific` string[] (subset derived from job description domain terms)
+
+- GET `/api/artifacts`
+
+  - Headers: `X-User-Id: <uuid>`
+  - Query params (optional): `kind`, `jobId`, `limit`, `offset`
+  - Output: `{ items: [ { id, user_id, job_id, kind, title, created_at, content } ], persisted: boolean }`
+  - Notes: Returns empty list when persistence is disabled (mock mode)
+
+- GET `/api/artifacts/:id`
+  - Headers: `X-User-Id: <uuid>`
+  - Output: `{ artifact: { id, user_id, job_id, kind, title, prompt, model, content, metadata, created_at } }`
+  - Enforces ownership (user_id must match header)
 
 Rate limiting
 

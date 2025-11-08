@@ -3,15 +3,19 @@
  * Each function calls a backend endpoint and returns a typed response.
  */
 import aiClient from "./client";
-import type { GenerateResponse, SkillsOptimizationContent } from "../types/ai";
+import type {
+  GenerateResponse,
+  SkillsOptimizationContent,
+  GenerateResumeResult,
+} from "../types/ai";
 
 export async function generateResume(
   userId: string,
   jobId: number,
   options?: { tone?: string; focus?: string }
-) {
-  // POST /api/generate/resume
-  return aiClient.postJson<GenerateResponse>(
+): Promise<GenerateResumeResult> {
+  // POST /api/generate/resume (returns full content when available)
+  return aiClient.postJson<GenerateResumeResult>(
     "/api/generate/resume",
     { jobId, options },
     userId

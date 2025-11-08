@@ -80,3 +80,40 @@ export async function getJob(jobId: number) {
   if (error) throw error;
   return data;
 }
+
+/** List AI artifacts for a user with optional filters. */
+export async function listAiArtifactsForUser(params: {
+  userId: string;
+  kind?: string;
+  jobId?: number;
+  limit?: number;
+  offset?: number;
+}) {
+  const { userId, kind, jobId, limit = 20, offset = 0 } = params;
+  let q = supabaseAdmin
+    .from("ai_artifacts")
+    .select("id, user_id, job_id, kind, title, created_at, content")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .range(offset, offset + Math.max(limit - 1, 0));
+  if (kind) q = q.eq("kind", kind);
+  if (typeof jobId === "number") q = q.eq("job_id", jobId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Fetch a single AI artifact by id for the given user (enforces ownership). */
+export async function getAiArtifactForUser(userId: string, id: string) {
+  const { data, error } = await supabaseAdmin
+    .from("ai_artifacts")
+    .select(
+      "id, user_id, job_id, kind, title, prompt, model, content, metadata, created_at"
+    )
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

@@ -3,7 +3,9 @@ Resume prompt builder with light sanitization and guardrails.
 */
 
 function safe(text: any, max = 1500): string {
-  const s = String(text ?? "").replace(/\s+/g, " ").trim();
+  const s = String(text ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
   return s.length > max ? s.slice(0, max) + " …" : s;
 }
 
@@ -28,16 +30,36 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
 
   const title = safe(job?.job_title || job?.title || "");
   const company = safe(job?.company_name || job?.company || "");
-  const description = safe(job?.job_description || job?.description || "", 2000);
+  const description = safe(
+    job?.job_description || job?.description || "",
+    2000
+  );
 
   const toneStr = tone || "professional";
   const focusStr = focus ? `Focus on ${safe(focus, 120)}.` : "";
 
   return [
     `You are an expert resume writer. Do not fabricate information. Use only the provided profile and job content.`,
-    `Write concise, ATS-friendly bullet points tailored for the role.`,
+    `Write concise, ATS-friendly results tailored for the role.`,
     `Constraints: factual, action-oriented, quantified where possible, avoid fluff.`,
-    `Output: JSON with { bullets: [{ text: string }] } and no extra prose.`,
+    // Expanded JSON contract to support richer editors while keeping backward compatibility with bullets[]
+    `Output: Strict JSON only. Shape:`,
+    `{
+      "summary": string?,
+      "bullets": [{ "text": string }]?,
+      "ordered_skills": string[]?,
+      "emphasize_skills": string[]?,
+      "add_skills": string[]?,
+      "ats_keywords": string[]?,
+      "score": number?,
+      "sections": {
+        "experience"?: [{ "employment_id"?: string, "role"?: string, "company"?: string, "dates"?: string, "bullets": string[] }],
+        "education"?: [{ "education_id"?: string, "institution"?: string, "degree"?: string, "graduation_date"?: string, "details"?: string[] }],
+        "projects"?: [{ "project_id"?: string, "name"?: string, "role"?: string, "bullets": string[] }]
+      }?,
+      "meta"?: object
+    }`,
+    `Do not include any prose outside of JSON.`,
     `Tone: ${toneStr}. ${focusStr}`,
     `\nCandidate: ${name}`,
     summary ? `Summary: ${summary}` : "",
