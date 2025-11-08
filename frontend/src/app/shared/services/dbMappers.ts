@@ -4,6 +4,10 @@ const dateRegexFull = /^\d{4}-\d{2}-\d{2}$/;
 const dateRegexMonth = /^\d{4}-\d{2}$/;
 export function formatToSqlDate(v: unknown): string | null {
   if (v == null) return null;
+  // Accept Date instances directly
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    return v.toISOString().split("T")[0];
+  }
   const s = String(v).trim();
   if (!s) return null;
   if (dateRegexFull.test(s)) return s;
