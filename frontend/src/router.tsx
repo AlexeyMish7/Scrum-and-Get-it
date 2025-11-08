@@ -33,6 +33,9 @@ import Settings from "@profile/pages/profile/Settings";
 import CoverLetterTemplates from "./app/workspaces/ai/pages/cover_letters/CoverLetterTemplates";
 import EditCoverLetter from "./app/workspaces/ai/pages/cover_letters/EditCoverLetter";
 
+//Resume pages
+import ResumeCustomization from "./app/workspaces/ai/pages/resume/ResumeCustomization";
+
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
@@ -92,6 +95,16 @@ export const router = createBrowserRouter([
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.
   { path: "/register", element: <Register /> },
+  {
+    path: "/edit-resume",
+    element: (
+      <ProtectedRoute>
+        <ProfileLayout>
+          <ResumeCustomization />
+        </ProfileLayout>
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/cover-letters",
     element: (
