@@ -1,169 +1,141 @@
 # Copilot Guide — Scrum-and-Get-it (Sprint 2)
 
-This is a quick, practical guide for AI assistants working in this repo. Keep code simple, clearly commented, and aligned with how the app is structured today.
+This guide keeps AI assistants aligned with the current app structure, tech choices, and Sprint 2 scope. Favor simple TypeScript, shared helpers, and consistent UI patterns.
 
 ## Project overview
 
-- Frontend: React + TypeScript + Vite (Node 20.19.5, npm >= 10.8.2)
+- Stack: React 19 + TypeScript ~5.9 + Vite 7
+- UI: MUI v7
 - Backend: Supabase (Postgres + Auth)
 - Root: `frontend/`
+- Node: 20.19.5; npm: >= 10.8.2
+- Required env (do NOT commit): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - Dev commands (PowerShell):
   - Start: `cd frontend; npm run dev`
   - Typecheck: `cd frontend; npm run typecheck`
   - Lint: `cd frontend; npm run lint`
-- Required env (do NOT commit): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
-## Folder map (current)
+## App architecture: three workspaces + shared layer
 
-- `frontend/src/app/shared/`
-  - `context/AuthContext.tsx` — global auth provider + `useAuth()` hook
-  - `services/supabaseClient.ts` — single Supabase client
-  - `services/crud.ts` — DB helpers (list/get/insert/update/upsert/delete + `withUser(userId)`)
-  - `hooks/useErrorHandler.ts` — central notifications + error mapping
-  - `components/common/` — shared UI (e.g., `ProtectedRoute`, `ErrorSnackbar`)
-- `frontend/src/app/workspaces/profile/` — profile workspace (pages, theme)
-  - `theme/theme.tsx` — main app theme used globally in `main.tsx`
-- `frontend/src/app/workspaces/ai/` — AI workspace (separate area for Sprint 2)
-  - `pages/` — AI features (CompanyResearch, JobMatching, GenerateResume, GenerateCoverLetter, DashboardAI)
-  - `theme/` — AI-only theme and showcase
-    - `AiThemeShowcase.tsx` — available at `/ai/theme` (demo route added)
-    - `aiTheme.tsx` — AI theme (wrap AI pages locally with a ThemeProvider)
-- `frontend/src/router.tsx` — routes (React Router)
-- `frontend/src/main.tsx` — app entry; wraps Router with global profile theme and `AuthContextProvider`
-- `frontend/tsconfig.app.json` — path aliases:
-  - `@shared/*` → `src/app/shared/*`
-  - `@profile/*` → `src/app/workspaces/profile/*`
-  - `@workspaces/*` → `src/app/workspaces/*`
-  - `@/*` → `src/*`
+Top-level split under `src/app/workspaces/`:
 
-## How auth works
+- Profile workspace: `workspaces/profile/*`
+- AI workspace: `workspaces/ai/*`
+- Jobs workspace: `workspaces/jobs/*`
 
-- The app uses Supabase Auth and provides auth state globally.
-- Use `useAuth()` from `@shared/context/AuthContext` to access `{ session, user, loading, signIn, signUpNewUser, signInWithOAuth, signOut }`.
-- Emails should be normalized with `trim().toLowerCase()` (already handled in auth helpers).
-- Wrap protected pages with `ProtectedRoute` so anonymous users redirect to `/login`.
+Shared foundation (cross-workspace): `src/app/shared/*`
 
-## Supabase + CRUD patterns
+- Layouts: `shared/layouts/AppShell.tsx`, `shared/layouts/SystemLayer.tsx`, `shared/layouts/GlobalTopBar.tsx`
+- Sidebars: `shared/components/sidebars/AISidebar`, `.../JobsSidebar`
+- Auth: `shared/context/AuthContext.tsx` provides `useAuth()`
+- Data: `shared/services/supabaseClient.ts` and `shared/services/crud.ts` (with `withUser(userId)`)
+- Feedback: `shared/hooks/useErrorHandler.ts`, `shared/components/common/ErrorSnackbar.tsx`
+- Sprint overlay: `shared/components/common/SprintTaskSnackbar.tsx` + `shared/hooks/useSprintTasks.ts` + `shared/utils/pageTaskMap.ts` + `shared/utils/taskOwners.ts`
 
-- Always import the shared client from `@shared/services/supabaseClient`.
-- Prefer the CRUD helpers in `@shared/services/crud` over raw `supabase.from(...)` calls.
-- For user-owned tables, scope with `withUser(user.id)`:
-  - Example (listing rows):
-    ```ts
-    const { user } = useAuth();
-    const userCrud = withUser(user?.id);
-    const res = await userCrud.listRows(
-      "documents",
-      "id,file_name,uploaded_at",
-      { order: { column: "uploaded_at", ascending: false } }
-    );
-    if (res.error) handleError(res.error);
-    ```
-- For one-off queries:
-  - Example:
-    ```ts
-    const res = await listRows("applications", "*", {
-      order: { column: "created_at", ascending: false },
-    });
-    ```
-
-## Error handling (always use this)
-
-- Use the centralized hook and snackbar:
-  - `import { useErrorHandler } from "@shared/hooks/useErrorHandler"`
-  - `import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar"`
-- In components:
-
-  ```tsx
-  const { notification, closeNotification, handleError, showSuccess } =
-    useErrorHandler();
-
-  // Render once near the root of the component
-  <ErrorSnackbar notification={notification} onClose={closeNotification} />;
-
-  // Use these in async flows
-  try {
-    // ... do work
-    showSuccess("Saved!");
-  } catch (e) {
-    handleError(e);
-  }
-  ```
-
-- Do not use `alert()` or custom error toasts.
-
-## Routing (accurate to current app)
-
-- Router is defined in `src/router.tsx` with React Router’s `createBrowserRouter`.
-- Protected routes wrap content with:
-  ```tsx
-  <ProtectedRoute>
-    <MainLayout>
-      <YourPage />
-    </MainLayout>
-  </ProtectedRoute>
-  ```
-- Public routes are plain elements.
-- AI workspace lives under `/ai/...` paths. The theme showcase is wired at `/ai/theme` and renders `AiThemeShowcase`.
-- When adding AI feature pages, prefer protected routes if they read/write user data (so the user must be logged in).
-
-Example additions (keep style consistent with `router.tsx`):
-
-```tsx
-// Public AI showcase (already added)
-{ path: "/ai/theme", element: <AiThemeShowcase /> },
-
-// Protected AI tools (example)
-{
-  path: "/ai/dashboard",
-  element: (
-    <ProtectedRoute>
-      <MainLayout>
-        <AIDashboard />
-      </MainLayout>
-    </ProtectedRoute>
-  ),
-},
-```
+AppShell renders the global top bar, a sidebar slot (workspace-specific), and a main outlet. SystemLayer is appended once (at the bottom) to host global snackbars, confirmations, and the Sprint task overlay.
 
 ## Themes
 
-- The global app uses the Profile theme: `@profile/theme/theme.tsx` (applied in `main.tsx`).
-- The AI workspace can use its own theme. Wrap AI pages with a local ThemeProvider when needed:
+- Global theme: the app is wrapped at the top level with a `ThemeContextProvider` in `src/main.tsx` which applies the shared `lightTheme` / `darkTheme` from `src/app/shared/theme` (via MUI `ThemeProvider`). Theme selection (light/dark) and a small "radius mode" toggle are persisted in localStorage.
+- AI theme: an optional AI-only theme lives at `src/app/workspaces/ai/theme/aiTheme.tsx`. For pages that should showcase an AI look, wrap the page locally with MUI's `ThemeProvider` using that theme.
 
-  ```tsx
-  import { ThemeProvider } from "@mui/material/styles";
-  import aiTheme from "@workspaces/ai/theme/aiTheme";
+Tip: Keep theme usage lightweight. Prefer MUI `sx` props for one-off spacing and small layout tweaks.
 
-  export default function AIPage() {
-    return <ThemeProvider theme={aiTheme}>{/* AI UI here */}</ThemeProvider>;
-  }
-  ```
+## Routing (React Router v7)
 
-## Sprint 2 focus (AI section)
+- Router lives in `src/router.tsx` and uses `createBrowserRouter`.
+- Workspaces are nested routes with dedicated layouts:
+  - `/ai` → `AiLayout` (wraps with AppShell + AISidebar)
+  - `/jobs` → `JobsLayout` (AppShell + JobsSidebar)
+  - Profile pages render inside `ProfileLayout` where applicable
+- Protected pages use `ProtectedRoute` to enforce auth.
 
-Build the core job-search and AI features under `src/app/workspaces/ai/`:
+Current AI routes:
 
-- Pages to extend: `pages/CompanyResearch`, `pages/JobMatching`, `pages/GenerateResume`, `pages/GenerateCoverLetter`, `pages/DashboardAI`
-- Add routes under `/ai/...` for these pages.
-- Use shared CRUD helpers for data and scope writes/reads to `user_id` (via `withUser`).
-- Use `useErrorHandler` + `ErrorSnackbar` for all feedback.
-- Keep code readable and avoid overly advanced TypeScript.
+- `/ai` (DashboardAI index)
+- `/ai/resume` (GenerateResume)
+- `/ai/cover-letter` (GenerateCoverLetter)
+- `/ai/job-match` (JobMatching)
+- `/ai/company-research` (CompanyResearch)
+- `/ai/templates` (TemplatesHub)
 
-## Coding style (keep it simple)
+Current Jobs routes (children under `/jobs`):
 
-- Keep TypeScript simple: avoid advanced generics or complex utility types.
-- Prefer small, readable functions; break work into helpers in `shared/utils` when reusable.
-- Comment briefly above non-obvious blocks explaining the purpose in plain language (why, not how).
-- Use clear names for files, components, and variables.
-- Formatting: keep files neat and consistent. The repo uses ESLint configs; let formatters handle style.
-- UI styling:
-  - It’s fine to use MUI props and small `sx` blocks for layout/spacing.
-  - If styles get large or repeated, move them into a small CSS file or a theme override.
+- index + `/jobs/pipeline` (Pipeline)
+- `/jobs/new` (New Job)
+- `/jobs/documents` (Documents & Materials)
+- `/jobs/saved-searches`
+- `/jobs/analytics`
+- `/jobs/automations`
+
+## Sprint 2 focus
+
+Sprint 2 concentrates on AI and Jobs workspaces:
+
+- AI: resume generation, cover letters, job match, company research, templates hub
+- Jobs: pipeline (kanban), new job entry/import, documents linking, saved searches, analytics, automations
+
+When building features:
+
+- Use CRUD helpers and scope with `withUser(user.id)` for user-owned tables
+- Use `useErrorHandler` + `ErrorSnackbar` for feedback
+- Follow the page structure and route keys already present in the router
+
+## Sprint Task Snackbar (use cases + owners)
+
+- Component: `src/app/shared/components/common/SprintTaskSnackbar.tsx`
+- Hook: `src/app/shared/hooks/useSprintTasks.ts` (infers a page key from the URL or accepts an explicit `PageTaskKey` when you call the hook from a page)
+- Mapping: `src/app/shared/utils/pageTaskMap.ts` (page key → list of UC items)
+- Ownership: `src/app/shared/utils/taskOwners.ts` (UC → owner)
+- Global placement: `src/app/shared/layouts/SystemLayer.tsx` renders the snackbar for the current page when tasks exist.
+
+Each task item shows: UC code, optional short title, owner (from `taskOwners`), a short description, and an implementation scope label (`[Frontend|Backend|Both]`) for planning. To add or adjust tasks:
+
+1. Add/verify the UC → owner entry in `src/app/shared/utils/taskOwners.ts`
+2. Update the page’s task list in `src/app/shared/utils/pageTaskMap.ts` (order items by business priority)
+3. If a new route is introduced, add its route → page key inference to `src/app/shared/hooks/useSprintTasks.ts` or pass an explicit key from the page component (e.g., `useSprintTasks("ai:cover-letter")`).
+
+## Auth & data patterns
+
+- `useAuth()` exposes `{ session, user, loading, signIn, signUpNewUser, signInWithOAuth, signOut }`
+- Use `withUser(user?.id)` to scope queries/mutations: respects RLS; never trust client-owned IDs without scoping
+- Import the single Supabase client from `@shared/services/supabaseClient`
+- Prefer `crud.ts` helpers for `listRows`, `getRow`, `insertRow`, `updateRow`, `deleteRow`, etc.
+
+## Error handling
+
+- Use `useErrorHandler()` and render `ErrorSnackbar` once per page tree (already handled by SystemLayer)
+- Don’t use `alert()` or custom toast systems
+
+## Path aliases
+
+Configured in `frontend/tsconfig.app.json` (baseUrl `src`) and wired in `vite.config.ts`. Useful aliases include:
+
+- `@/*` → `src/*`
+- `@app/*` → `src/app/*`
+- `@shared/*` → `src/app/shared/*`
+- `@components/*` → `src/app/shared/components/*`
+- `@services/*` → `src/app/shared/services/*`
+- `@context/*` → `src/app/shared/context/*`
+- `@hooks/*` → `src/app/shared/hooks/*`
+- `@utils/*` → `src/app/shared/utils/*`
+- `@workspaces/*` → `src/app/workspaces/*`
+- `@profile/*` → `src/app/workspaces/profile/*`
+- `@ai/*` → `src/app/workspaces/ai/*`
+- `@jobs/*` → `src/app/workspaces/jobs/*`
+- `@theme` → `src/app/shared/theme/index.ts`
+
+## Coding style
+
+- Keep TS simple; avoid heavy generics and type gymnastics
+- Favor small, readable functions; lift helpers into `shared/utils` when reused
+- Explain intent with short comments for non-obvious blocks
+- Use MUI `sx` for minor layout; extract larger style blocks into theme overrides or CSS
+- Let ESLint/Prettier formatting guide style
 
 ## Common snippets
 
-Auth and user scoping:
+Auth + user scoping:
 
 ```tsx
 import { useAuth } from "@shared/context/AuthContext";
@@ -190,7 +162,7 @@ return (
 );
 ```
 
-Simple list with ordering:
+CRUD helpers:
 
 ```ts
 import { listRows } from "@shared/services/crud";
@@ -198,25 +170,22 @@ import { listRows } from "@shared/services/crud";
 const res = await listRows("applications", "*", {
   order: { column: "created_at", ascending: false },
 });
-if (res.error) handleError(res.error);
 ```
 
-Insert with user scope:
+Scoped insert:
 
 ```ts
 const res = await userCrud.insertRow("documents", { file_name: "resume.pdf" });
-if (res.error) handleError(res.error);
-else showSuccess("Uploaded");
 ```
 
 ## Guardrails
 
-- Do not hardcode service keys in the client. Only use `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-- Respect RLS: for public tables, scope by `user_id` using `withUser(user.id)`.
-- Keep routes accurate to `src/router.tsx` and the current folder structure.
-- Prefer the shared client and CRUD helpers; do not duplicate DB logic in pages.
-- Use `ProtectedRoute` for any page that needs the current user.
+- Never commit or hardcode secrets; only use `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- Always scope user-owned data with `withUser(user.id)`
+- Keep routes in sync with `src/router.tsx`
+- Reuse shared client and CRUD helpers; don’t hand-roll Supabase logic in pages
+- Protect all data-reading/writing pages with `ProtectedRoute`
 
 ---
 
-If something is unclear in the codebase, take a quick look at the nearby files in `src/app/shared/*` or the corresponding workspace folder to match existing patterns. Keep the implementation straightforward and well-commented.
+If anything is unclear, inspect nearby files under `src/app/shared/*` or the matching workspace folder to mirror existing patterns. Keep implementations straightforward and commented with intent.
