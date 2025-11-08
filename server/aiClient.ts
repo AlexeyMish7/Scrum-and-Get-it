@@ -18,7 +18,6 @@
 type Provider = "openai" | "azure" | "mock";
 
 const PROVIDER = process.env.AI_PROVIDER ?? "openai";
-const API_KEY = process.env.AI_API_KEY ?? "";
 const FAKE_AI = (process.env.FAKE_AI ?? "false").toLowerCase() === "true";
 
 /** Options supported when generating content */
@@ -108,7 +107,10 @@ async function sendToOpenAI(
   prompt: string,
   opts: GenerateOptions
 ): Promise<GenerateResult> {
-  if (!API_KEY) throw new Error("AI_API_KEY is not set");
+  // Read the API key at call-time so late-loaded env (from index env loader) is respected.
+  // Support common aliases to reduce configuration friction.
+  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "";
+  if (!apiKey) throw new Error("AI_API_KEY is not set");
 
   // Basic retry + timeout wrapper around a single REST call.
   const maxRetries = opts.maxRetries ?? 2;
@@ -130,7 +132,7 @@ async function sendToOpenAI(
       const resp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),

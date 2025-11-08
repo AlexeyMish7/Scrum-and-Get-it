@@ -51,15 +51,18 @@ export default function SectionControlsPanel() {
 
   // Local derived state from draft (falls back to canonical default ordering)
   const order = React.useMemo(() => {
-    return active?.content.sectionOrder?.length
+    const base = active?.content.sectionOrder?.length
       ? active.content.sectionOrder
       : Object.keys(SECTION_LABELS);
+    // Filter out any keys that are no longer recognized (defensive against stale data)
+    return base.filter((k) => SECTION_LABELS[k]);
   }, [active]);
 
   const visible = React.useMemo(() => {
-    return active?.content.visibleSections?.length
+    const base = active?.content.visibleSections?.length
       ? active.content.visibleSections
       : Object.keys(SECTION_LABELS);
+    return base.filter((k) => SECTION_LABELS[k]);
   }, [active]);
 
   const [dragOrder, setDragOrder] = React.useState<string[]>(order);
@@ -71,6 +74,8 @@ export default function SectionControlsPanel() {
   function toggleVisibility(key: string) {
     if (!active)
       return handleError?.(new Error("Select an active draft first"));
+    // Ensure key is canonical
+    if (!SECTION_LABELS[key]) return;
     const next = visible.includes(key)
       ? visible.filter((s) => s !== key)
       : [...visible, key];
@@ -84,7 +89,8 @@ export default function SectionControlsPanel() {
     items.splice(result.destination.index, 0, removed);
     setDragOrder(items);
     if (!active) return;
-    setSectionOrder(items);
+    // Persist canonical ordering only (filter unknown keys)
+    setSectionOrder(items.filter((k) => SECTION_LABELS[k]));
   }
 
   function applyPresetSelection(name: string) {
@@ -156,6 +162,7 @@ export default function SectionControlsPanel() {
                                 : "action.hover",
                               opacity: isVisible ? 1 : 0.6,
                               transition: "background-color 0.15s",
+                              cursor: active ? "grab" : "default",
                             }}
                           >
                             <Typography variant="body2">{label}</Typography>

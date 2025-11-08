@@ -1,4 +1,13 @@
-import { Box, Typography, Stack, Button } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Stack,
+  Button,
+  Collapse,
+  Divider,
+  Tooltip,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
 import TemplateManager from "../resume/TemplateManager";
 import ResumeGenerationPanel from "../resume/ResumeGenerationPanel";
@@ -18,11 +27,10 @@ import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useState, useEffect } from "react";
 
 /**
- * GenerateResume unified page:
- * - Select active draft
- * - Generate resume artifacts
- * - Apply ordered skills / summary / experience bullets to the draft
- * - Manage templates & run skills optimization
+ * GenerateResume unified page (streamlined):
+ * Primary flow (top): select draft → generate → apply AI → preview.
+ * Advanced tools (collapsed): variations, versions, validation, artifacts history, template manager, skills optimization.
+ * This reduces initial cognitive load while retaining power features.
  */
 export default function GenerateResume() {
   const { handleError, showSuccess } = useErrorHandler();
@@ -38,6 +46,8 @@ export default function GenerateResume() {
   );
   const [lastJobId, setLastJobId] = useState<number | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
+  // Controls visibility of advanced tool suite to declutter initial view.
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Listen for generation events dispatched by ResumeGenerationPanel
   useEffect(() => {
@@ -104,38 +114,87 @@ export default function GenerateResume() {
       </Typography>
 
       <Stack spacing={3}>
+        {/* Primary workflow panels */}
         <DraftSelectorBar />
         <ResumeGenerationPanel />
         <ExperienceTailoringPanel />
-        <ResumeVariationsPanel />
         <SectionControlsPanel />
-        <ResumeDraftPreviewPanel />
-        <VersionManagerPanel />
-        <ResumeValidationPanel />
-        <ArtifactsHistoryPanel />
         {lastContent && (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button variant="outlined" onClick={applySkills} disabled={!active}>
-              Apply Ordered Skills
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={applySummaryToDraft}
-              disabled={!active}
-            >
-              Apply Summary
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={mergeExperience}
-              disabled={!active}
-            >
-              Merge Experience Bullets
-            </Button>
+            <Tooltip title="Apply AI-ordered skill list to active draft">
+              <span>
+                <Button
+                  variant="outlined"
+                  onClick={applySkills}
+                  disabled={!active}
+                >
+                  Apply Ordered Skills
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Replace summary with AI generated version">
+              <span>
+                <Button
+                  variant="outlined"
+                  onClick={applySummaryToDraft}
+                  disabled={!active}
+                >
+                  Apply Summary
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Select and merge tailored experience bullets">
+              <span>
+                <Button
+                  variant="outlined"
+                  onClick={mergeExperience}
+                  disabled={!active}
+                >
+                  Merge Experience Bullets
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         )}
-        <TemplateManager />
-        <SkillsOptimizationPanel />
+        <ResumeDraftPreviewPanel />
+
+        {/* Advanced tool suite toggle */}
+        <Box>
+          <Divider sx={{ my: 2 }} />
+          <Button
+            startIcon={
+              <ExpandMoreIcon
+                sx={{
+                  transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "0.2s",
+                }}
+              />
+            }
+            variant="text"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
+            {showAdvanced ? "Hide Advanced Tools" : "Show Advanced Tools"}
+          </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: 0.5 }}
+          >
+            Advanced: variations, versions, validation, artifacts history,
+            templates, skills optimization.
+          </Typography>
+          <Collapse in={showAdvanced} unmountOnExit>
+            <Stack spacing={3} sx={{ mt: 2 }}>
+              <ResumeVariationsPanel />
+              <VersionManagerPanel />
+              <ResumeValidationPanel />
+              <ArtifactsHistoryPanel />
+              <TemplateManager />
+              <SkillsOptimizationPanel />
+            </Stack>
+          </Collapse>
+        </Box>
       </Stack>
       <BulletMergeDialog
         open={mergeOpen}

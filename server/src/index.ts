@@ -38,33 +38,39 @@ import { checkLimit } from "../utils/rateLimiter.js";
 // ------------------------------------------------------------------
 // Best-effort: load env vars from local .env if not already present.
 // In dev, we run `npm run dev` inside /server so cwd points here.
-function loadEnvFromFile() {
+// Some developers may place the file in server/src/.env by mistake; support both locations.
+function loadEnvFromFiles() {
   try {
-    const envPath = path.resolve(process.cwd(), ".env");
-    if (!fs.existsSync(envPath)) return;
-    const content = fs.readFileSync(envPath, "utf8");
-    for (const line of content.split(/\r?\n/)) {
-      if (!line || /^\s*#/.test(line)) continue;
-      const m = line.match(/^\s*([^=\s]+)=(.*)$/);
-      if (!m) continue;
-      const key = m[1];
-      let val = m[2] ?? "";
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1);
-      }
-      if (process.env[key] === undefined) {
-        process.env[key] = val;
+    const candidates = [
+      path.resolve(process.cwd(), ".env"),
+      path.resolve(process.cwd(), "src/.env"),
+    ];
+    for (const envPath of candidates) {
+      if (!fs.existsSync(envPath)) continue;
+      const content = fs.readFileSync(envPath, "utf8");
+      for (const line of content.split(/\r?\n/)) {
+        if (!line || /^\s*#/.test(line)) continue;
+        const m = line.match(/^\s*([^=\s]+)=(.*)$/);
+        if (!m) continue;
+        const key = m[1];
+        let val = m[2] ?? "";
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
+        }
+        if (process.env[key] === undefined) {
+          process.env[key] = val;
+        }
       }
     }
-  } catch (e) {
+  } catch {
     // ignore – non-fatal
   }
 }
 
-loadEnvFromFile();
+loadEnvFromFiles();
 
 // ------------------------------------------------------------------
 // Runtime configuration + basic counters for observability

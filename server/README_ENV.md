@@ -2,12 +2,12 @@
 
 This document explains which environment variables the server expects, how to set them locally for development, and how to store them securely in CI for production.
 
-Do NOT commit real secrets. Use `server/.env` for local development (add it to `.gitignore`) and CI secret stores for deployments.
+Do NOT commit real secrets. Use `server/.env` for local development (add it to `.gitignore`) and CI secret stores for deployments. For convenience, the dev server will also read `server/src/.env` if you prefer to keep the file beside `index.ts`.
 
 ## Required server environment variables
 
 - `AI_PROVIDER` — the AI provider string. Use `openai` for OpenAI, `mock` for local development.
-- `AI_API_KEY` — OpenAI API key (server-only). Keep secret.
+- `AI_API_KEY` — OpenAI API key (server-only). Keep secret. You may also set `OPENAI_API_KEY`; the server accepts either.
 - `AI_MODEL` — optional default model (e.g., `gpt-4o-mini`).
 - `FAKE_AI` — set to `true` for deterministic mock responses during local dev to avoid costs.
 
@@ -18,7 +18,7 @@ Do NOT commit real secrets. Use `server/.env` for local development (add it to `
 
 ## Example `server/.env` (local development)
 
-Copy `server/.env.example` to `server/.env` and fill real values. Example:
+Copy `server/.env.example` to `server/.env` (or create `server/src/.env`) and fill real values. Example:
 
 AI_PROVIDER=openai
 AI_API_KEY=sk-REPLACE_WITH_YOUR_KEY
@@ -34,6 +34,7 @@ Notes:
 
 - Keep `FAKE_AI=true` while developing prompts and UI to avoid accidental provider charges.
 - Do not commit `server/.env` to source control. Add `server/.env` to `.gitignore` if it isn't already.
+- The server reads env at runtime and supports both `AI_API_KEY` and `OPENAI_API_KEY`.
 
 ## Frontend vs Server keys
 
