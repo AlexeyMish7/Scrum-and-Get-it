@@ -42,10 +42,12 @@ export async function handleGenerateResume(
   // 2) Fetch profile & job via service role helpers (lazy import to avoid crashing when env is missing)
   let getProfile: (userId: string) => Promise<any>;
   let getJob: (jobId: number) => Promise<any>;
+  let supabase: any;
   try {
     const mod = await import("./supabaseAdmin.js");
     getProfile = (mod as any).getProfile;
     getJob = (mod as any).getJob;
+    supabase = (mod as any).default;
     if (typeof getProfile !== "function" || typeof getJob !== "function") {
       throw new Error("supabase helpers not available");
     }
@@ -72,15 +74,83 @@ export async function handleGenerateResume(
   if (job.user_id && job.user_id !== req.userId)
     return { error: "job does not belong to user" };
 
-  // 3) Prompt composition (simple example; use templates)
+  // 3) Load enriched profile data: skills, employment, education, projects, certifications
+  let skillsList: Array<{ skill_name: string; skill_category?: string }> = [];
+  let employment: Array<any> = [];
+  let education: Array<any> = [];
+  let projects: Array<any> = [];
+  let certifications: Array<any> = [];
+  try {
+    // skills
+    const { data: sk, error: skErr } = await supabase
+      .from("skills")
+      .select("skill_name, skill_category")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: true });
+    if (skErr) throw skErr;
+    skillsList = sk ?? [];
+  } catch {
+    // soft-fail; continue without skills enrichment
+  }
+  try {
+    // employment
+    const { data: emp, error: empErr } = await supabase
+      .from("employment")
+      .select("id, job_title, company_name, start_date, end_date")
+      .eq("user_id", req.userId)
+      .order("start_date", { ascending: true });
+    if (empErr) throw empErr;
+    employment = emp ?? [];
+  } catch {}
+  try {
+    // education
+    const { data: edu, error: eduErr } = await supabase
+      .from("education")
+      .select(
+        "id, institution_name, degree_type, field_of_study, graduation_date"
+      )
+      .eq("user_id", req.userId)
+      .order("graduation_date", { ascending: true });
+    if (eduErr) throw eduErr;
+    education = edu ?? [];
+  } catch {}
+  try {
+    // projects
+    const { data: proj, error: projErr } = await supabase
+      .from("projects")
+      .select("id, proj_name, role, tech_and_skills")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    if (projErr) throw projErr;
+    projects = proj ?? [];
+  } catch {}
+  try {
+    // certifications
+    const { data: cert, error: certErr } = await supabase
+      .from("certifications")
+      .select("id, name, issuing_org")
+      .eq("user_id", req.userId)
+      .order("date_earned", { ascending: false })
+      .limit(8);
+    if (certErr) throw certErr;
+    certifications = cert ?? [];
+  } catch {}
+
+  // 4) Prompt composition with enriched context
   const prompt = buildResumePrompt({
     profile,
     job,
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
+    skillsList,
+    employment,
+    education,
+    projects,
+    certifications,
   });
 
-  // 4) Call AI
+  // 5) Call AI
   let gen: GenerateResult;
   try {
     gen = await aiClient.generate("resume", prompt, {
@@ -90,7 +160,7 @@ export async function handleGenerateResume(
     return { error: `AI error: ${e?.message ?? e}` };
   }
 
-  // 5) Post-process / construct artifact row (pseudo id)
+  // 6) Post-process / construct artifact row (pseudo id)
   const artifact: ArtifactRow = {
     id: "generated-temp-id",
     user_id: req.userId,
@@ -112,7 +182,7 @@ export async function handleGenerateResume(
     created_at: new Date().toISOString(),
   };
 
-  // 6) Persist to DB (pseudo code) -- replace with your DB insert using service credentials
+  // 7) Persist to DB (pseudo code) -- replace with your DB insert using service credentials
   // e.g. await supabaseAdmin.from('ai_artifacts').insert({ user_id: req.userId, job_id: req.jobId, kind: 'resume', content: artifact.content, prompt: artifact.prompt, model: artifact.model, metadata: artifact.metadata })
 
   // Return created artifact to caller

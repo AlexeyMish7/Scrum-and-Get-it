@@ -8,6 +8,7 @@ import {
   Typography,
   Button,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 
 /**
@@ -17,6 +18,7 @@ import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
  */
 export default function DraftSelectorBar() {
   const { resumes, activeId, setActive } = useResumeDrafts();
+  const navigate = useNavigate();
 
   if (!resumes.length) {
     return (
@@ -41,8 +43,7 @@ export default function DraftSelectorBar() {
           <Button
             size="small"
             variant="outlined"
-            href="#ai-templates"
-            onClick={(e) => e.preventDefault()}
+            onClick={() => navigate("/ai/templates")}
           >
             Open Templates
           </Button>

@@ -20,13 +20,46 @@ export interface BuildResumePromptArgs {
   job: any;
   tone?: string;
   focus?: string;
+  // Optional enriched profile data
+  skillsList?: Array<{ skill_name: string; skill_category?: string }>;
+  employment?: Array<{
+    id?: string;
+    job_title?: string;
+    company_name?: string;
+    start_date?: string;
+    end_date?: string | null;
+  }>;
+  education?: Array<{
+    id?: string;
+    institution_name?: string;
+    degree_type?: string | null;
+    field_of_study?: string | null;
+    graduation_date?: string | null;
+  }>;
+  projects?: Array<{
+    id?: string;
+    proj_name?: string;
+    role?: string | null;
+    tech_and_skills?: string[] | null;
+  }>;
+  certifications?: Array<{
+    id?: string;
+    name: string;
+    issuing_org?: string | null;
+  }>;
 }
 
 export function buildResumePrompt(args: BuildResumePromptArgs): string {
   const { profile, job, tone, focus } = args;
   const name = safe(profile?.full_name || profile?.first_name || "");
   const summary = safe(profile?.summary || "");
-  const skills = list(profile?.skills || profile?.tech_and_skills || []);
+  // Prefer normalized skills from `skills` table when provided, fall back to any inline arrays on profile
+  const skillsFromTable = (args.skillsList || []).map((s) => s.skill_name);
+  const skills = list(
+    skillsFromTable.length
+      ? skillsFromTable
+      : profile?.skills || profile?.tech_and_skills || []
+  );
 
   const title = safe(job?.job_title || job?.title || "");
   const company = safe(job?.company_name || job?.company || "");
@@ -37,6 +70,75 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
 
   const toneStr = tone || "professional";
   const focusStr = focus ? `Focus on ${safe(focus, 120)}.` : "";
+
+  // Build compact context lines from related tables (limit tokens)
+  const employmentLines = (args.employment || [])
+    .slice(0, 6)
+    .map((e) =>
+      safe(
+        [
+          e.job_title || "",
+          e.company_name ? `@ ${e.company_name}` : "",
+          e.start_date || e.end_date
+            ? `(${e.start_date ?? "?"} – ${e.end_date ?? "present"})`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      )
+    )
+    .filter(Boolean)
+    .join("; ");
+
+  const educationLines = (args.education || [])
+    .slice(0, 4)
+    .map((ed) =>
+      safe(
+        [
+          ed.institution_name || "",
+          ed.degree_type || ed.field_of_study
+            ? `— ${[ed.degree_type, ed.field_of_study]
+                .filter(Boolean)
+                .join(" ")}`
+            : "",
+          ed.graduation_date ? `(Grad: ${ed.graduation_date})` : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      )
+    )
+    .filter(Boolean)
+    .join("; ");
+
+  const projectLines = (args.projects || [])
+    .slice(0, 4)
+    .map((p) =>
+      safe(
+        [
+          p.proj_name || "",
+          p.role ? `— ${p.role}` : "",
+          Array.isArray(p.tech_and_skills) && p.tech_and_skills.length
+            ? `(Tech: ${p.tech_and_skills.slice(0, 6).join(", ")})`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      )
+    )
+    .filter(Boolean)
+    .join("; ");
+
+  const certLines = (args.certifications || [])
+    .slice(0, 6)
+    .map((c) =>
+      safe(
+        [c.name, c.issuing_org ? `(${c.issuing_org})` : ""]
+          .filter(Boolean)
+          .join(" ")
+      )
+    )
+    .filter(Boolean)
+    .join("; ");
 
   return [
     `You are an expert resume writer. Do not fabricate information. Use only the provided profile and job content.`,
@@ -64,6 +166,10 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
     `\nCandidate: ${name}`,
     summary ? `Summary: ${summary}` : "",
     skills ? `Skills: ${skills}` : "",
+    employmentLines ? `Employment: ${employmentLines}` : "",
+    educationLines ? `Education: ${educationLines}` : "",
+    projectLines ? `Projects: ${projectLines}` : "",
+    certLines ? `Certifications: ${certLines}` : "",
     `\nTarget Role: ${title} at ${company}`,
     description ? `Job Description: ${description}` : "",
   ]

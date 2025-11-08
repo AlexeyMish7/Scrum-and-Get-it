@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { withUser } from "@shared/services/crud";
+import useUserJobs from "@shared/hooks/useUserJobs";
 import { generateExperienceTailoring } from "@workspaces/ai/services/aiGeneration";
 import type {
   ExperienceTailoringResult,
@@ -37,51 +37,15 @@ export default function ExperienceTailoringPanel() {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
 
-  const [jobs, setJobs] = React.useState<
-    Array<{ id: number; title: string; company: string }>
-  >([]);
-  const [loadingJobs, setLoadingJobs] = React.useState(false);
+  const { jobs, loading: loadingJobs } = useUserJobs(50);
   const [jobId, setJobId] = React.useState<number | "">("");
   const [loadingGen, setLoadingGen] = React.useState(false);
   const [lastScore, setLastScore] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    let ok = true;
-    async function loadJobs() {
-      if (!user?.id) return;
-      setLoadingJobs(true);
-      try {
-        const u = withUser(user.id);
-        const res = await u.listRows<{
-          id: number;
-          job_title: string | null;
-          company_name: string | null;
-        }>("jobs", "id, job_title, company_name", {
-          order: { column: "created_at", ascending: false },
-          limit: 50,
-        });
-        if (!ok) return;
-        if (res.error)
-          throw new Error(res.error.message || "Failed to load jobs");
-        const items = (res.data ?? []).map((j) => ({
-          id: j.id,
-          title: j.job_title ?? "Untitled",
-          company: j.company_name ?? "",
-        }));
-        setJobs(items);
-        if (items.length && jobId === "") setJobId(items[0].id);
-      } catch (e) {
-        handleError?.(e);
-      } finally {
-        setLoadingJobs(false);
-      }
-    }
-    loadJobs();
-    return () => {
-      ok = false;
-    };
+    if (jobs.length && jobId === "") setJobId(jobs[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [jobs.length]);
 
   async function onGenerate() {
     if (!user?.id || !jobId || typeof jobId !== "number") return;
@@ -112,7 +76,7 @@ export default function ExperienceTailoringPanel() {
         if (resumeLike) {
           window.dispatchEvent(
             new CustomEvent("sgt:resumeGenerated", {
-              detail: { content: resumeLike, jobId },
+              detail: { content: resumeLike, jobId, ts: Date.now() },
             })
           );
         }

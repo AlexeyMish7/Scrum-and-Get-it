@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { withUser } from "@shared/services/crud";
+import useUserJobs from "@shared/hooks/useUserJobs";
 import { generateResume } from "@workspaces/ai/services/aiGeneration";
 import type {
   GenerateResumeResult,
@@ -32,10 +32,7 @@ export default function ResumeGenerationPanel() {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
 
-  const [jobs, setJobs] = React.useState<
-    Array<{ id: number; title: string; company: string }>
-  >([]);
-  const [loadingJobs, setLoadingJobs] = React.useState(false);
+  const { jobs, loading: loadingJobs } = useUserJobs(50);
   const [jobId, setJobId] = React.useState<number | "">("");
 
   const [tone, setTone] = React.useState<string>("professional");
@@ -45,42 +42,42 @@ export default function ResumeGenerationPanel() {
   const [result, setResult] = React.useState<GenerateResumeResult | null>(null);
 
   React.useEffect(() => {
-    let ok = true;
-    async function load() {
-      if (!user?.id) return;
-      setLoadingJobs(true);
-      try {
-        const u = withUser(user.id);
-        const res = await u.listRows<{
-          id: number;
-          job_title: string | null;
-          company_name: string | null;
-        }>("jobs", "id, job_title, company_name", {
-          order: { column: "created_at", ascending: false },
-          limit: 50,
-        });
-        if (!ok) return;
-        if (res.error)
-          throw new Error(res.error.message || "Failed to load jobs");
-        const items = (res.data ?? []).map((j) => ({
-          id: j.id,
-          title: j.job_title ?? "Untitled",
-          company: j.company_name ?? "",
-        }));
-        setJobs(items);
-        if (items.length && jobId === "") setJobId(items[0].id);
-      } catch (e) {
-        handleError?.(e);
-      } finally {
-        setLoadingJobs(false);
-      }
-    }
-    load();
-    return () => {
-      ok = false;
-    };
+    if (jobs.length && jobId === "") setJobId(jobs[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [jobs.length]);
+
+  // Transform raw text fallback into structured content so downstream UI can display/apply.
+  function normalizeContent(raw: unknown): ResumeArtifactContent | undefined {
+    if (!raw) return undefined;
+    const maybe = raw as Partial<ResumeArtifactContent> & { text?: string };
+    if (
+      typeof maybe === "object" &&
+      (maybe.ordered_skills || maybe.sections || maybe.bullets || maybe.summary)
+    ) {
+      return maybe as ResumeArtifactContent;
+    }
+    const text = typeof maybe.text === "string" ? maybe.text : null;
+    if (!text) return undefined;
+    const lines: string[] = text
+      .split(/\r?\n+/)
+      .map((l: string) => l.trim())
+      .filter((l: string) => Boolean(l));
+    const bullets: Array<{ text: string }> = [];
+    const bulletRegex = /^[-*•]\s*(.+)$/;
+    for (const l of lines) {
+      const m = l.match(bulletRegex);
+      if (m) bullets.push({ text: m[1].trim() });
+    }
+    // Simple summary heuristic: first non-bullet line under 240 chars.
+    const summary =
+      lines.find((l: string) => !bulletRegex.test(l) && l.length < 240) ||
+      undefined;
+    return {
+      summary,
+      bullets: bullets.length ? bullets : undefined,
+      meta: { fallback_parsed: true },
+    };
+  }
 
   async function onGenerate() {
     if (!user?.id || !jobId || typeof jobId !== "number") return;
@@ -90,13 +87,18 @@ export default function ResumeGenerationPanel() {
         tone,
         focus: focus || undefined,
       });
-      setResult(resp);
+      // Normalize potential raw text fallback.
+      const structured = normalizeContent(resp.content);
+      const finalResp: GenerateResumeResult = structured
+        ? { ...resp, content: structured }
+        : resp;
+      setResult(finalResp);
       showSuccess("Resume generated");
       // Dispatch a global custom event so parent pages can react/apply content to drafts.
       try {
         window.dispatchEvent(
           new CustomEvent("sgt:resumeGenerated", {
-            detail: { content: resp.content, jobId },
+            detail: { content: finalResp.content, jobId, ts: Date.now() },
           })
         );
       } catch (e) {
@@ -297,8 +299,14 @@ export default function ResumeGenerationPanel() {
 
             {!content && (
               <Typography variant="body2" color="text.secondary">
-                Preview only. Full content will be fetched from the artifact
-                record.
+                Generation complete, but no structured content returned. Check
+                server prompt contract or view artifact history for details.
+              </Typography>
+            )}
+            {Boolean(content?.meta?.fallback_parsed) && (
+              <Typography variant="caption" color="text.secondary">
+                Parsed raw text into bullets (fallback). Improve prompt for
+                richer JSON.
               </Typography>
             )}
           </Stack>

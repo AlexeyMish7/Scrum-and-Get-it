@@ -31,11 +31,17 @@ export async function getDocument(
   id: string
 ): Promise<Result<DocumentRow | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow<DocumentRow>("documents", "*", { eq: { id }, single: true });
+  return userCrud.getRow<DocumentRow>("documents", "*", {
+    eq: { id },
+    single: true,
+  });
 }
 
 // Parse a storage path of the form "bucket/key" or just "key" (with a default bucket)
-function parseStoragePath(path: string, defaultBucket?: string): { bucket: string; key: string } | null {
+function parseStoragePath(
+  path: string,
+  defaultBucket?: string
+): { bucket: string; key: string } | null {
   if (!path) return null;
   const parts = path.split("/");
   if (parts.length > 1) {
@@ -54,16 +60,30 @@ export async function getSignedDownloadUrl(
 ): Promise<Result<{ url: string }>> {
   const parsed = parseStoragePath(filePath, defaultBucket);
   if (!parsed) {
-    return { data: null, error: { message: "Invalid file_path or missing bucket" }, status: 400 };
+    return {
+      data: null,
+      error: { message: "Invalid file_path or missing bucket" },
+      status: 400,
+    };
   }
   try {
     const { data, error } = await supabase.storage
       .from(parsed.bucket)
       .createSignedUrl(parsed.key, expiresInSeconds);
     if (error) {
-      return { data: null, error: { message: error.message, code: (error as any).code }, status: (error as any).status };
+      // Supabase storage errors expose a message and statusCode; fall back to 400 when absent.
+      const storageErr = error as { message: string; statusCode?: number };
+      return {
+        data: null,
+        error: { message: storageErr.message },
+        status: storageErr.statusCode ?? 400,
+      };
     }
-    return { data: { url: data?.signedUrl as string }, error: null, status: 200 };
+    return {
+      data: { url: data?.signedUrl as string },
+      error: null,
+      status: 200,
+    };
   } catch (e) {
     return { data: null, error: { message: String(e) }, status: null };
   }
@@ -74,4 +94,3 @@ export default {
   getDocument,
   getSignedDownloadUrl,
 };
-

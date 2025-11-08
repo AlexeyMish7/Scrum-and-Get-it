@@ -33,7 +33,12 @@ const defaultSections: ResumeSection[] = [
   { id: "skills", name: "Skills", visible: true, completed: false },
   { id: "projects", name: "Projects", visible: true, completed: false },
   { id: "experience", name: "Experience", visible: true, completed: false },
-  { id: "certifications", name: "Certifications", visible: false, completed: false },
+  {
+    id: "certifications",
+    name: "Certifications",
+    visible: false,
+    completed: false,
+  },
 ];
 
 const templates = {
@@ -55,8 +60,8 @@ const dummyResume: ResumeData = {
   Experience: [
     "Software Engineer Intern, Example Company, Summer 2024",
     "Lead Research Assistant, NJIT, 2023-2024",
-   ],
-   Certifications: ["AWS Certified Developer", "Certified Scrum Master"],
+  ],
+  Certifications: ["AWS Certified Developer", "Certified Scrum Master"],
 };
 
 const ResumeCustomization: React.FC = () => {
@@ -80,12 +85,18 @@ const ResumeCustomization: React.FC = () => {
     );
   };
 
-  const handleDragEnd = (result: any) => {
+  interface DragResult {
+    source: { index: number };
+    destination?: { index: number } | null;
+  }
+  const handleDragEnd = (result: DragResult) => {
     if (!result.destination) return;
-    const items = Array.from(sections);
-    const [reordered] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reordered);
-    setSections(items);
+    setSections((prev) => {
+      const items = [...prev];
+      const [reordered] = items.splice(result.source.index, 1);
+      items.splice(result.destination!.index, 0, reordered);
+      return items;
+    });
   };
 
   const handleApplyTemplate = (templateName: string) => {
@@ -151,22 +162,35 @@ const ResumeCustomization: React.FC = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            <Button variant="contained" color="primary" fullWidth onClick={handleSavePreset}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={handleSavePreset}
+            >
               Save as Preset
             </Button>
           </Card>
         </Grid>
 
         {/* Right Column - Drag + Preview */}
-        <Grid size={12} >
+        <Grid size={12}>
           <Typography variant="h6">Arrange Sections</Typography>
 
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="sections">
               {(provided) => (
-                <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ mt: 2 }}>
+                <Box
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  sx={{ mt: 2 }}
+                >
                   {filteredSections.map((section, index) => (
-                    <Draggable key={section.id} draggableId={section.id} index={index}>
+                    <Draggable
+                      key={section.id}
+                      draggableId={section.id}
+                      index={index}
+                    >
                       {(provided) => (
                         <Card
                           ref={provided.innerRef}
