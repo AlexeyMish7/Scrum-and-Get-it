@@ -35,7 +35,7 @@ export default function JobsSidebar() {
           <ListItemText primary="Documents" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/jobs/saved-searches">
-          <ListItemText primary="Saved Searches" />
+          <ListItemText primary="Search Jobs" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/jobs/analytics">
           <ListItemText primary="Analytics" />
