@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box,
   Paper,
   Typography,
@@ -119,7 +119,7 @@ export default function VersionsExportAside({
         <List dense sx={{ mb: 1, maxHeight: 240, overflow: "auto" }}>
           {loading && (
             <ListItem disableGutters>
-              <ListItemText primary="Loading versions…" />
+              <ListItemText primary="Loading versions..." />
             </ListItem>
           )}
           {!loading && items.length === 0 && (
@@ -260,3 +260,6 @@ export default function VersionsExportAside({
     </Box>
   );
 }
+
+
+

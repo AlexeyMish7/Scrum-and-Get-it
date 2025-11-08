@@ -209,15 +209,20 @@ export default function useResumeGenerationFlowV2(userId?: string) {
         const promises: Array<Promise<void>> = [];
         let skillsContent: SkillsOptimizationContent | null = null;
         let expContent: ExperienceTailoringResult["content"] | null = null;
+        // Track local statuses to avoid stale React state in final emit
+        let skillsStatus: SegmentStatus = wantSkills ? "idle" : "skipped";
+        let experienceStatus: SegmentStatus = wantExp ? "idle" : "skipped";
 
         if (wantSkills) {
           setState((s) => ({ ...s, skills: "running" }));
+          skillsStatus = "running";
           promises.push(
             generateSkillsOptimization(userId, jobId)
               .then((r) => {
                 if (ctrlRef.current.cancelled) return;
                 skillsContent = r.content ?? null;
                 setState((s) => ({ ...s, skills: "success" }));
+                skillsStatus = "success";
                 emit("sgt:resumeGeneration:segment", {
                   jobId,
                   segment: "skills",
@@ -229,6 +234,7 @@ export default function useResumeGenerationFlowV2(userId?: string) {
                 handleError?.(e);
                 setLastError(e instanceof Error ? e.message : String(e));
                 setState((s) => ({ ...s, skills: "error" }));
+                skillsStatus = "error";
                 emit("sgt:resumeGeneration:segment", {
                   jobId,
                   segment: "skills",
@@ -240,12 +246,14 @@ export default function useResumeGenerationFlowV2(userId?: string) {
         }
         if (wantExp) {
           setState((s) => ({ ...s, experience: "running" }));
+          experienceStatus = "running";
           promises.push(
             generateExperienceTailoring(userId, jobId)
               .then((r) => {
                 if (ctrlRef.current.cancelled) return;
                 expContent = r.content ?? null;
                 setState((s) => ({ ...s, experience: "success" }));
+                experienceStatus = "success";
                 emit("sgt:resumeGeneration:segment", {
                   jobId,
                   segment: "experience",
@@ -257,6 +265,7 @@ export default function useResumeGenerationFlowV2(userId?: string) {
                 handleError?.(e);
                 setLastError(e instanceof Error ? e.message : String(e));
                 setState((s) => ({ ...s, experience: "error" }));
+                experienceStatus = "error";
                 emit("sgt:resumeGeneration:segment", {
                   jobId,
                   segment: "experience",
@@ -280,16 +289,8 @@ export default function useResumeGenerationFlowV2(userId?: string) {
           jobId,
           state: {
             base: "success",
-            skills: wantSkills
-              ? state.skills === "error"
-                ? "error"
-                : "success"
-              : "skipped",
-            experience: wantExp
-              ? state.experience === "error"
-                ? "error"
-                : "success"
-              : "skipped",
+            skills: wantSkills ? skillsStatus : "skipped",
+            experience: wantExp ? experienceStatus : "skipped",
           },
           ts: Date.now(),
         });

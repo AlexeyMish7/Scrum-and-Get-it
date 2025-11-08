@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box,
   Typography,
   Stack,
@@ -7,6 +7,7 @@ import {
   Paper,
   Skeleton,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { toPreviewModel } from "@workspaces/ai/utils/previewModel";
 
@@ -46,6 +47,7 @@ export default function ResumeFullPreview({
   newBullets,
 }: ResumeFullPreviewProps) {
   const model = toPreviewModel(content);
+  const theme = useTheme();
   const radius = 8;
   return (
     <Paper
@@ -128,12 +130,7 @@ export default function ResumeFullPreview({
                         data-preview-skill
                         color="default"
                         // Use filled variant in dark mode for better contrast, outlined otherwise
-                        variant={
-                          typeof window !== "undefined" &&
-                          document.documentElement.classList.contains("dark")
-                            ? "filled"
-                            : "outlined"
-                        }
+                        variant={theme.palette.mode === "dark" ? "filled" : "outlined"}
                       />
                     ))}
                   </Stack>
@@ -149,7 +146,7 @@ export default function ResumeFullPreview({
                   <Chip
                     size="small"
                     color="warning"
-                    label="updating…"
+                    label="updating..."
                     sx={{ ml: 1 }}
                   />
                 )}
@@ -161,7 +158,7 @@ export default function ResumeFullPreview({
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {[row.role, row.company, row.dates]
                           .filter(Boolean)
-                          .join(" · ")}
+                          .join(" - ")}
                       </Typography>
                     )}
                     <Stack component="ul" sx={{ pl: 2, m: 0 }}>
@@ -211,7 +208,7 @@ export default function ResumeFullPreview({
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {[row.institution, row.degree, row.graduation_date]
                           .filter(Boolean)
-                          .join(" · ")}
+                          .join(" - ")}
                       </Typography>
                     )}
                     <Stack component="ul" sx={{ pl: 2, m: 0 }}>
@@ -240,7 +237,7 @@ export default function ResumeFullPreview({
                   <Box key={i} data-preview-project>
                     {(row.name || row.role) && (
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {[row.name, row.role].filter(Boolean).join(" · ")}
+                        {[row.name, row.role].filter(Boolean).join(" - ")}
                       </Typography>
                     )}
                     <Stack component="ul" sx={{ pl: 2, m: 0 }}>
@@ -282,3 +279,4 @@ export default function ResumeFullPreview({
     </Paper>
   );
 }
+

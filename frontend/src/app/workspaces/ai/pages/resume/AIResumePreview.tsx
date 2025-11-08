@@ -1,4 +1,4 @@
-import { Box, Typography, Chip, Divider, Stack, Paper } from "@mui/material";
+﻿import { Box, Typography, Chip, Divider, Stack, Paper } from "@mui/material";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 
 /**
@@ -64,7 +64,7 @@ export default function AIResumePreview({
                   <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                     {[row.role, row.company, row.dates]
                       .filter(Boolean)
-                      .join(" · ")}
+                      .join(" - ")}
                   </Typography>
                 )}
                 <Stack component="ul" sx={{ pl: 2, m: 0 }}>
@@ -83,3 +83,4 @@ export default function AIResumePreview({
     </Paper>
   );
 }
+

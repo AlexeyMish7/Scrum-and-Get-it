@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box,
   Typography,
   Stack,
@@ -282,6 +282,8 @@ export default function GenerateResume() {
     showSuccess(
       isSame ? "No changes to apply" : "Applied ordered skills to draft"
     );
+    // Move to Preview after applying changes
+    setCurrentStep(3);
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
     emitApplyEvent({
       action: "apply-skills",
@@ -295,6 +297,8 @@ export default function GenerateResume() {
     const isSame = (active.content.summary || "") === lastContent.summary;
     applySummary(lastContent.summary);
     showSuccess(isSame ? "No changes to apply" : "Applied summary to draft");
+    // Move to Preview after applying changes
+    setCurrentStep(3);
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
     emitApplyEvent({
       action: "apply-summary",
@@ -632,7 +636,7 @@ export default function GenerateResume() {
             </Tabs>
             <Suspense
               fallback={
-                <Typography variant="body2">Loading preview…</Typography>
+                <Typography variant="body2">Loading preview...</Typography>
               }
             >
               {previewTab === "ai" && <AIResumePreview content={lastContent} />}
@@ -840,7 +844,7 @@ export default function GenerateResume() {
           <Collapse in={showAdvanced} unmountOnExit>
             <Suspense
               fallback={
-                <Typography variant="body2">Loading advanced tools…</Typography>
+                <Typography variant="body2">Loading advanced tools...</Typography>
               }
             >
               <Stack spacing={3} sx={{ mt: 2 }}>
@@ -872,6 +876,8 @@ export default function GenerateResume() {
             }[]
           );
           showSuccess("Selected bullets merged");
+          // Move to Preview after applying changes
+          setCurrentStep(3);
           if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
           emitApplyEvent({
             action: "merge-experience",
@@ -899,7 +905,6 @@ export default function GenerateResume() {
                 resume_artifact_id: (selectedArtifact as AIArtifactSummary).id,
               });
               showSuccess("Selected version linked to job");
-              setSrMessage("Selected version linked to job");
               setSrMessage("Selected version linked to job");
             }
           } catch (e) {
@@ -982,7 +987,7 @@ function buildDocxFromResume(content: ResumeArtifactContent) {
             new TextRun({
               text: [row.role, row.company, row.dates]
                 .filter(Boolean)
-                .join(" · "),
+                .join(" - "),
               bold: true,
             }),
           ],
@@ -1009,7 +1014,7 @@ function buildDocxFromResume(content: ResumeArtifactContent) {
             new TextRun({
               text: [row.institution, row.degree, row.graduation_date]
                 .filter(Boolean)
-                .join(" · "),
+                .join(" - "),
               bold: true,
             }),
           ],
@@ -1034,7 +1039,7 @@ function buildDocxFromResume(content: ResumeArtifactContent) {
         new Paragraph({
           children: [
             new TextRun({
-              text: [row.name, row.role].filter(Boolean).join(" · "),
+              text: [row.name, row.role].filter(Boolean).join(" - "),
               bold: true,
             }),
           ],
@@ -1057,3 +1062,10 @@ function buildDocxFromResume(content: ResumeArtifactContent) {
   }
   return out;
 }
+
+
+
+
+
+
+

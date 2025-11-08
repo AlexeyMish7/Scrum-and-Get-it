@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SectionControlsPanel
  * UC-048: Provides visibility toggles, drag-and-drop ordering, and preset application
  * for resume sections, persisting state into the active draft via useResumeDrafts.
@@ -262,3 +262,6 @@ export default function SectionControlsPanel() {
     </Card>
   );
 }
+
+
+
