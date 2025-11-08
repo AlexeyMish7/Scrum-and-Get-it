@@ -451,6 +451,143 @@ async function handleGenerateCoverLetter(
   }
 }
 
+// SKILLS OPTIMIZATION: POST /api/generate/skills-optimization
+async function handleSkillsOptimization(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL,
+  reqId: string
+) {
+  const userId = req.headers["x-user-id"] as string | undefined;
+  if (!userId)
+    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+
+  const limit = checkLimit(`skills:${userId}`, 5, 60_000);
+  if (!limit.ok) {
+    res.setHeader("Retry-After", String(limit.retryAfterSec ?? 60));
+    throw new ApiError(429, "rate limited", "rate_limited");
+  }
+
+  let body: any;
+  try {
+    body = await readJson(req);
+  } catch (e: any) {
+    throw new ApiError(400, "invalid JSON body", "bad_json");
+  }
+
+  const jobId = body?.jobId;
+  if (jobId === undefined || jobId === null || Number.isNaN(Number(jobId))) {
+    throw new ApiError(
+      400,
+      "jobId is required and must be a number",
+      "bad_request"
+    );
+  }
+
+  counters.generate_total++;
+  const start = Date.now();
+  const result = await orchestrator.handleSkillsOptimization({
+    userId,
+    jobId,
+  });
+  const latencyMs = Date.now() - start;
+
+  if (result.error) {
+    counters.generate_fail++;
+    logError("skills_optimization_failed", {
+      reqId,
+      userId,
+      jobId,
+      error: result.error,
+      latency_ms: latencyMs,
+    });
+    throw new ApiError(502, result.error, "ai_error");
+  }
+
+  const artifact = result.artifact;
+  if (!artifact) throw new ApiError(500, "no artifact produced", "no_artifact");
+
+  const canPersist = Boolean(
+    process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const metadata = {
+    ...(artifact.metadata ?? {}),
+    latency_ms: latencyMs,
+    persisted: false,
+  } as Record<string, unknown>;
+
+  if (canPersist) {
+    try {
+      const mod = await import("../supabaseAdmin.js");
+      const insert = mod.insertAiArtifact as any;
+      const row = await insert({
+        user_id: artifact.user_id,
+        job_id: artifact.job_id ?? null,
+        kind: artifact.kind,
+        title: artifact.title ?? null,
+        prompt: artifact.prompt ?? null,
+        model: artifact.model ?? null,
+        content: artifact.content,
+        metadata: { ...metadata, persisted: true },
+      });
+      const preview = makePreview(artifact.content);
+      counters.generate_success++;
+      logInfo("skills_optimization_persisted", {
+        reqId,
+        userId,
+        jobId,
+        latency_ms: latencyMs,
+      });
+      jsonReply(res, 201, {
+        id: row.id,
+        kind: row.kind,
+        created_at: row.created_at,
+        preview,
+      });
+      return;
+    } catch (e: any) {
+      counters.generate_fail++;
+      logError("skills_optimization_persist_failed", {
+        reqId,
+        userId,
+        jobId,
+        error: e?.message,
+        latency_ms: latencyMs,
+      });
+      throw new ApiError(500, "failed to persist artifact", "persist_failed");
+    }
+  }
+
+  try {
+    const preview = makePreview(artifact.content);
+    counters.generate_success++;
+    logInfo("skills_optimization_mock", {
+      reqId,
+      userId,
+      jobId,
+      latency_ms: latencyMs,
+    });
+    jsonReply(res, 200, {
+      id: `tmp-${Date.now()}`,
+      kind: artifact.kind,
+      created_at: artifact.created_at,
+      persisted: false,
+      preview,
+      metadata,
+    });
+  } catch (e: any) {
+    counters.generate_fail++;
+    logError("skills_optimization_preview_failed", {
+      reqId,
+      userId,
+      jobId,
+      error: e?.message,
+    });
+    throw new ApiError(500, "failed to build preview", "preview_failed");
+  }
+}
+
 // ------------------------------------------------------------------
 // HTTP Server: route dispatch
 // ------------------------------------------------------------------
@@ -478,6 +615,14 @@ const server = http.createServer(async (req, res) => {
       url.pathname === "/api/generate/cover-letter"
     ) {
       await handleGenerateCoverLetter(req, res, url, reqId);
+      return;
+    }
+    // ROUTE: Skills Optimization
+    if (
+      req.method === "POST" &&
+      url.pathname === "/api/generate/skills-optimization"
+    ) {
+      await handleSkillsOptimization(req, res, url, reqId);
       return;
     }
     // 404 fallback

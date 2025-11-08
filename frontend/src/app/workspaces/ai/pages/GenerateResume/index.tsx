@@ -1,6 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Stack } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
 import TemplateManager from "../resume/TemplateManager";
+import SkillsOptimizationPanel from "../resume/SkillsOptimizationPanel";
 
 export default function GenerateResume() {
   return (
@@ -16,7 +17,10 @@ export default function GenerateResume() {
         Manage templates and create new resumes tailored to positions.
       </Typography>
 
-      <TemplateManager />
+      <Stack spacing={3}>
+        <TemplateManager />
+        <SkillsOptimizationPanel />
+      </Stack>
     </Box>
   );
 }

@@ -16,6 +16,7 @@ Files
 - `orchestrator.ts` — handler showing the full flow: validate → fetch profile/job → prompt → call AI → return artifact.
 - `src/index.ts` — minimal HTTP server exposing `/api/health` and `/api/generate/resume`.
 - `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, and `/api/generate/cover-letter`.
+- `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, `/api/generate/cover-letter`, and `/api/generate/skills-optimization`.
 - `utils/*` — `logger`, `errors`, `rateLimiter` utilities.
 - `.env.example` — example env vars to configure.
 
@@ -40,9 +41,16 @@ Endpoints
   - Behavior: generates content via provider; if Supabase admin env is present, persists to `ai_artifacts`, otherwise returns a non-persisted mock response with a preview.
 
 - POST `/api/generate/cover-letter`
+
   - Headers: `X-User-Id: <uuid>`
   - Body: `{ jobId: number, options?: { tone?: string, focus?: string } }`
   - Output: JSON containing `{ id, kind, created_at, preview }`, persisted when Supabase env present.
+
+- POST `/api/generate/skills-optimization` (UC-049)
+  - Headers: `X-User-Id: <uuid>`
+  - Body: `{ jobId: number }`
+  - Output: JSON `{ id, kind: 'skills_optimization', created_at, preview }`.
+  - Artifact content contract includes: `emphasize`, `add`, `order`, `categories` { technical, soft }, `gaps`, `score`.
 
 Rate limiting
 
