@@ -133,6 +133,36 @@ Configured in `frontend/tsconfig.app.json` (baseUrl `src`) and wired in `vite.co
 - Use MUI `sx` for minor layout; extract larger style blocks into theme overrides or CSS
 - Let ESLint/Prettier formatting guide style
 
+### Commenting & function contracts (required when creating or editing code)
+
+When you add or change code, include concise comments that explain the “what” and the “why,” and briefly document inputs/outputs for non-trivial functions. Prefer lightweight JSDoc-style or inline block comments:
+
+- File/module header: 1–3 lines stating the purpose and main responsibilities.
+- Section headers: visually group related logic (e.g., “Environment Loading”, “Endpoint Handlers”).
+- Function contract (for non-trivial functions):
+  - Inputs: parameter names and expected shapes/types (especially for objects)
+  - Outputs: return type and meaning
+  - Error modes: thrown errors or special cases (if applicable)
+- Endpoint handlers: clearly label the HTTP method and path (e.g., “GET /api/health”) and outline the flow in 3–6 bullets.
+- Data transformations: add a one-liner explaining why the transformation exists (e.g., security, normalization, UI preview).
+
+Examples:
+
+```ts
+/**
+ * RESUME GENERATION: POST /api/generate/resume
+ * Flow: validate → rate-limit → parse body → orchestrate → persist → preview
+ * Inputs: headers { 'X-User-Id': uuid }, body { jobId: number, options? }
+ * Output: 201 with { id, kind, created_at, preview } or 200 (mock mode)
+ */
+async function handleGenerateResume(...) { /* ... */ }
+
+/** Generate a short preview for UI (first bullets or truncated JSON) */
+function makePreview(content: unknown): string | null { /* ... */ }
+```
+
+Keep comments short and specific. If logic is obvious, avoid redundant narration.
+
 ## Common snippets
 
 Auth + user scoping:

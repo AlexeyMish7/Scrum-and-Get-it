@@ -1,13 +1,19 @@
-/*
-AI client wrapper (server-side)
-- Centralizes AI provider selection and request normalization.
-- Supports a "mock" provider via FAKE_AI or AI_PROVIDER=mock for local dev.
-- Exports `generate` which returns a normalized object { text?, json?, raw?, tokens?, meta? }
-
-NOTES:
-- This file is intentionally small and dependency-free so it can be adapted to any environment.
-- To plug a real provider, add SDK calls in sendToOpenAI() and sendToAzureAI() with proper auth.
-*/
+/**
+ * AI client wrapper (server-side)
+ *
+ * What this does:
+ * - Centralizes AI provider selection and request normalization
+ * - Supports a "mock" provider via FAKE_AI=true or AI_PROVIDER=mock for local dev
+ * - Exposes `generate(kind, prompt, opts)` returning a normalized shape
+ *
+ * Where it’s used:
+ * - Orchestrator calls `aiClient.generate` to create resume/cover/company research/etc.
+ * - The caller persists results (ai_artifacts) and handles UI flow.
+ *
+ * Notes:
+ * - Keep provider specifics isolated here. If you add Azure or Anthropic, add a sendToX function and route in selectProvider.
+ * - Avoid leaking SDK types outward; return a simple typed object.
+ */
 
 type Provider = "openai" | "azure" | "mock";
 
@@ -15,26 +21,41 @@ const PROVIDER = process.env.AI_PROVIDER ?? "openai";
 const API_KEY = process.env.AI_API_KEY ?? "";
 const FAKE_AI = (process.env.FAKE_AI ?? "false").toLowerCase() === "true";
 
+/** Options supported when generating content */
 export interface GenerateOptions {
-  model?: string; // e.g., "gpt-4o-mini" or "gpt-4o" or an Azure model alias
+  /** Model name or alias (e.g., gpt-4o-mini, azure-deployment-name) */
+  model?: string;
+  /** Max tokens for the completion */
   maxTokens?: number;
+  /** Temperature (0..1) */
   temperature?: number;
+  /** Enable streaming (not implemented in this wrapper yet) */
   stream?: boolean;
-  timeoutMs?: number; // request timeout in ms
-  maxRetries?: number; // number of retries on transient failures
+  /** Request timeout in milliseconds */
+  timeoutMs?: number;
+  /** Max retries for transient errors */
+  maxRetries?: number;
 }
 
+/** Normalized result returned by providers */
 export interface GenerateResult {
-  // If the model returns structured JSON, supply under json. For plain text, use text.
-  text?: string;
+  /** Plain text, when provider returns text */
+  text?: string | null;
+  /** Structured JSON, when the prompt asks for JSON */
   json?: unknown;
-  raw?: unknown; // provider raw response
+  /** Provider raw response (for debugging/telemetry only) */
+  raw?: unknown;
+  /** Token usage (if available from provider) */
   tokens?: number;
+  /** Additional metadata such as HTTP status, headers, etc. */
   meta?: Record<string, unknown>;
 }
 
+/**
+ * Deterministic-ish mock outputs for local dev.
+ * Ensures frontend and persistence flows can be exercised without external calls/cost.
+ */
 function randomSampleForKind(kind: string) {
-  // Deterministic-ish mock outputs for local dev
   switch (kind) {
     case "resume":
       return {
@@ -79,6 +100,10 @@ function randomSampleForKind(kind: string) {
   }
 }
 
+/**
+ * OpenAI REST integration using chat.completions endpoint.
+ * Lightweight and dependency-free (uses fetch via undici/polyfill).
+ */
 async function sendToOpenAI(
   prompt: string,
   opts: GenerateOptions
@@ -141,33 +166,36 @@ async function sendToOpenAI(
   }
 }
 
+/** Azure provider placeholder (wire in your Azure OpenAI endpoint/headers here) */
 async function sendToAzureAI(
   prompt: string,
   opts: GenerateOptions
 ): Promise<GenerateResult> {
-  // Placeholder for Azure OpenAI integration (different endpoint & auth headers)
   throw new Error("Azure provider not implemented yet");
 }
 
+/** Provider selector */
+function selectProvider(): Provider {
+  if (FAKE_AI || PROVIDER === "mock") return "mock";
+  if (PROVIDER === "openai" || PROVIDER === "azure") return PROVIDER;
+  return "openai"; // default
+}
+
+/**
+ * Generate content for a given kind using the selected provider.
+ * - kind: used to decide mock shape and can be used in future provider routing
+ * - prompt: the constructed instruction/payload
+ */
 export async function generate(
   kind: string,
   prompt: string,
   opts: GenerateOptions = {}
 ): Promise<GenerateResult> {
-  // If FAKE_AI or provider=mock, return deterministic sample output
-  if (FAKE_AI || PROVIDER === "mock") {
-    return randomSampleForKind(kind);
-  }
-
-  // Route to real provider
-  if (PROVIDER === "openai") {
-    return sendToOpenAI(prompt, opts);
-  }
-  if (PROVIDER === "azure") {
-    return sendToAzureAI(prompt, opts);
-  }
-
-  throw new Error("Unsupported AI provider: " + PROVIDER);
+  const provider = selectProvider();
+  if (provider === "mock") return randomSampleForKind(kind);
+  if (provider === "openai") return sendToOpenAI(prompt, opts);
+  if (provider === "azure") return sendToAzureAI(prompt, opts);
+  throw new Error("Unsupported AI provider: " + provider);
 }
 
 export default { generate };

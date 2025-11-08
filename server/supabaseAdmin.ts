@@ -58,3 +58,25 @@ export async function insertAiArtifact(payload: {
   if (error) throw error;
   return data;
 }
+
+/** Fetch a profile by user id (service role). */
+export async function getProfile(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Fetch a job by id (service role). */
+export async function getJob(jobId: number) {
+  const { data, error } = await supabaseAdmin
+    .from("jobs")
+    .select("*")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

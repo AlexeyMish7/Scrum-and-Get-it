@@ -8,22 +8,69 @@ Quick setup (local dev)
 
 1. Copy `server/.env.example` to `server/.env` and populate values (DO NOT commit `.env`).
 2. Set `FAKE_AI=true` during early dev to avoid provider costs and return deterministic outputs.
-3. Run your orchestrator function locally (adapt to your framework: Node/Express, Next.js API route, or serverless platform).
+3. Start the dev server with auto-reload: `npm run dev` from the `server/` folder.
 
 Files
 
 - `aiClient.ts` — provider wrapper (mock + OpenAI REST example).
-- `orchestrator.ts` — handler scaffold showing the full flow: validate -> fetch profile/job -> prompt -> call AI -> save to DB -> return artifact.
+- `orchestrator.ts` — handler showing the full flow: validate → fetch profile/job → prompt → call AI → return artifact.
+- `src/index.ts` — minimal HTTP server exposing `/api/health` and `/api/generate/resume`.
+- `src/index.ts` — minimal HTTP server exposing `/api/health`, `/api/generate/resume`, and `/api/generate/cover-letter`.
+- `utils/*` — `logger`, `errors`, `rateLimiter` utilities.
 - `.env.example` — example env vars to configure.
+
+Endpoints
+
+- GET `/api/health`
+
+  - Query `?deep=1` attempts a quick Supabase connectivity test (if env present).
+  - Response fields:
+    - `supabase_env`: `present` or `missing`
+    - `supabase`: `ok` | `missing-env` | `error` (deep check result)
+    - `ai_provider`: current provider (`openai` or `mock`)
+    - `mock_mode`: boolean derived from `FAKE_AI`
+    - `uptime_sec`: server uptime
+    - `counters`: `{ requests_total, generate_total, generate_success, generate_fail }`
+
+- POST `/api/generate/resume`
+
+  - Headers: `X-User-Id: <uuid>` (lightweight dev auth)
+  - Body: `{ jobId: number, options?: { tone?: string, focus?: string } }`
+  - Rate limit: 5 requests/min per user (in-memory dev limiter)
+  - Behavior: generates content via provider; if Supabase admin env is present, persists to `ai_artifacts`, otherwise returns a non-persisted mock response with a preview.
+
+- POST `/api/generate/cover-letter`
+  - Headers: `X-User-Id: <uuid>`
+  - Body: `{ jobId: number, options?: { tone?: string, focus?: string } }`
+  - Output: JSON containing `{ id, kind, created_at, preview }`, persisted when Supabase env present.
+
+Rate limiting
+
+- Dev-grade sliding window: 5/min per user for resume generation.
+- If exceeded, returns `429` with `Retry-After` header and JSON `{ error: "rate_limited", retry_after_sec }`.
+
+Logging (JSON lines)
+
+- Structured logs are emitted via `utils/logger.ts`.
+- Examples:
+  - `generate_resume_persisted` — successful generation + DB insert
+  - `generate_resume_mock` — generation returned to client without persistence (mock/dev mode)
+  - `persist_failed` — DB insertion failed
+  - `preview_failed` — building response preview failed
+
+Mock vs. real provider
+
+- Set `FAKE_AI=true` or `AI_PROVIDER=mock` to return deterministic mock outputs (no external calls).
+- Real provider uses `AI_PROVIDER=openai` and `AI_API_KEY` (see `README_ENV.md`).
 
 Notes
 
-- This scaffold is intentionally framework-agnostic. Integrate `handleGenerateResume` into your API routes and replace pseudo-DB calls with your Supabase Admin client (service role key) to insert into `ai_artifacts`.
-- Always use server-side secrets for AI provider keys. The frontend should never directly call the AI provider.
+- The server is intentionally small and framework-agnostic. You can port `src/index.ts` handlers into your platform of choice.
+- Persisting requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to be set in the server environment.
+- Dev tsconfig: `tsconfig.dev.json` is not required; the base `tsconfig.json` already covers NodeNext + TS extension imports.
 
 Next recommended steps
 
-1. Wire `orchestrator.ts` to use the Supabase admin client and insert into `ai_artifacts` (use `SUPABASE_SERVICE_ROLE_KEY`).
-2. Add prompt templates in `server/prompts/` and load them into the orchestrator.
-3. Add retry/timeout logic to `aiClient.generate` and basic per-user rate limiting in the orchestrator.
-4. Add unit tests with `FAKE_AI=true` to validate end-to-end insertion into `ai_artifacts` (using a test DB or test schema).
+1. Extend endpoints for cover letters and company research using the same orchestrator pattern and prompt builders.
+2. Add unit/integration tests with `FAKE_AI=true` to validate end-to-end flow and DB insertion.
+3. Add CI lint/typecheck and minimal test runs for the `server/` package.

@@ -1,16 +1,21 @@
 <#
-Start the server in mock AI mode.
+Start the AI server in mock mode with automatic env export and file watch.
 
 Usage:
   Open PowerShell and run (from repo root):
     cd server\scripts
     .\start-mock-server.ps1
 
-What this does:
-- Ensures `server/.env` exists (copies from .env.example if missing)
-- Sets `FAKE_AI=true` in `server/.env` (or adds the line)
-- Sets session env var `$env:FAKE_AI = 'true'` for the current PowerShell process
-- Runs `npm run dev` in the `server` folder (this will run the TypeScript dev server)
+What this script does:
+- Creates `server/.env` from example if missing.
+- Forces `FAKE_AI=true` so all generations use deterministic mock output.
+- Exports every KEY=VALUE from `.env` into the current PowerShell session (so node sees them).
+- Starts the dev server (auto-restarts on file changes with `--watch`).
+
+Notes:
+- No secrets are printed.
+- If Supabase service role vars are present, persistence is attempted even in mock mode.
+- Press Ctrl+C to stop watching.
 
 #>
 
@@ -61,7 +66,7 @@ try {
     Write-Warning "Failed to export .env vars into session: $_"
 }
 
-Write-Host 'Starting server in dev mode (npm run dev). Press Ctrl+C to stop.'
+Write-Host 'Starting server in dev watch mode (npm run dev). Press Ctrl+C to stop.'
 npm run dev
 
 Pop-Location

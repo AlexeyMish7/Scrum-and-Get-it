@@ -15,29 +15,19 @@ import type { GenerateResult } from "./aiClient.js";
 import aiClient from "./aiClient.js";
 // Use dynamic import for supabase to avoid throwing at module load when env is missing
 // import supabaseAdmin from "./supabaseAdmin.js"; // do not import statically
-import { buildResumePrompt } from "./prompts/resume.js";
+// Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
+import { buildResumePrompt } from "./prompts/resume.ts";
+import { buildCoverLetterPrompt } from "./prompts/coverLetter.ts";
+import type {
+  GenerateResumeRequest,
+  GenerateCoverLetterRequest,
+  ArtifactRow,
+} from "./types.js";
 
 // NOTE: This file does not import a DB client to avoid coupling. Replace the pseudo-DB calls
 // with your Supabase server client or other DB access method (use service role key server-side).
 
-export interface GenerateResumeRequest {
-  userId: string; // authenticated user's id (server must verify via session)
-  jobId: number; // ID of job to target
-  options?: { tone?: string; focus?: string };
-}
-
-export interface ArtifactRow {
-  id: string;
-  user_id: string;
-  job_id?: number | null;
-  kind: string;
-  title?: string | null;
-  prompt?: string | null;
-  model?: string | null;
-  content: unknown;
-  metadata?: Record<string, unknown> | null;
-  created_at?: string;
-}
+// Types moved to types.ts for reuse
 
 export async function handleGenerateResume(
   req: GenerateResumeRequest
@@ -46,28 +36,46 @@ export async function handleGenerateResume(
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
 
-  // 2) Fetch profile & job via Supabase (service role)
+  // 2) Fetch profile & job via service role helpers (lazy import to avoid crashing when env is missing)
+  let getProfile: (userId: string) => Promise<any>;
+  let getJob: (jobId: number) => Promise<any>;
+  try {
+    const mod = await import("./supabaseAdmin.js");
+    getProfile = (mod as any).getProfile;
+    getJob = (mod as any).getJob;
+    if (typeof getProfile !== "function" || typeof getJob !== "function") {
+      throw new Error("supabase helpers not available");
+    }
+  } catch (e: any) {
+    return {
+      error:
+        "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
+    };
+  }
   let profile: any;
   let job: any;
   try {
-    const mod = await import("./supabaseAdmin.js");
-    const supabase = (mod as any).default;
-    const profRes = await supabase.from("profiles").select("*").eq("id", req.userId).maybeSingle();
-    if (profRes.error) return { error: `profile query failed: ${profRes.error.message}` };
-    profile = profRes.data;
-    if (!profile) return { error: "profile not found" };
-
-    const jobRes = await supabase.from("jobs").select("*").eq("id", req.jobId).maybeSingle();
-    if (jobRes.error) return { error: `job query failed: ${jobRes.error.message}` };
-    job = jobRes.data;
-    if (!job) return { error: "job not found" };
-    if (job.user_id && job.user_id !== req.userId) return { error: "job does not belong to user" };
+    profile = await getProfile(req.userId);
   } catch (e: any) {
-    return { error: `supabase unavailable: ${e?.message ?? e}` };
+    return { error: `profile query failed: ${e?.message ?? e}` };
   }
+  if (!profile) return { error: "profile not found" };
+  try {
+    job = await getJob(req.jobId);
+  } catch (e: any) {
+    return { error: `job query failed: ${e?.message ?? e}` };
+  }
+  if (!job) return { error: "job not found" };
+  if (job.user_id && job.user_id !== req.userId)
+    return { error: "job does not belong to user" };
 
   // 3) Prompt composition (simple example; use templates)
-  const prompt = buildResumePrompt({ profile, job, tone: req.options?.tone ?? "professional", focus: req.options?.focus });
+  const prompt = buildResumePrompt({
+    profile,
+    job,
+    tone: req.options?.tone ?? "professional",
+    focus: req.options?.focus,
+  });
 
   // 4) Call AI
   let gen: GenerateResult;
@@ -105,4 +113,87 @@ export async function handleGenerateResume(
   return { artifact };
 }
 
-export default { handleGenerateResume };
+/**
+ * COVER LETTER GENERATION: orchestrates prompt assembly and provider call.
+ * Flow: validate → fetch profile/job → build prompt → call provider → build artifact
+ * Inputs: { userId: uuid, jobId: number, options? }
+ * Output: { artifact } with kind='cover_letter' on success; { error } on failure
+ */
+export async function handleGenerateCoverLetter(
+  req: GenerateCoverLetterRequest
+): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  if (!req?.userId) return { error: "unauthenticated" };
+  if (!req?.jobId) return { error: "missing jobId" };
+
+  // Lazy import Supabase helpers (do not crash server if env missing)
+  let getProfile: (userId: string) => Promise<any>;
+  let getJob: (jobId: number) => Promise<any>;
+  try {
+    const mod = await import("./supabaseAdmin.js");
+    getProfile = (mod as any).getProfile;
+    getJob = (mod as any).getJob;
+    if (typeof getProfile !== "function" || typeof getJob !== "function") {
+      throw new Error("supabase helpers not available");
+    }
+  } catch (e: any) {
+    return {
+      error:
+        "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
+    };
+  }
+
+  let profile: any;
+  let job: any;
+  try {
+    profile = await getProfile(req.userId);
+  } catch (e: any) {
+    return { error: `profile query failed: ${e?.message ?? e}` };
+  }
+  if (!profile) return { error: "profile not found" };
+  try {
+    job = await getJob(req.jobId);
+  } catch (e: any) {
+    return { error: `job query failed: ${e?.message ?? e}` };
+  }
+  if (!job) return { error: "job not found" };
+  if (job.user_id && job.user_id !== req.userId)
+    return { error: "job does not belong to user" };
+
+  const prompt = buildCoverLetterPrompt({
+    profile,
+    job,
+    tone: req.options?.tone ?? "professional",
+    focus: req.options?.focus,
+  });
+
+  let gen: GenerateResult;
+  try {
+    gen = await aiClient.generate("cover_letter", prompt, {
+      model: process.env.AI_MODEL ?? undefined,
+    });
+  } catch (e: any) {
+    return { error: `AI error: ${e?.message ?? e}` };
+  }
+
+  const artifact: ArtifactRow = {
+    id: "generated-temp-id",
+    user_id: req.userId,
+    job_id: req.jobId,
+    kind: "cover_letter",
+    title: `Cover Letter for ${job.job_title ?? "Target Role"}`,
+    prompt: prompt.slice(0, 2000),
+    model: process.env.AI_MODEL ?? "",
+    content: gen.json ?? { text: gen.text },
+    metadata: {
+      generated_at: new Date().toISOString(),
+      provider: process.env.AI_PROVIDER ?? "openai",
+      tokens: gen.tokens,
+      prompt_preview: prompt.slice(0, 400),
+    },
+    created_at: new Date().toISOString(),
+  };
+
+  return { artifact };
+}
+
+export default { handleGenerateResume, handleGenerateCoverLetter };
