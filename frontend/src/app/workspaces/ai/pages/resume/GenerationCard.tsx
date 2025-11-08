@@ -14,14 +14,19 @@ import {
   Stack,
   Switch,
   Typography,
+  Tooltip,
+  FormHelperText,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useAuth } from "@shared/context/AuthContext";
 import useUserJobs from "@shared/hooks/useUserJobs";
-import useResumeGenerationFlow from "@workspaces/ai/hooks/useResumeGenerationFlow";
+import useResumeGenerationFlow, {
+  FlowOptions,
+} from "@workspaces/ai/hooks/useResumeGenerationFlow";
 
 /**
  * GenerationCard
@@ -37,6 +42,10 @@ export default function GenerationCard() {
   const [focus, setFocus] = React.useState("");
   const [includeSkills, setIncludeSkills] = React.useState(true);
   const [includeExperience, setIncludeExperience] = React.useState(true);
+  const [lastRun, setLastRun] = React.useState<{
+    jobId: number;
+    options: FlowOptions;
+  } | null>(null);
 
   const { state, run, reset } = useResumeGenerationFlow(user?.id);
 
@@ -52,12 +61,14 @@ export default function GenerationCard() {
 
   function onGenerate() {
     if (!user?.id || !jobId || typeof jobId !== "number") return;
-    run(jobId, {
+    const options: FlowOptions = {
       tone,
       focus: focus || undefined,
       includeSkills,
       includeExperience,
-    });
+    };
+    setLastRun({ jobId, options });
+    run(jobId, options);
   }
 
   function StatusRow({
@@ -97,7 +108,11 @@ export default function GenerationCard() {
                 optional skills optimization and experience tailoring.
               </Typography>
             </Box>
-            <FormControl size="small" sx={{ minWidth: 220 }} disabled={loadingJobs}>
+            <FormControl
+              size="small"
+              sx={{ minWidth: 220 }}
+              disabled={loadingJobs}
+            >
               <InputLabel id="gen-job-select">Job</InputLabel>
               <Select
                 labelId="gen-job-select"
@@ -122,6 +137,9 @@ export default function GenerationCard() {
                 ))}
               </Select>
             </FormControl>
+            <FormHelperText sx={{ mt: -1, mb: { xs: 1, sm: 0 } }}>
+              Pick the job whose requirements should steer this run.
+            </FormHelperText>
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel id="gen-tone">Tone</InputLabel>
               <Select
@@ -135,6 +153,9 @@ export default function GenerationCard() {
                 <MenuItem value="impactful">Impactful</MenuItem>
               </Select>
             </FormControl>
+            <FormHelperText sx={{ mt: -1, mb: { xs: 1, sm: 0 } }}>
+              Tone nudges voice. Impactful = energetic, Concise = shorter.
+            </FormHelperText>
             <FormControl size="small" sx={{ minWidth: 220 }}>
               <InputLabel shrink htmlFor="gen-focus">
                 Focus
@@ -154,12 +175,17 @@ export default function GenerationCard() {
                 <MenuItem value="backend">Backend</MenuItem>
               </Select>
             </FormControl>
+            <FormHelperText sx={{ mt: -1, mb: { xs: 1, sm: 0 } }}>
+              Optional focus highlights a theme (e.g., leadership, cloud).
+            </FormHelperText>
             <Box>
               <Button
                 variant="contained"
                 onClick={onGenerate}
                 disabled={!jobId || generating || loadingJobs}
-                startIcon={generating ? <CircularProgress size={16} /> : undefined}
+                startIcon={
+                  generating ? <CircularProgress size={16} /> : undefined
+                }
               >
                 {generating ? "Generating…" : "Generate"}
               </Button>
@@ -174,7 +200,14 @@ export default function GenerationCard() {
                   onChange={(e) => setIncludeSkills(e.target.checked)}
                 />
               }
-              label="Include Skills Optimization"
+              label={
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <span>Include Skills Optimization</span>
+                  <Tooltip title="Ranks existing skills and suggests new additions based on job keywords.">
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Tooltip>
+                </Stack>
+              }
             />
             <FormControlLabel
               control={
@@ -183,13 +216,24 @@ export default function GenerationCard() {
                   onChange={(e) => setIncludeExperience(e.target.checked)}
                 />
               }
-              label="Include Experience Tailoring"
+              label={
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <span>Include Experience Tailoring</span>
+                  <Tooltip title="Rewrites bullet points to emphasize achievements that match the posting.">
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Tooltip>
+                </Stack>
+              }
             />
             <Box sx={{ flex: 1 }} />
             <Button variant="text" onClick={reset} disabled={generating}>
               Reset
             </Button>
           </Stack>
+          <Typography variant="caption" color="text.secondary">
+            Disable a toggle if you only need the base resume structure without
+            extra optimization.
+          </Typography>
 
           <Divider />
 
@@ -198,6 +242,32 @@ export default function GenerationCard() {
             <StatusRow label="Skills Optimization" status={state.skills} />
             <StatusRow label="Experience Tailoring" status={state.experience} />
           </Stack>
+
+          {(state.base === "error" ||
+            state.skills === "error" ||
+            state.experience === "error") && (
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ sm: "center" }}
+            >
+              <Typography variant="body2" color="warning.main">
+                One or more segments failed. Check your toggles and retry the
+                run.
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  if (!lastRun || generating) return;
+                  run(lastRun.jobId, lastRun.options);
+                }}
+                disabled={!lastRun || generating}
+              >
+                Retry last run
+              </Button>
+            </Stack>
+          )}
 
           <Typography variant="caption" color="text.secondary">
             Tip: You can re-run with different tone/focus. Successful segments

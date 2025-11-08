@@ -184,7 +184,6 @@ export default function useResumeGenerationFlow(userId?: string) {
           }
         }
 
-
         showSuccess("Generation complete");
       } catch (e) {
         handleError?.(e);

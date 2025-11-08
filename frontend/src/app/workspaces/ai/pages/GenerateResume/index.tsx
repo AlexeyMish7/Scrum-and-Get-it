@@ -27,6 +27,7 @@ import VersionManagerPanel from "../resume/VersionManagerPanel";
 import ResumeValidationPanel from "../resume/ResumeValidationPanel";
 import ResumeDraftPreviewPanel from "../resume/ResumeDraftPreviewPanel";
 import AIResumePreview from "../resume/AIResumePreview";
+import SkillsAnalysisPreview from "../resume/SkillsAnalysisPreview";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useState, useEffect, useRef } from "react";
@@ -54,9 +55,9 @@ export default function GenerateResume() {
   // Controls visibility of advanced tool suite to declutter initial view.
   const [showAdvanced, setShowAdvanced] = useState(false);
   // Preview tabs: ai (generated), draft (current draft), variations (quick alt generations)
-  const [previewTab, setPreviewTab] = useState<"ai" | "draft" | "variations">(
-    "ai"
-  );
+  const [previewTab, setPreviewTab] = useState<
+    "ai" | "draft" | "variations" | "skills" | "raw"
+  >("ai");
 
   // Track the freshest generation event to guard against out-of-order delivery
   const lastGenTsRef = useRef<number>(0);
@@ -181,7 +182,15 @@ export default function GenerateResume() {
             </Paper>
             {/* STEP 3 */}
             <Typography variant="overline">Step 3 — Apply to Draft</Typography>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                position: { md: "sticky" },
+                top: { md: 64 },
+                zIndex: 1,
+              }}
+            >
               <Alert severity="success" sx={{ mb: 2 }}>
                 Outputs: ordered skills, a tailored summary, and selected
                 experience bullets. Use the buttons below to apply them.
@@ -189,7 +198,11 @@ export default function GenerateResume() {
               <SectionControlsPanel />
               {lastContent && (
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    sx={{ flexWrap: "wrap" }}
+                  >
                     <Tooltip title="Apply AI-ordered skill list to active draft">
                       <span>
                         <Button
@@ -220,6 +233,30 @@ export default function GenerateResume() {
                           disabled={!active}
                         >
                           Merge Experience
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Copy ordered skills + emphasize/add lists to clipboard">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            if (!lastContent) return;
+                            const payload = {
+                              ordered: lastContent.ordered_skills || [],
+                              emphasize: lastContent.emphasize_skills || [],
+                              add: lastContent.add_skills || [],
+                            };
+                            navigator.clipboard
+                              .writeText(JSON.stringify(payload, null, 2))
+                              .catch(() => {});
+                            showSuccess("Copied skill sets to clipboard");
+                          }}
+                          disabled={
+                            !active || !lastContent?.ordered_skills?.length
+                          }
+                        >
+                          Copy Keywords
                         </Button>
                       </span>
                     </Tooltip>
@@ -260,15 +297,36 @@ export default function GenerateResume() {
             value={previewTab}
             onChange={(_, v) => setPreviewTab(v)}
             aria-label="Resume preview tabs"
-            sx={{ mb: 1 }}
+            sx={{
+              mb: 1,
+              flexWrap: "wrap",
+              ".MuiTab-root": { textTransform: "none", minHeight: 36 },
+            }}
           >
             <Tab label="AI Tailored" value="ai" />
             <Tab label="Current Draft" value="draft" />
             <Tab label="Variations" value="variations" />
+            <Tab label="Skills" value="skills" />
+            <Tab label="Raw JSON" value="raw" />
           </Tabs>
           {previewTab === "ai" && <AIResumePreview content={lastContent} />}
           {previewTab === "draft" && <ResumeDraftPreviewPanel />}
           {previewTab === "variations" && <ResumeVariationsPanel />}
+          {previewTab === "skills" && (
+            <SkillsAnalysisPreview content={lastContent} />
+          )}
+          {previewTab === "raw" && (
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, fontSize: 12, maxHeight: 360, overflow: "auto" }}
+            >
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                {lastContent
+                  ? JSON.stringify(lastContent, null, 2)
+                  : "No content yet."}
+              </pre>
+            </Paper>
+          )}
         </Box>
       </Box>
       {/* Advanced tools */}
