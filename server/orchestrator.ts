@@ -18,9 +18,11 @@ import aiClient from "./aiClient.js";
 // Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
 import { buildResumePrompt } from "./prompts/resume.ts";
 import { buildCoverLetterPrompt } from "./prompts/coverLetter.ts";
+import { buildSkillsOptimizationPrompt } from "./prompts/skillsOptimization.ts";
 import type {
   GenerateResumeRequest,
   GenerateCoverLetterRequest,
+  GenerateSkillsOptimizationRequest,
   ArtifactRow,
 } from "./types.js";
 
@@ -196,4 +198,99 @@ export async function handleGenerateCoverLetter(
   return { artifact };
 }
 
-export default { handleGenerateResume, handleGenerateCoverLetter };
+// (no default export here; a single default is provided at the bottom)
+/**
+ * SKILLS OPTIMIZATION (UC-049): analyze job vs user's skills.
+ * Flow: validate → fetch profile, job, skills → build prompt → provider → artifact
+ * Output JSON contract: see prompts/skillsOptimization.ts
+ */
+export async function handleSkillsOptimization(
+  req: GenerateSkillsOptimizationRequest
+): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  if (!req?.userId) return { error: "unauthenticated" };
+  if (!req?.jobId) return { error: "missing jobId" };
+
+  // Lazy import to avoid startup crash when env missing
+  let getProfile: (userId: string) => Promise<any>;
+  let getJob: (jobId: number) => Promise<any>;
+  let supabase: any;
+  try {
+    const mod = await import("./supabaseAdmin.js");
+    getProfile = (mod as any).getProfile;
+    getJob = (mod as any).getJob;
+    supabase = (mod as any).default;
+  } catch (e: any) {
+    return {
+      error:
+        "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
+    };
+  }
+
+  let profile: any;
+  let job: any;
+  try {
+    profile = await getProfile(req.userId);
+  } catch (e: any) {
+    return { error: `profile query failed: ${e?.message ?? e}` };
+  }
+  if (!profile) return { error: "profile not found" };
+  try {
+    job = await getJob(req.jobId);
+  } catch (e: any) {
+    return { error: `job query failed: ${e?.message ?? e}` };
+  }
+  if (!job) return { error: "job not found" };
+  if (job.user_id && job.user_id !== req.userId)
+    return { error: "job does not belong to user" };
+
+  // Fetch user's skills
+  let skills: Array<{ skill_name: string; skill_category?: string }> = [];
+  try {
+    const { data, error } = await supabase
+      .from("skills")
+      .select("skill_name, skill_category")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    skills = data ?? [];
+  } catch (e: any) {
+    return { error: `skills query failed: ${e?.message ?? e}` };
+  }
+
+  const prompt = buildSkillsOptimizationPrompt({ profile, job, skills });
+
+  let gen: GenerateResult;
+  try {
+    gen = await aiClient.generate("skills_optimization", prompt, {
+      model: process.env.AI_MODEL ?? undefined,
+    });
+  } catch (e: any) {
+    return { error: `AI error: ${e?.message ?? e}` };
+  }
+
+  const artifact: ArtifactRow = {
+    id: "generated-temp-id",
+    user_id: req.userId,
+    job_id: req.jobId,
+    kind: "skills_optimization",
+    title: `Skills Optimization for ${job.job_title ?? "Target Role"}`,
+    prompt: prompt.slice(0, 2000),
+    model: process.env.AI_MODEL ?? "",
+    content: gen.json ?? { text: gen.text },
+    metadata: {
+      generated_at: new Date().toISOString(),
+      provider: process.env.AI_PROVIDER ?? "openai",
+      tokens: gen.tokens,
+      prompt_preview: prompt.slice(0, 400),
+    },
+    created_at: new Date().toISOString(),
+  };
+
+  return { artifact };
+}
+
+export default {
+  handleGenerateResume,
+  handleGenerateCoverLetter,
+  handleSkillsOptimization,
+};

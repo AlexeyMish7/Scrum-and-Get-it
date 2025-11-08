@@ -14,6 +14,11 @@ export interface GenerateCoverLetterRequest {
   options?: { tone?: string; focus?: string };
 }
 
+export interface GenerateSkillsOptimizationRequest {
+  userId: string; // authenticated user id
+  jobId: number; // target job id
+}
+
 export interface ArtifactRow {
   id: string;
   user_id: string;
