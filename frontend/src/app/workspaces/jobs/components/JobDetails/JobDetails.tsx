@@ -17,8 +17,11 @@ import {
   listJobNotes,
   createJobNote,
   updateJobNote,
+  deleteJob,
+  deleteJobNote,
 } from "@shared/services/dbMappers";
 import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import ArchiveToggle from "@workspaces/jobs/components/ArchiveToggle/ArchiveToggle";
 
 type Props = {
   jobId: string | number | null;
@@ -33,6 +36,7 @@ export default function JobDetails({ jobId }: Props) {
   const [job, setJob] = useState<Record<string, unknown> | null>(null);
 
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // job notes: we load first note (one-per-job expected for now)
   const [note, setNote] = useState<Record<string, unknown> | null>(null);
@@ -127,6 +131,47 @@ export default function JobDetails({ jobId }: Props) {
         const notes = (notesRes.data ?? []) as Record<string, unknown>[];
       setNote(notes[0] ?? null);
       setNoteForm({ ...(notes[0] ?? {}) });
+      }
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // NOTE: Archive/unarchive behavior moved into ArchiveToggle component to
+  // keep this component focused on editing and display. Use the ArchiveToggle
+  // `onDone` callback to refresh details when status changes.
+
+  // Delete job and associated notes
+  async function handleDelete() {
+    if (!user || !jobId) return;
+    setLoading(true);
+    try {
+      // delete associated notes first
+      const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
+      if (notesRes.error) throw notesRes.error;
+      const notes = (notesRes.data ?? []) as Record<string, unknown>[];
+      await Promise.all(
+        notes.map(async (n) => {
+          if (n && n.id) {
+            const del = await deleteJobNote(user.id, String(n.id));
+            if (del.error) throw del.error;
+          }
+        })
+      );
+
+      // delete the job row
+      const delJob = await deleteJob(user.id, jobId);
+      if (delJob.error) throw delJob.error;
+
+      showSuccess("Job deleted");
+      setConfirmDeleteOpen(false);
+      // refresh the page to update lists and close drawer
+      try {
+        window.location.reload();
+      } catch {
+        // no-op
       }
     } catch (err) {
       handleError(err);
@@ -428,6 +473,38 @@ export default function JobDetails({ jobId }: Props) {
         </Stack>
         </Stack>
       </Box>
+    {/* Archive / Delete actions */}
+    <Box sx={{ px: 2, pb: 2 }}>
+      <Stack direction="row" spacing={1} justifyContent="flex-start">
+        <ArchiveToggle
+          jobId={jobId as string | number}
+          currentStatus={String(job?.job_status ?? job?.jobStatus ?? "")}
+          onDone={async () => {
+            // refresh job & notes after archive/unarchive
+            if (!user || !jobId) return;
+            try {
+              const fresh = await getJob(user.id, jobId);
+              if (!fresh.error) setJob(fresh.data as Record<string, unknown>);
+              const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
+              if (!notesRes.error) {
+                const notes = (notesRes.data ?? []) as Record<string, unknown>[];
+                setNote(notes[0] ?? null);
+                setNoteForm({ ...(notes[0] ?? {}) });
+              }
+            } catch (err) {
+              handleError(err);
+            }
+          }}
+        />
+        <Button
+          color="error"
+          variant="contained"
+          onClick={() => setConfirmDeleteOpen(true)}
+        >
+          Delete
+        </Button>
+      </Stack>
+    </Box>
       <ConfirmDialog
         open={confirmDiscardOpen}
         title="Discard changes?"
@@ -442,6 +519,16 @@ export default function JobDetails({ jobId }: Props) {
           setEditMode(false);
           setConfirmDiscardOpen(false);
         }}
+      />
+      {/* Archive handled by ArchiveToggle component above */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete job?"
+        description="This will permanently delete the job and any associated notes. This action cannot be undone. Continue?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDelete}
       />
     </>
   );
