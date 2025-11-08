@@ -14,6 +14,7 @@ import {
 	InputLabel,
 	List,
 	ListItem,
+	Menu,
 	MenuItem,
 	Select,
 	Stack,
@@ -32,6 +33,8 @@ import StarIcon from "@mui/icons-material/Star";
 
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { useAuth } from "@shared/context/AuthContext";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 type TemplateType = "chronological" | "functional" | "hybrid" | "custom";
 
@@ -210,7 +213,7 @@ function ResumePreview({ template }: { template: ResumeTemplate }) {
 }
 
 export default function TemplateManager() {
-	const { notification, showSuccess, handleError } = useErrorHandler();
+	const { showSuccess, handleError } = useErrorHandler();
 	const { user } = useAuth();
 
 	const [templates, setTemplates] = useState<ResumeTemplate[]>(() => {
@@ -346,6 +349,262 @@ export default function TemplateManager() {
 
 	const templateList = useMemo(() => templates, [templates]);
 
+	// Export UI state
+	const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+	const [exportTargetTemplate, setExportTargetTemplate] = useState<ResumeTemplate | null>(null);
+	const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+	const [pdfWatermark, setPdfWatermark] = useState("");
+	const [pdfFilename, setPdfFilename] = useState("");
+
+	const openExportMenu = (e: React.MouseEvent<HTMLElement>, t: ResumeTemplate) => {
+		setExportAnchorEl(e.currentTarget);
+		setExportTargetTemplate(t);
+	};
+
+	const closeExportMenu = () => {
+		setExportAnchorEl(null);
+		setExportTargetTemplate(null);
+	};
+
+		/* ---------- Export helpers ---------- */
+		function renderResumeHTML(template: ResumeTemplate, resumeName = "My Resume") {
+			// Simple resume HTML using the template's colors, font and layout.
+			const { colors, font } = template;
+			const primary = colors.primary;
+			const accent = colors.accent;
+			const bg = colors.bg;
+			return `
+				<html>
+					<head>
+						<meta charset="utf-8" />
+						<meta name="viewport" content="width=device-width,initial-scale=1" />
+						<title>${resumeName}</title>
+						<style>
+							body { font-family: ${font}, Arial, sans-serif; background: ${bg}; color: #222; padding: 24px; }
+							.resume { max-width: 800px; margin: 0 auto; background: #fff; padding: 28px; box-shadow: 0 0 0 1px rgba(0,0,0,0.02); }
+							.header { display: flex; justify-content: space-between; align-items: center; }
+							.name { font-size: 28px; color: ${primary}; font-weight: 700; }
+							.contact { text-align: right; color: ${accent}; }
+							.section { margin-top: 18px; }
+							.section h3 { margin: 0 0 8px 0; color: ${primary}; font-size: 16px; }
+							.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+							.bullet { margin: 6px 0; }
+							@media print { body { padding: 0; } .resume { box-shadow: none; } }
+						</style>
+					</head>
+					<body>
+						<div class="resume">
+							<div class="header">
+								<div>
+									<div class="name">${resumeName}</div>
+									<div class="subtitle">${template.type} • ${template.layout}</div>
+								</div>
+								<div class="contact">
+									<div>you@example.com</div>
+									<div>City, State</div>
+								</div>
+							</div>
+
+							<div class="section">
+								<h3>Summary</h3>
+								<div class="bullet">Experienced professional with background relevant to the selected template. Use the editor to replace this text with real content.</div>
+							</div>
+
+							<div class="section two-col">
+								<div>
+									<h3>Experience</h3>
+									<div class="bullet"><strong>Company ABC</strong> — Role (Dates)</div>
+									<div class="bullet">• Achievement or responsibility 1</div>
+									<div class="bullet">• Achievement or responsibility 2</div>
+								</div>
+								<div>
+									<h3>Education</h3>
+									<div class="bullet"><strong>University</strong> — Degree (Year)</div>
+									<h3>Skills</h3>
+									<div class="bullet">Skill 1, Skill 2, Skill 3</div>
+								</div>
+							</div>
+						</div>
+					</body>
+				</html>
+			`;
+		}
+
+		async function exportAsHTML(html: string, filename: string) {
+			const blob = new Blob([html], { type: "text/html" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = filename.endsWith(".html") ? filename : `${filename}.html`;
+			a.click();
+			URL.revokeObjectURL(url);
+		}
+
+		async function exportAsText(html: string, filename: string) {
+			const tmp = document.createElement("div");
+			tmp.innerHTML = html;
+			const text = tmp.innerText || tmp.textContent || "";
+			const blob = new Blob([text], { type: "text/plain" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = filename.endsWith(".txt") ? filename : `${filename}.txt`;
+			a.click();
+			URL.revokeObjectURL(url);
+		}
+
+		async function exportAsDoc(html: string, filename: string) {
+			// Create an HTML-based Word document (.doc) which Word can open.
+			const blob = new Blob([html], { type: "application/msword" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = filename.endsWith(".doc") ? filename : `${filename}.doc`;
+			a.click();
+			URL.revokeObjectURL(url);
+		}
+
+		async function exportAsPDF(html: string, filename: string, watermark?: string) {
+			// render to hidden node
+			const container = document.createElement("div");
+			container.style.position = "absolute";
+			container.style.left = "-10000px";
+			container.style.top = "0";
+			container.style.width = "800px";
+			container.innerHTML = html;
+			if (watermark) {
+				const wm = document.createElement("div");
+				wm.style.position = "absolute";
+				wm.style.left = "50%";
+				wm.style.top = "40%";
+				wm.style.transform = "translate(-50%,-50%) rotate(-30deg)";
+				wm.style.opacity = "0.08";
+				wm.style.fontSize = "48px";
+				wm.style.color = "#000";
+				wm.innerText = watermark;
+				container.appendChild(wm);
+			}
+
+			// Export menu and PDF dialog UI
+
+
+			document.body.appendChild(container);
+			// use html2canvas
+			const canvas = await html2canvas(container, { scale: 2 });
+			const imgData = canvas.toDataURL("image/jpeg", 0.95);
+			const pdf = new jsPDF("p", "pt", "a4");
+			const pageWidth = pdf.internal.pageSize.getWidth();
+			// calculate image dimensions
+			const imgProps = (pdf as any).getImageProperties(imgData);
+			const imgWidth = pageWidth;
+			const imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+			pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
+			pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+			document.body.removeChild(container);
+		}
+
+		// ----- Export menu + PDF dialog -----
+
+		// menu is rendered near the root to keep markup simple
+
+		function ExportMenuAndDialog() {
+			return (
+				<>
+					<Menu anchorEl={exportAnchorEl} open={Boolean(exportAnchorEl)} onClose={closeExportMenu}>
+						<MenuItem
+							onClick={() => {
+							if (exportTargetTemplate) {
+								const html = renderResumeHTML(exportTargetTemplate, exportTargetTemplate.name);
+								exportAsHTML(html, exportTargetTemplate.name);
+								showSuccess("Exported HTML");
+							}
+							closeExportMenu();
+							}}
+						>
+							Export as HTML
+						</MenuItem>
+						<MenuItem
+							onClick={() => {
+								if (exportTargetTemplate) {
+									const html = renderResumeHTML(exportTargetTemplate, exportTargetTemplate.name);
+									exportAsText(html, exportTargetTemplate.name);
+									showSuccess("Exported text");
+								}
+								closeExportMenu();
+							}}
+						>
+							Export as Text
+						</MenuItem>
+						<MenuItem
+							onClick={() => {
+							if (exportTargetTemplate) {
+								const html = renderResumeHTML(exportTargetTemplate, exportTargetTemplate.name);
+								exportAsDoc(html, exportTargetTemplate.name);
+								showSuccess("Exported .doc");
+							}
+							closeExportMenu();
+							}}
+						>
+							Export as .doc
+						</MenuItem>
+						<MenuItem
+							onClick={() => {
+								if (exportTargetTemplate) {
+									exportTemplate(exportTargetTemplate);
+									showSuccess("Exported template JSON");
+								}
+								closeExportMenu();
+							}}
+						>
+							Export template JSON
+						</MenuItem>
+						<MenuItem
+							onClick={() => {
+								if (exportTargetTemplate) {
+									setPdfFilename(`${exportTargetTemplate.name}.pdf`);
+									setPdfWatermark("");
+									setPdfDialogOpen(true);
+								}
+								closeExportMenu();
+							}}
+						>
+							Export as PDF
+						</MenuItem>
+					</Menu>
+
+					<Dialog open={pdfDialogOpen} onClose={() => setPdfDialogOpen(false)} fullWidth maxWidth="sm">
+						<DialogTitle>Export PDF</DialogTitle>
+						<DialogContent>
+							<Stack spacing={2} mt={1}>
+								<TextField label="Filename" value={pdfFilename} onChange={(e) => setPdfFilename(e.target.value)} fullWidth />
+								<TextField label="Watermark (optional)" value={pdfWatermark} onChange={(e) => setPdfWatermark(e.target.value)} fullWidth />
+							</Stack>
+						</DialogContent>
+						<DialogActions>
+							<Button onClick={() => setPdfDialogOpen(false)}>Cancel</Button>
+							<Button
+								variant="contained"
+								onClick={async () => {
+									if (!exportTargetTemplate) return;
+									try {
+										const html = renderResumeHTML(exportTargetTemplate, exportTargetTemplate.name);
+										await exportAsPDF(html, pdfFilename || `${exportTargetTemplate.name}.pdf`, pdfWatermark || undefined);
+										showSuccess("Exported PDF");
+									} catch (e: any) {
+										handleError?.(e);
+									}
+									setPdfDialogOpen(false);
+								}}
+							>
+								Export PDF
+							</Button>
+						</DialogActions>
+					</Dialog>
+				</>
+			);
+		}
+
+
 	return (
 		<Box p={3}>
 			<Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
@@ -420,7 +679,7 @@ export default function TemplateManager() {
 									Delete
 								</Button>
 								<Box sx={{ flex: 1 }} />
-								<Button size="small" onClick={() => exportTemplate(t)}>
+								<Button size="small" onClick={(e) => openExportMenu(e, t)}>
 									Export
 								</Button>
 								<Button
@@ -596,6 +855,9 @@ export default function TemplateManager() {
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* Render export menu and dialog */}
+			<ExportMenuAndDialog />
 		</Box>
 	);
 }
