@@ -87,6 +87,128 @@ function uid(prefix = "t") {
 	return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Renders a fuller resume preview using the chosen template styles.
+function ResumePreview({ template }: { template: ResumeTemplate }) {
+	const sample = {
+		name: "Alex Johnson",
+		title: "Senior Software Engineer",
+		summary:
+			"Experienced software engineer with a focus on full-stack TypeScript applications, building robust web apps and APIs.",
+		experience: [
+			{
+				role: "Senior Engineer",
+				company: "Acme Corp",
+				dates: "2021 - Present",
+				desc: "Led frontend team building React + TypeScript apps and improved performance by 30%.",
+			},
+			{
+				role: "Software Engineer",
+				company: "Beta LLC",
+				dates: "2018 - 2021",
+				desc: "Built customer-facing dashboards and internal tooling.",
+			},
+		],
+		education: [{ degree: "B.S. Computer Science", school: "State University", dates: "2014 - 2018" }],
+		skills: ["TypeScript", "React", "Node.js", "SQL", "Testing"],
+	};
+
+	const baseStyles = {
+		fontFamily: template.font,
+		color: template.colors.primary,
+	} as const;
+
+	// two-column: small sidebar + main content
+	if (template.layout === "two-column") {
+		return (
+			<Box sx={{ display: "flex", gap: 2 }}>
+				<Box sx={{ width: 140, bgcolor: template.colors.bg, p: 1, borderRadius: 1 }}>
+					<Typography variant="subtitle2" sx={{ color: template.colors.primary, fontWeight: 700, mb: 1 }}>
+						{sample.name.split(" ")[0]}
+					</Typography>
+					<Typography variant="caption" color="text.secondary">
+						{sample.title}
+					</Typography>
+					<Box mt={1}>
+						<Typography variant="caption" color="text.secondary">
+							Skills
+						</Typography>
+						{sample.skills.map((s) => (
+							<Typography key={s} variant="body2" sx={{ mt: 0.5 }}>
+								{s}
+							</Typography>
+						))}
+					</Box>
+				</Box>
+				<Box sx={{ flex: 1, p: 1, borderRadius: 1 }}>
+					<Typography variant="h6" sx={{ ...baseStyles }}>{sample.name}</Typography>
+					<Typography variant="subtitle2" color="text.secondary">
+						{sample.title}
+					</Typography>
+					<Box mt={1}>
+						<Typography variant="body2">{sample.summary}</Typography>
+					</Box>
+					<Box mt={2}>
+						<Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Experience</Typography>
+						{sample.experience.map((e) => (
+							<Box key={e.role} sx={{ mt: 1 }}>
+								<Typography sx={{ fontWeight: 700 }}>{e.role} — {e.company}</Typography>
+								<Typography variant="caption" color="text.secondary">{e.dates}</Typography>
+								<Typography variant="body2">{e.desc}</Typography>
+							</Box>
+						))}
+					</Box>
+				</Box>
+			</Box>
+		);
+	}
+
+	// modern layout: header band + content
+	if (template.layout === "modern") {
+		return (
+			<Box sx={{ bgcolor: template.colors.bg, borderRadius: 1, overflow: "hidden" }}>
+				<Box sx={{ bgcolor: template.colors.primary, color: "#fff", p: 2 }}>
+					<Typography variant="h6" sx={{ fontFamily: template.font }}>{sample.name}</Typography>
+					<Typography variant="body2">{sample.title}</Typography>
+				</Box>
+				<Box sx={{ p: 2 }}>
+					<Typography variant="body2" sx={{ mb: 1 }}>{sample.summary}</Typography>
+					<Box>
+						<Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Experience</Typography>
+						{sample.experience.map((e) => (
+							<Box key={e.role} sx={{ mt: 1 }}>
+								<Typography sx={{ fontWeight: 700 }}>{e.role}</Typography>
+								<Typography variant="caption" color="text.secondary">{e.company} • {e.dates}</Typography>
+								<Typography variant="body2">{e.desc}</Typography>
+							</Box>
+						))}
+					</Box>
+				</Box>
+			</Box>
+		);
+	}
+
+	// single column by default
+	return (
+		<Box sx={{ p: 1 }}>
+			<Typography variant="h6" sx={{ ...baseStyles }}>{sample.name}</Typography>
+			<Typography variant="subtitle2" color="text.secondary">{sample.title}</Typography>
+			<Box mt={1}>
+				<Typography variant="body2">{sample.summary}</Typography>
+			</Box>
+			<Box mt={2}>
+				<Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Experience</Typography>
+				{sample.experience.map((e) => (
+					<Box key={e.role} sx={{ mt: 1 }}>
+						<Typography sx={{ fontWeight: 700 }}>{e.role} — {e.company}</Typography>
+						<Typography variant="caption" color="text.secondary">{e.dates}</Typography>
+						<Typography variant="body2">{e.desc}</Typography>
+					</Box>
+				))}
+			</Box>
+		</Box>
+	);
+}
+
 export default function TemplateManager() {
 	const { notification, showSuccess, handleError } = useErrorHandler();
 	const { user } = useAuth();
@@ -322,19 +444,7 @@ export default function TemplateManager() {
 				<DialogContent>
 					{preview && (
 						<Box sx={{ p: 2 }}>
-							<Typography variant="h6" sx={{ fontFamily: preview.font, color: preview.colors.primary }}>
-								{preview.name}
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								Type: {preview.type} — Layout: {preview.layout}
-							</Typography>
-							<Box mt={2} sx={{ p: 2, bgcolor: preview.colors.bg, borderRadius: 1 }}>
-								<Typography sx={{ fontFamily: preview.font }}>This is a small live preview area.</Typography>
-								<Box mt={1} sx={{ display: "flex", gap: 1 }}>
-									<Box sx={{ width: 40, height: 40, bgcolor: preview.colors.primary, borderRadius: 1 }} />
-									<Box sx={{ width: 40, height: 40, bgcolor: preview.colors.accent, borderRadius: 1 }} />
-								</Box>
-							</Box>
+							<ResumePreview template={preview} />
 						</Box>
 					)}
 				</DialogContent>
