@@ -12,6 +12,9 @@ import {
   Chip,
   Checkbox,
   IconButton,
+  Button,
+  Paper,
+  Collapse,
 } from "@mui/material";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
@@ -23,6 +26,7 @@ import type { DropResult } from "@hello-pangea/dnd";
 import type { ListOptions } from "@shared/services/types";
 import { listJobs, updateJob } from "@shared/services/dbMappers";
 import JobDetails from "../../components/JobDetails/JobDetails";
+import JobSearchFilters, { type JobFilters } from "../../components/JobSearchFilters/JobSearchFilters";
 
 const STAGES = [
   "Interested",
@@ -52,6 +56,9 @@ export default function PipelinePage() {
       return acc;
     }, {} as Record<Stage, JobRow[]>)
   );
+  const [allJobs, setAllJobs] = useState<JobRow[]>([]);
+  const [activeFilters, setActiveFilters] = useState<JobFilters | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [filter, setFilter] = useState<"All" | Stage | "Selected">("All");
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -105,17 +112,10 @@ export default function PipelinePage() {
         const res = await listJobs(user.id, opts);
         if (res.error) return handleError(res.error);
         const rows = (res.data ?? []) as JobRow[];
-        const grouped = STAGES.reduce<Record<Stage, JobRow[]>>((acc, s) => {
-          acc[s] = [];
-          return acc;
-        }, {} as Record<Stage, JobRow[]>);
-        rows.forEach((r) => {
-          const status = (r.job_status as Stage) ?? "Interested";
-          if (STAGES.includes(status)) grouped[status].push(r);
-          else grouped["Interested"].push(r);
-        });
         if (!mounted) return;
-        setJobsByStage(grouped);
+        setAllJobs(rows);
+        // apply any active filters or default grouping
+        applyFilters(rows, activeFilters ?? undefined);
       } catch (err) {
         handleError(err);
       }
@@ -124,6 +124,92 @@ export default function PipelinePage() {
       mounted = false;
     };
   }, [user, handleError]);
+
+  // Apply client-side filters and sorting then group into stages
+  function applyFilters(rows: JobRow[] | undefined, filters?: JobFilters) {
+    const source = rows ?? allJobs;
+    const f = filters ?? activeFilters ?? {};
+
+    const filtered = source.filter((r) => {
+      // query search across title, company, description
+      if (f.query) {
+        const q = String(f.query).toLowerCase();
+        const hay = (
+          String(r.job_title ?? r.title ?? "") + " " +
+          String(r.company_name ?? r.company ?? "") + " " +
+          String(r.job_description ?? "")
+        ).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (f.industry) {
+        if (!String(r.industry ?? "").toLowerCase().includes(String(f.industry).toLowerCase())) return false;
+      }
+      if (f.location) {
+        const loc = String(f.location).toLowerCase();
+        const combined = (
+          String(r.city_name ?? r.city ?? "") + " " + String(r.state_code ?? r.state ?? "") + " " + String(r.zipcode ?? "")
+        ).toLowerCase();
+        if (!combined.includes(loc)) return false;
+      }
+      if (f.salaryMin !== undefined && f.salaryMin !== "") {
+        const val = Number(r.start_salary_range ?? r.startSalary ?? 0);
+        if (isNaN(val) || val < Number(f.salaryMin)) return false;
+      }
+      if (f.salaryMax !== undefined && f.salaryMax !== "") {
+        const val = Number(r.start_salary_range ?? r.startSalary ?? 0);
+        if (isNaN(val) || val > Number(f.salaryMax)) return false;
+      }
+      if (f.deadlineFrom) {
+        const d = r.application_deadline ?? r.applicationDeadline;
+        if (!d) return false;
+        if (new Date(String(d)) < new Date(f.deadlineFrom)) return false;
+      }
+      if (f.deadlineTo) {
+        const d = r.application_deadline ?? r.applicationDeadline;
+        if (!d) return false;
+        if (new Date(String(d)) > new Date(f.deadlineTo)) return false;
+      }
+      return true;
+    });
+
+    // sorting
+    const sorted = filtered.sort((a, b) => {
+      const dir = (f.sortDir === "asc" ? 1 : -1);
+      switch (f.sortBy) {
+        case "deadline": {
+          const da = a.application_deadline ? new Date(String(a.application_deadline)).getTime() : 0;
+          const db = b.application_deadline ? new Date(String(b.application_deadline)).getTime() : 0;
+          return (da - db) * dir;
+        }
+        case "salary": {
+          const sa = Number(a.start_salary_range ?? 0);
+          const sb = Number(b.start_salary_range ?? 0);
+          return (sa - sb) * dir;
+        }
+        case "company": {
+          const ca = String(a.company_name ?? "").localeCompare(String(b.company_name ?? ""));
+          return ca * dir;
+        }
+        case "date_added":
+        default: {
+          const ta = a.created_at ? new Date(String(a.created_at)).getTime() : 0;
+          const tb = b.created_at ? new Date(String(b.created_at)).getTime() : 0;
+          return (ta - tb) * dir;
+        }
+      }
+    });
+
+    const grouped = STAGES.reduce<Record<Stage, JobRow[]>>((acc, s) => {
+      acc[s] = [];
+      return acc;
+    }, {} as Record<Stage, JobRow[]>);
+    sorted.forEach((r) => {
+      const status = (r.job_status as Stage) ?? "Interested";
+      if (STAGES.includes(status)) grouped[status].push(r);
+      else grouped["Interested"].push(r);
+    });
+    setJobsByStage(grouped);
+  }
 
   const handleDragStart = () => {
     preDragRef.current = JSON.parse(JSON.stringify(jobsByStage));
@@ -217,20 +303,12 @@ export default function PipelinePage() {
       handleError(err);
       // simple rollback by refetching
       if (user) {
-        const res = await listJobs(user.id);
-        if (!res.error) {
-          const rows = (res.data ?? []) as JobRow[];
-          const grouped = STAGES.reduce<Record<Stage, JobRow[]>>((acc, s) => {
-            acc[s] = [];
-            return acc;
-          }, {} as Record<Stage, JobRow[]>);
-          rows.forEach((r) => {
-            const status = (r.job_status as Stage) ?? "Interested";
-            if (STAGES.includes(status)) grouped[status].push(r);
-            else grouped["Interested"].push(r);
-          });
-          setJobsByStage(grouped);
-        }
+          const res = await listJobs(user.id);
+          if (!res.error) {
+            const rows = (res.data ?? []) as JobRow[];
+            setAllJobs(rows);
+            applyFilters(rows, activeFilters ?? undefined);
+          }
       }
     }
   };
@@ -290,6 +368,46 @@ export default function PipelinePage() {
             </TextField>
           </Stack>
         </Stack>
+
+        {/* Compact clickable bar that expands/collapses the search/filter panel */}
+        <Box sx={{ mb: 2, maxWidth: 1400, mx: "auto" }}>
+          <Paper
+            onClick={() => setShowFilters((s) => !s)}
+            sx={{
+              p: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              cursor: "pointer",
+            }}
+            elevation={0}
+          >
+            <Typography variant="subtitle1">Search / Filter</Typography>
+            <Button
+              size="small"
+              onClick={(e) => {
+                // prevent outer Paper click from toggling twice
+                e.stopPropagation();
+                setShowFilters((s) => !s);
+              }}
+            >
+              {showFilters ? "Hide" : "Show"}
+            </Button>
+          </Paper>
+
+          <Collapse in={showFilters} timeout="auto">
+            <Paper sx={{ p: 2, mt: 1 }} elevation={0}>
+              <JobSearchFilters
+                onApply={(f) => {
+                  setActiveFilters(f);
+                  applyFilters(undefined, f);
+                  // close after apply to return to pipeline view
+                  setShowFilters(false);
+                }}
+              />
+            </Paper>
+          </Collapse>
+        </Box>
 
         <Typography color="text.secondary" sx={{ mb: 2 }}>
           Drag cards between columns to update status. Use the checkboxes to
