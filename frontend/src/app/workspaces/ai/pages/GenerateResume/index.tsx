@@ -1,5 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
+import TemplateManager from "../resume/TemplateManager";
 
 export default function GenerateResume() {
   return (
@@ -11,9 +12,11 @@ export default function GenerateResume() {
       <Typography variant="h4" sx={{ mb: 1 }}>
         Resume Editor
       </Typography>
-      <Typography color="text.secondary">
-        TODO: AI-powered resume generation and editing tools will live here.
+      <Typography color="text.secondary" sx={{ mb: 2 }}>
+        Manage templates and create new resumes tailored to positions.
       </Typography>
+
+      <TemplateManager />
     </Box>
   );
 }
