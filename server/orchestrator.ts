@@ -13,6 +13,9 @@ This file is a scaffold: adapt to your server framework (Next.js API routes, Ver
 
 import type { GenerateResult } from "./aiClient.js";
 import aiClient from "./aiClient.js";
+// Use dynamic import for supabase to avoid throwing at module load when env is missing
+// import supabaseAdmin from "./supabaseAdmin.js"; // do not import statically
+import { buildResumePrompt } from "./prompts/resume.js";
 
 // NOTE: This file does not import a DB client to avoid coupling. Replace the pseudo-DB calls
 // with your Supabase server client or other DB access method (use service role key server-side).
@@ -43,28 +46,28 @@ export async function handleGenerateResume(
   if (!req?.userId) return { error: "unauthenticated" };
   if (!req?.jobId) return { error: "missing jobId" };
 
-  // 2) Fetch profile & job (pseudo)
-  // Replace with: const { data: profile } = await supabase.from('profiles').select('*').eq('id', req.userId).maybeSingle();
-  // const { data: job } = await supabase.from('jobs').select('*').eq('id', req.jobId).maybeSingle();
-  const profile = {
-    full_name: "Test User",
-    summary: "Experienced engineer",
-    skills: ["devops", "typescript"],
-  };
-  const job = {
-    job_title: "Senior DevOps Engineer",
-    company_name: "Acme",
-    job_description: "...",
-  };
+  // 2) Fetch profile & job via Supabase (service role)
+  let profile: any;
+  let job: any;
+  try {
+    const mod = await import("./supabaseAdmin.js");
+    const supabase = (mod as any).default;
+    const profRes = await supabase.from("profiles").select("*").eq("id", req.userId).maybeSingle();
+    if (profRes.error) return { error: `profile query failed: ${profRes.error.message}` };
+    profile = profRes.data;
+    if (!profile) return { error: "profile not found" };
+
+    const jobRes = await supabase.from("jobs").select("*").eq("id", req.jobId).maybeSingle();
+    if (jobRes.error) return { error: `job query failed: ${jobRes.error.message}` };
+    job = jobRes.data;
+    if (!job) return { error: "job not found" };
+    if (job.user_id && job.user_id !== req.userId) return { error: "job does not belong to user" };
+  } catch (e: any) {
+    return { error: `supabase unavailable: ${e?.message ?? e}` };
+  }
 
   // 3) Prompt composition (simple example; use templates)
-  const prompt = `Generate ATS-optimized resume bullets for the job '${
-    job.job_title
-  }' at ${job.company_name}.\nUser profile: ${profile.full_name} - ${
-    profile.summary
-  }. Skills: ${profile.skills.join(", ")}.\nTone: ${
-    req.options?.tone ?? "professional"
-  }.`;
+  const prompt = buildResumePrompt({ profile, job, tone: req.options?.tone ?? "professional", focus: req.options?.focus });
 
   // 4) Call AI
   let gen: GenerateResult;
@@ -82,13 +85,15 @@ export async function handleGenerateResume(
     user_id: req.userId,
     job_id: req.jobId,
     kind: "resume",
-    title: `AI Resume for ${job.job_title}`,
+    title: `AI Resume for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
     model: process.env.AI_MODEL ?? "",
     content: gen.json ?? { text: gen.text },
     metadata: {
       generated_at: new Date().toISOString(),
       provider: process.env.AI_PROVIDER ?? "openai",
+      tokens: gen.tokens,
+      prompt_preview: prompt.slice(0, 400),
     },
     created_at: new Date().toISOString(),
   };

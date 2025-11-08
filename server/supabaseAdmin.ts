@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -34,21 +35,23 @@ export async function insertAiArtifact(payload: {
   content: unknown;
   metadata?: Record<string, unknown>;
 }) {
+  // Build insert row, omitting `id` entirely unless explicitly provided.
+  // Passing id: undefined/null would override Postgres default and cause a NOT NULL violation.
+  const row: Record<string, unknown> = {
+    id: payload.id ?? randomUUID(),
+    user_id: payload.user_id,
+    job_id: payload.job_id ?? null,
+    kind: payload.kind,
+    title: payload.title ?? null,
+    prompt: payload.prompt ?? null,
+    model: payload.model ?? null,
+    content: payload.content,
+    metadata: payload.metadata ?? {},
+  };
+
   const { data, error } = await supabaseAdmin
     .from("ai_artifacts")
-    .insert([
-      {
-        id: payload.id,
-        user_id: payload.user_id,
-        job_id: payload.job_id ?? null,
-        kind: payload.kind,
-        title: payload.title ?? null,
-        prompt: payload.prompt ?? null,
-        model: payload.model ?? null,
-        content: payload.content,
-        metadata: payload.metadata ?? {},
-      },
-    ])
+    .insert([row])
     .select()
     .single();
 
