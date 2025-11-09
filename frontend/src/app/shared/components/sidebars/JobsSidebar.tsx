@@ -29,7 +29,7 @@ export default function JobsSidebar() {
           <ListItemText primary="Pipeline" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/jobs/new">
-          <ListItemText primary="New Job" />
+          <ListItemText primary="Add Job Opportunity" />
         </ListItemButton>
         <ListItemButton component={NavLink} to="/jobs/documents">
           <ListItemText primary="Documents" />

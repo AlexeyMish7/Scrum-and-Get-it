@@ -31,6 +31,7 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
   async function doArchive() {
     if (!user) return handleError("Not signed in");
     setLoading(true);
+    let succeeded = false;
     try {
       const res = await updateJob(user.id, jobId, {
         job_status: "archive",
@@ -39,28 +40,51 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       if (res.error) throw res.error;
       showSuccess("Job archived");
       if (onDone) await onDone();
+      succeeded = true;
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
       setConfirmOpen(false);
+      // If archive succeeded, reload the page so the archived job is removed from current view
+      if (succeeded) {
+        // full reload to ensure lists/pipeline reflect the archive
+        window.location.reload();
+      }
     }
   }
 
   async function doUnarchive() {
     if (!user) return handleError("Not signed in");
     setLoading(true);
+    let succeeded = false;
     try {
-      // fetch notes/history and pick second-to-last `to` value
+      // fetch notes/history and pick the most-recent previous non-archive status
       const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
       if (notesRes.error) throw notesRes.error;
       const notes = (notesRes.data ?? []) as any[];
       const first = notes[0] ?? null;
       let target = "Interested";
       const hist = first?.application_history;
-      if (Array.isArray(hist) && hist.length >= 2) {
-        const prev = hist[hist.length - 2];
-        target = String(prev?.to ?? prev?.new_status ?? prev?.status ?? "Interested");
+
+      if (Array.isArray(hist) && hist.length > 0) {
+        // Walk backwards through history and pick the last status that is not 'archive'.
+        // This is resilient to different shapes (to/new_status/status) and ordering.
+        for (let i = hist.length - 1; i >= 0; i--) {
+          const entry = hist[i];
+          const v = String(entry?.to ?? entry?.new_status ?? entry?.status ?? "").trim();
+          if (!v) continue;
+          if (v.toLowerCase() !== "archive") {
+            target = v;
+            break;
+          }
+        }
+
+        // As a defensive fallback, if we still ended up with 'archive', try the second-to-last entry
+        if (String(target).toLowerCase() === "archive" && hist.length >= 2) {
+          const prev = hist[hist.length - 2];
+          target = String(prev?.to ?? prev?.new_status ?? prev?.status ?? "Interested");
+        }
       }
 
       const res = await updateJob(user.id, jobId, {
@@ -70,11 +94,16 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       if (res.error) throw res.error;
       showSuccess(`Restored job to ${target}`);
       if (onDone) await onDone();
+      succeeded = true;
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
       setConfirmOpen(false);
+      // Reload the page so the job lists / pipeline reflect the unarchive change immediately.
+      if (succeeded) {
+        window.location.reload();
+      }
     }
   }
 

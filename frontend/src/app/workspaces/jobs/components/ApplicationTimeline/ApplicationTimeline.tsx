@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 type HistoryEntry = {
   to?: string | null;
@@ -37,11 +38,42 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
 
   const entries: { to: string; when: string }[] = [];
 
+  /**
+   * Map a status label to a color string from the theme palette so the
+   * timeline colors align with the pipeline column colors.
+   */
+  const statusColor = (status: string | undefined | null, theme: any) => {
+    if (!status) return theme.palette.grey?.[700] ?? "#666";
+    const s = String(status).toLowerCase().trim();
+    switch (s) {
+      case "interested":
+        return theme.palette.info?.main ?? theme.palette.primary.main;
+      case "applied":
+        return theme.palette.primary?.main ?? theme.palette.primary.main;
+      case "phone screen":
+      case "phonescreen":
+      case "phone_screen":
+        return theme.palette.warning?.main ?? theme.palette.grey?.[700];
+      case "interview":
+        return theme.palette.secondary?.main ?? theme.palette.grey?.[700];
+      case "offer":
+        return theme.palette.success?.main ?? theme.palette.grey?.[700];
+      case "rejected":
+        return theme.palette.error?.main ?? theme.palette.grey?.[700];
+      case "archived":
+        return theme.palette.grey?.[700] ?? "#666";
+      default:
+        return theme.palette.grey?.[700] ?? "#666";
+    }
+  };
+
   if (Array.isArray(history)) {
     for (const h of history) {
       const when = normalizeWhen(h.changed_at ?? h.timestamp ?? h.date ?? h.when ?? null);
-      const to = String(h.to ?? h.status ?? "").trim();
-      if (when) entries.push({ to: to || "-", when });
+      let toRaw = String(h.to ?? h.status ?? "").trim();
+      // Normalize archive label to a user-friendly form
+      if (toRaw.toLowerCase() === "archive") toRaw = "Archived";
+      if (when) entries.push({ to: toRaw || "-", when });
     }
   }
 
@@ -89,10 +121,26 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
                   width: 12,
                   height: 12,
                   borderRadius: "50%",
-                  bgcolor: (theme) => (e.to?.toLowerCase() === "interested" ? theme.palette.primary.main : theme.palette.grey[700]),
+                  bgcolor: (theme) => statusColor(e.to, theme),
                 }}
               />
-              {!isLast && <Box sx={{ width: 2, flex: 1, bgcolor: "divider", mt: 0.5 }} />}
+              {!isLast && (
+                <Box
+                  sx={{
+                    width: 2,
+                    flex: 1,
+                    mt: 0.5,
+                    bgcolor: (theme) => {
+                      const c = statusColor(e.to, theme);
+                      try {
+                        return alpha(c, 0.45);
+                      } catch {
+                        return theme.palette.divider;
+                      }
+                    },
+                  }}
+                />
+              )}
             </Box>
             <Box sx={{ ml: 1, flex: 1 }}>
               <Typography variant="caption" color="text.secondary">{whenLabel}</Typography>

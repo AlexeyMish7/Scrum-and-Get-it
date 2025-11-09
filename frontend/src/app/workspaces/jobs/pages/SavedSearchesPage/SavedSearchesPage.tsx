@@ -6,24 +6,56 @@ import JobDetails from "../../components/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { listJobs } from "@shared/services/dbMappers";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SavedSearchesPage() {
   const { user } = useAuth();
   const { handleError } = useErrorHandler();
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [matchedJobs, setMatchedJobs] = useState<any[] | null>(null);
+  const [allJobs, setAllJobs] = useState<any[] | null>(null);
   const [open, setOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | number | null>(null);
+
+  // Load all non-archived jobs once when the page mounts so searches operate on local data
+  useEffect(() => {
+    let mounted = true;
+    async function fetchJobs() {
+      if (!user) return;
+      try {
+        const res = await listJobs(user.id);
+        if (res.error) return handleError(res.error);
+        const rows = (res.data ?? []) as any[];
+  const filtered = rows.filter((r) => String(r.job_status ?? r.jobStatus ?? "").toLowerCase() !== "archive");
+  if (!mounted) return;
+  setAllJobs(filtered);
+  // Show all non-archived jobs by default when the page loads
+  setMatchedJobs(filtered);
+  setPreviewCount(filtered.length);
+      } catch (err) {
+        handleError(err);
+      }
+    }
+    fetchJobs();
+    return () => {
+      mounted = false;
+    };
+  }, [user, handleError]);
 
   async function handleApply(filters: JobFilters) {
     if (!user) return handleError("Not signed in");
     try {
-      const res = await listJobs(user.id);
-      if (res.error) return handleError(res.error);
-      const rows = (res.data ?? []) as any[];
+      // Prefer filtering from the cached allJobs; fallback to fetching if not loaded yet
+      let rows = allJobs;
+      if (!rows) {
+        const res = await listJobs(user.id);
+        if (res.error) return handleError(res.error);
+        rows = (res.data ?? []) as any[];
+      }
+      // ensure we only search non-archived rows
+      rows = rows.filter((r) => String(r.job_status ?? r.jobStatus ?? "").toLowerCase() !== "archive");
       // simple client-side filter for preview: reuse a subset of the filtering rules
-  const matched = rows.filter((r) => {
+      const matched = rows.filter((r) => {
         if (filters.query) {
           const q = String(filters.query).toLowerCase();
           const hay = (
@@ -53,7 +85,7 @@ export default function SavedSearchesPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 1 }}>
-        Saved Searches
+        Search and Manage Jobs
       </Typography>
 
       <Paper sx={{ p: 2, mb: 2 }}>
