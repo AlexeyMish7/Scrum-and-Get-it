@@ -22,6 +22,7 @@ import {
 } from "@shared/services/dbMappers";
 import ConfirmDialog from "@shared/components/common/ConfirmDialog";
 import ArchiveToggle from "@workspaces/jobs/components/ArchiveToggle/ArchiveToggle";
+import ApplicationTimeline from "@workspaces/jobs/components/ApplicationTimeline/ApplicationTimeline";
 
 type Props = {
   jobId: string | number | null;
@@ -444,30 +445,7 @@ export default function JobDetails({ jobId }: Props) {
               </Typography>
             <Divider />
             <Typography variant="subtitle2" sx={{ mt: 1 }}>Application history</Typography>
-            {Array.isArray(note?.application_history) && (note?.application_history as any[]).length > 0 ? (
-              (note?.application_history as any[])
-                  .slice()
-                  .reverse()
-                  .map((h, i) => {
-                    const raw = h.changed_at ?? h.timestamp ?? null;
-                    let when = "-";
-                    try {
-                      if (raw) when = new Date(String(raw)).toLocaleString();
-                    } catch {
-                      when = String(raw ?? "-");
-                    }
-                    return (
-                      <Box key={i} sx={{ mt: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          {when}
-                        </Typography>
-                        <Typography variant="body2">{`To: ${String(h.to ?? "-")}`}</Typography>
-                      </Box>
-                    );
-                  })
-            ) : (
-              <Typography variant="caption" color="text.secondary">No history</Typography>
-            )}
+            <ApplicationTimeline history={note?.application_history as any[] | null} createdAt={job?.created_at as string | null} />
             </>
           )}
         </Stack>
