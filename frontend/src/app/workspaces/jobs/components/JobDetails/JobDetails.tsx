@@ -46,6 +46,13 @@ export default function JobDetails({ jobId }: Props) {
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [noteForm, setNoteForm] = useState<Record<string, unknown>>({});
 
+  // Helper to display a value or a dash when missing/empty
+  const displayOrDash = (v: unknown) => {
+    if (v === null || v === undefined) return "-";
+    const s = String(v).trim();
+    return s === "" ? "-" : s;
+  };
+
   useEffect(() => {
     if (!user || !jobId) return;
     let mounted = true;
@@ -75,6 +82,25 @@ export default function JobDetails({ jobId }: Props) {
       mounted = false;
     };
   }, [user, jobId, handleError]);
+
+  // Intercept close requests from the RightDrawer close button when editing.
+  useEffect(() => {
+    function handleBeforeClose(e: Event) {
+      // If we're in edit mode, prevent the drawer from closing and open the
+      // discard confirmation so the user can choose to cancel edits instead.
+      if (editMode) {
+        try {
+          e.preventDefault();
+        } catch {}
+        setConfirmDiscardOpen(true);
+      }
+    }
+
+    window.addEventListener("rightdrawer:beforeClose", handleBeforeClose as EventListener);
+    return () => {
+      window.removeEventListener("rightdrawer:beforeClose", handleBeforeClose as EventListener);
+    };
+  }, [editMode]);
 
   if (!jobId) return <Typography>Select a job to view details.</Typography>;
 
@@ -319,18 +345,23 @@ export default function JobDetails({ jobId }: Props) {
             <>
               <Typography sx={{ fontWeight: 600 }}>{String(job?.job_title ?? "")}</Typography>
               <Typography color="text.secondary">{String(job?.company_name ?? "")}</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>{String(job?.job_description ?? "")}</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>Job Description: {displayOrDash(job?.job_description)}</Typography>
               <Typography variant="body2" sx={{ mt: 1 }}>
-                Address: {String(job?.street_address ?? "-")}
+                Address: {displayOrDash(job?.street_address)}
               </Typography>
               <Typography variant="body2">
-                Location: {String(job?.city_name ?? "-")}, {String(job?.state_code ?? "-")} {String(job?.zipcode ?? "-")}
+                {(() => {
+                  const parts = [job?.city_name, job?.state_code, job?.zipcode]
+                    .map((p) => (p === null || p === undefined ? "" : String(p).trim()))
+                    .filter((s) => s && s.length > 0);
+                  return `Location: ${parts.length > 0 ? parts.join(", ") : "-"}`;
+                })()}
               </Typography>
               <Typography variant="body2">Salary: {job?.start_salary_range ?? job?.start_salary ? `${String(job?.start_salary_range ?? job?.start_salary)} - ${String(job?.end_salary_range ?? job?.end_salary ?? "-")}` : "-"}</Typography>
               <Typography variant="body2">Job URL: {job?.job_link ? <a href={String(job?.job_link)} target="_blank" rel="noreferrer">{String(job?.job_link)}</a> : "-"}</Typography>
               <Typography variant="body2">Application deadline: {job?.application_deadline ? String(job.application_deadline) : "-"}</Typography>
-              <Typography variant="body2">Industry: {String(job?.industry ?? "-")}</Typography>
-              <Typography variant="body2">Job type: {String(job?.job_type ?? "-")}</Typography>
+              <Typography variant="body2">Industry: {displayOrDash(job?.industry)}</Typography>
+              <Typography variant="body2">Job type: {displayOrDash(job?.job_type)}</Typography>
             </>
           )}
         </Stack>

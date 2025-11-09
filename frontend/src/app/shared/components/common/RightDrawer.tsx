@@ -66,7 +66,18 @@ export default function RightDrawer({
           <Typography variant="subtitle1" fontWeight={600} noWrap>
             {title}
           </Typography>
-          <IconButton aria-label="Close" onClick={onClose}>
+          <IconButton
+            aria-label="Close"
+            onClick={() => {
+              // Fire a cancelable event so children (like JobDetails) can intercept
+              // the close action (for example, to show a discard-confirm dialog)
+              const ev = new CustomEvent("rightdrawer:beforeClose", { cancelable: true });
+              const proceed = window.dispatchEvent(ev);
+              // dispatchEvent returns false if preventDefault() was called, so only
+              // call onClose when not prevented.
+              if (proceed) onClose();
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </Box>

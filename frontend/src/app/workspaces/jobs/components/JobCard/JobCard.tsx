@@ -16,10 +16,22 @@ export default function JobCard({ job, onOpen }: Props) {
   const location = [job.city_name ?? job.city, job.state_code ?? job.state]
     .filter(Boolean)
     .join(", ");
+  const rawStatus = String(job.job_status ?? job.jobStatus ?? "").trim();
+  const statusLabel = (s: string) => {
+    if (!s) return "Unknown";
+    if (s.toLowerCase() === "archive" || s.toLowerCase() === "archived") return "Archived";
+    // capitalize each word
+    return s
+      .toLowerCase()
+      .split(/[_\s-]+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  };
   const deadlineRaw = job.application_deadline ? new Date(String(job.application_deadline)) : null;
   //const deadline = deadlineRaw ? deadlineRaw.toLocaleDateString() : null;
 
   const theme = useTheme();
+  // Status badge will use a neutral grey background to avoid per-status coloring.
 
   // Calculate days left to deadline (whole days, relative to local date)
   function daysUntil(date: Date) {
@@ -71,7 +83,25 @@ export default function JobCard({ job, onOpen }: Props) {
         )}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <Box>
-            <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+              {rawStatus ? (
+                <Box
+                  sx={{
+                    bgcolor: (theme) => theme.palette.grey?.[300] ?? "#e0e0e0",
+                    color: (theme) => theme.palette.getContrastText(theme.palette.grey?.[300] ?? "#e0e0e0"),
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  {statusLabel(rawStatus)}
+                </Box>
+              ) : null}
+            </Box>
+
             <Typography variant="caption" color="text.secondary">
               {company} {location ? `· ${location}` : ""}
             </Typography>
