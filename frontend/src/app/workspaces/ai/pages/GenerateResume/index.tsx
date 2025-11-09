@@ -37,11 +37,11 @@ const ResumeValidationPanel = lazy(
   () => import("@workspaces/ai/components/resume/ResumeValidationPanel")
 );
 const ResumeDraftPreviewPanel = lazy(
-  () => import("../resume/ResumeDraftPreviewPanel")
+  () => import("@workspaces/ai/components/resume/ResumeDraftPreviewPanel")
 );
-const AIResumePreview = lazy(() => import("../resume/AIResumePreview"));
+const AIResumePreview = lazy(() => import("@workspaces/ai/components/resume/AIResumePreview"));
 const SkillsAnalysisPreview = lazy(
-  () => import("../resume/SkillsAnalysisPreview")
+  () => import("@workspaces/ai/components/resume/SkillsAnalysisPreview")
 );
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 import { useAuth } from "@shared/context/AuthContext";
@@ -51,8 +51,8 @@ import {
 } from "@workspaces/ai/services/aiGeneration";
 import DiffCompareDialog from "@workspaces/ai/components/DiffCompareDialog";
 import type { AIArtifactSummary, AIArtifact } from "@workspaces/ai/types/ai";
-import BulletMergeDialog from "../resume/BulletMergeDialog";
-import SectionControlsPanel from "../resume/SectionControlsPanel"; // lightweight
+import BulletMergeDialog from "@workspaces/ai/components/resume/BulletMergeDialog";
+import SectionControlsPanel from "@workspaces/ai/components/resume/SectionControlsPanel"; // lightweight
 import ResumeFullPreview from "@workspaces/ai/components/ResumeFullPreview";
 import {
   toPreviewModel,

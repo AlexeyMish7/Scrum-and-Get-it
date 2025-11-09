@@ -34,7 +34,7 @@ import CoverLetterTemplates from "./app/workspaces/ai/pages/cover_letters/CoverL
 import EditCoverLetter from "./app/workspaces/ai/pages/cover_letters/EditCoverLetter";
 
 //Resume pages
-import ResumeCustomization from "./app/workspaces/ai/pages/resume/ResumeCustomization";
+import ResumeCustomization from "./app/workspaces/ai/components/resume/ResumeCustomization";
 
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";

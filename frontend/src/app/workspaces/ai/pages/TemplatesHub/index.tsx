@@ -1,6 +1,6 @@
 import { Box, Typography, Stack, Button, Divider } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
-import TemplateManager from "../resume/TemplateManager";
+import TemplateManager from "@workspaces/ai/components/resume/TemplateManager";
 import { useNavigate } from "react-router-dom";
 
 /**
