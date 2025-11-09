@@ -12,6 +12,7 @@ export type JobRow = {
   company_name?: string | null;
   industry?: string | null;
   job_type?: string | null;
+  application_method?: string | null;
   created_at?: string | null;
   status_changed_at?: string | null;
   job_status?: string | null;
@@ -46,9 +47,11 @@ export function computeFunnel(rows: JobRow[]) {
 export function computeAvgResponseDays(rows: JobRow[], groupByFn: (r: JobRow) => string, topN = 10) {
   const map: Record<string, { totalDays: number; count: number }> = {};
   for (const r of rows) {
-    if (!r.created_at || !r.status_changed_at) continue;
-    const created = new Date(r.created_at);
-    const changed = new Date(r.status_changed_at);
+    // skip if both timestamps are missing
+    if (!r.created_at && !r.status_changed_at) continue;
+    // provide safe fallbacks: created -> 7 days ago, changed -> now
+    const created = r.created_at ? new Date(r.created_at) : new Date(Date.now() - 7 * 86400000);
+    const changed = r.status_changed_at ? new Date(r.status_changed_at) : new Date();
     if (isNaN(created.getTime()) || isNaN(changed.getTime())) continue;
     const days = (changed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
     const key = groupByFn(r) ?? "(unknown)";
@@ -71,7 +74,9 @@ export function computeSuccessRates(rows: JobRow[], groupByFn: (r: JobRow) => st
     const key = groupByFn(r) ?? "(unknown)";
     if (!map[key]) map[key] = { offers: 0, total: 0 };
     map[key].total += 1;
-    if (((r.job_status ?? "") as string).toLowerCase() === "offer") map[key].offers += 1;
+    // handle missing or blank status; count any status that contains "offer"
+    const status = ((r.job_status ?? "") as string).toLowerCase();
+    if (status.includes("offer")) map[key].offers += 1;
   }
   const out = Object.keys(map).map((k) => ({ key: k, offers: map[k].offers, total: map[k].total, rate: map[k].offers / Math.max(1, map[k].total) }));
   out.sort((a, b) => b.rate - a.rate);
