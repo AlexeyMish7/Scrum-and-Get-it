@@ -30,7 +30,9 @@ const ResumeVariationsPanel = lazy(
 const ArtifactsHistoryPanel = lazy(
   () => import("@workspaces/ai/components/resume/ArtifactsHistoryPanel")
 );
-const VersionManagerPanel = lazy(() => import("@workspaces/ai/components/resume/VersionManagerPanel"));
+const VersionManagerPanel = lazy(
+  () => import("@workspaces/ai/components/resume/VersionManagerPanel")
+);
 const ResumeValidationPanel = lazy(
   () => import("@workspaces/ai/components/resume/ResumeValidationPanel")
 );
