@@ -3,8 +3,8 @@
  * Barrel export for simplified imports
  */
 
-export { default as useResumeDrafts } from './useResumeDrafts';
-export { default as useResumeGenerationFlowV2 } from './useResumeGenerationFlowV2';
+export { default as useResumeDrafts } from "./useResumeDrafts";
+export { default as useResumeGenerationFlowV2 } from "./useResumeGenerationFlowV2";
 
 // Re-export types from useResumeDrafts
 export type {
@@ -14,7 +14,7 @@ export type {
   ResumeDraftDiff,
   MergeOptions,
   DraftStats,
-} from './useResumeDrafts';
+} from "./useResumeDrafts";
 
 // Re-export types from useResumeGenerationFlowV2
 export type {
@@ -23,4 +23,4 @@ export type {
   FlowOptionsV2,
   FlowStateMap,
   UnifiedResultV2,
-} from './useResumeGenerationFlowV2';
+} from "./useResumeGenerationFlowV2";
