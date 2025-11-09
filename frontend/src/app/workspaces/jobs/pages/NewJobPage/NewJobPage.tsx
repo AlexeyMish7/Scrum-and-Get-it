@@ -4,7 +4,7 @@ import {
   Button,
   MenuItem,
   Box,
-  Typography
+  Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -16,10 +16,17 @@ import ErrorSnackbar from "@shared/components/common/ErrorSnackbar";
 import ConfirmDialog from "@shared/components/common/ConfirmDialog";
 import JobImportURL from "../../components/JobImportURL/JobImportURL";
 
-const industries = ["Technology","Finance","Healthcare","Education","Manufacturing","Other"];
-const jobTypes = ["Full-time","Part-time","Internship","Contract"];
+const industries = [
+  "Technology",
+  "Finance",
+  "Healthcare",
+  "Education",
+  "Manufacturing",
+  "Other",
+];
+const jobTypes = ["Full-time", "Part-time", "Internship", "Contract"];
 
-export default function JobForm() {
+export default function NewJobPage() {
   const theme = useTheme();
   const [form, setForm] = useState({
     job_title: "",
@@ -38,13 +45,17 @@ export default function JobForm() {
   });
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showImporter, setShowImporter] = useState(false);
 
   const { user } = useAuth();
-  const { handleError, showSuccess, notification, closeNotification } = useErrorHandler();
+  const { handleError, showSuccess, notification, closeNotification } =
+    useErrorHandler();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -89,6 +100,8 @@ export default function JobForm() {
       industry: "",
       job_type: "",
     });
+    // also collapse the importer if open
+    setShowImporter(false);
   };
 
   return (
@@ -103,32 +116,115 @@ export default function JobForm() {
         bgcolor: "background.paper",
       }}
     >
-      <Typography variant="h4" gutterBottom>Add Job Opportunity</Typography>
+      <Typography variant="h4" gutterBottom>
+        Add Job Opportunity
+      </Typography>
 
-      {/* Job Import from URL */}
-      <JobImportURL onImport={(data) => setForm(prev => ({
-        ...prev,
-        job_title: data.job_title ?? prev.job_title ?? "",
-        company_name: data.company_name ?? prev.company_name ?? "",
-        job_description: data.job_description ?? prev.job_description ?? ""
-      }))} />
+      {/* Job Import from URL: hidden by default, revealed when user clicks Import */}
+      {!showImporter ? (
+        <Box sx={{ mb: 2 }}>
+          <Button variant="outlined" onClick={() => setShowImporter(true)}>
+            Import from URL
+          </Button>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 2 }}>
+          <JobImportURL
+            onImport={(data) => {
+              setForm((prev) => ({
+                ...prev,
+                job_title: data.job_title || data.title || prev.job_title || "",
+                company_name: data.company_name || data.company || prev.company_name || "",
+                job_description:
+                  data.job_description || data.description || prev.job_description || "",
+                start_salary:
+                  data.salary_start || data.salary?.min || prev.start_salary || "",
+                end_salary:
+                  data.salary_end || data.salary?.max || prev.end_salary || "",
+                city_name: data.location_city || data.location?.city || prev.city_name || "",
+                state_code: data.location_state || data.location?.state || prev.state_code || "",
+                application_deadline: data.deadline ? new Date(data.deadline) : prev.application_deadline,
+                // prefer the canonical job_link key produced by the importer
+                job_link: data.job_link || data.url || prev.job_link || "",
+              }));
+              // hide importer after successful import
+              setShowImporter(false);
+            }}
+          />
+          <Button size="small" onClick={() => setShowImporter(false)} sx={{ mt: 1 }}>
+            Close
+          </Button>
+        </Box>
+      )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <TextField label="Job Title" name="job_title" value={form.job_title} onChange={handleChange} required />
-        <TextField label="Company Name" name="company_name" value={form.company_name} onChange={handleChange} required />
-        <TextField label="Street Address" name="street_address" value={form.street_address} onChange={handleChange} placeholder="123 Main St" />
-        <TextField label="City" name="city_name" value={form.city_name} onChange={handleChange} />
-        <TextField label="State Code" name="state_code" value={form.state_code} onChange={handleChange} />
-        <TextField label="Zipcode" name="zipcode" value={form.zipcode} onChange={handleChange} />
-        <TextField label="Salary Range Start" name="start_salary" type="number" value={form.start_salary} onChange={handleChange} />
-        <TextField label="Salary Range End" name="end_salary" type="number" value={form.end_salary} onChange={handleChange} />
-        <TextField label="Job Posting URL" name="job_link" value={form.job_link} onChange={handleChange} />
+        <TextField
+          label="Job Title"
+          name="job_title"
+          value={form.job_title}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          label="Company Name"
+          name="company_name"
+          value={form.company_name}
+          onChange={handleChange}
+          required
+        />
+        <TextField
+          label="Street Address"
+          name="street_address"
+          value={form.street_address}
+          onChange={handleChange}
+          placeholder="123 Main St"
+        />
+        <TextField
+          label="City"
+          name="city_name"
+          value={form.city_name}
+          onChange={handleChange}
+        />
+        <TextField
+          label="State Code"
+          name="state_code"
+          value={form.state_code}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Zipcode"
+          name="zipcode"
+          value={form.zipcode}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Salary Range Start"
+          name="start_salary"
+          type="number"
+          value={form.start_salary}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Salary Range End"
+          name="end_salary"
+          type="number"
+          value={form.end_salary}
+          onChange={handleChange}
+        />
+        <TextField
+          label="Job Posting URL"
+          name="job_link"
+          value={form.job_link}
+          onChange={handleChange}
+        />
 
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <DatePicker
             label="Application Deadline"
             value={form.application_deadline}
-            onChange={(newValue) => setForm(prev => ({ ...prev, application_deadline: newValue }))}
+            onChange={(newValue) =>
+              setForm((prev) => ({ ...prev, application_deadline: newValue }))
+            }
             slotProps={{ textField: { fullWidth: true } }}
           />
         </LocalizationProvider>
@@ -144,17 +240,50 @@ export default function JobForm() {
           helperText={`${String(form.job_description ?? "").length}/2000 characters`}
         />
 
-        <TextField select label="Industry" name="industry" value={form.industry} onChange={handleChange}>
-          {industries.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+        <TextField
+          select
+          label="Industry"
+          name="industry"
+          value={form.industry}
+          onChange={handleChange}
+        >
+          {industries.map((opt) => (
+            <MenuItem key={opt} value={opt}>
+              {opt}
+            </MenuItem>
+          ))}
         </TextField>
 
-        <TextField select label="Job Type" name="job_type" value={form.job_type} onChange={handleChange}>
-          {jobTypes.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+        <TextField
+          select
+          label="Job Type"
+          name="job_type"
+          value={form.job_type}
+          onChange={handleChange}
+        >
+          {jobTypes.map((opt) => (
+            <MenuItem key={opt} value={opt}>
+              {opt}
+            </MenuItem>
+          ))}
         </TextField>
 
         <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-          <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>Save</Button>
-          <Button variant="outlined" color="secondary" onClick={() => setConfirmOpen(true)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            Save
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setConfirmOpen(true)}
+          >
+            Cancel
+          </Button>
         </Box>
       </Box>
 
@@ -167,7 +296,10 @@ export default function JobForm() {
         confirmText="Discard"
         cancelText="Keep editing"
         onClose={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleCancel(); }}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          handleCancel();
+        }}
       />
     </Box>
   );
