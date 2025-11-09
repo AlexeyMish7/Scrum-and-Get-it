@@ -20,19 +20,19 @@ import RegionAnchor from "@shared/components/common/RegionAnchor";
 import { lazy, Suspense } from "react";
 import GenerationCard from "@workspaces/ai/components/resume/GenerationCard"; // kept eager (small)
 import ResumeTutorial from "@workspaces/ai/components/resume/ResumeTutorial"; // tutorial quick load
-import VersionsExportAside from "../resume/VersionsExportAside"; // moderate size
+import VersionsExportAside from "@workspaces/ai/components/resume/VersionsExportAside"; // moderate size
 import { Packer, Document, Paragraph, TextRun } from "docx";
 import DraftSelectorBar from "@workspaces/ai/components/resume/DraftSelectorBar"; // small
 // Lazy heavy/optional panels (loaded only when step 3/4 or advanced open)
 const ResumeVariationsPanel = lazy(
-  () => import("../resume/ResumeVariationsPanel")
+  () => import("@workspaces/ai/components/resume/ResumeVariationsPanel")
 );
 const ArtifactsHistoryPanel = lazy(
-  () => import("../resume/ArtifactsHistoryPanel")
+  () => import("@workspaces/ai/components/resume/ArtifactsHistoryPanel")
 );
-const VersionManagerPanel = lazy(() => import("../resume/VersionManagerPanel"));
+const VersionManagerPanel = lazy(() => import("@workspaces/ai/components/resume/VersionManagerPanel"));
 const ResumeValidationPanel = lazy(
-  () => import("../resume/ResumeValidationPanel")
+  () => import("@workspaces/ai/components/resume/ResumeValidationPanel")
 );
 const ResumeDraftPreviewPanel = lazy(
   () => import("../resume/ResumeDraftPreviewPanel")
