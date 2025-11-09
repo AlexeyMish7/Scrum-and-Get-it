@@ -6,7 +6,9 @@
   Divider,
   Paper,
   Skeleton,
+  Link as MuiLink,
 } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { toPreviewModel } from "@workspaces/ai/utils/previewModel";
@@ -88,61 +90,89 @@ export default function ResumeFullPreview({
             </Typography>
           )}
           {/* Summary */}
-          {!hideSections?.summary && model.summary && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                Summary
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ whiteSpace: "pre-wrap" }}
-                data-preview-section="summary"
-              >
-                {model.summary}
-              </Typography>
-            </Box>
-          )}
-          {/* Skills */}
-          {!hideSections?.skills &&
-            ((model.skills?.length ?? 0) > 0 || loadingSkills) && (
+          {!hideSections?.summary &&
+            model.summary &&
+            typeof model.summary === "string" &&
+            model.summary.trim() !== "{" && (
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                  Skills
+                  Summary
                 </Typography>
-                {loadingSkills && !(model.skills && model.skills.length > 0) ? (
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <Skeleton
-                        key={i}
-                        variant="rounded"
-                        width={80}
-                        height={24}
-                      />
-                    ))}
-                  </Stack>
-                ) : (
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
-                    {(model.skills || []).map((s, i) => (
-                      <Chip
-                        key={`${s}-${i}`}
-                        label={s}
-                        size="small"
-                        data-preview-skill
-                        color="default"
-                        // Use filled variant in dark mode for better contrast, outlined otherwise
-                        variant={theme.palette.mode === "dark" ? "filled" : "outlined"}
-                      />
-                    ))}
-                  </Stack>
-                )}
+                <Typography
+                  variant="body2"
+                  sx={{ whiteSpace: "pre-wrap" }}
+                  data-preview-section="summary"
+                >
+                  {model.summary}
+                </Typography>
               </Box>
             )}
+          {!hideSections?.summary &&
+            (!model.summary ||
+              (typeof model.summary === "string" &&
+                model.summary.trim() === "{")) && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                  Summary
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.disabled"
+                  data-preview-section="summary"
+                >
+                  (No valid summary returned)
+                </Typography>
+              </Box>
+            )}
+          {/* Skills */}
+          {!hideSections?.skills && (
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Skills
+              </Typography>
+              {loadingSkills && !(model.skills && model.skills.length > 0) ? (
+                <Stack direction="row" flexWrap="wrap" gap={1}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton
+                      key={i}
+                      variant="rounded"
+                      width={80}
+                      height={24}
+                    />
+                  ))}
+                </Stack>
+              ) : model.skills && model.skills.length > 0 ? (
+                <Stack direction="row" flexWrap="wrap" gap={1}>
+                  {model.skills.map((s, i) => (
+                    <Chip
+                      key={`${s}-${i}`}
+                      label={s}
+                      size="small"
+                      data-preview-skill
+                      color="default"
+                      variant={
+                        theme.palette.mode === "dark" ? "filled" : "outlined"
+                      }
+                    />
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.disabled">
+                  No skills present.{" "}
+                  <MuiLink component={RouterLink} to="/add-skills">
+                    Add skills
+                  </MuiLink>{" "}
+                  to improve matching & keyword density.
+                </Typography>
+              )}
+            </Box>
+          )}
           {/* Experience */}
-          {!hideSections?.experience && model.experience?.length && (
+          {!hideSections?.experience && (
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                 Experience
-                {loadingExperience && (
+                {loadingExperience && model.experience?.length && (
                   <Chip
                     size="small"
                     color="warning"
@@ -151,108 +181,140 @@ export default function ResumeFullPreview({
                   />
                 )}
               </Typography>
-              <Stack spacing={1.25} data-preview-section="experience">
-                {model.experience.map((row, i) => (
-                  <Box key={i} data-preview-role>
-                    {(row.role || row.company || row.dates) && (
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {[row.role, row.company, row.dates]
-                          .filter(Boolean)
-                          .join(" - ")}
-                      </Typography>
-                    )}
-                    <Stack component="ul" sx={{ pl: 2, m: 0 }}>
-                      {(row.bullets || []).map((b, j) => (
-                        <Typography
-                          component="li"
-                          key={j}
-                          variant="body2"
-                          data-preview-bullet
-                          sx={
-                            newBullets?.has(b)
-                              ? { color: "success.main", fontWeight: 600 }
-                              : undefined
-                          }
-                        >
-                          {b}
-                          {newBullets?.has(b) && (
-                            <Chip
-                              size="small"
-                              label="new"
-                              color="success"
-                              variant="outlined"
-                              sx={{ ml: 1 }}
-                            />
-                          )}
+              {model.experience && model.experience.length ? (
+                <Stack spacing={1.25} data-preview-section="experience">
+                  {model.experience.map((row, i) => (
+                    <Box key={i} data-preview-role>
+                      {(row.role || row.company || row.dates) && (
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {[row.role, row.company, row.dates]
+                            .filter(Boolean)
+                            .join(" - ")}
                         </Typography>
-                      ))}
-                    </Stack>
-                    {i < model.experience!.length - 1 && (
-                      <Divider sx={{ mt: 1, opacity: 0.24 }} />
-                    )}
-                  </Box>
-                ))}
-              </Stack>
+                      )}
+                      <Stack component="ul" sx={{ pl: 2, m: 0 }}>
+                        {(row.bullets || []).map((b, j) => (
+                          <Typography
+                            component="li"
+                            key={j}
+                            variant="body2"
+                            data-preview-bullet
+                            sx={
+                              newBullets?.has(b)
+                                ? { color: "success.main", fontWeight: 600 }
+                                : undefined
+                            }
+                          >
+                            {b}
+                            {newBullets?.has(b) && (
+                              <Chip
+                                size="small"
+                                label="new"
+                                color="success"
+                                variant="outlined"
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                          </Typography>
+                        ))}
+                      </Stack>
+                      {i < model.experience!.length - 1 && (
+                        <Divider sx={{ mt: 1, opacity: 0.24 }} />
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.disabled">
+                  No experience entries.{" "}
+                  <MuiLink component={RouterLink} to="/add-employment">
+                    Add employment history
+                  </MuiLink>{" "}
+                  to showcase accomplishments.
+                </Typography>
+              )}
             </Box>
           )}
           {/* Education */}
-          {!hideSections?.education && model.education?.length && (
+          {!hideSections?.education && (
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                 Education
               </Typography>
-              <Stack spacing={1.25} data-preview-section="education">
-                {model.education.map((row, i) => (
-                  <Box key={i} data-preview-education>
-                    {(row.institution || row.degree || row.graduation_date) && (
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {[row.institution, row.degree, row.graduation_date]
-                          .filter(Boolean)
-                          .join(" - ")}
-                      </Typography>
-                    )}
-                    <Stack component="ul" sx={{ pl: 2, m: 0 }}>
-                      {(row.details || []).map((d, j) => (
-                        <Typography component="li" key={j} variant="body2">
-                          {d}
+              {model.education && model.education.length ? (
+                <Stack spacing={1.25} data-preview-section="education">
+                  {model.education.map((row, i) => (
+                    <Box key={i} data-preview-education>
+                      {(row.institution ||
+                        row.degree ||
+                        row.graduation_date) && (
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {[row.institution, row.degree, row.graduation_date]
+                            .filter(Boolean)
+                            .join(" - ")}
                         </Typography>
-                      ))}
-                    </Stack>
-                    {i < model.education!.length - 1 && (
-                      <Divider sx={{ mt: 1, opacity: 0.24 }} />
-                    )}
-                  </Box>
-                ))}
-              </Stack>
+                      )}
+                      <Stack component="ul" sx={{ pl: 2, m: 0 }}>
+                        {(row.details || []).map((d, j) => (
+                          <Typography component="li" key={j} variant="body2">
+                            {d}
+                          </Typography>
+                        ))}
+                      </Stack>
+                      {i < model.education!.length - 1 && (
+                        <Divider sx={{ mt: 1, opacity: 0.24 }} />
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.disabled">
+                  No education added.{" "}
+                  <MuiLink component={RouterLink} to="/education/manage">
+                    Add education
+                  </MuiLink>{" "}
+                  to highlight academic background.
+                </Typography>
+              )}
             </Box>
           )}
           {/* Projects */}
-          {!hideSections?.projects && model.projects?.length && (
+          {!hideSections?.projects && (
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                 Projects
               </Typography>
-              <Stack spacing={1.25} data-preview-section="projects">
-                {model.projects.map((row, i) => (
-                  <Box key={i} data-preview-project>
-                    {(row.name || row.role) && (
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {[row.name, row.role].filter(Boolean).join(" - ")}
-                      </Typography>
-                    )}
-                    <Stack component="ul" sx={{ pl: 2, m: 0 }}>
-                      {(row.bullets || []).map((d, j) => (
-                        <Typography component="li" key={j} variant="body2">
-                          {d}
+              {model.projects && model.projects.length ? (
+                <Stack spacing={1.25} data-preview-section="projects">
+                  {model.projects.map((row, i) => (
+                    <Box key={i} data-preview-project>
+                      {(row.name || row.role) && (
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {[row.name, row.role].filter(Boolean).join(" - ")}
                         </Typography>
-                      ))}
-                    </Stack>
-                    {i < model.projects!.length - 1 && (
-                      <Divider sx={{ mt: 1, opacity: 0.24 }} />
-                    )}
-                  </Box>
-                ))}
-              </Stack>
+                      )}
+                      <Stack component="ul" sx={{ pl: 2, m: 0 }}>
+                        {(row.bullets || []).map((d, j) => (
+                          <Typography component="li" key={j} variant="body2">
+                            {d}
+                          </Typography>
+                        ))}
+                      </Stack>
+                      {i < model.projects!.length - 1 && (
+                        <Divider sx={{ mt: 1, opacity: 0.24 }} />
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.disabled">
+                  No projects listed.{" "}
+                  <MuiLink component={RouterLink} to="/projects/new">
+                    Add a project
+                  </MuiLink>{" "}
+                  to showcase practical impact.
+                </Typography>
+              )}
             </Box>
           )}
           {/* ATS Keywords (if present) */}
@@ -279,4 +341,3 @@ export default function ResumeFullPreview({
     </Paper>
   );
 }
-

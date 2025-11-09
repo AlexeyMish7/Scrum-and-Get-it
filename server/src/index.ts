@@ -29,9 +29,16 @@ import { URL } from "url";
 import fs from "fs";
 import path from "path";
 import orchestrator from "../orchestrator.js";
-import { genRequestId, logError, logInfo } from "../utils/logger.js";
+import {
+  createRequestLogger,
+  logSystemEvent,
+  logConfigEvent,
+  legacyLogError as logError,
+  legacyLogInfo as logInfo,
+} from "../utils/logger.js";
 import { ApiError, errorPayload } from "../utils/errors.js";
 import { checkLimit } from "../utils/rateLimiter.js";
+import { extractUserId } from "../utils/auth.js";
 
 // ------------------------------------------------------------------
 // Environment Loading
@@ -73,6 +80,61 @@ function loadEnvFromFiles() {
 loadEnvFromFiles();
 
 // ------------------------------------------------------------------
+// Configuration validation and logging
+// ------------------------------------------------------------------
+function validateConfiguration() {
+  // Required environment variables
+  const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+  const optional = [
+    "AI_API_KEY",
+    "CORS_ORIGIN",
+    "LOG_LEVEL",
+    "FAKE_AI",
+    "ALLOW_DEV_AUTH",
+  ];
+
+  // Check required variables
+  for (const varName of required) {
+    if (!process.env[varName]) {
+      logConfigEvent("missing", varName, { severity: "error" });
+    } else {
+      logConfigEvent("loaded", varName, {
+        length: process.env[varName]!.length,
+        masked: `${process.env[varName]!.substring(0, 8)}...`,
+      });
+    }
+  }
+
+  // Check optional variables
+  for (const varName of optional) {
+    if (process.env[varName]) {
+      logConfigEvent("loaded", varName, {
+        value: varName.includes("KEY") ? "[MASKED]" : process.env[varName],
+      });
+    }
+  }
+
+  // Validate AI configuration
+  if (process.env.FAKE_AI !== "true" && !process.env.AI_API_KEY) {
+    logConfigEvent("invalid", "AI_PROVIDER", {
+      issue: "AI_API_KEY required when FAKE_AI is not true",
+    });
+  }
+
+  // Validate auth configuration
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_DEV_AUTH === "true"
+  ) {
+    logConfigEvent("invalid", "ALLOW_DEV_AUTH", {
+      issue: "Dev auth should be disabled in production",
+    });
+  }
+}
+
+validateConfiguration();
+
+// ------------------------------------------------------------------
 // Runtime configuration + basic counters for observability
 // ------------------------------------------------------------------
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
@@ -91,7 +153,7 @@ function jsonReply(res: http.ServerResponse, status: number, payload: unknown) {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(body).toString(),
     "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
-    "Access-Control-Allow-Headers": "Content-Type, X-User-Id",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-Id",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   });
   res.end(body);
@@ -191,10 +253,16 @@ async function handleGenerateResume(
   url: URL,
   reqId: string
 ) {
-  // Dev auth header
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  // JWT auth verification
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
 
   // Rate limit (5/min per user)
   const limit = checkLimit(`resume:${userId}`, 5, 60_000);
@@ -334,9 +402,15 @@ async function handleGenerateCoverLetter(
   url: URL,
   reqId: string
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
 
   const limit = checkLimit(`cover_letter:${userId}`, 5, 60_000);
   if (!limit.ok) {
@@ -473,9 +547,15 @@ async function handleSkillsOptimization(
   url: URL,
   reqId: string
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
 
   const limit = checkLimit(`skills:${userId}`, 5, 60_000);
   if (!limit.ok) {
@@ -611,9 +691,15 @@ async function handleExperienceTailoring(
   url: URL,
   reqId: string
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
 
   const limit = checkLimit(`experience_tailoring:${userId}`, 5, 60_000);
   if (!limit.ok) {
@@ -749,31 +835,67 @@ async function handleExperienceTailoring(
 // ------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   counters.requests_total++;
-  const reqId = genRequestId();
+  const requestStart = Date.now();
+
+  // Create request-scoped logger
+  const logger = createRequestLogger(req);
   const url = new URL(
     req.url ?? "",
     `http://${req.headers.host ?? `localhost:${PORT}`}`
   );
+
+  // Log request start
+  logger.requestStart(req.method || "UNKNOWN", url.pathname);
+
   try {
     // CORS preflight
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
         "Access-Control-Allow-Origin": process.env.CORS_ORIGIN || "*",
-        "Access-Control-Allow-Headers": "Content-Type, X-User-Id",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, X-User-Id",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
         "Access-Control-Max-Age": "86400",
       });
       res.end();
+
+      // Log successful OPTIONS
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method || "OPTIONS", url.pathname, 204, duration);
       return;
     }
+
+    // Extract user context early for logging (if available)
+    try {
+      const authHeader = req.headers.authorization;
+      const userIdHeader = req.headers["x-user-id"] as string | undefined;
+      if (authHeader || userIdHeader) {
+        const userId = await extractUserId(authHeader, userIdHeader);
+        if (userId) {
+          logger.setContext({ userId });
+        }
+      }
+    } catch {
+      // Auth extraction failed, but we'll let endpoints handle auth errors
+    }
+
     // ROUTE: Health
     if (req.method === "GET" && url.pathname === "/api/health") {
       await handleHealth(url, res);
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 200, duration);
       return;
     }
     // ROUTE: Create job materials linkage
     if (req.method === "POST" && url.pathname === "/api/job-materials") {
-      await handleCreateJobMaterials(req, res, url, reqId);
+      await handleCreateJobMaterials(
+        req,
+        res,
+        url,
+        logger.getContext().requestId || "unknown"
+      );
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 201, duration);
       return;
     }
     // ROUTE: List job materials for a job
@@ -782,21 +904,34 @@ const server = http.createServer(async (req, res) => {
       /^\/api\/jobs\/\d+\/materials$/.test(url.pathname)
     ) {
       await handleListJobMaterialsForJob(req, res, url);
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 200, duration);
       return;
     }
     // ROUTE: List AI Artifacts
     if (req.method === "GET" && url.pathname === "/api/artifacts") {
       await handleListArtifacts(req, res, url);
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 200, duration);
       return;
     }
     // ROUTE: Get Artifact by ID
     if (req.method === "GET" && url.pathname.startsWith("/api/artifacts/")) {
       await handleGetArtifact(req, res, url);
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 200, duration);
       return;
     }
     // ROUTE: Generate Resume
     if (req.method === "POST" && url.pathname === "/api/generate/resume") {
-      await handleGenerateResume(req, res, url, reqId);
+      await handleGenerateResume(
+        req,
+        res,
+        url,
+        logger.getContext().requestId || "unknown"
+      );
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 201, duration);
       return;
     }
     // ROUTE: Generate Cover Letter
@@ -804,7 +939,14 @@ const server = http.createServer(async (req, res) => {
       req.method === "POST" &&
       url.pathname === "/api/generate/cover-letter"
     ) {
-      await handleGenerateCoverLetter(req, res, url, reqId);
+      await handleGenerateCoverLetter(
+        req,
+        res,
+        url,
+        logger.getContext().requestId || "unknown"
+      );
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 201, duration);
       return;
     }
     // ROUTE: Skills Optimization
@@ -812,7 +954,14 @@ const server = http.createServer(async (req, res) => {
       req.method === "POST" &&
       url.pathname === "/api/generate/skills-optimization"
     ) {
-      await handleSkillsOptimization(req, res, url, reqId);
+      await handleSkillsOptimization(
+        req,
+        res,
+        url,
+        logger.getContext().requestId || "unknown"
+      );
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 201, duration);
       return;
     }
     // ROUTE: Experience Tailoring
@@ -820,21 +969,56 @@ const server = http.createServer(async (req, res) => {
       req.method === "POST" &&
       url.pathname === "/api/generate/experience-tailoring"
     ) {
-      await handleExperienceTailoring(req, res, url, reqId);
+      await handleExperienceTailoring(
+        req,
+        res,
+        url,
+        logger.getContext().requestId || "unknown"
+      );
+      const duration = Date.now() - requestStart;
+      logger.requestEnd(req.method, url.pathname, 201, duration);
       return;
     }
     // 404 fallback
     throw new ApiError(404, "not found", "not_found");
   } catch (err: any) {
+    const duration = Date.now() - requestStart;
+    const statusCode = err instanceof ApiError ? err.status : 500;
+
     if (!(err instanceof ApiError)) {
       // unexpected error path
-      logError("unhandled_server_error", { reqId, error: err?.message });
+      logger.error("unhandled_server_error", err);
     }
+
+    logger.requestEnd(
+      req.method || "UNKNOWN",
+      url.pathname,
+      statusCode,
+      duration,
+      {
+        error: err?.message,
+        error_code: err instanceof ApiError ? err.code : "internal_error",
+      }
+    );
+
     sendError(res, err);
   }
 });
 
 server.listen(PORT, () => {
+  // Log system startup with configuration
+  logSystemEvent("startup", {
+    port: PORT,
+    node_version: process.version,
+    log_level: process.env.LOG_LEVEL || "info",
+    fake_ai: process.env.FAKE_AI === "true",
+    allow_dev_auth: process.env.ALLOW_DEV_AUTH === "true",
+    supabase_configured: Boolean(
+      process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ),
+    cors_origin: process.env.CORS_ORIGIN || "*",
+  });
+
   // eslint-disable-next-line no-console
   console.log(`AI orchestrator listening on http://localhost:${PORT}`);
 });
@@ -847,9 +1031,15 @@ async function handleListArtifacts(
   res: http.ServerResponse,
   url: URL
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
   const kind = url.searchParams.get("kind") || undefined;
   const jobIdParam = url.searchParams.get("jobId");
   const jobId = jobIdParam ? Number(jobIdParam) : undefined;
@@ -886,9 +1076,15 @@ async function handleGetArtifact(
   res: http.ServerResponse,
   url: URL
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
   const id = url.pathname.split("/api/artifacts/")[1];
   if (!id) throw new ApiError(400, "missing artifact id", "bad_request");
   const canPersist = Boolean(
@@ -939,9 +1135,15 @@ async function handleCreateJobMaterials(
   url: URL,
   reqId: string
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
 
   let body: any;
   try {
@@ -1070,9 +1272,15 @@ async function handleListJobMaterialsForJob(
   res: http.ServerResponse,
   url: URL
 ) {
-  const userId = req.headers["x-user-id"] as string | undefined;
-  if (!userId)
-    throw new ApiError(401, "missing X-User-Id header", "auth_missing");
+  let userId: string;
+  try {
+    userId = await extractUserId(
+      req.headers.authorization,
+      req.headers["x-user-id"] as string | undefined
+    );
+  } catch (err: any) {
+    throw new ApiError(401, err.message, "auth_failed");
+  }
   const m = url.pathname.match(/^\/api\/jobs\/(\d+)\/materials$/);
   const jobId = m ? Number(m[1]) : NaN;
   if (!Number.isFinite(jobId)) {

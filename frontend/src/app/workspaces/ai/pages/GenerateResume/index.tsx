@@ -13,6 +13,7 @@
   Alert,
   Tabs,
   Tab,
+  Link as MuiLink,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
@@ -62,7 +63,8 @@ import type {
   FlowState,
   SegmentStatus,
 } from "@workspaces/ai/hooks/useResumeGenerationFlow";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Link as RouterLink } from "react-router-dom";
 // Listen optionally for segment events to enable early (base-only) preview.
 
 /**
@@ -126,6 +128,20 @@ export default function GenerateResume() {
 
   // Listen for generation events dispatched by ResumeGenerationPanel
   useEffect(() => {
+    function onStart(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        jobId?: number;
+        options?: Record<string, unknown>;
+        ts?: number;
+      };
+      const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
+      generationRunTokenRef.current = ts; // tag current run
+      lastGenTsRef.current = ts; // track as latest event baseline
+      // Clear any previous content to avoid unintended auto-advance from stale data
+      setLastContent(null);
+      setLastSegments(null);
+      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
+    }
     function onGenerated(e: Event) {
       const detail = (e as CustomEvent).detail as {
         content?: ResumeArtifactContent;
@@ -178,6 +194,10 @@ export default function GenerateResume() {
       lastGenTsRef.current = 0;
     }
     window.addEventListener(
+      "sgt:resumeGeneration:start",
+      onStart as EventListener
+    );
+    window.addEventListener(
       "sgt:resumeGenerated",
       onGenerated as EventListener
     );
@@ -194,6 +214,10 @@ export default function GenerateResume() {
       onReset as EventListener
     );
     return () => {
+      window.removeEventListener(
+        "sgt:resumeGeneration:start",
+        onStart as EventListener
+      );
       window.removeEventListener(
         "sgt:resumeGenerated",
         onGenerated as EventListener
@@ -234,14 +258,33 @@ export default function GenerateResume() {
   }, [lastContent]);
 
   // Progressive step rendering state (0 Select, 1 Generate, 2 Apply, 3 Preview)
+  // Added generationRunToken to differentiate freshly generated content vs residual stale content.
   const [currentStep, setCurrentStep] = useState(0);
+  const generationRunTokenRef = useRef<number>(0);
+
+  // Hard reset on initial mount to avoid carrying over a previous session's lastContent
+  // which caused auto-advancing straight to Apply/Preview.
+  useEffect(() => {
+    setLastContent(null);
+    setLastSegments(null);
+    setLastJobId(null);
+    lastGenTsRef.current = 0;
+    generationRunTokenRef.current = 0;
+  }, []);
   // Guard: auto-advance from Select to Generate when draft chosen
   useEffect(() => {
     if (active && currentStep === 0) setCurrentStep(1);
   }, [active, currentStep]);
   // Guard: auto-advance from Generate to Apply when content first appears
   useEffect(() => {
-    if (lastContent && currentStep === 1) setCurrentStep(2);
+    // Only auto-advance from Generate -> Apply when content belongs to the current run
+    if (
+      lastContent &&
+      currentStep === 1 &&
+      generationRunTokenRef.current === lastGenTsRef.current
+    ) {
+      setCurrentStep(2);
+    }
   }, [lastContent, currentStep]);
   const stepIndex = currentStep; // for Stepper
 
@@ -265,6 +308,28 @@ export default function GenerateResume() {
   }
 
   // Apply skill ordering from AI output to draft
+  // Helper: build a ResumeArtifactContent snapshot from current draft after applications
+  function buildContentFromDraft(): ResumeArtifactContent | null {
+    if (!active) return null;
+    return {
+      summary: active.content.summary,
+      ordered_skills: active.content.skills,
+      sections: {
+        experience: (active.content.experience || []).map((e) => ({
+          role: e.role,
+          company: e.company,
+          dates: e.dates,
+          bullets: e.bullets.slice(),
+        })),
+      },
+      meta: {
+        fromDraft: true,
+        draftId: active.id,
+        lastAppliedJobId: active.lastAppliedJobId,
+      },
+    };
+  }
+
   function applySkills() {
     if (!active || !lastContent?.ordered_skills?.length) return;
     const existing = active.content.skills || [];
@@ -282,6 +347,9 @@ export default function GenerateResume() {
     showSuccess(
       isSame ? "No changes to apply" : "Applied ordered skills to draft"
     );
+    // Refresh preview model to reflect draft modifications
+    const updated = buildContentFromDraft();
+    if (updated) setLastContent(updated);
     // Move to Preview after applying changes
     setCurrentStep(3);
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
@@ -297,7 +365,8 @@ export default function GenerateResume() {
     const isSame = (active.content.summary || "") === lastContent.summary;
     applySummary(lastContent.summary);
     showSuccess(isSame ? "No changes to apply" : "Applied summary to draft");
-    // Move to Preview after applying changes
+    const updated = buildContentFromDraft();
+    if (updated) setLastContent(updated);
     setCurrentStep(3);
     if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
     emitApplyEvent({
@@ -335,6 +404,51 @@ export default function GenerateResume() {
         return "pending";
     }
   }
+
+  /**
+   * deriveMissingSections
+   * WHAT: Determine which major resume sections are absent in the latest AI output.
+   * WHY: Provide actionable guidance + links so user can add profile data that improves generation quality.
+   * INPUT: lastContent (AI), active draft (optional for existing data)
+   * OUTPUT: Array of objects { key, label, to } for missing items.
+   */
+  const missingSections = useMemo(() => {
+    if (!lastContent) return [] as { key: string; label: string; to: string }[];
+    const out: { key: string; label: string; to: string }[] = [];
+    const summaryMissing =
+      !lastContent.summary ||
+      typeof lastContent.summary !== "string" ||
+      !lastContent.summary.trim();
+    if (summaryMissing)
+      out.push({ key: "summary", label: "Summary", to: "/edit-resume" });
+    const skillsMissing =
+      !lastContent.ordered_skills || !lastContent.ordered_skills.length;
+    if (skillsMissing)
+      out.push({ key: "skills", label: "Skills", to: "/add-skills" });
+    const expMissing =
+      !lastContent.sections?.experience ||
+      !lastContent.sections.experience.length;
+    if (expMissing)
+      out.push({
+        key: "experience",
+        label: "Experience",
+        to: "/add-employment",
+      });
+    const eduMissing =
+      !lastContent.sections?.education ||
+      !lastContent.sections.education.length;
+    if (eduMissing)
+      out.push({
+        key: "education",
+        label: "Education",
+        to: "/education/manage",
+      });
+    const projMissing =
+      !lastContent.sections?.projects || !lastContent.sections.projects.length;
+    if (projMissing)
+      out.push({ key: "projects", label: "Projects", to: "/projects/new" });
+    return out;
+  }, [lastContent]);
 
   return (
     <Box>
@@ -456,6 +570,30 @@ export default function GenerateResume() {
                     Outputs: ordered skills, a tailored summary, and selected
                     experience bullets. Use the buttons below to apply them.
                   </Alert>
+                  {lastContent && missingSections.length > 0 && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      Missing sections detected:&nbsp;
+                      {missingSections.map((m, i) => (
+                        <MuiLink
+                          key={m.key}
+                          component={RouterLink}
+                          to={m.to}
+                          underline="hover"
+                          sx={{ mr: 1 }}
+                        >
+                          {m.label}
+                          {i < missingSections.length - 1 ? "," : ""}
+                        </MuiLink>
+                      ))}
+                      . Add data to strengthen AI tailoring.
+                    </Alert>
+                  )}
+                  {lastContent && typeof lastContent.summary !== "string" && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      The AI response had an invalid summary format. It will be
+                      ignored in preview until you regenerate.
+                    </Alert>
+                  )}
                   <SectionControlsPanel />
                   {lastContent && (
                     <Stack spacing={1.5} sx={{ mt: 1 }}>
@@ -481,7 +619,10 @@ export default function GenerateResume() {
                             <Button
                               variant="outlined"
                               onClick={applySummaryToDraft}
-                              disabled={!active}
+                              disabled={
+                                !active ||
+                                typeof lastContent?.summary !== "string"
+                              }
                               sx={{ width: { xs: "100%", sm: "auto" } }}
                             >
                               Apply Summary
@@ -615,6 +756,24 @@ export default function GenerateResume() {
             aria-labelledby="resume-editor-heading"
           >
             <Typography variant="overline">Step 4 — Preview</Typography>
+            {lastContent && missingSections.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 1 }}>
+                The following sections are empty in this AI version:&nbsp;
+                {missingSections.map((m, i) => (
+                  <MuiLink
+                    key={m.key}
+                    component={RouterLink}
+                    to={m.to}
+                    underline="hover"
+                    sx={{ mr: 1 }}
+                  >
+                    {m.label}
+                    {i < missingSections.length - 1 ? "," : ""}
+                  </MuiLink>
+                ))}
+                . Populate them to improve relevance.
+              </Alert>
+            )}
             <Tabs
               value={previewTab}
               onChange={(_, v) => setPreviewTab(v)}
@@ -648,6 +807,19 @@ export default function GenerateResume() {
                     loadingSkills={lastSegments?.skills === "running"}
                     loadingExperience={lastSegments?.experience === "running"}
                     newBullets={newBullets || undefined}
+                    hideSections={(() => {
+                      // Reflect SectionControlsPanel visibility in formatted preview
+                      const visible = active?.content.visibleSections;
+                      if (!visible || !visible.length) return undefined;
+                      const set = new Set(visible);
+                      return {
+                        summary: !set.has("summary"),
+                        skills: !set.has("skills"),
+                        experience: !set.has("experience"),
+                        education: !set.has("education"),
+                        projects: !set.has("projects"),
+                      };
+                    })()}
                   />
                 </Box>
               )}
@@ -844,7 +1016,9 @@ export default function GenerateResume() {
           <Collapse in={showAdvanced} unmountOnExit>
             <Suspense
               fallback={
-                <Typography variant="body2">Loading advanced tools...</Typography>
+                <Typography variant="body2">
+                  Loading advanced tools...
+                </Typography>
               }
             >
               <Stack spacing={3} sx={{ mt: 2 }}>
@@ -876,7 +1050,8 @@ export default function GenerateResume() {
             }[]
           );
           showSuccess("Selected bullets merged");
-          // Move to Preview after applying changes
+          const updated = buildContentFromDraft();
+          if (updated) setLastContent(updated);
           setCurrentStep(3);
           if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
           emitApplyEvent({
@@ -1062,10 +1237,3 @@ function buildDocxFromResume(content: ResumeArtifactContent) {
   }
   return out;
 }
-
-
-
-
-
-
-

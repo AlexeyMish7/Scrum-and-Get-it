@@ -192,6 +192,7 @@ export async function handleGenerateResume(
   }
 
   // 6) Post-process / construct artifact row (pseudo id)
+  const normalized = sanitizeResumeContent(gen.json ?? { text: gen.text });
   const artifact: ArtifactRow = {
     id: "generated-temp-id",
     user_id: req.userId,
@@ -200,7 +201,7 @@ export async function handleGenerateResume(
     title: `AI Resume for ${job.job_title ?? "Target Role"}`,
     prompt: prompt.slice(0, 2000),
     model,
-    content: gen.json ?? { text: gen.text },
+    content: normalized,
     metadata: {
       generated_at: new Date().toISOString(),
       provider: process.env.AI_PROVIDER ?? "openai",
@@ -613,4 +614,69 @@ function selectModel(options?: { model?: string } | null): string | undefined {
     return reqModel;
   }
   return process.env.AI_MODEL ?? undefined;
+}
+
+// ---------------------------------------------------------------------
+// Sanitizers
+// ---------------------------------------------------------------------
+/**
+ * sanitizeResumeContent
+ * WHAT: Normalize AI output into a safe ResumeArtifactContent shape.
+ * WHY: Some providers may output invalid types (e.g., summary as object) or omit fields.
+ * - Forces summary to string (or null)
+ * - Ensures sections.experience bullets are arrays of strings
+ * - Trims whitespace; drops obviously invalid shapes
+ */
+function sanitizeResumeContent(input: any): any {
+  try {
+    const out: any = typeof input === "object" && input ? { ...input } : {};
+    // summary must be a string
+    if (out.summary != null && typeof out.summary !== "string") {
+      // derive fallback from first bullets if possible
+      const firstBullet =
+        Array.isArray(out.bullets) && out.bullets[0]
+          ? typeof out.bullets[0] === "string"
+            ? out.bullets[0]
+            : out.bullets[0]?.text
+          : null;
+      out.summary = firstBullet ? String(firstBullet) : undefined;
+    }
+    if (typeof out.summary === "string") out.summary = out.summary.trim();
+
+    // skills arrays must be string[] if present
+    for (const key of [
+      "ordered_skills",
+      "emphasize_skills",
+      "add_skills",
+      "ats_keywords",
+    ]) {
+      if (Array.isArray(out[key])) {
+        out[key] = out[key].filter((s: any) => typeof s === "string");
+      }
+    }
+
+    // sections.experience normalization
+    if (out.sections && typeof out.sections === "object") {
+      const exp = out.sections.experience;
+      if (Array.isArray(exp)) {
+        out.sections.experience = exp
+          .map((row: any) => {
+            const bullets = Array.isArray(row?.bullets)
+              ? row.bullets.filter((b: any) => typeof b === "string")
+              : [];
+            return {
+              employment_id: row?.employment_id ?? undefined,
+              role: row?.role ?? undefined,
+              company: row?.company ?? undefined,
+              dates: row?.dates ?? undefined,
+              bullets,
+            };
+          })
+          .filter((r: any) => r.bullets.length > 0 || r.role || r.company);
+      }
+    }
+    return out;
+  } catch {
+    return input;
+  }
 }
