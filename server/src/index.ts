@@ -28,7 +28,7 @@ import http from "http";
 import { URL } from "url";
 import fs from "fs";
 import path from "path";
-import orchestrator from "../orchestrator.js";
+import * as orchestrator from "./services/orchestrator.js";
 import {
   createRequestLogger,
   logSystemEvent,

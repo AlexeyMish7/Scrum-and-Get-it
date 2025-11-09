@@ -1,19 +1,28 @@
 /**
  * Types barrel export
  *
- * Re-exports all type definitions from root-level types.ts.
- * This provides a single import point for types while maintaining
- * backward compatibility during the refactor process.
+ * Re-exports all type definitions from organized type modules.
+ * This provides a single import point for types organized by domain.
  *
  * Usage:
  *   import type { GenerateResumeRequest, ArtifactRow } from './types/index.js';
  */
 
+// API Request types
 export type {
   GenerateResumeRequest,
   GenerateCoverLetterRequest,
   GenerateSkillsOptimizationRequest,
-  ArtifactRow,
+} from "./requests.js";
+
+// Database row types
+export type { ArtifactRow } from "./database.js";
+
+// AI artifact content types
+export type {
   ResumeArtifactContent,
   GenerateResumeResponse,
-} from "../../types.js";
+} from "./artifacts.js";
+
+// Maintain backward compatibility - re-export from root types.ts
+export type * from "../../types.js";
