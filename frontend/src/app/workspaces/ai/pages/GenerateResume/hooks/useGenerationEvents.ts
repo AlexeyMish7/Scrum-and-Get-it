@@ -1,16 +1,16 @@
 /**
  * useGenerationEvents Hook
- * 
+ *
  * Manages window event listeners for resume generation lifecycle events.
  * Listens for events dispatched by ResumeGenerationPanel and updates state accordingly.
- * 
+ *
  * Events handled:
  * - sgt:resumeGeneration:start - Generation started
  * - sgt:resumeGenerated - Content generated
  * - sgt:resumeGeneration:complete - Generation completed with all segments
  * - sgt:resumeGeneration:segment - Individual segment completed
  * - sgt:resumeGeneration:reset - Reset generation state
- * 
+ *
  * @param {Object} params - Hook parameters
  * @param {Function} params.setLastContent - Setter for last generated content
  * @param {Function} params.setLastSegments - Setter for segment state

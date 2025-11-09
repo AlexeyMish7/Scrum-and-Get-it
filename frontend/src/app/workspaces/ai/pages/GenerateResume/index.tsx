@@ -67,9 +67,9 @@ import type {
   FlowState,
   SegmentStatus,
 } from "@workspaces/ai/hooks/useResumeGenerationFlow";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
-// Listen optionally for segment events to enable early (base-only) preview.
+import { useGenerateResumeState, useGenerationEvents } from "./hooks";
 
 /**
  * GenerateResume unified page (streamlined):
@@ -87,34 +87,45 @@ export default function GenerateResume() {
     applySummary,
     setLastAppliedJob,
   } = useResumeDrafts();
-  const [lastContent, setLastContent] = useState<ResumeArtifactContent | null>(
-    null
-  );
-  const [lastJobId, setLastJobId] = useState<number | null>(null);
-  const [lastSegments, setLastSegments] = useState<FlowState | null>(null);
-  const [newBullets, setNewBullets] = useState<Set<string> | null>(null);
-  const prevContentRef = useRef<ResumeArtifactContent | null>(null);
-  const [mergeOpen, setMergeOpen] = useState(false);
-  // Version compare & attach state
-  const [selectedContent, setSelectedContent] =
-    useState<ResumeArtifactContent | null>(null);
-  const [selectedArtifact, setSelectedArtifact] = useState<
-    AIArtifactSummary | AIArtifact | null
-  >(null);
-  const [compareOpen, setCompareOpen] = useState(false);
-  // Screen reader live message announcements for key actions (export, attach, link)
-  const [srMessage, setSrMessage] = useState("");
-  // Track last artifact element for focus restoration when closing compare dialog
-  const lastFocusArtifactIdRef = useRef<string | null>(null);
-  // Controls visibility of advanced tool suite to declutter initial view.
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  // Preview tabs: ai (generated), draft (current draft), variations (quick alt generations)
-  const [previewTab, setPreviewTab] = useState<
-    "ai" | "formatted" | "draft" | "variations" | "skills" | "raw"
-  >("ai");
 
-  // Track the freshest generation event to guard against out-of-order delivery
-  const lastGenTsRef = useRef<number>(0);
+  // Centralized state management
+  const {
+    lastContent,
+    setLastContent,
+    lastJobId,
+    setLastJobId,
+    lastSegments,
+    setLastSegments,
+    newBullets,
+    setNewBullets,
+    mergeOpen,
+    setMergeOpen,
+    compareOpen,
+    setCompareOpen,
+    selectedContent,
+    setSelectedContent,
+    selectedArtifact,
+    setSelectedArtifact,
+    srMessage,
+    setSrMessage,
+    showAdvanced,
+    setShowAdvanced,
+    previewTab,
+    setPreviewTab,
+    prevContentRef,
+    lastFocusArtifactIdRef,
+    lastGenTsRef,
+    generationRunTokenRef,
+  } = useGenerateResumeState();
+
+  // Generation event listeners
+  useGenerationEvents({
+    setLastContent,
+    setLastSegments,
+    setLastJobId,
+    generationRunTokenRef,
+    lastGenTsRef,
+  });
 
   /** Emit telemetry about actions users take in Step 3. */
   const emitApplyEvent = useCallback((detail: Record<string, unknown>) => {
@@ -128,117 +139,6 @@ export default function GenerateResume() {
     } catch (err) {
       console.warn("sgt:resumeApplication dispatch failed", err);
     }
-  }, []);
-
-  // Listen for generation events dispatched by ResumeGenerationPanel
-  useEffect(() => {
-    function onStart(e: Event) {
-      const detail = (e as CustomEvent).detail as {
-        jobId?: number;
-        options?: Record<string, unknown>;
-        ts?: number;
-      };
-      const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
-      generationRunTokenRef.current = ts; // tag current run
-      lastGenTsRef.current = ts; // track as latest event baseline
-      // Clear any previous content to avoid unintended auto-advance from stale data
-      setLastContent(null);
-      setLastSegments(null);
-      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
-    }
-    function onGenerated(e: Event) {
-      const detail = (e as CustomEvent).detail as {
-        content?: ResumeArtifactContent;
-        jobId?: number;
-        ts?: number;
-      };
-      const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
-      if (ts < lastGenTsRef.current) return; // ignore stale
-      lastGenTsRef.current = ts;
-      if (detail?.content) setLastContent(detail.content);
-      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
-    }
-    function onComplete(e: Event) {
-      const detail = (e as CustomEvent).detail as {
-        state?: FlowState;
-        jobId?: number;
-        ts?: number;
-      };
-      const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
-      if (ts < lastGenTsRef.current) return;
-      lastGenTsRef.current = ts;
-      if (detail?.state) setLastSegments(detail.state);
-      if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
-    }
-    // Early segment success (base) -> show partial preview immediately.
-    function onSegment(e: Event) {
-      const detail = (e as CustomEvent).detail as {
-        segment?: string;
-        status?: string;
-        content?: ResumeArtifactContent;
-        jobId?: number;
-        ts?: number;
-      };
-      if (
-        detail.segment === "base" &&
-        detail.status === "success" &&
-        detail.content
-      ) {
-        const ts = typeof detail?.ts === "number" ? detail.ts : Date.now();
-        if (ts < lastGenTsRef.current) return;
-        lastGenTsRef.current = ts;
-        setLastContent(detail.content);
-        if (typeof detail?.jobId === "number") setLastJobId(detail.jobId);
-      }
-    }
-    function onReset() {
-      setLastContent(null);
-      setLastSegments(null);
-      setLastJobId(null);
-      lastGenTsRef.current = 0;
-    }
-    window.addEventListener(
-      "sgt:resumeGeneration:start",
-      onStart as EventListener
-    );
-    window.addEventListener(
-      "sgt:resumeGenerated",
-      onGenerated as EventListener
-    );
-    window.addEventListener(
-      "sgt:resumeGeneration:complete",
-      onComplete as EventListener
-    );
-    window.addEventListener(
-      "sgt:resumeGeneration:segment",
-      onSegment as EventListener
-    );
-    window.addEventListener(
-      "sgt:resumeGeneration:reset",
-      onReset as EventListener
-    );
-    return () => {
-      window.removeEventListener(
-        "sgt:resumeGeneration:start",
-        onStart as EventListener
-      );
-      window.removeEventListener(
-        "sgt:resumeGenerated",
-        onGenerated as EventListener
-      );
-      window.removeEventListener(
-        "sgt:resumeGeneration:complete",
-        onComplete as EventListener
-      );
-      window.removeEventListener(
-        "sgt:resumeGeneration:segment",
-        onSegment as EventListener
-      );
-      window.removeEventListener(
-        "sgt:resumeGeneration:reset",
-        onReset as EventListener
-      );
-    };
   }, []);
 
   // Diff tracking: whenever final merged content updates after base success, compute added bullets
@@ -259,12 +159,10 @@ export default function GenerateResume() {
       setNewBullets(added.size ? added : null);
     }
     prevContentRef.current = lastContent;
-  }, [lastContent]);
+  }, [lastContent, prevContentRef, setNewBullets]);
 
   // Progressive step rendering state (0 Select, 1 Generate, 2 Apply, 3 Preview)
-  // Added generationRunToken to differentiate freshly generated content vs residual stale content.
   const [currentStep, setCurrentStep] = useState(0);
-  const generationRunTokenRef = useRef<number>(0);
 
   // Hard reset on initial mount to avoid carrying over a previous session's lastContent
   // which caused auto-advancing straight to Apply/Preview.
@@ -274,7 +172,7 @@ export default function GenerateResume() {
     setLastJobId(null);
     lastGenTsRef.current = 0;
     generationRunTokenRef.current = 0;
-  }, []);
+  }, [setLastContent, setLastSegments, setLastJobId, lastGenTsRef, generationRunTokenRef]);
   // Guard: auto-advance from Select to Generate when draft chosen
   useEffect(() => {
     if (active && currentStep === 0) setCurrentStep(1);
@@ -289,7 +187,7 @@ export default function GenerateResume() {
     ) {
       setCurrentStep(2);
     }
-  }, [lastContent, currentStep]);
+  }, [lastContent, currentStep, generationRunTokenRef, lastGenTsRef]);
   const stepIndex = currentStep; // for Stepper
 
   function canNext() {

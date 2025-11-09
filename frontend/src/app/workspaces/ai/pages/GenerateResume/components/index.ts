@@ -1,7 +1,7 @@
 /**
  * GenerateResume Components
  * Barrel export for sub-components used by the GenerateResume page
- * 
+ *
  * Note: Components to be extracted as refactoring progresses:
  * - StepperFlow - Stepper UI and navigation
  * - ExportPanel - PDF/DOCX export handlers
