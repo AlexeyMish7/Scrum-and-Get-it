@@ -21,7 +21,12 @@ import BenchmarkCard from "./BenchmarkCard";
 import { computeSuccessRates, computeAvgResponseDays } from "./analyticsHelpers";
 import type { JobRecord } from "./analyticsHelpers";
 
-export default function AnalyticsPage() {
+/**
+ * AnalyticsDashboard (additive)
+ * - Full analytics UI implemented as a separate component to avoid modifying the existing `AnalyticsPage.tsx`.
+ * - Use the same helpers added in this folder. To enable this page in the app, import it or add a route pointing to it.
+ */
+export default function AnalyticsDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<JobRecord[]>([]);
@@ -62,7 +67,6 @@ export default function AnalyticsPage() {
     };
   }, [user?.id]);
 
-  // Funnel
   const funnel = useMemo(() => {
     const buckets: Record<string, number> = {
       Interested: 0,
@@ -83,14 +87,10 @@ export default function AnalyticsPage() {
 
   const total = useMemo(() => Object.values(funnel).reduce((a, b) => a + b, 0), [funnel]);
 
-  // Time-to-response
-  const byCompany = useMemo(() => computeAvgResponseDays(jobs as JobRecord[], "company", 10), [jobs]);
-  const byIndustry = useMemo(() => computeAvgResponseDays(jobs as JobRecord[], "industry", 10), [jobs]);
+  const avgByCompany = useMemo(() => computeAvgResponseDays(jobs, "company", 10), [jobs]);
+  const avgByIndustry = useMemo(() => computeAvgResponseDays(jobs, "industry", 10), [jobs]);
+  const successIndustry = useMemo(() => computeSuccessRates(jobs, "industry"), [jobs]);
 
-  // Success rates
-  const successByIndustry = useMemo(() => computeSuccessRates(jobs as JobRecord[], "industry") as Array<{ key: string; rate: number; offers: number; total: number }>, [jobs]);
-
-  // Weekly trends (last 12 weeks)
   const weeklyTrends = useMemo(() => {
     const now = new Date();
     const buckets: Record<string, number> = {};
@@ -110,18 +110,17 @@ export default function AnalyticsPage() {
     return Object.keys(buckets).map((k) => ({ week: k, count: buckets[k] })).sort((a, b) => a.week.localeCompare(b.week));
   }, [jobs]);
 
-  // Recommendations
   const recommendations = useMemo(() => {
     const recs: string[] = [];
     const offers = funnel.Offer ?? 0;
     const offerRate = offers / Math.max(1, total);
-    if (offerRate < 0.05) recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
-    if (byIndustry.length && byIndustry[0].avgDays > 14) recs.push("Response times are long in your common industries; consider earlier follow-ups.");
+    if (offerRate < 0.05) recs.push("Offer rate is low. Try improving resume/cover tailoring and prioritize matches.");
+    if (avgByIndustry.length && avgByIndustry[0].avgDays > 14) recs.push("Response times are long in your industries; follow up earlier and track replies.");
     const appliedThisWeek = weeklyTrends.length ? weeklyTrends[weeklyTrends.length - 1].count : 0;
     if (appliedThisWeek < weeklyGoal) recs.push("You're below your weekly application goal — schedule focused application time.");
-    if (recs.length === 0) recs.push("Metrics look healthy — continue monitoring trends.");
+    if (recs.length === 0) recs.push("Analytics look healthy — keep monitoring and iterating.");
     return recs;
-  }, [funnel, total, byIndustry, weeklyTrends, weeklyGoal]);
+  }, [funnel, total, avgByIndustry, weeklyTrends, weeklyGoal]);
 
   function saveGoal() {
     try {
@@ -143,10 +142,10 @@ export default function AnalyticsPage() {
     for (const k of Object.keys(funnel)) rows.push([k, String((funnel as any)[k])]);
     rows.push([]);
     rows.push(["Avg response by company (days)"]);
-    for (const r of byCompany) rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
+    for (const r of avgByCompany) rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
     rows.push([]);
     rows.push(["Success by industry"]);
-    for (const r of successByIndustry) rows.push([r.key, String((r.rate * 100).toFixed(1) + "%"), String(r.offers), String(r.total)]);
+    for (const r of successIndustry) rows.push([r.key, String((r.rate * 100).toFixed(1) + "%"), String(r.offers), String(r.total)]);
 
     const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -163,7 +162,7 @@ export default function AnalyticsPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 1 }}>
-        Jobs Analytics
+        Jobs Analytics (Dashboard)
       </Typography>
 
       <Box sx={{ display: "flex", gap: 2, mb: 2, flexDirection: { xs: "column", md: "row" } }}>
@@ -205,13 +204,13 @@ export default function AnalyticsPage() {
             <Divider sx={{ my: 1 }} />
             <Table size="small">
               <TableBody>
-                {byCompany.map((r) => (
+                {avgByCompany.map((r) => (
                   <TableRow key={r.key}>
                     <TableCell>{r.key}</TableCell>
                     <TableCell align="right">{r.avgDays.toFixed(1)} d ({r.count})</TableCell>
                   </TableRow>
                 ))}
-                {byCompany.length === 0 && (
+                {avgByCompany.length === 0 && (
                   <TableRow><TableCell colSpan={2}>No response data yet</TableCell></TableRow>
                 )}
               </TableBody>
@@ -225,13 +224,13 @@ export default function AnalyticsPage() {
             <Divider sx={{ my: 1 }} />
             <Table size="small">
               <TableBody>
-                {successByIndustry.map((r) => (
+                {successIndustry.map((r) => (
                   <TableRow key={r.key}>
                     <TableCell>{r.key}</TableCell>
                     <TableCell align="right">{(r.rate * 100).toFixed(1)}% ({r.offers}/{r.total})</TableCell>
                   </TableRow>
                 ))}
-                {successByIndustry.length === 0 && (
+                {successIndustry.length === 0 && (
                   <TableRow><TableCell colSpan={2}>No offers recorded yet</TableCell></TableRow>
                 )}
               </TableBody>
@@ -295,7 +294,6 @@ export default function AnalyticsPage() {
   );
 }
 
-// --- Helpers ---
 function getWeekNumber(d: Date) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7;
@@ -303,4 +301,3 @@ function getWeekNumber(d: Date) {
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7).toString().padStart(2, "0");
 }
-
