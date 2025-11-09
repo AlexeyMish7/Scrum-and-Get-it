@@ -92,7 +92,7 @@ export const router = createBrowserRouter([
       { path: "saved-searches", element: <SavedSearchesPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "automations", element: <AutomationsPage /> },
-      { path: "archived-jobs", element: <ViewArchivedJobs /> }
+      { path: "archived-jobs", element: <ViewArchivedJobs /> },
     ],
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.

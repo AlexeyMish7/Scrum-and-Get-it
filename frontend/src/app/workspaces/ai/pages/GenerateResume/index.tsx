@@ -39,7 +39,9 @@ const ResumeValidationPanel = lazy(
 const ResumeDraftPreviewPanel = lazy(
   () => import("@workspaces/ai/components/resume/ResumeDraftPreviewPanel")
 );
-const AIResumePreview = lazy(() => import("@workspaces/ai/components/resume/AIResumePreview"));
+const AIResumePreview = lazy(
+  () => import("@workspaces/ai/components/resume/AIResumePreview")
+);
 const SkillsAnalysisPreview = lazy(
   () => import("@workspaces/ai/components/resume/SkillsAnalysisPreview")
 );
