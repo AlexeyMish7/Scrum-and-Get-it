@@ -21,7 +21,6 @@ import { lazy, Suspense } from "react";
 import GenerationCard from "@workspaces/ai/components/resume/GenerationCard"; // kept eager (small)
 import ResumeTutorial from "@workspaces/ai/components/resume/ResumeTutorial"; // tutorial quick load
 import VersionsExportAside from "@workspaces/ai/components/resume/VersionsExportAside"; // moderate size
-import { Packer, Document, Paragraph, TextRun } from "docx";
 import DraftSelectorBar from "@workspaces/ai/components/resume/DraftSelectorBar"; // small
 // Lazy heavy/optional panels (loaded only when step 3/4 or advanced open)
 const ResumeVariationsPanel = lazy(
@@ -47,12 +46,9 @@ const SkillsAnalysisPreview = lazy(
 );
 import useResumeDrafts from "@workspaces/ai/hooks/useResumeDrafts";
 import { useAuth } from "@shared/context/AuthContext";
-import {
-  aiGeneration,
-  createDocumentAndLink,
-} from "@workspaces/ai/services/aiGeneration";
+import { aiGeneration } from "@workspaces/ai/services/aiGeneration";
 import DiffCompareDialog from "@workspaces/ai/components/DiffCompareDialog";
-import type { AIArtifactSummary, AIArtifact } from "@workspaces/ai/types/ai";
+import type { AIArtifactSummary } from "@workspaces/ai/types/ai";
 import BulletMergeDialog from "@workspaces/ai/components/resume/BulletMergeDialog";
 import SectionControlsPanel from "@workspaces/ai/components/resume/SectionControlsPanel"; // lightweight
 import ResumeFullPreview from "@workspaces/ai/components/ResumeFullPreview";
@@ -62,14 +58,15 @@ import {
 } from "@workspaces/ai/utils/previewModel";
 // SkillsAnalysisPreview now lazy
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
-import type {
-  FlowState,
-  SegmentStatus,
-} from "@workspaces/ai/hooks/useResumeGenerationFlow";
+import type { SegmentStatus } from "@workspaces/ai/hooks/useResumeGenerationFlow";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { useGenerateResumeState, useGenerationEvents } from "./hooks";
+import {
+  useGenerateResumeState,
+  useGenerationEvents,
+  useApplyActions,
+} from "./hooks";
+import { handlePdfExport, handleDocxExport } from "./utils";
 
 /**
  * GenerateResume unified page (streamlined):
@@ -164,6 +161,25 @@ export default function GenerateResume() {
   // Progressive step rendering state (0 Select, 1 Generate, 2 Apply, 3 Preview)
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Apply actions hook - centralizes apply logic (must be after setCurrentStep)
+  const {
+    applySkills,
+    applySummaryToDraft,
+    mergeExperience,
+    buildContentFromDraft,
+  } = useApplyActions({
+    active,
+    lastContent,
+    lastJobId,
+    showSuccess,
+    setLastContent,
+    setCurrentStep,
+    setLastAppliedJob: setLastAppliedJob as (jobId: number | null) => void,
+    setMergeOpen,
+    applyOrderedSkills,
+    applySummary,
+  });
+
   // Hard reset on initial mount to avoid carrying over a previous session's lastContent
   // which caused auto-advancing straight to Apply/Preview.
   useEffect(() => {
@@ -172,7 +188,13 @@ export default function GenerateResume() {
     setLastJobId(null);
     lastGenTsRef.current = 0;
     generationRunTokenRef.current = 0;
-  }, [setLastContent, setLastSegments, setLastJobId, lastGenTsRef, generationRunTokenRef]);
+  }, [
+    setLastContent,
+    setLastSegments,
+    setLastJobId,
+    lastGenTsRef,
+    generationRunTokenRef,
+  ]);
   // Guard: auto-advance from Select to Generate when draft chosen
   useEffect(() => {
     if (active && currentStep === 0) setCurrentStep(1);
@@ -207,87 +229,6 @@ export default function GenerateResume() {
   }
   function prevStep() {
     if (currentStep > 0) setCurrentStep((s) => s - 1);
-  }
-
-  // Apply skill ordering from AI output to draft
-  // Helper: build a ResumeArtifactContent snapshot from current draft after applications
-  function buildContentFromDraft(): ResumeArtifactContent | null {
-    if (!active) return null;
-    return {
-      summary: active.content.summary,
-      ordered_skills: active.content.skills,
-      sections: {
-        experience: (active.content.experience || []).map((e) => ({
-          role: e.role,
-          company: e.company,
-          dates: e.dates,
-          bullets: e.bullets.slice(),
-        })),
-      },
-      meta: {
-        fromDraft: true,
-        draftId: active.id,
-        lastAppliedJobId: active.lastAppliedJobId,
-      },
-    };
-  }
-
-  function applySkills() {
-    if (!active || !lastContent?.ordered_skills?.length) return;
-    const existing = active.content.skills || [];
-    const lowerExisting = new Map(existing.map((s) => [s.toLowerCase(), s]));
-    const prospective: string[] = [];
-    for (const s of lastContent.ordered_skills) {
-      const match = lowerExisting.get(s.toLowerCase()) || s;
-      if (!prospective.includes(match)) prospective.push(match);
-    }
-    for (const s of existing) if (!prospective.includes(s)) prospective.push(s);
-    const isSame =
-      prospective.length === existing.length &&
-      prospective.every((v, i) => v === existing[i]);
-    applyOrderedSkills(lastContent.ordered_skills);
-    showSuccess(
-      isSame ? "No changes to apply" : "Applied ordered skills to draft"
-    );
-    // Refresh preview model to reflect draft modifications
-    const updated = buildContentFromDraft();
-    if (updated) setLastContent(updated);
-    // Move to Preview after applying changes
-    setCurrentStep(3);
-    if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
-    emitApplyEvent({
-      action: "apply-skills",
-      jobId: lastJobId ?? undefined,
-      changed: !isSame,
-    });
-  }
-
-  function applySummaryToDraft() {
-    if (!active || !lastContent?.summary) return;
-    const isSame = (active.content.summary || "") === lastContent.summary;
-    applySummary(lastContent.summary);
-    showSuccess(isSame ? "No changes to apply" : "Applied summary to draft");
-    const updated = buildContentFromDraft();
-    if (updated) setLastContent(updated);
-    setCurrentStep(3);
-    if (typeof lastJobId === "number") setLastAppliedJob(lastJobId);
-    emitApplyEvent({
-      action: "apply-summary",
-      jobId: lastJobId ?? undefined,
-      changed: !isSame,
-    });
-  }
-
-  function mergeExperience() {
-    if (!active) return;
-    const exp = lastContent?.sections?.experience;
-    if (!exp?.length) return;
-    setMergeOpen(true);
-    emitApplyEvent({
-      action: "open-experience-merge",
-      jobId: lastJobId ?? undefined,
-      entries: exp.length,
-    });
   }
 
   /** Map segment status codes into human-friendly labels for summary UI. */
@@ -756,70 +697,16 @@ export default function GenerateResume() {
               lastContent={lastContent}
               jobId={lastJobId}
               onOpenVersions={() => setShowAdvanced(true)}
-              onExportPDF={async () => {
-                try {
-                  // Lazy import to keep bundle lean
-                  const [{ default: html2canvas }, { jsPDF }] =
-                    await Promise.all([
-                      import("html2canvas"),
-                      import("jspdf") as unknown as Promise<{
-                        jsPDF: typeof import("jspdf").jsPDF;
-                      }>,
-                    ]);
-                  const el = document.getElementById(
-                    "resume-formatted-preview"
-                  );
-                  if (!el) throw new Error("Formatted preview not available");
-                  const canvas = await html2canvas(el, {
-                    scale: Math.min(window.devicePixelRatio || 1.5, 2),
-                    backgroundColor: "#ffffff",
-                  });
-                  const imgData = canvas.toDataURL("image/png");
-                  const pdf = new jsPDF({
-                    orientation: "p",
-                    unit: "pt",
-                    format: "a4",
-                  });
-                  // Fit image onto A4 with aspect ratio
-                  const pageWidth = pdf.internal.pageSize.getWidth();
-                  const pageHeight = pdf.internal.pageSize.getHeight();
-                  const imgWidth = pageWidth - 48; // margins
-                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                  const y = 24;
-                  if (imgHeight > pageHeight - 48) {
-                    // scale down to fit height
-                    const h = pageHeight - 48;
-                    const w = (canvas.width * h) / canvas.height;
-                    pdf.addImage(imgData, "PNG", (pageWidth - w) / 2, 24, w, h);
-                  } else {
-                    pdf.addImage(imgData, "PNG", 24, y, imgWidth, imgHeight);
-                  }
-                  const fname = `resume_${lastJobId ?? "preview"}.pdf`;
-                  // Create blob for optional storage linking
-                  const blob = pdf.output("blob");
-                  pdf.save(fname);
-                  setSrMessage("Resume exported as PDF");
-                  showSuccess("Exported PDF");
-                  // If user & job present, persist and link document row
-                  if (user?.id && lastJobId) {
-                    const linked = await createDocumentAndLink({
-                      userId: user.id,
-                      jobId: lastJobId,
-                      file: blob,
-                      filename: fname,
-                      mime: "application/pdf",
-                      kind: "resume",
-                      linkType: "resume",
-                    });
-                    if (linked) {
-                      showSuccess("PDF stored & linked to job materials");
-                      setSrMessage("PDF stored and linked to job materials");
-                    }
-                  }
-                } catch (e) {
-                  handleError(e);
-                }
-              }}
+              onExportPDF={() =>
+                handlePdfExport({
+                  userId: user?.id,
+                  jobId: lastJobId,
+                  lastContent,
+                  showSuccess,
+                  handleError,
+                  setSrMessage,
+                })
+              }
               onAttachToJob={async () => {
                 try {
                   if (!user?.id) throw new Error("Not signed in");
@@ -845,46 +732,16 @@ export default function GenerateResume() {
                   lastFocusArtifactIdRef.current = artifact.id as string;
                 }
               }}
-              onExportDOCX={async () => {
-                try {
-                  if (!lastContent) throw new Error("No content to export");
-                  const doc = new Document({
-                    sections: [
-                      {
-                        properties: {},
-                        children: buildDocxFromResume(lastContent),
-                      },
-                    ],
-                  });
-                  const blob = await Packer.toBlob(doc);
-                  const fname = `resume_${lastJobId ?? "preview"}.docx`;
-                  // Trigger download
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(blob);
-                  a.download = fname;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                  showSuccess("Exported DOCX");
-                  setSrMessage("Resume exported as DOCX");
-                  if (user?.id && lastJobId) {
-                    const linked = await createDocumentAndLink({
-                      userId: user.id,
-                      jobId: lastJobId,
-                      file: blob,
-                      filename: fname,
-                      mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                      kind: "resume",
-                      linkType: "resume",
-                    });
-                    if (linked) {
-                      showSuccess("DOCX stored & linked to job materials");
-                      setSrMessage("DOCX stored and linked to job materials");
-                    }
-                  }
-                } catch (e) {
-                  handleError(e);
-                }
-              }}
+              onExportDOCX={() =>
+                handleDocxExport({
+                  userId: user?.id,
+                  jobId: lastJobId,
+                  lastContent,
+                  showSuccess,
+                  handleError,
+                  setSrMessage,
+                })
+              }
             />
           </Box>
         )}
@@ -1016,126 +873,4 @@ export default function GenerateResume() {
       </Box>
     </Box>
   );
-}
-
-/**
- * buildDocxFromResume
- * WHAT: Convert ResumeArtifactContent into docx Paragraph blocks.
- * WHY: Provide basic DOCX export (simple formatting, bullet lists).
- * INPUT: ResumeArtifactContent
- * OUTPUT: Array<Paragraph>
- */
-function buildDocxFromResume(content: ResumeArtifactContent) {
-  const out: Paragraph[] = [];
-  if (content.summary) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "Summary", bold: true, size: 24 })],
-        spacing: { after: 120 },
-      })
-    );
-    out.push(new Paragraph({ text: content.summary }));
-  }
-  if (content.ordered_skills?.length) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "Skills", bold: true, size: 24 })],
-        spacing: { before: 240, after: 120 },
-      })
-    );
-    out.push(
-      new Paragraph({
-        text: content.ordered_skills.join(", "),
-      })
-    );
-  }
-  const exp = content.sections?.experience || [];
-  if (exp.length) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "Experience", bold: true, size: 24 })],
-        spacing: { before: 240, after: 120 },
-      })
-    );
-    for (const row of exp) {
-      out.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: [row.role, row.company, row.dates]
-                .filter(Boolean)
-                .join(" - "),
-              bold: true,
-            }),
-          ],
-          spacing: { after: 60 },
-        })
-      );
-      for (const b of row.bullets || []) {
-        out.push(new Paragraph({ text: b, bullet: { level: 0 } }));
-      }
-    }
-  }
-  const education = content.sections?.education || [];
-  if (education.length) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "Education", bold: true, size: 24 })],
-        spacing: { before: 240, after: 120 },
-      })
-    );
-    for (const row of education) {
-      out.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: [row.institution, row.degree, row.graduation_date]
-                .filter(Boolean)
-                .join(" - "),
-              bold: true,
-            }),
-          ],
-          spacing: { after: 60 },
-        })
-      );
-      for (const d of row.details || []) {
-        out.push(new Paragraph({ text: d, bullet: { level: 0 } }));
-      }
-    }
-  }
-  const projects = content.sections?.projects || [];
-  if (projects.length) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "Projects", bold: true, size: 24 })],
-        spacing: { before: 240, after: 120 },
-      })
-    );
-    for (const row of projects) {
-      out.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: [row.name, row.role].filter(Boolean).join(" - "),
-              bold: true,
-            }),
-          ],
-          spacing: { after: 60 },
-        })
-      );
-      for (const d of row.bullets || []) {
-        out.push(new Paragraph({ text: d, bullet: { level: 0 } }));
-      }
-    }
-  }
-  if (content.ats_keywords?.length) {
-    out.push(
-      new Paragraph({
-        children: [new TextRun({ text: "ATS Keywords", bold: true, size: 24 })],
-        spacing: { before: 240, after: 120 },
-      })
-    );
-    out.push(new Paragraph({ text: content.ats_keywords.join(", ") }));
-  }
-  return out;
 }

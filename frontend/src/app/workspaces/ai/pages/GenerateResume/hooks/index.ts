@@ -5,3 +5,4 @@
 
 export { default as useGenerateResumeState } from "./useGenerateResumeState";
 export { default as useGenerationEvents } from "./useGenerationEvents";
+export { useApplyActions } from "./useApplyActions";
