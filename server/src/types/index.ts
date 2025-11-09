@@ -23,6 +23,3 @@ export type {
   ResumeArtifactContent,
   GenerateResumeResponse,
 } from "./artifacts.js";
-
-// Maintain backward compatibility - re-export from root types.ts
-export type * from "../../types.js";

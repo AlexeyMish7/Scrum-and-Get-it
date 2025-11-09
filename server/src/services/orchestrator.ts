@@ -11,11 +11,11 @@ Orchestrator scaffold (server-side)
 This file is a scaffold: adapt to your server framework (Next.js API routes, Vercel serverless, Express, etc.).
 */
 
-import type { GenerateResult } from "../../aiClient.js";
-import aiClient from "../../aiClient.js";
+import type { GenerateResult } from "./aiClient.js";
+import aiClient from "./aiClient.js";
 import { logError, logInfo } from "../../utils/logger.js";
 // Use dynamic import for supabase to avoid throwing at module load when env is missing
-// import supabaseAdmin from "../../supabaseAdmin.js"; // do not import statically
+// import supabaseAdmin from "./supabaseAdmin.js"; // do not import statically
 // Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
 import { buildResumePrompt } from "../../prompts/resume.ts";
 import { buildCoverLetterPrompt } from "../../prompts/coverLetter.ts";
@@ -47,7 +47,7 @@ export async function handleGenerateResume(
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("../../supabaseAdmin.js");
+    const mod = await import("./supabaseAdmin.js");
     getProfile = (mod as any).getProfile;
     getJob = (mod as any).getJob;
     supabase = (mod as any).default;
@@ -238,7 +238,7 @@ export async function handleGenerateCoverLetter(
   let getProfile: (userId: string) => Promise<any>;
   let getJob: (jobId: number) => Promise<any>;
   try {
-    const mod = await import("../../supabaseAdmin.js");
+    const mod = await import("./supabaseAdmin.js");
     getProfile = (mod as any).getProfile;
     getJob = (mod as any).getJob;
     if (typeof getProfile !== "function" || typeof getJob !== "function") {
@@ -344,7 +344,7 @@ export async function handleSkillsOptimization(
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("../../supabaseAdmin.js");
+    const mod = await import("./supabaseAdmin.js");
     getProfile = (mod as any).getProfile;
     getJob = (mod as any).getJob;
     supabase = (mod as any).default;
@@ -463,7 +463,7 @@ export async function handleExperienceTailoring(req: {
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("../../supabaseAdmin.js");
+    const mod = await import("./supabaseAdmin.js");
     getProfile = (mod as any).getProfile;
     getJob = (mod as any).getJob;
     supabase = (mod as any).default;

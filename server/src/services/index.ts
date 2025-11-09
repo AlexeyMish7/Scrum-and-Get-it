@@ -22,9 +22,3 @@ export type { GenerateOptions, GenerateResult } from "./aiClient.js";
 
 // Re-export Supabase admin client and helpers
 export { default as supabaseAdmin, insertAiArtifact } from "./supabaseAdmin.js";
-
-// Maintain backward compatibility - re-export from root-level files
-export * from "../../orchestrator.js";
-export { default as orchestratorLegacy } from "../../orchestrator.js";
-export { default as aiClientLegacy } from "../../aiClient.js";
-export { default as supabaseAdminLegacy } from "../../supabaseAdmin.js";
