@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   Chip,
 } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
+import Interview from "./Interview";
 
 interface NewsItem {
   title: string;
@@ -262,6 +263,9 @@ export default function CompanyResearch() {
           </CardContent>
         </Card>
       )}
+
+      {/* Interview insights & preparation (UC-068) */}
+      {company && <Interview company={{ name: company.name, website: company.website, industry: company.industry, size: company.size }} />}
     </Box>
   );
 }
