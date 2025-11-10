@@ -74,7 +74,9 @@ import { linkCoverLetterToJob } from "../../services/jobMaterialsService";
 
 /**
  * Mock job data for development
- * TODO: Replace with actual jobs from jobs table via CRUD
+ * FUTURE: Replace with actual jobs from jobs table via CRUD service
+ * - Use listRows("jobs", "*", { filters: [...] })
+ * - Scope with withUser(user.id)
  */
 interface Job {
   id: number;
@@ -292,7 +294,7 @@ export default function CoverLetterEditor() {
 
     setIsGenerating(true);
     try {
-      // TODO: Call backend AI generation endpoint
+      // FUTURE: Call backend AI generation endpoint (POST /api/generate/cover-letter)
       // For now, mock the AI content with industry language preferences
       const selectedJob = MOCK_JOBS.find((j) => j.id === selectedJobId);
       await new Promise((resolve) => setTimeout(resolve, 2000));

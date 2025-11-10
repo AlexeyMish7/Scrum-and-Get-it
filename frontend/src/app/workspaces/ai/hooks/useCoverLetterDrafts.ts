@@ -318,9 +318,11 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
     },
 
     syncWithDatabase: async () => {
-      // TODO: Implement database sync
-      // This will be implemented when we add the backend service
-      console.log("Database sync not yet implemented");
+      // FUTURE: Implement database sync when backend service is ready
+      // - Fetch latest drafts from cover_letter_drafts table
+      // - Compare with local state by updated_at timestamp
+      // - Merge changes and update cache
+      // Note: Current implementation uses localStorage only
     },
 
     // ========== Draft Management ==========
@@ -343,8 +345,8 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           companyName
         );
 
-        // TODO: Save to database
-        // const dbDraft = await createCoverLetterDraft(newDraft);
+        // FUTURE: Save to database
+        // await createCoverLetterDraft(newDraft);
 
         set((state) => ({
           drafts: [...state.drafts, newDraft],
@@ -405,8 +407,8 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       try {
         set({ isLoading: true, error: null });
 
-        // TODO: Delete from database
-        // await deleteCoverLetterDraft(id);
+        // FUTURE: Delete from database
+        // await deleteCoverLetterDraft(draftId);
 
         set((state) => ({
           drafts: state.drafts.filter((d) => d.id !== id),

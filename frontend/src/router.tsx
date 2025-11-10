@@ -29,13 +29,6 @@ import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 import ProfileDetails from "@profile/pages/profile/ProfileDetails";
 import Settings from "@profile/pages/profile/Settings";
 
-// Cover letter pages (kept using relative paths in repo layout)
-import CoverLetterTemplates from "./app/workspaces/ai/pages/cover_letters/CoverLetterTemplates";
-import EditCoverLetter from "./app/workspaces/ai/pages/cover_letters/EditCoverLetter";
-
-//Resume pages
-import ResumeCustomization from "./app/workspaces/ai/components/resume/ResumeCustomization";
-
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
@@ -46,7 +39,6 @@ import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
 import JobMatching from "@workspaces/ai/pages/JobMatching/index";
 import CompanyResearch from "@workspaces/ai/pages/CompanyResearch/index";
 import TemplatesHub from "@workspaces/ai/pages/TemplatesHub/index";
-import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
 import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
 import ResumeEditorV2 from "@workspaces/ai/pages/ResumeEditorV2/index";
 import JobsLayout from "@workspaces/jobs/JobsLayout";
@@ -71,7 +63,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardAI /> },
       { path: "resume", element: <ResumeEditorV2 /> },
-      { path: "resume-old", element: <GenerateResume /> },
       { path: "cover-letter", element: <GenerateCoverLetter /> },
       { path: "job-match", element: <JobMatching /> },
       { path: "company-research", element: <CompanyResearch /> },
@@ -98,37 +89,9 @@ export const router = createBrowserRouter([
     ],
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.
+  // NOTE: Removed old /cover-letters and /edit-cover-letters routes; replaced by AI workspace /ai/cover-letter
+  // NOTE: Removed old /edit-resume and /ai/resume-old routes; replaced by AI workspace /ai/resume (ResumeEditorV2)
   { path: "/register", element: <Register /> },
-  {
-    path: "/edit-resume",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <ResumeCustomization />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/cover-letters",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <CoverLetterTemplates />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/edit-cover-letters",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <EditCoverLetter />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
   {
     path: "/profile",
     element: (

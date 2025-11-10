@@ -62,6 +62,17 @@ interface DraftSection {
   lastUpdated?: Date;
 }
 
+/**
+ * CachedDraftSection - Type for draft sections loaded from cache
+ * (dates are stored as ISO strings in localStorage/cache)
+ */
+interface CachedDraftSection {
+  type: "summary" | "skills" | "experience" | "education" | "projects";
+  visible: boolean;
+  state: SectionState;
+  lastUpdated?: string; // ISO date string in cache
+}
+
 export interface ResumeDraft {
   id: string;
   name: string;
@@ -260,27 +271,36 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
     const cached = loadFromCache(userId);
     if (cached && cached.drafts.length > 0) {
       // Convert cached data back to ResumeDraft objects with proper date conversion
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const drafts = cached.drafts.map((draft: any) => ({
-        ...draft,
-        metadata: {
-          ...draft.metadata,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          sections: draft.metadata.sections.map((s: any) => ({
-            ...s,
-            lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : undefined,
-          })),
-          lastModified: new Date(draft.metadata.lastModified),
-          createdAt: new Date(draft.metadata.createdAt),
-        },
-      })) as ResumeDraft[];
+      // Note: cached.drafts is unknown[] (to avoid circular deps in cache service)
+      // so we safely cast each draft and its sections
+      const drafts = cached.drafts.map((draft) => {
+        const draftObj = draft as ResumeDraft & {
+          metadata: {
+            sections: CachedDraftSection[];
+            lastModified: string;
+            createdAt: string;
+          };
+        };
+        return {
+          ...draftObj,
+          metadata: {
+            ...draftObj.metadata,
+            sections: draftObj.metadata.sections.map((s) => ({
+              ...s,
+              lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : undefined,
+            })),
+            lastModified: new Date(draftObj.metadata.lastModified),
+            createdAt: new Date(draftObj.metadata.createdAt),
+          },
+        } as ResumeDraft;
+      });
 
       set({
         drafts,
         activeDraftId: cached.activeDraftId,
       });
 
-      console.log(`✓ Loaded ${drafts.length} drafts from cache instantly`);
+      // Successfully loaded from cache (instant)
     }
   },
 

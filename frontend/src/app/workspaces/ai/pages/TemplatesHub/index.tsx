@@ -7,15 +7,17 @@ import {
   Paper,
   Tabs,
   Tab,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { useState } from "react";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
-import TemplateManager from "@workspaces/ai/components/resume/TemplateManager";
 import { useNavigate } from "react-router-dom";
 import PaletteIcon from "@mui/icons-material/Palette";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EmailIcon from "@mui/icons-material/Email";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 /**
  * TemplatesHub
@@ -91,27 +93,109 @@ export default function TemplatesHub() {
         <Box sx={{ p: 3 }}>
           {activeTab === "resume" && (
             <Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Manage resume templates with custom fonts, colors, sections, and
-                layouts. System templates: Modern, Classic, Minimal, Creative,
-                Academic.
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Professional resume templates are available in the Resume
+                Editor. Choose from multiple layouts, color schemes, and
+                formatting styles.
               </Typography>
-              <TemplateManager />
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+                  gap: 2,
+                }}
+              >
+                {["Modern", "Classic", "Minimal", "Creative", "Academic"].map(
+                  (template) => (
+                    <Card
+                      variant="outlined"
+                      sx={{ height: "100%" }}
+                      key={template}
+                    >
+                      <CardContent>
+                        <Stack spacing={1}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CheckCircleIcon color="success" fontSize="small" />
+                            <Typography variant="h6">{template}</Typography>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Professional {template.toLowerCase()} template with
+                            customizable sections
+                          </Typography>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  )
+                )}
+              </Box>
+
+              <Alert severity="info" sx={{ mt: 3 }}>
+                <Typography variant="body2">
+                  <strong>💡 Access templates</strong> in the Resume Editor when
+                  creating or editing a draft. Templates are built-in and ready
+                  to use.
+                </Typography>
+              </Alert>
             </Box>
           )}
 
           {activeTab === "cover-letter" && (
             <Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Manage cover letter templates with custom tones, styles, and
-                formatting. System templates: Formal, Creative, Technical,
-                Modern, Minimal.
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Professional cover letter templates with custom tones, styles,
+                and formatting. All templates are available in the Cover Letter
+                Editor.
               </Typography>
-              <Alert severity="info" sx={{ mt: 2 }}>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+                  gap: 2,
+                }}
+              >
+                {["Formal", "Creative", "Technical", "Modern", "Minimal"].map(
+                  (template) => (
+                    <Card
+                      variant="outlined"
+                      sx={{ height: "100%" }}
+                      key={template}
+                    >
+                      <CardContent>
+                        <Stack spacing={1}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CheckCircleIcon color="success" fontSize="small" />
+                            <Typography variant="h6">{template}</Typography>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Professional {template.toLowerCase()} tone with
+                            structured formatting
+                          </Typography>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  )
+                )}
+              </Box>
+
+              <Alert severity="info" sx={{ mt: 3 }}>
                 <Typography variant="body2">
-                  <strong>Coming Soon:</strong> Cover letter custom template
-                  editor. For now, use the 5 system templates in the Cover
-                  Letter Editor.
+                  <strong>💡 Access templates</strong> in the Cover Letter
+                  Editor. Select your preferred template and customize content,
+                  tone, and style.
                 </Typography>
               </Alert>
             </Box>

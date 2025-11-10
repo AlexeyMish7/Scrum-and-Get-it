@@ -53,7 +53,9 @@ export default function CompanyResearch() {
     setCompany(null);
 
     try {
-      // TODO: Replace this with real API calls for company info and news
+      // FUTURE: Replace with real API calls for company info and news
+      // - Backend endpoint: POST /api/research/company
+      // - Use external APIs: Clearbit, LinkedIn, news aggregators
       const mockData: CompanyInfo = {
         name: searchTerm,
         logo: "/placeholder-logo.png",
