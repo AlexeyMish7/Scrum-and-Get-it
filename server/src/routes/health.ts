@@ -26,6 +26,7 @@
 
 import type { ServerResponse } from "node:http";
 import { URL } from "node:url";
+import { getCorsHeaders } from "../middleware/cors.js";
 
 export interface HealthCounters {
   requests_total: number;
@@ -104,6 +105,7 @@ export async function handleHealth(
   res.writeHead(200, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(body).toString(),
+    ...getCorsHeaders(),
   });
   res.end(body);
 }

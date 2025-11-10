@@ -23,6 +23,7 @@ import type { URL } from "node:url";
 import { ApiError } from "../../utils/errors.js";
 import { checkLimit } from "../../utils/rateLimiter.js";
 import { legacyLogError as logError } from "../../utils/logger.js";
+import { getCorsHeaders } from "../middleware/cors.js";
 import * as orchestrator from "../services/orchestrator.js";
 
 /**
@@ -187,6 +188,7 @@ export async function handleGenerateResume(
   res.writeHead(201, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(bodyStr).toString(),
+    ...getCorsHeaders(),
   });
   res.end(bodyStr);
 }
@@ -302,6 +304,7 @@ export async function handleGenerateCoverLetter(
   res.writeHead(201, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(bodyStr).toString(),
+    ...getCorsHeaders(),
   });
   res.end(bodyStr);
 }
@@ -412,6 +415,7 @@ export async function handleSkillsOptimization(
   res.writeHead(200, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(bodyStr).toString(),
+    ...getCorsHeaders(),
   });
   res.end(bodyStr);
 }
@@ -522,6 +526,7 @@ export async function handleExperienceTailoring(
   res.writeHead(201, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(bodyStr).toString(),
+    ...getCorsHeaders(),
   });
   res.end(bodyStr);
 }

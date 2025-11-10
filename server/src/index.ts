@@ -1,4 +1,15 @@
-﻿import { createServer } from "./server.js";
+﻿/**
+ * Server Entry Point
+ *
+ * Loads environment variables, creates the HTTP server, and starts listening.
+ * Handles graceful shutdown on SIGTERM/SIGINT.
+ */
+
+// Load environment variables FIRST (before any imports that depend on process.env)
+import { config } from "dotenv";
+config(); // Loads .env from server/.env
+
+import { createServer } from "./server.js";
 import { logSystemEvent } from "../utils/logger.js";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;

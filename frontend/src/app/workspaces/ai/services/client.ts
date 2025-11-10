@@ -57,6 +57,8 @@ async function postJson<T>(
   const url = `${BASE_URL}${path}`;
   const headers = await getAuthHeaders(userId);
 
+  console.log(`🚀 POST ${url}`, { body, headers });
+
   const resp = await fetch(url, {
     method: "POST",
     headers,
@@ -65,8 +67,10 @@ async function postJson<T>(
   let data: unknown = null;
   try {
     data = await resp.json();
+    console.log(`✅ Response ${resp.status}:`, data);
   } catch {
     // ignore json parse error; will throw below if not ok
+    console.warn(`⚠️ Failed to parse JSON response`);
   }
   if (!resp.ok) {
     const anyData = data as Record<string, unknown> | null;

@@ -38,6 +38,9 @@ export interface ResumeArtifactContent {
       company?: string;
       dates?: string;
       bullets: string[];
+      original_bullets?: string[]; // Original bullets from profile (for comparison)
+      relevance_score?: number; // 0..100 how relevant this role is to the target job
+      notes?: string[]; // AI notes explaining tailoring choices
     }>;
     education?: Array<{
       education_id?: string;

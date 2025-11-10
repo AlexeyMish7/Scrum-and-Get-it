@@ -26,8 +26,11 @@ export interface BuildResumePromptArgs {
     id?: string;
     job_title?: string;
     company_name?: string;
+    location?: string;
     start_date?: string;
     end_date?: string | null;
+    job_description?: string;
+    current_position?: boolean;
   }>;
   education?: Array<{
     id?: string;
@@ -35,12 +38,18 @@ export interface BuildResumePromptArgs {
     degree_type?: string | null;
     field_of_study?: string | null;
     graduation_date?: string | null;
+    gpa?: number | null;
+    honors?: string | null;
   }>;
   projects?: Array<{
     id?: string;
     proj_name?: string;
+    proj_description?: string | null;
     role?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
     tech_and_skills?: string[] | null;
+    proj_outcomes?: string | null;
   }>;
   certifications?: Array<{
     id?: string;
@@ -74,57 +83,74 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
   // Build compact context lines from related tables (limit tokens)
   const employmentLines = (args.employment || [])
     .slice(0, 6)
-    .map((e) =>
-      safe(
-        [
-          e.job_title || "",
-          e.company_name ? `@ ${e.company_name}` : "",
-          e.start_date || e.end_date
-            ? `(${e.start_date ?? "?"} – ${e.end_date ?? "present"})`
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      )
-    )
+    .map((e) => {
+      const basics = [
+        e.job_title || "",
+        e.company_name ? `@ ${e.company_name}` : "",
+        e.start_date || e.end_date
+          ? `(${e.start_date ?? "?"} – ${
+              e.current_position ? "present" : e.end_date ?? "present"
+            })`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      // Include job description bullets if available (first 200 chars)
+      const desc = e.job_description
+        ? ` - ${safe(e.job_description, 200)}`
+        : "";
+      return safe(basics + desc);
+    })
     .filter(Boolean)
     .join("; ");
 
   const educationLines = (args.education || [])
     .slice(0, 4)
-    .map((ed) =>
-      safe(
-        [
-          ed.institution_name || "",
-          ed.degree_type || ed.field_of_study
-            ? `— ${[ed.degree_type, ed.field_of_study]
-                .filter(Boolean)
-                .join(" ")}`
-            : "",
-          ed.graduation_date ? `(Grad: ${ed.graduation_date})` : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      )
-    )
+    .map((ed) => {
+      const basics = [
+        ed.institution_name || "",
+        ed.degree_type || ed.field_of_study
+          ? `— ${[ed.degree_type, ed.field_of_study].filter(Boolean).join(" ")}`
+          : "",
+        ed.graduation_date ? `(Grad: ${ed.graduation_date})` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const extras = [
+        ed.gpa && ed.gpa > 0 ? `GPA: ${ed.gpa}` : "",
+        ed.honors ? safe(ed.honors, 60) : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return safe(extras ? `${basics} [${extras}]` : basics);
+    })
     .filter(Boolean)
     .join("; ");
 
   const projectLines = (args.projects || [])
     .slice(0, 4)
-    .map((p) =>
-      safe(
-        [
-          p.proj_name || "",
-          p.role ? `— ${p.role}` : "",
-          Array.isArray(p.tech_and_skills) && p.tech_and_skills.length
-            ? `(Tech: ${p.tech_and_skills.slice(0, 6).join(", ")})`
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      )
-    )
+    .map((p) => {
+      const basics = [
+        p.proj_name || "",
+        p.role ? `— ${p.role}` : "",
+        p.start_date || p.end_date
+          ? `(${p.start_date ?? "?"} – ${p.end_date ?? "present"})`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const tech =
+        Array.isArray(p.tech_and_skills) && p.tech_and_skills.length
+          ? ` Tech: ${p.tech_and_skills.slice(0, 6).join(", ")}`
+          : "";
+      const desc = p.proj_description
+        ? ` - ${safe(p.proj_description, 150)}`
+        : "";
+      const outcomes = p.proj_outcomes
+        ? ` Outcomes: ${safe(p.proj_outcomes, 100)}`
+        : "";
+      return safe(basics + tech + desc + outcomes);
+    })
     .filter(Boolean)
     .join("; ");
 
@@ -147,31 +173,35 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
     // Expanded JSON contract to support richer editors while keeping backward compatibility with bullets[]
     `Output: Strict JSON only. Shape:`,
     `{
-      "summary": string?,
-      "bullets": [{ "text": string }]?,
-      "ordered_skills": string[]?,
-      "emphasize_skills": string[]?,
-      "add_skills": string[]?,
-      "ats_keywords": string[]?,
-      "score": number?,
+      "summary": string (REQUIRED - write a compelling 2-3 sentence professional summary tailored to the target role),
+      "ordered_skills": string[] (REQUIRED - list of skills ordered by relevance to the job, with most important first),
+      "emphasize_skills": string[]? (skills to highlight prominently),
+      "add_skills": string[]? (job requirements the candidate should consider adding),
+      "ats_keywords": string[]? (important keywords from job description for ATS optimization),
+      "score": number? (0-100 match score),
       "sections": {
-        "experience"?: [{ "employment_id"?: string, "role"?: string, "company"?: string, "dates"?: string, "bullets": string[] }],
-        "education"?: [{ "education_id"?: string, "institution"?: string, "degree"?: string, "graduation_date"?: string, "details"?: string[] }],
-        "projects"?: [{ "project_id"?: string, "name"?: string, "role"?: string, "bullets": string[] }]
-      }?,
-      "meta"?: object
+        "experience": [{ "employment_id": string, "role": string, "company": string, "dates": string, "bullets": string[] }] (REQUIRED if employment data provided - generate 3-5 impactful, quantified achievement bullets per role),
+        "education": [{ "education_id": string, "institution": string, "degree": string, "graduation_date": string, "details": string[]? }] (REQUIRED if education data provided),
+        "projects": [{ "project_id": string, "name": string, "role": string?, "bullets": string[] }]? (include if projects data provided - generate 2-3 bullets highlighting impact and tech used)
+      },
+      "meta"?: { "confidence": number, "notes": string }
     }`,
+    `CRITICAL: If employment, education, or projects data is provided in the context below, you MUST populate the corresponding sections with tailored content.`,
+    `For experience bullets: Use STAR format (Situation-Task-Action-Result). Quantify impact where possible. Start with strong action verbs.`,
+    `For education: Include GPA if >= 3.5, honors if present.`,
+    `For projects: Focus on technical achievements, team collaboration, and measurable outcomes.`,
     `Do not include any prose outside of JSON.`,
     `Tone: ${toneStr}. ${focusStr}`,
     `\nCandidate: ${name}`,
-    summary ? `Summary: ${summary}` : "",
-    skills ? `Skills: ${skills}` : "",
-    employmentLines ? `Employment: ${employmentLines}` : "",
-    educationLines ? `Education: ${educationLines}` : "",
-    projectLines ? `Projects: ${projectLines}` : "",
+    summary ? `Current Summary: ${summary}` : "",
+    skills ? `Current Skills: ${skills}` : "",
+    employmentLines ? `Employment History:\n${employmentLines}` : "",
+    educationLines ? `Education Background:\n${educationLines}` : "",
+    projectLines ? `Projects:\n${projectLines}` : "",
     certLines ? `Certifications: ${certLines}` : "",
     `\nTarget Role: ${title} at ${company}`,
-    description ? `Job Description: ${description}` : "",
+    description ? `Job Description:\n${description}` : "",
+    `\nReminder: Generate all sections with data provided above. Focus on achievements and quantifiable results.`,
   ]
     .filter(Boolean)
     .join("\n");

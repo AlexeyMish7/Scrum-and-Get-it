@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   List,
   ListItem,
@@ -818,38 +817,55 @@ export default function TemplateManager() {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        mb={2}
+        mb={3}
       >
-        <Typography variant="h5">Resume Templates</Typography>
+        <Box>
+          <Typography variant="h5" sx={{ mb: 0.5 }}>
+            Your Custom Templates
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {templateList.length === 0
+              ? "No custom templates yet. Create your first template to get started!"
+              : `${templateList.length} custom template${
+                  templateList.length !== 1 ? "s" : ""
+                } • Click "New Template" to add more`}
+          </Typography>
+        </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            startIcon={<AddIcon />}
-            variant="contained"
-            onClick={() => createFrom()}
-          >
-            New Template
-          </Button>
-          <Button
-            startIcon={<UploadFileIcon />}
-            variant="outlined"
-            component="label"
-          >
-            Import
-            <input
-              hidden
-              type="file"
-              accept="application/json"
-              onChange={(e) => importTemplateFile(e.target.files?.[0])}
-            />
-          </Button>
-          {active && (
+          <Tooltip title="Create a new custom template">
+            <Button
+              startIcon={<AddIcon />}
+              variant="contained"
+              onClick={() => createFrom()}
+            >
+              New Template
+            </Button>
+          </Tooltip>
+          <Tooltip title="Import template from JSON file">
             <Button
               startIcon={<UploadFileIcon />}
               variant="outlined"
-              onClick={promoteActiveDraft}
+              component="label"
             >
-              Promote Draft
+              Import
+              <input
+                hidden
+                type="file"
+                accept="application/json"
+                onChange={(e) => importTemplateFile(e.target.files?.[0])}
+              />
             </Button>
+          </Tooltip>
+          {active && (
+            <Tooltip title="Convert current resume draft to template">
+              <Button
+                startIcon={<UploadFileIcon />}
+                variant="outlined"
+                onClick={promoteActiveDraft}
+              >
+                Promote Draft
+              </Button>
+            </Tooltip>
           )}
         </Stack>
       </Stack>
@@ -886,85 +902,179 @@ export default function TemplateManager() {
       )}
 
       <List sx={{ display: "flex", gap: 2, flexWrap: "wrap", p: 0 }}>
+        {templateList.length === 0 && (
+          <Box sx={{ width: "100%", textAlign: "center", py: 6 }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No Custom Templates Yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Create your first custom template to personalize your resumes with
+              unique colors, fonts, and layouts.
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => createFrom()}
+              size="large"
+            >
+              Create Your First Template
+            </Button>
+          </Box>
+        )}
         {templateList.map((t) => (
           <ListItem key={t.id} sx={{ width: { xs: "100%", sm: 360 }, p: 0 }}>
-            <Card sx={{ width: "100%" }}>
+            <Card
+              sx={{
+                width: "100%",
+                "&:hover": { boxShadow: 3 },
+                transition: "box-shadow 0.2s",
+              }}
+            >
               <CardContent>
                 <Stack
                   direction="row"
                   justifyContent="space-between"
-                  alignItems="center"
+                  alignItems="flex-start"
+                  sx={{ mb: 2 }}
                 >
-                  <Box>
-                    <Typography variant="subtitle1">{t.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t.type} • {t.layout}
-                    </Typography>
-                  </Box>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {defaultId === t.id && (
-                      <Tooltip title="Default template">
-                        <StarIcon color="warning" />
-                      </Tooltip>
-                    )}
-                    {t.master && (
-                      <Tooltip title="Master template">
-                        <StarIcon color="info" />
-                      </Tooltip>
-                    )}
-                    {usageCounts.get(t.id) && usageCounts.get(t.id)! > 0 && (
-                      <Chip
-                        size="small"
-                        label={`Used ${usageCounts.get(t.id)}`}
-                      />
-                    )}
-                    <Tooltip title="Preview">
-                      <IconButton onClick={() => setPreview(t)}>
-                        <PreviewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Use to create new resume">
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => applyTemplateToNewResume(t)}
-                      >
-                        Use
-                      </Button>
-                    </Tooltip>
-                    {active && (
-                      <Tooltip title="Apply style to active draft">
-                        <Button
+                  <Box sx={{ flex: 1 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mb: 0.5 }}
+                    >
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {t.name}
+                      </Typography>
+                      {defaultId === t.id && (
+                        <Chip
+                          icon={<StarIcon />}
+                          label="Default"
                           size="small"
-                          variant="outlined"
-                          onClick={() => applyTemplateStyle(t)}
-                        >
-                          Style
-                        </Button>
-                      </Tooltip>
+                          color="warning"
+                        />
+                      )}
+                      {t.master && (
+                        <Chip
+                          icon={<StarIcon />}
+                          label="Master"
+                          size="small"
+                          color="info"
+                        />
+                      )}
+                    </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      <Chip
+                        label={t.type}
+                        size="small"
+                        variant="outlined"
+                        sx={{ textTransform: "capitalize" }}
+                      />
+                      <Chip
+                        label={t.layout}
+                        size="small"
+                        variant="outlined"
+                        sx={{ textTransform: "capitalize" }}
+                      />
+                      <Chip label={t.font} size="small" variant="outlined" />
+                    </Stack>
+                    {usageCounts.get(t.id) && usageCounts.get(t.id)! > 0 && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ mt: 1, display: "block" }}
+                      >
+                        Used in {usageCounts.get(t.id)} resume
+                        {usageCounts.get(t.id)! > 1 ? "s" : ""}
+                      </Typography>
                     )}
-                  </Stack>
+                  </Box>
                 </Stack>
 
-                <Box
-                  mt={2}
-                  sx={{
-                    border: `1px solid ${t.colors.accent}`,
-                    p: 1,
-                    borderRadius: 1,
-                  }}
-                >
+                {/* Color preview */}
+                <Box sx={{ mb: 2 }}>
                   <Typography
-                    sx={{ fontFamily: t.font, color: t.colors.primary }}
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mb: 0.5 }}
                   >
-                    {t.name} — preview
+                    Colors:
                   </Typography>
-                  <Box
-                    mt={1}
-                    sx={{ height: 48, bgcolor: t.colors.bg, borderRadius: 1 }}
-                  />
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Primary">
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          bgcolor: t.colors.primary,
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Accent">
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          bgcolor: t.colors.accent,
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Background">
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          bgcolor: t.colors.bg,
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                    </Tooltip>
+                  </Stack>
                 </Box>
+
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Tooltip title="Preview this template">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PreviewIcon />}
+                      onClick={() => setPreview(t)}
+                    >
+                      Preview
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Use this template for new resume">
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => applyTemplateToNewResume(t)}
+                    >
+                      Use
+                    </Button>
+                  </Tooltip>
+                  {active && (
+                    <Tooltip title="Apply template styling to active draft">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => applyTemplateStyle(t)}
+                      >
+                        Apply Style
+                      </Button>
+                    </Tooltip>
+                  )}
+                </Stack>
               </CardContent>
+
               <Divider />
               <CardActions sx={{ flexWrap: "wrap", gap: 1 }}>
                 <Button

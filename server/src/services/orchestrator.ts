@@ -96,35 +96,39 @@ export async function handleGenerateResume(
     // soft-fail; continue without skills enrichment
   }
   try {
-    // employment
+    // employment - include job_description for AI to use in bullet generation
     const { data: emp, error: empErr } = await supabase
       .from("employment")
-      .select("id, job_title, company_name, start_date, end_date")
+      .select(
+        "id, job_title, company_name, location, start_date, end_date, job_description, current_position"
+      )
       .eq("user_id", req.userId)
-      .order("start_date", { ascending: true });
+      .order("start_date", { ascending: false }); // Most recent first
     if (empErr) throw empErr;
     employment = emp ?? [];
   } catch {}
   try {
-    // education
+    // education - include gpa and honors for early-career context
     const { data: edu, error: eduErr } = await supabase
       .from("education")
       .select(
-        "id, institution_name, degree_type, field_of_study, graduation_date"
+        "id, institution_name, degree_type, field_of_study, graduation_date, gpa, honors"
       )
       .eq("user_id", req.userId)
-      .order("graduation_date", { ascending: true });
+      .order("graduation_date", { ascending: false }); // Most recent first
     if (eduErr) throw eduErr;
     education = edu ?? [];
   } catch {}
   try {
-    // projects
+    // projects - include descriptions and outcomes for richer context
     const { data: proj, error: projErr } = await supabase
       .from("projects")
-      .select("id, proj_name, role, tech_and_skills")
+      .select(
+        "id, proj_name, proj_description, role, start_date, end_date, tech_and_skills, proj_outcomes"
+      )
       .eq("user_id", req.userId)
-      .order("created_at", { ascending: false })
-      .limit(8);
+      .order("start_date", { ascending: false }) // Most recent first
+      .limit(10);
     if (projErr) throw projErr;
     projects = proj ?? [];
   } catch {}
@@ -192,7 +196,40 @@ export async function handleGenerateResume(
   }
 
   // 6) Post-process / construct artifact row (pseudo id)
-  const normalized = sanitizeResumeContent(gen.json ?? { text: gen.text });
+  // Debug: log what AI returned
+  const aiResponse = gen.json as any;
+  logInfo("ai_response_preview", {
+    userId: req.userId,
+    jobId: req.jobId,
+    hasSummary: !!aiResponse?.summary,
+    hasSkills: !!aiResponse?.ordered_skills,
+    hasExperience: !!aiResponse?.sections?.experience,
+    hasEducation: !!aiResponse?.sections?.education,
+    hasProjects: !!aiResponse?.sections?.projects,
+    rawKeys: aiResponse ? Object.keys(aiResponse) : [],
+    summaryPreview: aiResponse?.summary
+      ? String(aiResponse.summary).substring(0, 100)
+      : null,
+    skillsCount: aiResponse?.ordered_skills?.length ?? 0,
+    experienceCount: aiResponse?.sections?.experience?.length ?? 0,
+  });
+  const normalized = sanitizeResumeContent(gen.json ?? { text: gen.text }, {
+    employment,
+    education,
+    projects,
+  });
+  logInfo("ai_normalized_preview", {
+    userId: req.userId,
+    jobId: req.jobId,
+    normalizedKeys: normalized ? Object.keys(normalized) : [],
+    hasSummaryNorm: !!normalized?.summary,
+    hasSkillsNorm: !!normalized?.ordered_skills,
+    hasExperienceNorm: !!normalized?.sections?.experience,
+    summaryNormPreview: normalized?.summary
+      ? String(normalized.summary).substring(0, 100)
+      : null,
+    skillsNormCount: normalized?.ordered_skills?.length ?? 0,
+  });
   const artifact: ArtifactRow = {
     id: "generated-temp-id",
     user_id: req.userId,
@@ -626,8 +663,19 @@ function selectModel(options?: { model?: string } | null): string | undefined {
  * - Forces summary to string (or null)
  * - Ensures sections.experience bullets are arrays of strings
  * - Trims whitespace; drops obviously invalid shapes
+ * - Enriches sections with database data if AI didn't provide them
+ *
+ * @param input - Raw AI output
+ * @param dbData - Optional database records to enrich sections if AI omitted them
  */
-function sanitizeResumeContent(input: any): any {
+function sanitizeResumeContent(
+  input: any,
+  dbData?: {
+    employment?: Array<any>;
+    education?: Array<any>;
+    projects?: Array<any>;
+  }
+): any {
   try {
     const out: any = typeof input === "object" && input ? { ...input } : {};
     // summary must be a string
@@ -655,26 +703,100 @@ function sanitizeResumeContent(input: any): any {
       }
     }
 
-    // sections.experience normalization
-    if (out.sections && typeof out.sections === "object") {
-      const exp = out.sections.experience;
-      if (Array.isArray(exp)) {
-        out.sections.experience = exp
-          .map((row: any) => {
-            const bullets = Array.isArray(row?.bullets)
-              ? row.bullets.filter((b: any) => typeof b === "string")
-              : [];
-            return {
-              employment_id: row?.employment_id ?? undefined,
-              role: row?.role ?? undefined,
-              company: row?.company ?? undefined,
-              dates: row?.dates ?? undefined,
-              bullets,
-            };
-          })
-          .filter((r: any) => r.bullets.length > 0 || r.role || r.company);
-      }
+    // Ensure sections object exists
+    if (!out.sections || typeof out.sections !== "object") {
+      out.sections = {};
     }
+
+    // sections.experience normalization
+    const exp = out.sections.experience;
+    if (Array.isArray(exp)) {
+      out.sections.experience = exp
+        .map((row: any) => {
+          const bullets = Array.isArray(row?.bullets)
+            ? row.bullets.filter((b: any) => typeof b === "string")
+            : [];
+          return {
+            employment_id: row?.employment_id ?? undefined,
+            role: row?.role ?? undefined,
+            company: row?.company ?? undefined,
+            dates: row?.dates ?? undefined,
+            bullets,
+          };
+        })
+        .filter((r: any) => r.bullets.length > 0 || r.role || r.company);
+    } else if (dbData?.employment && dbData.employment.length > 0) {
+      // Fallback: populate from database if AI didn't provide experience
+      out.sections.experience = dbData.employment.map((emp: any) => ({
+        employment_id: emp.id,
+        role: emp.job_title,
+        company: emp.company_name,
+        dates: `${emp.start_date ?? "?"} – ${
+          emp.current_position ? "present" : emp.end_date ?? "present"
+        }`,
+        bullets: emp.job_description
+          ? [emp.job_description.slice(0, 200)] // Use first 200 chars as placeholder
+          : [],
+      }));
+    }
+
+    // sections.education normalization
+    const edu = out.sections.education;
+    if (Array.isArray(edu)) {
+      out.sections.education = edu
+        .map((row: any) => ({
+          education_id: row?.education_id ?? undefined,
+          institution: row?.institution ?? undefined,
+          degree: row?.degree ?? undefined,
+          graduation_date: row?.graduation_date ?? undefined,
+          details: Array.isArray(row?.details)
+            ? row.details.filter((d: any) => typeof d === "string")
+            : [],
+        }))
+        .filter((r: any) => r.institution || r.degree);
+    } else if (dbData?.education && dbData.education.length > 0) {
+      // Fallback: populate from database
+      out.sections.education = dbData.education.map((ed: any) => ({
+        education_id: ed.id,
+        institution: ed.institution_name,
+        degree: [ed.degree_type, ed.field_of_study].filter(Boolean).join(" "),
+        graduation_date: ed.graduation_date,
+        details: [
+          ed.gpa && ed.gpa >= 3.5 ? `GPA: ${ed.gpa}` : "",
+          ed.honors ? ed.honors : "",
+        ].filter(Boolean),
+      }));
+    }
+
+    // sections.projects normalization
+    const proj = out.sections.projects;
+    if (Array.isArray(proj)) {
+      out.sections.projects = proj
+        .map((row: any) => ({
+          project_id: row?.project_id ?? undefined,
+          name: row?.name ?? undefined,
+          role: row?.role ?? undefined,
+          bullets: Array.isArray(row?.bullets)
+            ? row.bullets.filter((b: any) => typeof b === "string")
+            : [],
+        }))
+        .filter((r: any) => r.name || r.bullets.length > 0);
+    } else if (dbData?.projects && dbData.projects.length > 0) {
+      // Fallback: populate from database
+      out.sections.projects = dbData.projects.map((p: any) => {
+        const bullets = [
+          p.proj_description ? p.proj_description.slice(0, 150) : "",
+          p.proj_outcomes ? p.proj_outcomes.slice(0, 150) : "",
+        ].filter(Boolean);
+        return {
+          project_id: p.id,
+          name: p.proj_name,
+          role: p.role,
+          bullets,
+        };
+      });
+    }
+
     return out;
   } catch {
     return input;

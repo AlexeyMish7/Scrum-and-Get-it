@@ -48,6 +48,7 @@ import CompanyResearch from "@workspaces/ai/pages/CompanyResearch/index";
 import TemplatesHub from "@workspaces/ai/pages/TemplatesHub/index";
 import GenerateResume from "@workspaces/ai/pages/GenerateResume/index";
 import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
+import ResumeEditorV2 from "@workspaces/ai/pages/ResumeEditorV2/index";
 import JobsLayout from "@workspaces/jobs/JobsLayout";
 import PipelinePage from "./app/workspaces/jobs/pages/PipelinePage/PipelinePage";
 import NewJobPage from "./app/workspaces/jobs/pages/NewJobPage";
@@ -69,7 +70,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardAI /> },
-      { path: "resume", element: <GenerateResume /> },
+      { path: "resume", element: <ResumeEditorV2 /> },
+      { path: "resume-old", element: <GenerateResume /> },
       { path: "cover-letter", element: <GenerateCoverLetter /> },
       { path: "job-match", element: <JobMatching /> },
       { path: "company-research", element: <CompanyResearch /> },

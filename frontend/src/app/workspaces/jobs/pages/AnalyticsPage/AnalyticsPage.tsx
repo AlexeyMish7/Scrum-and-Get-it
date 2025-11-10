@@ -92,11 +92,20 @@ export default function AnalyticsPage() {
     return buckets;
   }, [jobs]);
 
-  const total = useMemo(() => Object.values(funnel).reduce((a, b) => a + b, 0), [funnel]);
+  const total = useMemo(
+    () => Object.values(funnel).reduce((a, b) => a + b, 0),
+    [funnel]
+  );
 
   // Base analytics
-  const byCompany = useMemo(() => computeAvgResponseDays(jobs, "company", 10), [jobs]);
-  const byIndustry = useMemo(() => computeAvgResponseDays(jobs, "industry", 10), [jobs]);
+  const byCompany = useMemo(
+    () => computeAvgResponseDays(jobs, "company", 10),
+    [jobs]
+  );
+  const byIndustry = useMemo(
+    () => computeAvgResponseDays(jobs, "industry", 10),
+    [jobs]
+  );
   const successByIndustry = useMemo(
     () =>
       computeSuccessRates(jobs, "industry") as Array<{
@@ -120,10 +129,15 @@ export default function AnalyticsPage() {
     const offers = funnel.Offer ?? 0;
     const offerRate = offers / Math.max(1, total);
     if (offerRate < 0.05)
-      recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
+      recs.push(
+        "Offer rate is low. Improve tailoring or prioritize higher-match roles."
+      );
     if (byIndustry.length && byIndustry[0].avgDays > 14)
-      recs.push("Response times are long in your common industries; consider earlier follow-ups.");
-    if (recs.length === 0) recs.push("Metrics look healthy — continue monitoring trends.");
+      recs.push(
+        "Response times are long in your common industries; consider earlier follow-ups."
+      );
+    if (recs.length === 0)
+      recs.push("Metrics look healthy — continue monitoring trends.");
     return recs;
   }, [funnel, total, byIndustry]);
 
@@ -140,7 +154,10 @@ export default function AnalyticsPage() {
     rows.push(["Metric", "Value"]);
     rows.push(["Total jobs", String(total)]);
     rows.push(["Offers", String(funnel.Offer ?? 0)]);
-    rows.push(["Offer rate", String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3))]);
+    rows.push([
+      "Offer rate",
+      String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3)),
+    ]);
     rows.push(["Weekly goal", String(weeklyGoal)]);
     rows.push([]);
     rows.push(["Funnel breakdown"]);
@@ -160,10 +177,15 @@ export default function AnalyticsPage() {
       ]);
     rows.push(["Response rate", `${(responseRate * 100).toFixed(1)}%`]);
     rows.push(["Average time to offer (days)", String(timeToOffer.toFixed(1))]);
-    rows.push(["Deadline adherence", `${(deadlineStats.adherence * 100).toFixed(1)}%`]);
+    rows.push([
+      "Deadline adherence",
+      `${(deadlineStats.adherence * 100).toFixed(1)}%`,
+    ]);
 
     const csv = rows
-      .map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .map((r) =>
+        r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")
+      )
       .join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -182,7 +204,14 @@ export default function AnalyticsPage() {
         Jobs Analytics
       </Typography>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 2, flexDirection: { xs: "column", md: "row" } }}>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 2,
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
         <Box sx={{ width: { xs: "100%", md: "33%" } }}>
           <NextDeadlinesWidget />
         </Box>
@@ -269,9 +298,18 @@ export default function AnalyticsPage() {
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Application volume (last 12 weeks)</Typography>
+            <Typography variant="h6">
+              Application volume (last 12 weeks)
+            </Typography>
             <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", height: 120 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                alignItems: "flex-end",
+                height: 120,
+              }}
+            >
               {monthlyApps.map((m) => (
                 <Box key={m.month} sx={{ flex: 1, textAlign: "center" }}>
                   <Box
@@ -282,7 +320,9 @@ export default function AnalyticsPage() {
                       borderRadius: 0.5,
                     }}
                   />
-                  <Typography variant="caption">{m.month.split("-")[1]}</Typography>
+                  <Typography variant="caption">
+                    {m.month.split("-")[1]}
+                  </Typography>
                 </Box>
               ))}
             </Box>
@@ -300,7 +340,9 @@ export default function AnalyticsPage() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Response Rate</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{(responseRate * 100).toFixed(1)}%</Typography>
+            <Typography variant="body1">
+              {(responseRate * 100).toFixed(1)}%
+            </Typography>
           </Paper>
         </Grid>
 
@@ -326,8 +368,8 @@ export default function AnalyticsPage() {
             <Typography variant="h6">Deadline Adherence</Typography>
             <Divider sx={{ my: 1 }} />
             <Typography variant="body1">
-              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met (
-              {(deadlineStats.adherence * 100).toFixed(1)}%)
+              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met
+              ({(deadlineStats.adherence * 100).toFixed(1)}%)
             </Typography>
           </Paper>
         </Grid>
@@ -338,7 +380,9 @@ export default function AnalyticsPage() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Time to Offer</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{timeToOffer.toFixed(1)} days</Typography>
+            <Typography variant="body1">
+              {timeToOffer.toFixed(1)} days
+            </Typography>
           </Paper>
         </Grid>
 
@@ -386,8 +430,8 @@ export default function AnalyticsPage() {
       </Grid>
 
       <Typography color="text.secondary">
-        Data is computed from your jobs list (scoped to your account). Benchmarks are basic static
-        values for quick comparison.
+        Data is computed from your jobs list (scoped to your account).
+        Benchmarks are basic static values for quick comparison.
       </Typography>
       {error ? <Typography color="error">{error}</Typography> : null}
     </Box>

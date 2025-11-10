@@ -103,7 +103,7 @@ export default function CompanyResearch() {
 
       await new Promise((res) => setTimeout(res, 1000));
       setCompany(mockData);
-    } catch (err) {
+    } catch {
       setError("Failed to fetch company information.");
     } finally {
       setLoading(false);
@@ -147,11 +147,7 @@ export default function CompanyResearch() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Button
-          variant="contained"
-          onClick={handleSearch}
-          disabled={loading}
-        >
+        <Button variant="contained" onClick={handleSearch} disabled={loading}>
           {loading ? <CircularProgress size={24} /> : "Search"}
         </Button>
       </Stack>
@@ -166,7 +162,12 @@ export default function CompanyResearch() {
       {company && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              sx={{ mb: 2 }}
+            >
               <Avatar
                 src={company.logo}
                 alt={company.name}

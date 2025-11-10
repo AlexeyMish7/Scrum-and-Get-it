@@ -154,7 +154,25 @@ async function sendToOpenAI(
           ?.map((c: any) => c.message?.content ?? c.text)
           .join("\n") ?? null;
       const tokens = raw?.usage?.total_tokens ?? undefined;
-      return { text, raw, tokens, meta: { status: resp.status } };
+
+      // Try to parse JSON from text if it looks like JSON
+      let json: unknown = undefined;
+      if (text) {
+        const trimmed = text.trim();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          try {
+            json = JSON.parse(trimmed);
+          } catch (e) {
+            // Not valid JSON, leave json undefined and keep text
+            logInfo("ai_json_parse_failed", {
+              error: String(e),
+              textPreview: trimmed.substring(0, 200),
+            });
+          }
+        }
+      }
+
+      return { text, json, raw, tokens, meta: { status: resp.status } };
     } catch (err: any) {
       clearTimeout(id);
       const isAbort = err?.name === "AbortError";

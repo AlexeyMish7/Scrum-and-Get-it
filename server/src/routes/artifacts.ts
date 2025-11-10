@@ -13,6 +13,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { URL } from "node:url";
 import { ApiError } from "../../utils/errors.js";
+import { getCorsHeaders } from "../middleware/cors.js";
 import {
   legacyLogInfo as logInfo,
   legacyLogError as logError,
@@ -76,6 +77,7 @@ export async function handleListArtifacts(
     res.writeHead(200, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(body).toString(),
+      ...getCorsHeaders(),
     });
     res.end(body);
     return;
@@ -92,6 +94,7 @@ export async function handleListArtifacts(
     res.writeHead(200, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(body).toString(),
+      ...getCorsHeaders(),
     });
     res.end(body);
   } catch (e: any) {
@@ -143,6 +146,7 @@ export async function handleGetArtifact(
     res.writeHead(200, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(body).toString(),
+      ...getCorsHeaders(),
     });
     res.end(body);
   } catch (e: any) {
@@ -303,6 +307,7 @@ export async function handleCreateJobMaterials(
     res.writeHead(201, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(bodyStr).toString(),
+      ...getCorsHeaders(),
     });
     res.end(bodyStr);
   } catch (e: any) {
@@ -348,6 +353,7 @@ export async function handleListJobMaterialsForJob(
     res.writeHead(200, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(body).toString(),
+      ...getCorsHeaders(),
     });
     res.end(body);
     return;
@@ -366,6 +372,7 @@ export async function handleListJobMaterialsForJob(
     res.writeHead(200, {
       "Content-Type": "application/json",
       "Content-Length": Buffer.byteLength(bodyStr).toString(),
+      ...getCorsHeaders(),
     });
     res.end(bodyStr);
   } catch (e: any) {
