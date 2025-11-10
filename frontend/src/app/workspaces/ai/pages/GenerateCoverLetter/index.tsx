@@ -1,17 +1,16 @@
 import { Box } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
-import CoverLetterTemplates from "../cover_letters/CoverLetterTemplates";
+import CoverLetterEditor from "../CoverLetterEditor";
 
 export default function GenerateCoverLetter() {
-  // Reuse the existing CoverLetterTemplates component under the AI workspace
-  // so the AI sidebar's Cover Letters link shows the functional templates UI.
+  // Use the new CoverLetterEditor with AI generation, company research, and export
   return (
     <Box>
       <RegionAnchor
         id="[B]"
         desc="Cover Letter editor + company research pane"
       />
-      <CoverLetterTemplates />
+      <CoverLetterEditor />
     </Box>
   );
 }

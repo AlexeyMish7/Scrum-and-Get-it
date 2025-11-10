@@ -30,3 +30,12 @@ export {
   handleCreateJobMaterials,
   handleListJobMaterialsForJob,
 } from "./artifacts.js";
+
+// Cover letter drafts routes
+export {
+  handleListDrafts,
+  handleGetDraft,
+  handleCreateDraft,
+  handleUpdateDraft,
+  handleDeleteDraft,
+} from "./coverLetterDrafts.js";

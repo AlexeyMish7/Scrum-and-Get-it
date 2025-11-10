@@ -44,6 +44,11 @@ import {
   handleGetArtifact,
   handleCreateJobMaterials,
   handleListJobMaterialsForJob,
+  handleListDrafts,
+  handleGetDraft,
+  handleCreateDraft,
+  handleUpdateDraft,
+  handleDeleteDraft,
 } from "./routes/index.js";
 
 // ------------------------------------------------------------------
@@ -247,6 +252,11 @@ function sendError(res: http.ServerResponse, err: any) {
  * - GET  /api/artifacts/:id
  * - POST /api/job-materials
  * - GET  /api/jobs/:jobId/materials
+ * - GET  /api/cover-letter/drafts
+ * - GET  /api/cover-letter/drafts/:id
+ * - POST /api/cover-letter/drafts
+ * - PATCH /api/cover-letter/drafts/:id
+ * - DELETE /api/cover-letter/drafts/:id
  *
  * Error modes:
  * - 404 for unknown routes
@@ -368,6 +378,76 @@ async function handleRequest(
     if (method === "GET" && pathname.match(/^\/api\/jobs\/\d+\/materials$/)) {
       const userId = await requireAuth(req);
       await handleListJobMaterialsForJob(req, res, url, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // COVER LETTER DRAFTS ENDPOINTS (protected)
+    // ------------------------------------------------------------------
+    // GET /api/cover-letter/drafts
+    if (method === "GET" && pathname === "/api/cover-letter/drafts") {
+      const userId = await requireAuth(req);
+      await handleListDrafts(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // GET /api/cover-letter/drafts/:id
+    if (
+      method === "GET" &&
+      pathname.match(/^\/api\/cover-letter\/drafts\/.+$/)
+    ) {
+      const userId = await requireAuth(req);
+      const draftId = pathname.split("/").pop() || "";
+      await handleGetDraft(req, res, url, ctx.reqId, userId, draftId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // POST /api/cover-letter/drafts
+    if (method === "POST" && pathname === "/api/cover-letter/drafts") {
+      const userId = await requireAuth(req);
+      await handleCreateDraft(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
+    // PATCH /api/cover-letter/drafts/:id
+    if (
+      method === "PATCH" &&
+      pathname.match(/^\/api\/cover-letter\/drafts\/.+$/)
+    ) {
+      const userId = await requireAuth(req);
+      const draftId = pathname.split("/").pop() || "";
+      await handleUpdateDraft(req, res, url, ctx.reqId, userId, draftId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // DELETE /api/cover-letter/drafts/:id
+    if (
+      method === "DELETE" &&
+      pathname.match(/^\/api\/cover-letter\/drafts\/.+$/)
+    ) {
+      const userId = await requireAuth(req);
+      const draftId = pathname.split("/").pop() || "";
+      await handleDeleteDraft(req, res, url, ctx.reqId, userId, draftId);
+      ctx.logComplete(method, pathname, 204);
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // COMPANY RESEARCH
+    // ------------------------------------------------------------------
+
+    // GET /api/company/research
+    if (method === "GET" && pathname === "/api/company/research") {
+      const userId = await requireAuth(req);
+      const { handleGetCompanyResearch } = await import(
+        "./routes/companyResearch.js"
+      );
+      await handleGetCompanyResearch(req, res, url, ctx.reqId, userId);
       ctx.logComplete(method, pathname, 200);
       return;
     }
