@@ -19,7 +19,7 @@
 //   );
 // }
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -34,6 +34,7 @@ import {
   Alert,
 } from "@mui/material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
+import InterviewScheduling from "./InterviewScheduling";
 
 export default function AutomationsPage() {
   const [snackbar, setSnackbar] = useState<{
@@ -227,6 +228,11 @@ export default function AutomationsPage() {
               </Button>
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* Interview Scheduling Integration (UC-071) */}
+        <Grid size={12}>
+          <InterviewScheduling />
         </Grid>
       </Grid>
 
