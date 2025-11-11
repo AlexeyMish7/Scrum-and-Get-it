@@ -84,6 +84,8 @@ export type Length = "brief" | "standard" | "detailed";
 export type CompanyCulture = "corporate" | "startup" | "creative";
 
 // ========== SYSTEM TEMPLATES ==========
+// NOTE: Only 3 system templates (formal, creative, technical) are included by default.
+//       Modern and Minimal are available as example custom templates to demonstrate import functionality.
 
 export const COVER_LETTER_TEMPLATES: Record<string, CoverLetterTemplate> = {
   formal: {
@@ -202,14 +204,20 @@ export const COVER_LETTER_TEMPLATES: Record<string, CoverLetterTemplate> = {
         "I look forward to discussing how my technical skills and problem-solving approach can support [COMPANY]'s engineering goals.",
     },
   },
+};
 
-  modern: {
+// ========== EXAMPLE CUSTOM TEMPLATES ==========
+// These templates demonstrate the custom template import functionality.
+// Users can import these JSON files to add them to their template library.
+
+export const EXAMPLE_CUSTOM_TEMPLATES: CoverLetterTemplate[] = [
+  {
     id: "modern",
     name: "Modern Startup",
     description:
       "Contemporary template for startups, tech companies, and fast-paced environments",
     category: "modern",
-    isSystem: true,
+    isSystem: false, // This is a custom template
     style: {
       fontFamily: "'Inter', 'Segoe UI', Tahoma, sans-serif",
       fontSize: 11,
@@ -242,12 +250,12 @@ export const COVER_LETTER_TEMPLATES: Record<string, CoverLetterTemplate> = {
     },
   },
 
-  minimal: {
+  {
     id: "minimal",
     name: "Minimal Clean",
     description: "Simple, elegant template focusing on content over design",
     category: "minimal",
-    isSystem: true,
+    isSystem: false, // This is a custom template
     style: {
       fontFamily: "'Helvetica Neue', Arial, sans-serif",
       fontSize: 11,
@@ -279,7 +287,7 @@ export const COVER_LETTER_TEMPLATES: Record<string, CoverLetterTemplate> = {
         "Thank you for considering my application. I look forward to the opportunity to discuss this position further.",
     },
   },
-};
+];
 
 // ========== CUSTOM TEMPLATES ==========
 
@@ -433,6 +441,76 @@ export function getSystemCoverLetterTemplates(): CoverLetterTemplate[] {
  */
 export function getCustomCoverLetterTemplates(): CoverLetterTemplate[] {
   return getUserCustomTemplates();
+}
+
+/**
+ * EXPORT EXAMPLE TEMPLATE AS JSON
+ * Generates downloadable JSON file for template import demonstration
+ */
+export function exportExampleTemplate(templateId: "modern" | "minimal"): void {
+  const template = EXAMPLE_CUSTOM_TEMPLATES.find((t) => t.id === templateId);
+  if (!template) return;
+
+  const json = JSON.stringify(template, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `cover-letter-template-${templateId}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * IMPORT CUSTOM TEMPLATE FROM JSON
+ * Validates and saves imported template to localStorage
+ */
+export function importCustomTemplate(
+  jsonFile: File
+): Promise<CoverLetterTemplate> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const template = JSON.parse(
+          e.target?.result as string
+        ) as CoverLetterTemplate;
+
+        // Validate required fields
+        if (
+          !template.id ||
+          !template.name ||
+          !template.style ||
+          !template.formatting
+        ) {
+          throw new Error("Invalid template structure");
+        }
+
+        // Ensure isSystem is false for imported templates
+        template.isSystem = false;
+
+        // Get existing custom templates
+        const existing = getUserCustomTemplates();
+
+        // Check for duplicate ID
+        if (existing.some((t) => t.id === template.id)) {
+          template.id = `${template.id}-${Date.now()}`;
+        }
+
+        // Save to localStorage
+        const updated = [...existing, template];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+        resolve(template);
+      } catch {
+        reject(new Error("Failed to parse template JSON"));
+      }
+    };
+
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsText(jsonFile);
+  });
 }
 
 /**

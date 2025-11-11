@@ -1,0 +1,40 @@
+{
+  "id": "minimal",
+  "name": "Minimal Clean",
+  "description": "Simple, elegant template focusing on content over design",
+  "category": "minimal",
+  "isSystem": false,
+  "style": {
+    "fontFamily": "'Helvetica Neue', Arial, sans-serif",
+    "fontSize": 11,
+    "lineHeight": 1.6,
+    "margins": {
+      "top": 72,
+      "right": 72,
+      "bottom": 72,
+      "left": 72
+    },
+    "colors": {
+      "primary": "#000000",
+      "text": "#333333",
+      "accent": "#666666",
+      "background": "#FFFFFF"
+    }
+  },
+  "formatting": {
+    "headerStyle": "left",
+    "paragraphSpacing": 16,
+    "salutationStyle": "formal",
+    "closingStyle": "formal",
+    "includeDate": true,
+    "includeAddress": false
+  },
+  "defaultTone": "formal",
+  "defaultLength": "brief",
+  "defaultCulture": "corporate",
+  "structure": {
+    "opening": "I am interested in the [POSITION] role at [COMPANY] and believe my skills align well with your requirements.",
+    "bodyParagraphs": 2,
+    "closing": "Thank you for considering my application. I look forward to the opportunity to discuss this position further."
+  }
+}

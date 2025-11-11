@@ -18,17 +18,24 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EmailIcon from "@mui/icons-material/Email";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CoverLetterTemplateManager from "@workspaces/ai/components/cover-letter/CoverLetterTemplateManager";
 
 /**
  * TemplatesHub
- * Centralized page for creating and managing resume & cover letter templates.
- * Users create templates here; they appear as selectable styles in the Resume Editor and Cover Letter Editor.
+ * Centralized page for managing resume & cover letter templates.
+ * 
+ * PURPOSE: Template library and management (create custom, import, export)
+ * NOT FOR: Choosing templates for new documents (that happens in the editors)
+ * 
+ * Flow:
+ * - Users manage templates here (create custom, import from JSON, export)
+ * - When creating a resume/cover letter, template selection happens in the editor
  */
 export default function TemplatesHub() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"resume" | "cover-letter">(
-    "resume"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "resume" | "cover-letter"
+  >("resume");
 
   return (
     <Box>
@@ -146,60 +153,7 @@ export default function TemplatesHub() {
             </Box>
           )}
 
-          {activeTab === "cover-letter" && (
-            <Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Professional cover letter templates with custom tones, styles,
-                and formatting. All templates are available in the Cover Letter
-                Editor.
-              </Typography>
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-                  gap: 2,
-                }}
-              >
-                {["Formal", "Creative", "Technical", "Modern", "Minimal"].map(
-                  (template) => (
-                    <Card
-                      variant="outlined"
-                      sx={{ height: "100%" }}
-                      key={template}
-                    >
-                      <CardContent>
-                        <Stack spacing={1}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <CheckCircleIcon color="success" fontSize="small" />
-                            <Typography variant="h6">{template}</Typography>
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            Professional {template.toLowerCase()} tone with
-                            structured formatting
-                          </Typography>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  )
-                )}
-              </Box>
-
-              <Alert severity="info" sx={{ mt: 3 }}>
-                <Typography variant="body2">
-                  <strong>💡 Access templates</strong> in the Cover Letter
-                  Editor. Select your preferred template and customize content,
-                  tone, and style.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
+          {activeTab === "cover-letter" && <CoverLetterTemplateManager />}
         </Box>
       </Paper>
 
