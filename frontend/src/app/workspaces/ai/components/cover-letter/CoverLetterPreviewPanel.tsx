@@ -38,12 +38,14 @@ import {
   List,
   ListItem,
   ListItemButton,
+  Tooltip,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LockIcon from "@mui/icons-material/Lock";
 import type { CoverLetterTemplate } from "../../config/coverLetterTemplates";
 import type { CoverLetterContent } from "../../hooks/useCoverLetterDrafts";
 
@@ -88,10 +90,13 @@ export default function CoverLetterPreviewPanel({
   const [synPopoverAnchor, setSynPopoverAnchor] = useState<HTMLElement | null>(
     null
   );
-  const [selectionInfo, setSelectionInfo] = useState<
-    | { section: string; idx?: number; start: number; end: number; value: string }
-    | null
-  >(null);
+  const [selectionInfo, setSelectionInfo] = useState<{
+    section: string;
+    idx?: number;
+    start: number;
+    end: number;
+    value: string;
+  } | null>(null);
 
   // Calculate word counts
   const openingWords = countWords(content.opening);
@@ -111,7 +116,9 @@ export default function CoverLetterPreviewPanel({
   const fetchSynonyms = async (word: string) => {
     if (!word) return;
     try {
-      const res = await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}`);
+      const res = await fetch(
+        `https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}`
+      );
       const data = (await res.json()) as Array<{ word: string }>;
       setSynonyms(data.map((w) => w.word));
     } catch (err) {
@@ -200,7 +207,16 @@ export default function CoverLetterPreviewPanel({
                 size="small"
                 color="primary"
               />
-              <Chip label={template.name} size="small" variant="outlined" />
+              <Tooltip
+                title={`Template locked at creation: ${template.description}`}
+              >
+                <Chip
+                  label={template.name}
+                  size="small"
+                  variant="outlined"
+                  icon={<LockIcon />}
+                />
+              </Tooltip>
             </Stack>
           </Box>
           <Button

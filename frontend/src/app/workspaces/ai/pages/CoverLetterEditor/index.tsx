@@ -57,7 +57,6 @@ import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts"
 import { useAuth } from "@shared/context/AuthContext";
 import { generateCoverLetter } from "@workspaces/ai/services/aiGeneration";
 import CoverLetterStarter from "@workspaces/ai/components/cover-letter/CoverLetterStarter";
-import CoverLetterTemplateShowcase from "@workspaces/ai/components/cover-letter/CoverLetterTemplateShowcase";
 import {
   COVER_LETTER_TEMPLATES,
   getCoverLetterTemplateList,
@@ -117,7 +116,6 @@ export default function CoverLetterEditor() {
     changeTone,
     changeLength,
     changeCulture,
-    changeTemplate,
     pendingAIContent,
     setPendingAIContent,
     applyPendingContent,
@@ -130,7 +128,6 @@ export default function CoverLetterEditor() {
   const [newDraftName, setNewDraftName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("formal");
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
-  const [showTemplateShowcase, setShowTemplateShowcase] = useState(false);
 
   // Jobs state - fetched from database
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -342,35 +339,38 @@ export default function CoverLetterEditor() {
       // Get current template for template-aware AI generation
       const templateId = activeDraft.templateId || "formal";
 
-      // Call real backend AI generation endpoint with template
+      // Call real backend AI generation endpoint with template and all metadata
       const result = await generateCoverLetter(user.id, selectedJobId, {
         tone: activeDraft.metadata.tone,
         focus: industryLanguage.includeRoleSpecific
           ? "role-specific"
           : undefined,
         templateId,
+        length: activeDraft.metadata.length,
+        culture: activeDraft.metadata.culture,
       });
 
       if (!result.content) {
         throw new Error("No content returned from generation");
       }
 
-      // Parse the AI-generated content
-      const mockContent = {
+      // Parse the AI-generated content - handle nested sections structure
+      const sections = result.content.sections || result.content;
+      const aiContent = {
         opening:
-          result.content.opening ||
+          sections.opening ||
           `Dear Hiring Manager,\n\nI am writing to express my strong interest in this position.`,
-        body: result.content.body || [
+        body: sections.body || [
           "Throughout my career, I have developed relevant skills and experience.",
           "I am particularly drawn to your organization and believe I would be a valuable addition to your team.",
         ],
         closing:
-          result.content.closing ||
+          sections.closing ||
           `Thank you for considering my application. I look forward to discussing this opportunity further.`,
         tone: activeDraft.metadata.tone,
       };
 
-      setPendingAIContent(mockContent);
+      setPendingAIContent(aiContent);
       setSnackbar({
         open: true,
         message: "Cover letter generated successfully",
@@ -571,13 +571,6 @@ export default function CoverLetterEditor() {
         </Button>
         <Button
           variant="outlined"
-          onClick={() => setShowTemplateShowcase(true)}
-          sx={{ ml: 1 }}
-        >
-          Browse Templates
-        </Button>
-        <Button
-          variant="outlined"
           onClick={() => setAnalyticsOpen(true)}
           sx={{ ml: 1 }}
         >
@@ -760,24 +753,6 @@ export default function CoverLetterEditor() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
-      {/* Template Showcase Dialog */}
-      <CoverLetterTemplateShowcase
-        open={showTemplateShowcase}
-        onClose={() => setShowTemplateShowcase(false)}
-        currentTemplateId={activeDraft?.templateId}
-        onSelectTemplate={async (templateId) => {
-          if (activeDraft) {
-            await changeTemplate(templateId);
-            setSnackbar({
-              open: true,
-              message: "Template changed successfully",
-              severity: "success",
-            });
-          }
-          setShowTemplateShowcase(false);
-        }}
-      />
 
       <CoverLetterAnalyticsDialog
         open={analyticsOpen}

@@ -124,6 +124,24 @@ export default function CoverLetterGenerationPanel({
 
         <Divider />
 
+        {/* AI Generation Info */}
+        <Alert severity="info" icon={<AutoAwesomeIcon />}>
+          <Typography
+            variant="caption"
+            fontWeight={500}
+            display="block"
+            gutterBottom
+          >
+            🎯 AI Personalization
+          </Typography>
+          <Typography variant="caption">
+            Your locked template controls the AI writing style. When you link a
+            job, we automatically use company research, recent news, and mission
+            statements to create a highly personalized letter that demonstrates
+            genuine interest.
+          </Typography>
+        </Alert>
+
         {/* Job Selection */}
         <FormControl fullWidth>
           <InputLabel>Target Job</InputLabel>

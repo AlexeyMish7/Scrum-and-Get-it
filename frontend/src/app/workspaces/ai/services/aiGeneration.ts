@@ -36,7 +36,13 @@ export async function generateResume(
 export async function generateCoverLetter(
   userId: string,
   jobId: number,
-  options?: { tone?: string; focus?: string; templateId?: string }
+  options?: {
+    tone?: string;
+    focus?: string;
+    templateId?: string;
+    length?: string;
+    culture?: string;
+  }
 ): Promise<GenerateCoverLetterResult> {
   // POST /api/generate/cover-letter
   return aiClient.postJson<GenerateCoverLetterResult>(
