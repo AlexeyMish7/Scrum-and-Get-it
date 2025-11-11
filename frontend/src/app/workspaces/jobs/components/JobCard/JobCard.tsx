@@ -36,7 +36,8 @@ export default function JobCard({ job, onOpen }: Props) {
   const rawStatus = String(job.job_status ?? job.jobStatus ?? "").trim();
   const statusLabel = (s: string) => {
     if (!s) return "Unknown";
-    if (s.toLowerCase() === "archive" || s.toLowerCase() === "archived") return "Archived";
+    if (s.toLowerCase() === "archive" || s.toLowerCase() === "archived")
+      return "Archived";
     // capitalize each word
     return s
       .toLowerCase()
@@ -44,7 +45,9 @@ export default function JobCard({ job, onOpen }: Props) {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
   };
-  const deadlineRaw = job.application_deadline ? new Date(String(job.application_deadline)) : null;
+  const deadlineRaw = job.application_deadline
+    ? new Date(String(job.application_deadline))
+    : null;
   //const deadline = deadlineRaw ? deadlineRaw.toLocaleDateString() : null;
 
   const theme = useTheme();
@@ -73,7 +76,11 @@ export default function JobCard({ job, onOpen }: Props) {
   return (
     <Card
       variant="outlined"
-      sx={{ mb: 1, position: "relative", cursor: onOpen ? "pointer" : undefined }}
+      sx={{
+        mb: 1,
+        position: "relative",
+        cursor: onOpen ? "pointer" : undefined,
+      }}
       onClick={() => onOpen && job.id !== undefined && onOpen(job.id)}
     >
       <CardContent sx={{ p: 1 }}>
@@ -85,7 +92,9 @@ export default function JobCard({ job, onOpen }: Props) {
               top: 8,
               right: 8,
               bgcolor: deadlineColor(daysLeft),
-              color: theme.palette.getContrastText(deadlineColor(daysLeft) as string),
+              color: theme.palette.getContrastText(
+                deadlineColor(daysLeft) as string
+              ),
               px: 1,
               py: 0.25,
               borderRadius: 1,
@@ -98,7 +107,13 @@ export default function JobCard({ job, onOpen }: Props) {
             {daysLeft < 0 ? `Overdue` : `Due: ${daysLeft}d`}
           </Box>
         )}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
@@ -106,7 +121,10 @@ export default function JobCard({ job, onOpen }: Props) {
                 <Box
                   sx={{
                     bgcolor: (theme) => theme.palette.grey?.[300] ?? "#e0e0e0",
-                    color: (theme) => theme.palette.getContrastText(theme.palette.grey?.[300] ?? "#e0e0e0"),
+                    color: (theme) =>
+                      theme.palette.getContrastText(
+                        theme.palette.grey?.[300] ?? "#e0e0e0"
+                      ),
                     px: 1,
                     py: 0.25,
                     borderRadius: 1,

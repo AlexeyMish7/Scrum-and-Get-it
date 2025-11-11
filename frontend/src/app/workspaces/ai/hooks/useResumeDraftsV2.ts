@@ -161,6 +161,7 @@ interface ResumeDraftsStore {
   applySummary: () => Promise<void>;
   applySkills: () => Promise<void>;
   applyExperience: () => Promise<void>;
+  applyEducation: () => Promise<void>;
   applyAll: () => Promise<void>;
 
   // Edit Actions (manual) - async to save to database
@@ -937,6 +938,100 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
     }
   },
 
+  applyEducation: async (): Promise<void> => {
+    const { activeDraftId, pendingAIContent, drafts } = get();
+    if (
+      !activeDraftId ||
+      !pendingAIContent ||
+      !pendingAIContent.sections?.education
+    )
+      return;
+
+    const draft = drafts.find((d) => d.id === activeDraftId);
+    if (!draft) return;
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const userId = get().userId;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Convert education format from AI content to draft format
+      const educationData = pendingAIContent.sections.education.map((edu) => ({
+        degree: edu.degree || "",
+        institution: edu.institution || "",
+        graduation_date: edu.graduation_date,
+        details: edu.details,
+      }));
+
+      const updatedContent = {
+        ...draft.content,
+        education: educationData,
+      };
+
+      const updatedMetadata = {
+        sections: updateSectionState(
+          draft.metadata.sections,
+          "education",
+          "applied"
+        ).map((s) => ({
+          ...s,
+          lastUpdated: s.lastUpdated?.toISOString(),
+        })),
+        lastModified: new Date().toISOString(),
+        createdAt: draft.metadata.createdAt.toISOString(),
+        jobId: draft.metadata.jobId,
+        jobTitle: draft.metadata.jobTitle,
+        jobCompany: draft.metadata.jobCompany,
+      };
+
+      const result = await updateResumeDraft(userId, activeDraftId, {
+        content: updatedContent,
+        metadata: updatedMetadata,
+      });
+
+      if (result.error || !result.data) {
+        set({
+          isLoading: false,
+          error: result.error?.message || "Failed to apply education",
+        });
+        return;
+      }
+
+      const updatedDraft = dbRowToDraft(result.data);
+
+      set((state) => {
+        const newHistory = state.history.slice(0, state.historyIndex + 1);
+        newHistory.push({
+          draft: updatedDraft,
+          timestamp: new Date(),
+          action: "apply-education",
+        });
+
+        const newState = {
+          drafts: state.drafts.map((d) =>
+            d.id === activeDraftId ? updatedDraft : d
+          ),
+          history: newHistory.slice(-MAX_HISTORY),
+          historyIndex: Math.min(newHistory.length - 1, MAX_HISTORY - 1),
+          appliedSections: new Set([...state.appliedSections, "education"]),
+          isLoading: false,
+        };
+
+        // Update cache
+        syncCacheAfterUpdate(userId, newState.drafts, state.activeDraftId);
+
+        return newState;
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      set({ isLoading: false, error: errorMessage });
+    }
+  },
+
   applyAll: async (): Promise<void> => {
     const { activeDraftId, pendingAIContent, drafts } = get();
     if (!activeDraftId || !pendingAIContent) return;
@@ -952,17 +1047,32 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
         throw new Error("User not authenticated");
       }
 
+      // Convert education format if present
+      const educationData = pendingAIContent.sections?.education
+        ? pendingAIContent.sections.education.map((edu) => ({
+            degree: edu.degree || "",
+            institution: edu.institution || "",
+            graduation_date: edu.graduation_date,
+            details: edu.details,
+          }))
+        : draft.content.education;
+
       const updatedContent = {
         ...draft.content,
         summary: pendingAIContent.summary || draft.content.summary,
         skills: pendingAIContent.ordered_skills || draft.content.skills,
         experience:
           pendingAIContent.sections?.experience || draft.content.experience,
+        education: educationData,
       };
 
       const updatedMetadata = {
         sections: draft.metadata.sections.map((section) => {
-          if (["summary", "skills", "experience"].includes(section.type)) {
+          if (
+            ["summary", "skills", "experience", "education"].includes(
+              section.type
+            )
+          ) {
             return {
               ...section,
               state: "applied" as SectionState,
@@ -1010,7 +1120,12 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
           ),
           history: newHistory.slice(-MAX_HISTORY),
           historyIndex: Math.min(newHistory.length - 1, MAX_HISTORY - 1),
-          appliedSections: new Set(["summary", "skills", "experience"]),
+          appliedSections: new Set([
+            "summary",
+            "skills",
+            "experience",
+            "education",
+          ]),
           isLoading: false,
         };
 
