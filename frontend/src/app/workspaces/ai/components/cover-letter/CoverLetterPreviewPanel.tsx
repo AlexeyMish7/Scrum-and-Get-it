@@ -34,6 +34,10 @@ import {
   Divider,
   Menu,
   MenuItem,
+  Popover,
+  List,
+  ListItem,
+  ListItemButton,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
@@ -79,6 +83,16 @@ export default function CoverLetterPreviewPanel({
     null
   );
 
+  // Synonym / spell-check support (from EditCoverLetter)
+  const [synonyms, setSynonyms] = useState<string[]>([]);
+  const [synPopoverAnchor, setSynPopoverAnchor] = useState<HTMLElement | null>(
+    null
+  );
+  const [selectionInfo, setSelectionInfo] = useState<
+    | { section: string; idx?: number; start: number; end: number; value: string }
+    | null
+  >(null);
+
   // Calculate word counts
   const openingWords = countWords(content.opening);
   const bodyWords = content.body.reduce((sum, p) => sum + countWords(p), 0);
@@ -91,6 +105,65 @@ export default function CoverLetterPreviewPanel({
   const handleAddBodyParagraph = () => {
     onUpdateBody([...content.body, ""]);
     setEditingSection(`body-${content.body.length}`);
+  };
+
+  // Fetch synonyms from Datamuse for the selected text
+  const fetchSynonyms = async (word: string) => {
+    if (!word) return;
+    try {
+      const res = await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}`);
+      const data = (await res.json()) as Array<{ word: string }>;
+      setSynonyms(data.map((w) => w.word));
+    } catch (err) {
+      console.error("fetchSynonyms failed", err);
+      setSynonyms([]);
+    }
+  };
+
+  // Handle selection inside editable TextFields
+  const handleSelection = (
+    e: React.MouseEvent<HTMLElement>,
+    section: string,
+    idx?: number
+  ) => {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+    const start = (target.selectionStart ?? 0) as number;
+    const end = (target.selectionEnd ?? 0) as number;
+    if (!target || end <= start) {
+      setSynonyms([]);
+      setSynPopoverAnchor(null);
+      setSelectionInfo(null);
+      return;
+    }
+
+    const value = target.value ?? "";
+    const selected = value.slice(start, end).trim();
+    if (!selected) return;
+
+    fetchSynonyms(selected);
+    setSynPopoverAnchor(e.currentTarget as HTMLElement);
+    setSelectionInfo({ section, idx, start, end, value });
+  };
+
+  // Replace currently selected text with chosen synonym and call update callbacks
+  const replaceSelected = (syn: string) => {
+    if (!selectionInfo) return;
+    const { section, idx, start, end, value } = selectionInfo;
+    const newVal = value.slice(0, start) + syn + value.slice(end);
+    if (section === "opening") onUpdateOpening(newVal);
+    else if (section === "closing") onUpdateClosing(newVal);
+    else if (section === "header") {
+      onUpdateHeader({ ...content.header, name: newVal });
+    } else if (section === "body" && typeof idx === "number") {
+      const newBody = [...content.body];
+      newBody[idx] = newVal;
+      onUpdateBody(newBody);
+    }
+
+    // Clear popover
+    setSynonyms([]);
+    setSynPopoverAnchor(null);
+    setSelectionInfo(null);
   };
 
   const handleRemoveBodyParagraph = (idx: number) => {
@@ -183,6 +256,8 @@ export default function CoverLetterPreviewPanel({
                         name: e.target.value,
                       })
                     }
+                    spellCheck={true}
+                    onMouseUp={(e) => handleSelection(e, "header")}
                     fullWidth
                     size="small"
                   />
@@ -287,6 +362,8 @@ export default function CoverLetterPreviewPanel({
                     rows={4}
                     value={content.opening}
                     onChange={(e) => onUpdateOpening(e.target.value)}
+                    spellCheck={true}
+                    onMouseUp={(e) => handleSelection(e, "opening")}
                     fullWidth
                     placeholder="Opening paragraph..."
                   />
@@ -335,6 +412,8 @@ export default function CoverLetterPreviewPanel({
                               newBody[idx] = e.target.value;
                               onUpdateBody(newBody);
                             }}
+                            spellCheck={true}
+                            onMouseUp={(e) => handleSelection(e, "body", idx)}
                             fullWidth
                             placeholder={`Body paragraph ${idx + 1}...`}
                           />
@@ -400,6 +479,8 @@ export default function CoverLetterPreviewPanel({
                     rows={3}
                     value={content.closing}
                     onChange={(e) => onUpdateClosing(e.target.value)}
+                    spellCheck={true}
+                    onMouseUp={(e) => handleSelection(e, "closing")}
                     fullWidth
                     placeholder="Closing paragraph..."
                   />
@@ -427,6 +508,27 @@ export default function CoverLetterPreviewPanel({
             </Box>
           </Stack>
         </Paper>
+        {/* Synonym Popover (appears when user selects text in an editable field) */}
+        <Popover
+          open={Boolean(synPopoverAnchor) && synonyms.length > 0}
+          anchorEl={synPopoverAnchor}
+          onClose={() => {
+            setSynonyms([]);
+            setSynPopoverAnchor(null);
+            setSelectionInfo(null);
+          }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        >
+          <List dense sx={{ minWidth: 160 }}>
+            {synonyms.map((syn) => (
+              <ListItem key={syn} disablePadding>
+                <ListItemButton onClick={() => replaceSelected(syn)}>
+                  {syn}
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Popover>
 
         {/* Word Count Summary */}
         <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
