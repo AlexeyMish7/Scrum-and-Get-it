@@ -59,6 +59,7 @@ import {
   getHealthScoreLabel,
   type ValidationResult,
 } from "@workspaces/ai/utils/resumeValidation";
+import { useAuth } from "@shared/context/AuthContext";
 import { TemplateSelector } from "../ResumeEditorV2/TemplateSelector";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
 
@@ -131,8 +132,19 @@ export default function DraftPreviewPanel({
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
   // Calculate validation when draft changes
+  const { user } = useAuth();
+  const userProfileForValidation = user
+    ? {
+        full_name: `${user.user_metadata?.first_name || ""} ${
+          user.user_metadata?.last_name || ""
+        }`.trim(),
+        email: user.email,
+        phone: user.user_metadata?.phone,
+      }
+    : undefined;
+
   const validation: ValidationResult | null = draft
-    ? validateResume(draft)
+    ? validateResume(draft, userProfileForValidation)
     : null;
 
   // Move section up in the order

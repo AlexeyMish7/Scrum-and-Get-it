@@ -52,7 +52,10 @@ const CHARS_PER_PAGE_ESTIMATE = 3000; // Rough estimate for standard resume form
  * Outputs:
  * - ValidationResult with health score, issues, stats, and recommendations
  */
-export function validateResume(draft: ResumeDraft): ValidationResult {
+export function validateResume(
+  draft: ResumeDraft,
+  userProfile?: { full_name?: string; email?: string; phone?: string }
+): ValidationResult {
   const issues: ValidationIssue[] = [];
   const recommendations: string[] = [];
   const missingSections: string[] = [];
@@ -75,6 +78,12 @@ export function validateResume(draft: ResumeDraft): ValidationResult {
   // Validate education section
   validateEducation(draft, issues);
 
+  // Validate contact information (if provided via userProfile)
+  validateContactInfo(userProfile, issues, recommendations);
+
+  // Grammar, spell and tone heuristics (lightweight)
+  validateGrammarAndTone(draft, issues, recommendations);
+
   // Validate resume length
   validateLength(stats, issues, recommendations);
 
@@ -87,6 +96,102 @@ export function validateResume(draft: ResumeDraft): ValidationResult {
     stats: { ...stats, missingSections },
     recommendations,
   };
+}
+
+/**
+ * Validate contact information using basic checks on email and phone
+ */
+function validateContactInfo(
+  userProfile: { full_name?: string; email?: string; phone?: string } | undefined,
+  issues: ValidationIssue[],
+  recommendations: string[]
+) {
+  if (!userProfile) {
+    issues.push({
+      severity: "info",
+      category: "content",
+      message: "No contact info available from profile. Add email and phone in your profile for exported resumes.",
+    });
+    recommendations.push("Provide a professional email and phone number in your profile to include in exported resumes.");
+    return;
+  }
+
+  // Email validation
+  if (!userProfile.email || !/^\S+@\S+\.\S+$/.test(userProfile.email)) {
+    issues.push({
+      severity: "warning",
+      category: "content",
+      message: "Missing or invalid email address",
+    });
+    recommendations.push("Add a valid email address (e.g., name@example.com) to your profile");
+  }
+
+  // Phone validation (very permissive)
+  if (!userProfile.phone || !/[0-9]{7,15}/.test(userProfile.phone.replace(/[^0-9]/g, ""))) {
+    issues.push({
+      severity: "info",
+      category: "content",
+      message: "Phone number missing or appears invalid",
+    });
+    recommendations.push("Add a phone number to your profile if you want it included on the resume");
+  }
+}
+
+/**
+ * Lightweight grammar/spell/tone heuristics
+ * - Detect common typos
+ * - Detect likely passive voice patterns
+ * - Detect first-person pronouns used in resume text
+ */
+function validateGrammarAndTone(
+  draft: ResumeDraft,
+  issues: ValidationIssue[],
+  recommendations: string[]
+) {
+  const textChunks: string[] = [];
+  if (draft.content.summary) textChunks.push(draft.content.summary);
+  if (draft.content.experience) {
+    draft.content.experience.forEach((e) => {
+      e.bullets.forEach((b) => textChunks.push(b));
+    });
+  }
+
+  const fullText = textChunks.join(" \n ").toLowerCase();
+
+  // Common typos
+  const typos = [" teh ", " recieve ", " occured ", " seperat ", " advoid "];
+  typos.forEach((t) => {
+    if (fullText.includes(t)) {
+      issues.push({
+        severity: "info",
+        category: "quality",
+        message: `Possible typo detected: '${t.trim()}'`,
+      });
+      recommendations.push("Run a spell-checker or manually review highlighted typos");
+    }
+  });
+
+  // Passive voice heuristic: look for 'was|were|is|are' + past participle-ish words
+  const passivePattern = /\b(was|were|is|are|be|been|being)\b\s+\w+ed\b/;
+  if (passivePattern.test(fullText)) {
+    issues.push({
+      severity: "info",
+      category: "quality",
+      message: "Possible passive voice detected — prefer active verbs (e.g., 'Led', 'Designed')",
+    });
+    recommendations.push("Use active verbs and quantify achievements where possible");
+  }
+
+  // First-person pronouns (resume should be written without 'I' statements)
+  const firstPersonPattern = /\b(i|me|my|mine)\b/;
+  if (firstPersonPattern.test(fullText)) {
+    issues.push({
+      severity: "info",
+      category: "quality",
+      message: "First-person pronouns detected — resumes typically avoid 'I' or 'my'",
+    });
+    recommendations.push("Rewrite sentences to remove first-person pronouns (e.g., 'Led' instead of 'I led')");
+  }
 }
 
 /**
