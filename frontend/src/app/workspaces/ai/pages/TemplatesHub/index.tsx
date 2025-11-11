@@ -13,7 +13,6 @@ import {
   Divider,
 } from "@mui/material";
 import { useState } from "react";
-import RegionAnchor from "@shared/components/common/RegionAnchor";
 import { useNavigate } from "react-router-dom";
 import PaletteIcon from "@mui/icons-material/Palette";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -44,11 +43,6 @@ export default function TemplatesHub() {
 
   return (
     <Box>
-      <RegionAnchor
-        id="[E]"
-        desc="Template library and previews for resumes & cover letters"
-      />
-
       {/* Header */}
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
         <PaletteIcon sx={{ fontSize: 40, color: "primary.main" }} />

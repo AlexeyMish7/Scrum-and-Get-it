@@ -334,6 +334,17 @@ export default function CoverLetterEditor() {
       return;
     }
 
+    // Verify the selected job exists
+    const selectedJob = jobs.find((j) => j.id === selectedJobId);
+    if (!selectedJob) {
+      setSnackbar({
+        open: true,
+        message: "Selected job not found. Please refresh and try again.",
+        severity: "error",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       // Get current template for template-aware AI generation
@@ -355,7 +366,8 @@ export default function CoverLetterEditor() {
       }
 
       // Parse the AI-generated content - handle nested sections structure
-      const sections = result.content.sections || result.content;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sections = (result.content as any).sections || result.content;
       const aiContent = {
         opening:
           sections.opening ||

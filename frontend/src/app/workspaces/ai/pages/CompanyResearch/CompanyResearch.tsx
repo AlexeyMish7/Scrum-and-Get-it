@@ -17,13 +17,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Container,
 } from "@mui/material";
 import {
   Business as BusinessIcon,
   Save as SaveIcon,
   Refresh as RefreshIcon,
 } from "@mui/icons-material";
-import RegionAnchor from "@shared/components/common/RegionAnchor";
 import Interview from "./Interview";
 import useCompanyResearch from "@workspaces/ai/hooks/useCompanyResearch";
 import useUserJobs from "@shared/hooks/useUserJobs";
@@ -38,8 +38,14 @@ export default function CompanyResearch() {
   const { notification, closeNotification, showSuccess } = useErrorHandler();
 
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
-    await cr.runResearch(searchTerm, selectedJobId ? Number(selectedJobId) : undefined);
+    if (!searchTerm.trim()) {
+      showSuccess("Please enter a company name");
+      return;
+    }
+    await cr.runResearch(
+      searchTerm,
+      selectedJobId ? Number(selectedJobId) : undefined
+    );
   };
 
   const handleSave = async () => {
@@ -60,7 +66,11 @@ export default function CompanyResearch() {
     const summaryText = cr.researchData.recentNews
       .map(
         (n) =>
-          `${n.title} (${n.category}, ${n.date})\nSummary: ${n.summary}\nSource: ${n.source}\nRelevance: ${n.relevance}\n${n.link ? `Link: ${n.link}` : ""}\n`
+          `${n.title} (${n.category}, ${n.date})\nSummary: ${
+            n.summary
+          }\nSource: ${n.source}\nRelevance: ${n.relevance}\n${
+            n.link ? `Link: ${n.link}` : ""
+          }\n`
       )
       .join("\n-------------------\n");
 
@@ -74,11 +84,7 @@ export default function CompanyResearch() {
   };
 
   return (
-    <Box>
-      <RegionAnchor
-        id="[D]"
-        desc="Company profile, news feed, and interview prep panel"
-      />
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       <Typography variant="h4" sx={{ mb: 2 }}>
         Company Research
       </Typography>
@@ -91,6 +97,11 @@ export default function CompanyResearch() {
           fullWidth
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter" && searchTerm.trim()) {
+              handleSearch();
+            }
+          }}
           placeholder="e.g., Google, Microsoft, Tesla"
         />
         <FormControl sx={{ minWidth: 250 }}>
@@ -109,14 +120,20 @@ export default function CompanyResearch() {
             ))}
           </Select>
         </FormControl>
-        <Button 
-          variant="contained" 
-          onClick={handleSearch} 
-          disabled={cr.isLoading}
+        <Button
+          variant="contained"
+          onClick={handleSearch}
+          disabled={cr.isLoading || !searchTerm.trim()}
           startIcon={cr.researchData ? <RefreshIcon /> : <BusinessIcon />}
           sx={{ minWidth: 140 }}
         >
-          {cr.isLoading ? <CircularProgress size={24} /> : cr.researchData ? "Re-research" : "Research"}
+          {cr.isLoading ? (
+            <CircularProgress size={24} />
+          ) : cr.researchData ? (
+            "Re-research"
+          ) : (
+            "Research"
+          )}
         </Button>
         {cr.researchData && (
           <Button
@@ -146,9 +163,7 @@ export default function CompanyResearch() {
               alignItems="center"
               sx={{ mb: 2 }}
             >
-              <Avatar
-                sx={{ width: 64, height: 64, bgcolor: "primary.main" }}
-              >
+              <Avatar sx={{ width: 64, height: 64, bgcolor: "primary.main" }}>
                 <BusinessIcon fontSize="large" />
               </Avatar>
               <Box>
@@ -164,7 +179,11 @@ export default function CompanyResearch() {
                   </Typography>
                 )}
                 {cr.researchData.website && (
-                  <Link href={cr.researchData.website} target="_blank" rel="noopener">
+                  <Link
+                    href={cr.researchData.website}
+                    target="_blank"
+                    rel="noopener"
+                  >
                     {cr.researchData.website}
                   </Link>
                 )}
@@ -189,19 +208,20 @@ export default function CompanyResearch() {
               </Typography>
             )}
 
-            {cr.researchData.products && cr.researchData.products.length > 0 && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Products & Services
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {cr.researchData.products.map((product, idx) => (
-                    <Chip key={idx} label={product} />
-                  ))}
-                </Stack>
-              </>
-            )}
+            {cr.researchData.products &&
+              cr.researchData.products.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Products & Services
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {cr.researchData.products.map((product, idx) => (
+                      <Chip key={idx} label={product} />
+                    ))}
+                  </Stack>
+                </>
+              )}
 
             <Divider sx={{ my: 2 }} />
 
@@ -210,15 +230,21 @@ export default function CompanyResearch() {
             </Typography>
             <Typography color="text.secondary">
               {cr.researchData.rating ? (
-                typeof cr.researchData.rating === 'number' ? (
+                typeof cr.researchData.rating === "number" ? (
                   `⭐ ${cr.researchData.rating}/5`
                 ) : (
                   <>
-                    ⭐ {cr.researchData.rating.glassdoor ?? 'N/A'}/5
+                    ⭐ {cr.researchData.rating.glassdoor ?? "N/A"}/5
                     {cr.researchData.rating.reviewCount && (
-                      <Typography variant="caption" display="block" sx={{ ml: 0.5 }}>
-                        ({cr.researchData.rating.reviewCount.toLocaleString()} reviews)
-                        {cr.researchData.rating.source && ` • ${cr.researchData.rating.source}`}
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        sx={{ ml: 0.5 }}
+                      >
+                        ({cr.researchData.rating.reviewCount.toLocaleString()}{" "}
+                        reviews)
+                        {cr.researchData.rating.source &&
+                          ` • ${cr.researchData.rating.source}`}
                       </Typography>
                     )}
                   </>
@@ -280,17 +306,17 @@ export default function CompanyResearch() {
 
       {/* Interview insights & preparation (UC-068) */}
       {cr.researchData && (
-        <Interview 
-          company={{ 
-            name: cr.researchData.name, 
-            website: cr.researchData.website, 
-            industry: cr.researchData.industry, 
-            size: cr.researchData.size 
-          }} 
+        <Interview
+          company={{
+            name: cr.researchData.name,
+            website: cr.researchData.website,
+            industry: cr.researchData.industry,
+            size: cr.researchData.size,
+          }}
         />
       )}
 
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
-    </Box>
+    </Container>
   );
 }

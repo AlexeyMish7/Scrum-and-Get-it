@@ -113,7 +113,11 @@ export default function JobMatchPage() {
               sx={{ minWidth: 420, flex: 1 }}
             >
               <MenuItem value="">
-                {jobsLoading ? "Loading jobs..." : "Select a job to analyze"}
+                {jobsLoading
+                  ? "Loading jobs..."
+                  : jobs.length === 0
+                  ? "No jobs available - add a job first"
+                  : "Select a job to analyze"}
               </MenuItem>
               {jobs.map((j) => (
                 <MenuItem key={j.id} value={j.id}>
@@ -125,7 +129,7 @@ export default function JobMatchPage() {
             <Button
               variant="contained"
               onClick={handleAnalyze}
-              disabled={jm.isLoading || !selectedJobId}
+              disabled={jm.isLoading || !selectedJobId || jobs.length === 0}
               startIcon={jm.matchScore ? <RefreshIcon /> : <TrendingUpIcon />}
             >
               {jm.matchScore ? "Re-analyze" : "Analyze"}
@@ -140,6 +144,14 @@ export default function JobMatchPage() {
               Save Analysis
             </Button>
           </Stack>
+
+          {/* Empty state for no jobs */}
+          {!jobsLoading && jobs.length === 0 && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No jobs found. Add a job opportunity first in the{" "}
+              <strong>Jobs workspace</strong> to analyze your match score.
+            </Alert>
+          )}
         </Paper>
 
         {/* Loading State */}
@@ -347,13 +359,7 @@ export default function JobMatchPage() {
           </Stack>
         )}
 
-        {/* Error State */}
-        {jm.error && (
-          <Alert severity="error" onClose={() => jm.runMatch(0)}>
-            <Typography variant="subtitle2">Analysis Error</Typography>
-            <Typography variant="body2">{jm.error}</Typography>
-          </Alert>
-        )}
+        {/* Error State (Duplicate removed - already shown above) */}
 
         {/* Empty State */}
         {!jm.isLoading && jm.matchScore === null && !jm.error && (
