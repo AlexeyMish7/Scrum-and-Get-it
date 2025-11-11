@@ -21,6 +21,7 @@ export {
   handleSkillsOptimization,
   handleExperienceTailoring,
   handleCompanyResearch,
+  handleSalaryResearch,
   type GenerationCounters,
 } from "./ai.js";
 

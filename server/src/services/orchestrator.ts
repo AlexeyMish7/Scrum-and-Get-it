@@ -33,6 +33,8 @@ import type {
   ArtifactRow,
 } from "../types/index.js";
 
+
+
 // NOTE: This file does not import a DB client to avoid coupling. Replace the pseudo-DB calls
 // with your Supabase server client or other DB access method (use service role key server-side).
 
@@ -606,12 +608,122 @@ export async function handleExperienceTailoring(req: {
 
   return { artifact };
 }
+/**
+ * SALARY RESEARCH (UC-060)
+ * AI-driven salary benchmarking and negotiation support
+ * Inputs: { userId, title, location, experience, company, currentSalary? }
+ * Outputs: { artifact } with salary analysis JSON
+ */
+export async function handleSalaryResearch(req: {
+  userId: string;
+  title: string;
+  location?: string;
+  experience?: string;
+  company?: string;
+  currentSalary?: string;
+}): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  logInfo("orc_salary_research_start", {
+    userId: req?.userId,
+    title: req?.title,
+    location: req?.location,
+  });
+
+  // 1️⃣ Basic validation
+  if (!req?.userId) return { error: "unauthenticated" };
+  if (!req?.title || !req.title.trim()) return { error: "missing title" };
+
+  // 2️⃣ Build AI prompt
+  const prompt = `
+    You are a compensation analyst. Estimate realistic salary insights for:
+    Job Title: ${req.title}
+    Company: ${req.company || "unspecified"}
+    Location: ${req.location || "anywhere"}
+    Experience Level: ${req.experience || "mid"}
+    Current Salary: ${req.currentSalary || "unknown"}
+
+    Include JSON only:
+    {
+      "range": { "low": number, "avg": number, "high": number },
+      "totalComp": number,
+      "trend": string,
+      "comparison": string,
+      "recommendation": string
+    }
+  `;
+
+  // 3️⃣ AI call using existing aiClient
+  try {
+    const model = selectModel(undefined);
+    const aiOpts = {
+      model,
+      temperature: envNumber("AI_TEMPERATURE", 0.2),
+      maxTokens: envNumber("AI_MAX_TOKENS", 600),
+      timeoutMs: envNumber("AI_TIMEOUT_MS", 20000),
+    } as const;
+
+    const gen: GenerateResult = await aiClient.generate("salary_research", prompt, aiOpts);
+
+    if (!gen?.json && !gen?.text) {
+      logError("AI returned no content for salary research", { title: req.title });
+      return { error: "AI returned empty response" };
+    }
+
+    let salaryData: any = gen?.json ?? gen?.text ?? {};
+if (typeof salaryData === "string" && salaryData.trim()) {
+      try {
+        const cleaned = salaryData.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        salaryData = JSON.parse(cleaned);
+      } catch {
+        logError("Salary research JSON parse failed", { raw: salaryData.slice(0, 200) });
+        return { error: "Invalid AI response format" };
+      }
+    }
+
+    // 4️⃣ Create artifact
+    const artifact: ArtifactRow = {
+      id: `artifact_${Date.now()}`,
+      user_id: req.userId,
+      job_id: null,
+      kind: "salary_research",
+      title: `Salary Research for ${req.title}`,
+      prompt: typeof prompt === "string" ? prompt.slice(0, 1000) : "",
+      // @ts-ignore  // suppress "Property 'model' does not exist on type 'GenerateResult'"
+      model: gen.model || "gpt-4o-mini",
+      content: salaryData,
+      metadata: {
+        generated_at: new Date().toISOString(),
+        provider: process.env.AI_PROVIDER ?? "openai",
+        tokens: gen.tokens,
+        prompt_preview: prompt.slice(0, 300),
+      },
+      created_at: new Date().toISOString(),
+    };
+
+  logInfo("orc_salary_research_ok", {
+  userId: req.userId,
+  title: req.title,
+  range: (salaryData as any)?.range,
+});
+
+
+    return { artifact };
+  } catch (err: any) {
+    logError("orc_salary_research_error", {
+      userId: req.userId,
+      title: req.title,
+      error: err?.message,
+    });
+    return { error: `AI error: ${err?.message}` };
+  }
+}
+
 
 export default {
   handleGenerateResume,
   handleGenerateCoverLetter,
   handleSkillsOptimization,
   handleExperienceTailoring,
+  handleSalaryResearch
 };
 
 // -------------------------------------------------------------

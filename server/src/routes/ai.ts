@@ -652,3 +652,89 @@ export async function handleCompanyResearch(
   res.end(bodyStr);
 }
 
+/**
+ * SALARY RESEARCH: POST /api/generate/salary-research
+ *
+ * Body: { title: string, location?: string, experience?: string, company?: string, currentSalary?: string }
+ * Headers: Authorization (JWT) or X-User-Id (dev mode)
+ *
+ * Response: 201 with { id, kind, created_at, preview, content, persisted, metadata }
+ */
+export async function handleSalaryResearch(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+  reqId: string,
+  userId: string,
+  counters: GenerationCounters
+): Promise<void> {
+  const limit = checkLimit(`salary-research:${userId}`, 5, 60_000);
+  if (!limit.ok) {
+    res.setHeader("Retry-After", String(limit.retryAfterSec ?? 60));
+    throw new ApiError(429, "rate limited", "rate_limited");
+  }
+
+  let body: any;
+  try {
+    body = await readJson(req);
+  } catch {
+    throw new ApiError(400, "invalid JSON body", "bad_json");
+  }
+
+  const { title, location, experience, company, currentSalary } = body ?? {};
+  if (!title || typeof title !== "string" || !title.trim()) {
+    throw new ApiError(400, "title is required and must be a string", "bad_request");
+  }
+
+  counters.generate_total++;
+  const start = Date.now();
+
+  const result = await orchestrator.handleSalaryResearch({
+    userId,
+    title: title.trim(),
+    location,
+    experience,
+    company,
+    currentSalary,
+  });
+  const latencyMs = Date.now() - start;
+
+  if (result.error) {
+    counters.generate_fail++;
+    logError("salary_research_failed", {
+      reqId,
+      userId,
+      title,
+      error: result.error,
+      latency_ms: latencyMs,
+    });
+    throw new ApiError(502, result.error, "ai_error");
+  }
+
+  const artifact = result.artifact;
+  if (!artifact) throw new ApiError(500, "no artifact produced", "no_artifact");
+
+  const metadata = {
+    ...(artifact.metadata ?? {}),
+    latency_ms: latencyMs,
+  };
+
+  counters.generate_success++;
+
+  const payload = {
+    id: artifact.id,
+    kind: artifact.kind,
+    created_at: artifact.created_at,
+    preview: JSON.stringify(artifact.content).slice(0, 400),
+    content: artifact.content,
+    metadata,
+  };
+
+  const bodyStr = JSON.stringify(payload);
+  res.writeHead(201, {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(bodyStr).toString(),
+    ...getCorsHeaders(),
+  });
+  res.end(bodyStr);
+}

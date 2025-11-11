@@ -41,6 +41,7 @@ import {
   handleSkillsOptimization,
   handleExperienceTailoring,
   handleCompanyResearch,
+  handleSalaryResearch,
   handleListArtifacts,
   handleGetArtifact,
   handleCreateJobMaterials,
@@ -269,6 +270,8 @@ async function handleRequest(
   res: http.ServerResponse
 ) {
   counters.requests_total++;
+  console.log("🧭 Incoming request:", req.method, req.url);
+
   const ctx = createRequestContext(req);
 
   try {
@@ -360,6 +363,20 @@ async function handleRequest(
       ctx.logComplete(method, pathname, 201);
       return;
     }
+// ------------------------------------------------------------------
+// SALARY RESEARCH ENDPOINT (protected)
+// ------------------------------------------------------------------
+// SALARY RESEARCH ENDPOINT (protected)
+// ------------------------------------------------------------------
+if (method === "POST" && pathname === "/api/salary-research") {
+  const userId = await requireAuth(req);
+  await handleSalaryResearch(req, res, url, ctx.reqId, userId, counters);
+  ctx.logComplete(method, pathname, 201);
+  return;
+}
+
+
+
 
     // ------------------------------------------------------------------
     // ARTIFACT ENDPOINTS (protected)
