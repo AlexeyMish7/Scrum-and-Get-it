@@ -299,13 +299,13 @@ export async function updateResumeDraft(
 }
 
 /**
- * Soft delete a resume draft (archive it)
+ * Delete a resume draft (hard delete from database)
  *
  * Inputs: userId, draftId
  * Outputs: Result<null>
  * Errors: Returns error in Result.error field
  *
- * Notes: Sets is_active = false instead of deleting row
+ * Notes: Permanently deletes the row from the database
  */
 export async function deleteResumeDraft(
   userId: string,
@@ -313,21 +313,17 @@ export async function deleteResumeDraft(
 ): Promise<Result<null>> {
   const userCrud = withUser(userId);
 
-  return userCrud.updateRow<null>(
-    "resume_drafts",
-    { is_active: false },
-    { eq: { id: draftId } }
-  );
+  return userCrud.deleteRow<null>("resume_drafts", { eq: { id: draftId } });
 }
 
 /**
- * Permanently delete a resume draft (hard delete)
+ * Permanently delete a resume draft (hard delete) - DEPRECATED
  *
  * Inputs: userId, draftId
  * Outputs: Result<null>
  * Errors: Returns error in Result.error field
  *
- * WARNING: This cannot be undone. Use deleteResumeDraft for soft delete instead.
+ * DEPRECATED: Use deleteResumeDraft instead (both now do hard delete)
  */
 export async function permanentlyDeleteResumeDraft(
   userId: string,

@@ -4,17 +4,25 @@
  * WHAT: Complete resume editor with AI generation and live preview
  * WHY: Single-page workflow replacing confusing multi-step stepper
  *
+ * TEMPLATE vs VISUAL STYLE:
+ * - TEMPLATE = AI behavior (selected when creating draft, stored in draft.templateId)
+ *   Controls HOW AI writes: tone, emphasis, industry terminology
+ *   Example: "Modern Tech" → AI emphasizes innovation, technical achievements
+ * - VISUAL STYLE = Export appearance (selected at export time)
+ *   Controls HOW resume LOOKS: fonts, colors, bullet style
+ *   Defaults to template's styling but can be overridden
+ *
  * Layout:
  * - Top: Draft selector + undo/redo controls
- * - Left (40%): GenerationPanel (job + options + generate)
+ * - Left (40%): GenerationPanel (job + options + generate using TEMPLATE)
  * - Middle (30%): AIResultsPanel (AI output with apply buttons)
- * - Right (30%): DraftPreviewPanel (live preview with export)
+ * - Right (30%): DraftPreviewPanel (live preview with export using VISUAL STYLE)
  *
  * State Flow:
  * 1. User selects job + generates → AI content appears in middle panel
  * 2. User clicks "Apply All" or individual applies → Draft updates in right panel
  * 3. User can manually edit sections → State tracked as "edited"
- * 4. Export PDF/DOCX from right panel
+ * 4. Export PDF/DOCX from right panel with chosen visual style
  *
  * Integration:
  * - GenerationPanel → onGenerationComplete → setPendingAIContent
@@ -60,13 +68,13 @@ import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewP
 import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
 import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
 import { TemplateSelector } from "@workspaces/ai/components/ResumeEditorV2/TemplateSelector";
-import TemplateShowcaseDialog from "@workspaces/ai/components/resume-v2/TemplateShowcaseDialog";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useAuth } from "@shared/context/AuthContext";
 import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
+import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
 
@@ -98,7 +106,6 @@ export default function ResumeEditorV2() {
     editSection,
     toggleSectionVisibility,
     reorderSections,
-    changeTemplate,
     undo,
     redo,
     canUndo,
@@ -131,10 +138,10 @@ export default function ResumeEditorV2() {
   >("pdf");
   const [exportFilename, setExportFilename] = useState<string>("");
   const [exportWatermark, setExportWatermark] = useState<boolean>(false);
-  const [exportTheme, setExportTheme] = useState<string>("modern");
+  // Visual style for export - controls fonts, colors, layout (defaults to template's styling)
+  const [exportVisualStyle, setExportVisualStyle] = useState<string>("modern");
   const [isInitializing, setIsInitializing] = useState(true);
   const [showVersionsOpen, setShowVersionsOpen] = useState(false);
-  const [showTemplateShowcase, setShowTemplateShowcase] = useState(false);
 
   // Set userId when user changes
   useEffect(() => {
@@ -287,24 +294,6 @@ export default function ResumeEditorV2() {
     }
   };
 
-  const handleChangeTemplate = async (templateId: string) => {
-    try {
-      await changeTemplate(templateId);
-      setSuccessMessage(`✓ Template changed successfully`);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to change template";
-      setErrorMessage(`❌ ${message}`);
-      console.error("Change template error:", error);
-    }
-  };
-
-  const handleSaveDraft = () => {
-    // Note: Drafts are now auto-saved to database on every edit/apply action
-    // This function kept for UI feedback only
-    setSuccessMessage("✓ Draft auto-saved");
-  };
-
   const handleExport = async (format: "pdf" | "docx") => {
     // Open export dialog to collect options instead of exporting directly
     if (!activeDraft) {
@@ -320,7 +309,8 @@ export default function ResumeEditorV2() {
     const dateStr = new Date().toISOString().split("T")[0];
     setExportFilename(`${cleanName}_${dateStr}`);
     setExportWatermark(false);
-    setExportTheme(activeDraft.templateId || "modern");
+    // Default visual style to template's styling
+    setExportVisualStyle(activeDraft.templateId || "modern");
     setExportDialogOpen(true);
   };
 
@@ -345,7 +335,7 @@ export default function ResumeEditorV2() {
             ? exportFilename
             : `${exportFilename}.pdf`,
           watermark: exportWatermark,
-          theme: exportTheme,
+          visualStyle: exportVisualStyle, // Visual styling (fonts, colors, layout)
         });
         setSuccessMessage("✓ PDF downloaded successfully");
       } else if (exportFormat === "docx") {
@@ -354,7 +344,7 @@ export default function ResumeEditorV2() {
             ? exportFilename
             : `${exportFilename}.docx`,
           watermark: exportWatermark,
-          theme: exportTheme,
+          theme: exportVisualStyle,
         });
         setSuccessMessage("✓ DOCX downloaded successfully");
       } else if (exportFormat === "html") {
@@ -703,31 +693,37 @@ export default function ResumeEditorV2() {
           bgcolor: "white",
           borderBottom: 1,
           borderColor: "divider",
-          px: 3,
+          px: { xs: 1.5, sm: 3 },
           py: 1.5,
         }}
       >
         <Stack
           direction="row"
-          spacing={2}
+          spacing={{ xs: 1, sm: 2 }}
           alignItems="center"
           justifyContent="space-between"
+          flexWrap="wrap"
+          gap={1}
         >
-          <Stack direction="row" spacing={2} alignItems="center">
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
             <IconButton size="small" onClick={handleBackToLibrary}>
               <ArrowBackIcon />
             </IconButton>
 
-            <Divider orientation="vertical" flexItem />
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ display: { xs: "none", sm: "block" } }}
+            />
 
             {/* Draft Selector */}
-            <FormControl size="small" sx={{ minWidth: 220 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: 150, sm: 220 } }}>
               <Select
                 value={activeDraft.id}
                 onChange={(e) => loadDraft(e.target.value)}
                 displayEmpty
                 sx={{
-                  fontSize: 14,
+                  fontSize: { xs: 12, sm: 14 },
                   fontWeight: 500,
                   "& .MuiSelect-select": {
                     py: 1,
@@ -740,10 +736,17 @@ export default function ResumeEditorV2() {
                 {drafts.map((draft) => (
                   <MenuItem key={draft.id} value={draft.id}>
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 500, fontSize: { xs: 12, sm: 14 } }}
+                      >
                         📄 {draft.name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: { xs: "none", sm: "block" } }}
+                      >
                         Modified:{" "}
                         {new Date(draft.metadata.lastModified).toLocaleString()}
                       </Typography>
@@ -754,7 +757,12 @@ export default function ResumeEditorV2() {
             </FormControl>
           </Stack>
 
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+          >
             {/* Undo/Redo */}
             <Tooltip title="Undo (Ctrl+Z)">
               <span>
@@ -781,15 +789,6 @@ export default function ResumeEditorV2() {
             </Tooltip>
 
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-            {/* Browse Templates */}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setShowTemplateShowcase(true)}
-            >
-              Browse Templates
-            </Button>
 
             {/* Show Tutorial */}
             <Button size="small" onClick={startTour}>
@@ -821,6 +820,7 @@ export default function ResumeEditorV2() {
         sx={{
           flex: 1,
           display: "flex",
+          flexDirection: { xs: "column", lg: "row" },
           overflow: "hidden",
           gap: 2,
           p: 2,
@@ -830,7 +830,9 @@ export default function ResumeEditorV2() {
         {/* Left Panel - Generation */}
         <Box
           sx={{
-            width: { xs: "100%", md: "35%" },
+            width: { xs: "100%", lg: "35%" },
+            height: { xs: "auto", lg: "100%" },
+            minHeight: { xs: "400px", lg: 0 },
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
@@ -848,7 +850,9 @@ export default function ResumeEditorV2() {
         {/* Middle Panel - AI Results */}
         <Box
           sx={{
-            width: { xs: "100%", md: "32.5%" },
+            width: { xs: "100%", lg: "32.5%" },
+            height: { xs: "auto", lg: "100%" },
+            minHeight: { xs: "400px", lg: 0 },
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
@@ -868,7 +872,9 @@ export default function ResumeEditorV2() {
         {/* Right Panel - Draft Preview */}
         <Box
           sx={{
-            width: { xs: "100%", md: "32.5%" },
+            width: { xs: "100%", lg: "32.5%" },
+            height: { xs: "auto", lg: "100%" },
+            minHeight: { xs: "500px", lg: 0 },
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
@@ -881,8 +887,6 @@ export default function ResumeEditorV2() {
             onEditSection={handleEditSection}
             onToggleSection={handleToggleSection}
             onReorderSections={handleReorderSections}
-            onChangeTemplate={handleChangeTemplate}
-            onSaveDraft={handleSaveDraft}
             onExport={handleExport}
           />
         </Box>
@@ -902,16 +906,18 @@ export default function ResumeEditorV2() {
             alignItems: "center",
             justifyContent: "center",
             zIndex: 1300,
+            p: { xs: 2, sm: 0 },
           }}
           onClick={() => setShowNewDraftDialog(false)}
         >
           <Box
             sx={{
               bgcolor: "white",
-              p: 3,
+              p: { xs: 2, sm: 3 },
               borderRadius: 1,
-              minWidth: 700,
-              maxWidth: 900,
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "auto", sm: 700 },
+              maxWidth: { xs: "100%", sm: 900 },
               maxHeight: "90vh",
               overflow: "auto",
               boxShadow: 24,
@@ -921,6 +927,19 @@ export default function ResumeEditorV2() {
             <Typography variant="h6" sx={{ mb: 2 }}>
               Create New Draft
             </Typography>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                📋 Template = AI Content Style
+              </Typography>
+              <Typography variant="caption">
+                Choose a template that matches your industry and role. The
+                template controls how the AI generates content: tone, language,
+                emphasis, and achievement framing. You can customize the visual
+                appearance when exporting.
+              </Typography>
+            </Alert>
+
             <TextField
               autoFocus
               fullWidth
@@ -1013,6 +1032,15 @@ export default function ResumeEditorV2() {
         <DialogTitle>Export Resume</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              <Typography variant="caption">
+                Your content was generated using the{" "}
+                <strong>{getTemplate(activeDraft?.templateId).name}</strong>{" "}
+                template. Below, choose the visual appearance for your export
+                (fonts, colors, layout).
+              </Typography>
+            </Alert>
+
             <FormControl fullWidth size="small">
               <InputLabel id="export-format-label">Format</InputLabel>
               <Select
@@ -1051,19 +1079,85 @@ export default function ResumeEditorV2() {
               label="Add DRAFT watermark"
             />
 
+            {/* Show locked AI template */}
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: "grey.50",
+                borderRadius: 1,
+                borderLeft: 3,
+                borderColor: "info.main",
+              }}
+            >
+              <Typography variant="caption" fontWeight="600" display="block">
+                🤖 AI Template (locked)
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {activeDraft?.templateId || "modern"}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                This controls the AI-generated content and cannot be changed
+                after creation
+              </Typography>
+            </Box>
+
+            {/* Visual Style selector - can be changed */}
             <FormControl fullWidth size="small">
-              <InputLabel id="export-theme-label">Theme</InputLabel>
+              <InputLabel id="export-visual-style-label">
+                🎨 Visual Style (changeable)
+              </InputLabel>
               <Select
-                labelId="export-theme-label"
-                value={exportTheme}
-                label="Theme"
-                onChange={(e) => setExportTheme(e.target.value)}
+                labelId="export-visual-style-label"
+                value={exportVisualStyle}
+                label="🎨 Visual Style (changeable)"
+                onChange={(e) => setExportVisualStyle(e.target.value)}
               >
-                <MenuItem value="modern">Modern</MenuItem>
-                <MenuItem value="classic">Classic</MenuItem>
-                <MenuItem value="compact">Compact</MenuItem>
+                <MenuItem value="modern">
+                  <Box>
+                    <Typography variant="body2">Modern</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Calibri, blue accents, arrow bullets
+                    </Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="classic">
+                  <Box>
+                    <Typography variant="body2">Classic</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Times New Roman, black, standard bullets
+                    </Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="minimal">
+                  <Box>
+                    <Typography variant="body2">Minimal</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Arial, clean layout, dash bullets
+                    </Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="creative">
+                  <Box>
+                    <Typography variant="body2">Creative</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Georgia, purple accents, open bullets
+                    </Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem value="academic">
+                  <Box>
+                    <Typography variant="body2">Academic</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Times New Roman, formal, standard bullets
+                    </Typography>
+                  </Box>
+                </MenuItem>
               </Select>
             </FormControl>
+            <Typography variant="caption" color="text.secondary">
+              💡 Visual style controls fonts, colors, and layout. Choose any
+              style regardless of your AI template.
+            </Typography>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1081,14 +1175,6 @@ export default function ResumeEditorV2() {
       <ResumeVersionsPanel
         open={showVersionsOpen}
         onClose={() => setShowVersionsOpen(false)}
-      />
-
-      {/* Template Showcase Dialog */}
-      <TemplateShowcaseDialog
-        open={showTemplateShowcase}
-        onClose={() => setShowTemplateShowcase(false)}
-        currentTemplateId={activeDraft?.templateId}
-        onSelectTemplate={handleChangeTemplate}
       />
     </Box>
   );

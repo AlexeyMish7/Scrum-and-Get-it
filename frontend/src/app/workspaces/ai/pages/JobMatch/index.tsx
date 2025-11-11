@@ -155,6 +155,21 @@ export default function JobMatchPage() {
           </Paper>
         )}
 
+        {/* Error State */}
+        {jm.error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Analysis Failed
+            </Typography>
+            <Typography variant="body2">{jm.error}</Typography>
+            {jm.error.includes("Authentication") && (
+              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                Please try refreshing the page or logging out and back in.
+              </Typography>
+            )}
+          </Alert>
+        )}
+
         {/* Results */}
         {!jm.isLoading && jm.matchScore !== null && (
           <Stack spacing={2}>
@@ -303,8 +318,9 @@ export default function JobMatchPage() {
 
                   {jm.experienceSuggestions.length === 0 ? (
                     <Alert severity="info">
-                      No experience suggestions yet. Analysis may still be
-                      processing.
+                      {jm.breakdown?.experience === 0
+                        ? "No experience data found. Make sure you have employment history in your profile."
+                        : "No experience suggestions yet. Analysis may still be processing."}
                     </Alert>
                   ) : (
                     <Stack spacing={1}>

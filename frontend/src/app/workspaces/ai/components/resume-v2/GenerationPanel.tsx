@@ -126,7 +126,9 @@ export default function GenerationPanel({
         10000
       );
 
-      // Get current draft's template for template-aware AI generation
+      // Get current draft's TEMPLATE for AI content generation
+      // Template controls AI behavior: tone, emphasis, industry language
+      // (Visual styling is separate and chosen at export time)
       const activeDraft = getActiveDraft();
       const templateId = activeDraft?.templateId || "classic";
 
@@ -174,10 +176,19 @@ export default function GenerationPanel({
             <Typography variant="h6" gutterBottom>
               Generate Resume
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Select a target job and customize options to generate a tailored
               resume
             </Typography>
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              <Typography variant="caption">
+                <strong>How it works:</strong> Your draft's template (e.g.,
+                Modern Tech, Classic) sets the AI's base style—tone, language,
+                and emphasis. Options below (Tone, Focus, Custom Prompt)
+                fine-tune each generation while maintaining the template's
+                professional framework.
+              </Typography>
+            </Alert>
           </Box>
 
           {/* Status Alert */}
@@ -246,7 +257,7 @@ export default function GenerationPanel({
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <FormControl
               size="small"
-              sx={{ minWidth: 160 }}
+              sx={{ minWidth: { xs: "100%", sm: 160 } }}
               disabled={isGenerating}
             >
               <InputLabel id="tone-label">Tone</InputLabel>
@@ -264,7 +275,7 @@ export default function GenerationPanel({
 
             <FormControl
               size="small"
-              sx={{ minWidth: 160 }}
+              sx={{ minWidth: { xs: "100%", sm: 160 } }}
               disabled={isGenerating}
             >
               <InputLabel id="focus-label">Focus (Optional)</InputLabel>
