@@ -174,7 +174,7 @@ export async function createResumeDraft(
 }
 
 /**
- * Update an existing resume draft
+ * Update an existing resume draft (internal - no retry)
  *
  * Inputs: userId, draftId, partial update data
  * Outputs: Result<ResumeDraftRow> with updated draft
@@ -182,7 +182,7 @@ export async function createResumeDraft(
  *
  * Notes: Increments version number for optimistic locking
  */
-export async function updateResumeDraft(
+async function updateResumeDraftInternal(
   userId: string,
   draftId: string,
   input: UpdateResumeDraftInput
@@ -221,6 +221,77 @@ export async function updateResumeDraft(
   return userCrud.updateRow<ResumeDraftRow>("resume_drafts", updateData, {
     eq: { id: draftId, version: current.version },
   });
+}
+
+/**
+ * Update an existing resume draft with automatic retry on version conflict
+ *
+ * Inputs: userId, draftId, partial update data
+ * Outputs: Result<ResumeDraftRow> with updated draft
+ * Errors: Returns error in Result.error field
+ *
+ * Features:
+ * - Automatic retry on 409 conflict (up to 3 attempts)
+ * - Reloads latest version from database on conflict
+ * - Prevents race conditions from concurrent edits
+ * - Exponential backoff between retries
+ */
+export async function updateResumeDraft(
+  userId: string,
+  draftId: string,
+  input: UpdateResumeDraftInput,
+  maxRetries: number = 3
+): Promise<Result<ResumeDraftRow>> {
+  let lastError: Result<ResumeDraftRow> | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff: 100ms, 200ms, 400ms
+      const delay = 100 * Math.pow(2, attempt - 1);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      console.log(
+        `🔄 Retrying resume draft update (attempt ${attempt + 1}/${maxRetries})...`
+      );
+    }
+
+    const result = await updateResumeDraftInternal(userId, draftId, input);
+
+    // Success - return immediately
+    if (!result.error && result.data) {
+      if (attempt > 0) {
+        console.log(`✓ Resume draft update succeeded after ${attempt + 1} attempts`);
+      }
+      return result;
+    }
+
+    // Check if this is a version conflict (409 or PGRST116 - no rows updated)
+    const isVersionConflict =
+      result.status === 409 ||
+      result.error?.message?.includes("version") ||
+      result.error?.message?.includes("PGRST116") ||
+      result.error?.message?.includes("0 rows");
+
+    if (!isVersionConflict) {
+      // Not a version conflict - fail immediately
+      return result;
+    }
+
+    // Version conflict - will retry
+    lastError = result;
+    console.warn(
+      `⚠️ Version conflict detected (attempt ${attempt + 1}/${maxRetries})`
+    );
+  }
+
+  // All retries exhausted
+  console.error(`❌ Resume draft update failed after ${maxRetries} attempts`);
+  return (
+    lastError || {
+      data: null,
+      error: { message: "Update failed after multiple retries" },
+      status: 409,
+    }
+  );
 }
 
 /**
