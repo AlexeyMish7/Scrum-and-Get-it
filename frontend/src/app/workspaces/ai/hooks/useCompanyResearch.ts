@@ -6,7 +6,7 @@ import aiArtifacts from "@shared/services/aiArtifacts";
 
 /**
  * Company Research Hook - UC-063, UC-064
- * 
+ *
  * Features:
  * - AI-powered company research with news aggregation
  * - Gather company background, mission, products
@@ -36,7 +36,9 @@ export interface CompanyResearchData {
   products?: string[];
   recentNews?: CompanyNewsItem[];
   competitiveLandscape?: string;
-  rating?: number | { glassdoor?: number; source?: string; reviewCount?: number };
+  rating?:
+    | number
+    | { glassdoor?: number; source?: string; reviewCount?: number };
 }
 
 export function useCompanyResearch() {
@@ -45,7 +47,9 @@ export function useCompanyResearch() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [researchData, setResearchData] = useState<CompanyResearchData | null>(null);
+  const [researchData, setResearchData] = useState<CompanyResearchData | null>(
+    null
+  );
   const [rawResponse, setRawResponse] = useState<any>(null);
 
   const runResearch = async (companyName: string, jobId?: number) => {
@@ -53,7 +57,7 @@ export function useCompanyResearch() {
       setError("User not authenticated");
       return;
     }
-    
+
     if (!companyName.trim()) {
       setError("Company name is required");
       return;
@@ -66,29 +70,39 @@ export function useCompanyResearch() {
 
     try {
       // Call AI endpoint for company research
-      const response = await aiGeneration.generateCompanyResearch(userId, companyName, jobId);
+      const response = await aiGeneration.generateCompanyResearch(
+        userId,
+        companyName,
+        jobId
+      );
 
       console.log("🏢 Company Research - Raw Response:", response);
 
       // Parse the response
       let parsedData: CompanyResearchData = { name: companyName };
-      
+
       const content = (response as any).content || response;
-      
+
       if (content) {
-        
         // Extract company info from various possible formats
         parsedData = {
-          name: content.name || content.company_name || content.companyName || companyName,
+          name:
+            content.name ||
+            content.company_name ||
+            content.companyName ||
+            companyName,
           industry: content.industry,
           size: content.size || content.employee_count,
           location: content.location || content.headquarters,
           website: content.website || content.url,
           mission: content.mission || content.mission_statement,
-          description: content.description || content.summary || content.overview,
-          products: content.products || content.top_products || content.services || [],
+          description:
+            content.description || content.summary || content.overview,
+          products:
+            content.products || content.top_products || content.services || [],
           recentNews: [],
-          competitiveLandscape: content.competitive_landscape || content.competitors,
+          competitiveLandscape:
+            content.competitive_landscape || content.competitors,
           rating: content.rating,
         };
 
@@ -98,7 +112,10 @@ export function useCompanyResearch() {
           parsedData.recentNews = newsArray.map((item: any) => ({
             title: item.title || item.headline || "Untitled",
             category: item.category || item.type || "General",
-            date: item.date || item.published_at || new Date().toISOString().split('T')[0],
+            date:
+              item.date ||
+              item.published_at ||
+              new Date().toISOString().split("T")[0],
             source: item.source || item.publisher || "Unknown",
             relevance: item.relevance || item.score || 0.5,
             summary: item.summary || item.description || "",

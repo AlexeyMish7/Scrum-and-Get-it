@@ -42,7 +42,10 @@ export function buildCompanyResearchPrompt(
 
   // Extract additional context from job description if available
   const contextClues = jobDescription
-    ? `\n\nAdditional context from job posting:\n${jobDescription.slice(0, 500)}`
+    ? `\n\nAdditional context from job posting:\n${jobDescription.slice(
+        0,
+        500
+      )}`
     : "";
 
   const industryContext = industry
@@ -132,11 +135,10 @@ export function validateCompanyResearchResponse(response: any): boolean {
   if (!response || typeof response !== "object") return false;
 
   // Just need company name - everything else is optional
-  const hasName = 
+  const hasName =
     typeof response.companyName === "string" ||
     typeof response.company_name === "string" ||
     typeof response.name === "string";
 
   return hasName;
 }
-

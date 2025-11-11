@@ -895,7 +895,7 @@ export async function handleCompanyResearch(req: {
         companyName,
         error: aiErr?.message,
       });
-      
+
       // Fallback to mock data if AI fails
       logInfo("Falling back to mock company data", { companyName });
       const mockData = await fetchCompanyResearch(
@@ -906,7 +906,7 @@ export async function handleCompanyResearch(req: {
       if (!mockData) {
         return { error: "Company research data not available" };
       }
-      
+
       // Use mock data as AI result
       aiResult = { json: mockData, error: null };
     }
@@ -948,7 +948,10 @@ export async function handleCompanyResearch(req: {
       } catch (parseErr) {
         logError("Failed to parse AI company research response", {
           error: parseErr,
-          rawResponse: typeof researchData === "string" ? researchData.slice(0, 200) : String(researchData),
+          rawResponse:
+            typeof researchData === "string"
+              ? researchData.slice(0, 200)
+              : String(researchData),
         });
         return { error: "Invalid AI response format" };
       }
@@ -957,12 +960,20 @@ export async function handleCompanyResearch(req: {
     // Log parsed data structure for debugging
     logInfo("Parsed research data structure", {
       companyName,
-      hasCompanyName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+      hasCompanyName: !!(
+        researchData?.companyName ||
+        researchData?.company_name ||
+        researchData?.name
+      ),
       hasIndustry: !!researchData?.industry,
       hasDescription: !!researchData?.description,
       hasMission: !!researchData?.mission,
-      newsCount: Array.isArray(researchData?.news) ? researchData.news.length : 0,
-      productsCount: Array.isArray(researchData?.products) ? researchData.products.length : 0,
+      newsCount: Array.isArray(researchData?.news)
+        ? researchData.news.length
+        : 0,
+      productsCount: Array.isArray(researchData?.products)
+        ? researchData.products.length
+        : 0,
     });
 
     // Check if we got any data at all
@@ -978,7 +989,11 @@ export async function handleCompanyResearch(req: {
     if (!validateCompanyResearchResponse(researchData)) {
       logError("AI response failed validation", {
         companyName,
-        hasName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+        hasName: !!(
+          researchData?.companyName ||
+          researchData?.company_name ||
+          researchData?.name
+        ),
         keys: Object.keys(researchData || {}),
         sample: JSON.stringify(researchData || {}).slice(0, 300),
       });
@@ -987,28 +1002,72 @@ export async function handleCompanyResearch(req: {
 
     // Ensure required fields have defaults - handle multiple field name variations
     const finalData = {
-      companyName: researchData.companyName || researchData.company_name || researchData.name || companyName,
+      companyName:
+        researchData.companyName ||
+        researchData.company_name ||
+        researchData.name ||
+        companyName,
       industry: researchData.industry || researchData.sector || "Unknown",
-      size: researchData.size || researchData.employee_count || researchData.employeeCount || null,
-      location: researchData.location || researchData.headquarters || researchData.hq || null,
-      founded: researchData.founded || researchData.founded_year || researchData.yearFounded || null,
-      website: researchData.website || researchData.url || researchData.companyUrl || null,
-      mission: researchData.mission || researchData.mission_statement || researchData.missionStatement || null,
-      description: researchData.description || researchData.summary || researchData.overview || researchData.about || null,
-      news: Array.isArray(researchData.news) ? researchData.news : (Array.isArray(researchData.recent_news) ? researchData.recent_news : []),
-      culture: researchData.culture || researchData.company_culture || {
-        type: "corporate",
-        remotePolicy: null,
-        values: [],
-        perks: [],
-      },
+      size:
+        researchData.size ||
+        researchData.employee_count ||
+        researchData.employeeCount ||
+        null,
+      location:
+        researchData.location ||
+        researchData.headquarters ||
+        researchData.hq ||
+        null,
+      founded:
+        researchData.founded ||
+        researchData.founded_year ||
+        researchData.yearFounded ||
+        null,
+      website:
+        researchData.website ||
+        researchData.url ||
+        researchData.companyUrl ||
+        null,
+      mission:
+        researchData.mission ||
+        researchData.mission_statement ||
+        researchData.missionStatement ||
+        null,
+      description:
+        researchData.description ||
+        researchData.summary ||
+        researchData.overview ||
+        researchData.about ||
+        null,
+      news: Array.isArray(researchData.news)
+        ? researchData.news
+        : Array.isArray(researchData.recent_news)
+        ? researchData.recent_news
+        : [],
+      culture: researchData.culture ||
+        researchData.company_culture || {
+          type: "corporate",
+          remotePolicy: null,
+          values: [],
+          perks: [],
+        },
       leadership: Array.isArray(researchData.leadership)
         ? researchData.leadership
-        : (Array.isArray(researchData.executives) ? researchData.executives : []),
+        : Array.isArray(researchData.executives)
+        ? researchData.executives
+        : [],
       products: Array.isArray(researchData.products)
         ? researchData.products
-        : (Array.isArray(researchData.services) ? researchData.services : (Array.isArray(researchData.offerings) ? researchData.offerings : [])),
-      rating: researchData.rating || researchData.glassdoor || researchData.glassdoorRating || null,
+        : Array.isArray(researchData.services)
+        ? researchData.services
+        : Array.isArray(researchData.offerings)
+        ? researchData.offerings
+        : [],
+      rating:
+        researchData.rating ||
+        researchData.glassdoor ||
+        researchData.glassdoorRating ||
+        null,
     };
 
     // 6) Create artifact
@@ -1052,4 +1111,3 @@ export async function handleCompanyResearch(req: {
     return { error: `Research failed: ${err?.message ?? "unknown error"}` };
   }
 }
-

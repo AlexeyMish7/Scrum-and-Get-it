@@ -573,7 +573,11 @@ export async function handleCompanyResearch(
   const jobId = body?.jobId;
   // jobId is optional, but if provided must be valid
   if (jobId !== undefined && jobId !== null && Number.isNaN(Number(jobId))) {
-    throw new ApiError(400, "jobId must be a number if provided", "bad_request");
+    throw new ApiError(
+      400,
+      "jobId must be a number if provided",
+      "bad_request"
+    );
   }
 
   counters.generate_total++;
@@ -651,4 +655,3 @@ export async function handleCompanyResearch(
   });
   res.end(bodyStr);
 }
-

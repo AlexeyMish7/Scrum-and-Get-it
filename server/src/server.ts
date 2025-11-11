@@ -349,14 +349,7 @@ async function handleRequest(
 
     if (method === "POST" && pathname === "/api/generate/company-research") {
       const userId = await requireAuth(req);
-      await handleCompanyResearch(
-        req,
-        res,
-        url,
-        ctx.reqId,
-        userId,
-        counters
-      );
+      await handleCompanyResearch(req, res, url, ctx.reqId, userId, counters);
       ctx.logComplete(method, pathname, 201);
       return;
     }
