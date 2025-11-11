@@ -47,7 +47,6 @@ import {
   DialogActions,
   Checkbox,
   FormControlLabel,
-  Switch,
 } from "@mui/material";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
@@ -59,6 +58,7 @@ import GenerationPanel from "@workspaces/ai/components/resume-v2/GenerationPanel
 import AIResultsPanel from "@workspaces/ai/components/resume-v2/AIResultsPanel";
 import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewPanel";
 import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
+import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
 import { TemplateSelector } from "@workspaces/ai/components/ResumeEditorV2/TemplateSelector";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
@@ -68,8 +68,6 @@ import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
-import ShareDialog from "@workspaces/ai/components/resume-v2/ShareDialog";
-import FeedbackPanel from "@workspaces/ai/components/resume-v2/FeedbackPanel";
 
 export default function ResumeEditorV2() {
   const navigate = useNavigate();
@@ -83,6 +81,7 @@ export default function ResumeEditorV2() {
     createDraft,
     loadDraft,
     clearDraft,
+    deselectDraft,
     setJobLink,
     setUserId,
     loadFromCacheSync,
@@ -106,6 +105,12 @@ export default function ResumeEditorV2() {
 
   const activeDraft = getActiveDraft();
 
+  // DEBUG: Log active draft state
+  console.log(
+    "🔍 ResumeEditorV2 render - activeDraft:",
+    activeDraft?.id || "null"
+  );
+
   // Product tour
   const [showTour, startTour, endTour] = useShouldShowTour();
 
@@ -119,13 +124,14 @@ export default function ResumeEditorV2() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Export dialog state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"pdf" | "docx" | "html" | "txt">("pdf");
+  const [exportFormat, setExportFormat] = useState<
+    "pdf" | "docx" | "html" | "txt"
+  >("pdf");
   const [exportFilename, setExportFilename] = useState<string>("");
   const [exportWatermark, setExportWatermark] = useState<boolean>(false);
   const [exportTheme, setExportTheme] = useState<string>("modern");
   const [isInitializing, setIsInitializing] = useState(true);
   const [showVersionsOpen, setShowVersionsOpen] = useState(false);
-  const [showShareOpen, setShowShareOpen] = useState(false);
 
   // Set userId when user changes
   useEffect(() => {
@@ -145,24 +151,21 @@ export default function ResumeEditorV2() {
       }
 
       try {
-        // 1. Load from cache instantly (0ms latency)
+        // 1. Clear active draft FIRST - force user to choose from starter
+        console.log("🧹 Clearing active draft to show starter screen...");
+        clearDraft();
+
+        // 2. Load from cache instantly (0ms latency)
         console.log("⚡ Loading drafts from cache...");
         loadFromCacheSync();
 
-        // 2. Sync with database in background
+        // 3. Sync with database in background
         console.log("🔄 Syncing with database...");
         await syncWithDatabase();
 
-        // 3. Get fresh state after sync
+        // 4. Get fresh state after sync
         const store = useResumeDraftsV2.getState();
         console.log(`✓ Synced ${store.drafts.length} drafts`);
-
-        // 4. If no drafts exist, create initial draft
-        if (store.drafts.length === 0) {
-          console.log("📝 Creating initial draft...");
-          const draftId = await createDraft("My Resume");
-          console.log("✓ Created initial draft:", draftId);
-        }
       } catch (error) {
         console.error("❌ Failed to initialize drafts:", error);
         setErrorMessage("Failed to load drafts from database");
@@ -304,7 +307,9 @@ export default function ResumeEditorV2() {
 
     setExportFormat(format);
     // prefill filename
-    const cleanName = activeDraft.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const cleanName = activeDraft.name
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase();
     const dateStr = new Date().toISOString().split("T")[0];
     setExportFilename(`${cleanName}_${dateStr}`);
     setExportWatermark(false);
@@ -329,23 +334,33 @@ export default function ResumeEditorV2() {
     try {
       if (exportFormat === "pdf") {
         await exportResumeToPDF(activeDraft, userProfile, {
-          filename: exportFilename.endsWith(".pdf") ? exportFilename : `${exportFilename}.pdf`,
+          filename: exportFilename.endsWith(".pdf")
+            ? exportFilename
+            : `${exportFilename}.pdf`,
           watermark: exportWatermark,
           theme: exportTheme,
         });
         setSuccessMessage("✓ PDF downloaded successfully");
       } else if (exportFormat === "docx") {
         await exportResumeToDOCX(activeDraft, userProfile, {
-          filename: exportFilename.endsWith(".docx") ? exportFilename : `${exportFilename}.docx`,
+          filename: exportFilename.endsWith(".docx")
+            ? exportFilename
+            : `${exportFilename}.docx`,
           watermark: exportWatermark,
           theme: exportTheme,
         });
         setSuccessMessage("✓ DOCX downloaded successfully");
       } else if (exportFormat === "html") {
         // Render a simple HTML representation and download
-        const html = renderResumeHTML(activeDraft, exportTheme, exportWatermark, userProfile);
+        const html = renderResumeHTML(
+          activeDraft,
+          exportWatermark,
+          userProfile
+        );
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        const filename = exportFilename.endsWith(".html") ? exportFilename : `${exportFilename}.html`;
+        const filename = exportFilename.endsWith(".html")
+          ? exportFilename
+          : `${exportFilename}.html`;
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -356,9 +371,15 @@ export default function ResumeEditorV2() {
         URL.revokeObjectURL(url);
         setSuccessMessage("✓ HTML downloaded successfully");
       } else if (exportFormat === "txt") {
-        const text = renderResumeText(activeDraft, userProfile, exportWatermark);
+        const text = renderResumeText(
+          activeDraft,
+          userProfile,
+          exportWatermark
+        );
         const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-        const filename = exportFilename.endsWith(".txt") ? exportFilename : `${exportFilename}.txt`;
+        const filename = exportFilename.endsWith(".txt")
+          ? exportFilename
+          : `${exportFilename}.txt`;
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -379,68 +400,185 @@ export default function ResumeEditorV2() {
 
   // Small HTML renderer used for HTML export (simple, readable layout)
   const renderResumeHTML = (
-    draft: any,
-    theme: string,
+    draft: {
+      name: string;
+      content: {
+        summary?: string;
+        skills?: string[];
+        experience?: Array<{
+          role?: string;
+          company?: string;
+          dates?: string;
+          bullets: string[];
+        }>;
+        education?: Array<{
+          degree?: string;
+          institution?: string;
+          graduation_date?: string;
+          details?: string[];
+        }>;
+      };
+    },
     watermark: boolean,
     userProfile?: { full_name?: string; email?: string; phone?: string }
   ) => {
     const header = userProfile?.full_name
-      ? `<h1 style="margin:0">${userProfile.full_name}</h1><p style="margin:0;color:#666">${[userProfile.email, userProfile.phone].filter(Boolean).join(' • ')}</p><hr/>`
+      ? `<h1 style="margin:0">${
+          userProfile.full_name
+        }</h1><p style="margin:0;color:#666">${[
+          userProfile.email,
+          userProfile.phone,
+        ]
+          .filter(Boolean)
+          .join(" • ")}</p><hr/>`
       : "";
 
     const sections = [] as string[];
     if (draft.content.summary) {
-      sections.push(`<h2>Professional Summary</h2><p>${escapeHtml(draft.content.summary)}</p>`);
+      sections.push(
+        `<h2>Professional Summary</h2><p>${escapeHtml(
+          draft.content.summary
+        )}</p>`
+      );
     }
     if (draft.content.skills && draft.content.skills.length) {
-      sections.push(`<h2>Skills</h2><p>${escapeHtml(draft.content.skills.join(' • '))}</p>`);
+      sections.push(
+        `<h2>Skills</h2><p>${escapeHtml(draft.content.skills.join(" • "))}</p>`
+      );
     }
     if (draft.content.experience && draft.content.experience.length) {
-      sections.push(`<h2>Experience</h2>${draft.content.experience.map(exp=>`<div><strong>${escapeHtml(exp.role||'')}</strong>${exp.company?` <em>@ ${escapeHtml(exp.company)}</em>`:''}${exp.dates?` <small>(${escapeHtml(exp.dates)})</small>`:''}<ul>${exp.bullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul></div>`).join('')}`);
+      sections.push(
+        `<h2>Experience</h2>${draft.content.experience
+          .map(
+            (exp: {
+              role?: string;
+              company?: string;
+              dates?: string;
+              bullets: string[];
+            }) =>
+              `<div><strong>${escapeHtml(exp.role || "")}</strong>${
+                exp.company ? ` <em>@ ${escapeHtml(exp.company)}</em>` : ""
+              }${
+                exp.dates ? ` <small>(${escapeHtml(exp.dates)})</small>` : ""
+              }<ul>${exp.bullets
+                .map((b: string) => `<li>${escapeHtml(b)}</li>`)
+                .join("")}</ul></div>`
+          )
+          .join("")}`
+      );
     }
     if (draft.content.education && draft.content.education.length) {
-      sections.push(`<h2>Education</h2>${draft.content.education.map(e=>`<div><strong>${escapeHtml(e.degree||'')}</strong> <div>${escapeHtml(e.institution||'')}</div>${e.graduation_date?`<small>${escapeHtml(e.graduation_date)}</small>`:''}${e.details?`<ul>${e.details.map(d=>`<li>${escapeHtml(d)}</li>`).join('')}</ul>`:''}</div>`).join('')}`);
+      sections.push(
+        `<h2>Education</h2>${draft.content.education
+          .map(
+            (e: {
+              degree?: string;
+              institution?: string;
+              graduation_date?: string;
+              details?: string[];
+            }) =>
+              `<div><strong>${escapeHtml(
+                e.degree || ""
+              )}</strong> <div>${escapeHtml(e.institution || "")}</div>${
+                e.graduation_date
+                  ? `<small>${escapeHtml(e.graduation_date)}</small>`
+                  : ""
+              }${
+                e.details
+                  ? `<ul>${e.details
+                      .map((d: string) => `<li>${escapeHtml(d)}</li>`)
+                      .join("")}</ul>`
+                  : ""
+              }</div>`
+          )
+          .join("")}`
+      );
     }
 
-    const watermarkHtml = watermark ? `<div style="position:fixed;right:8px;bottom:8px;color:#ddd;font-size:12px;">DRAFT</div>` : "";
+    const watermarkHtml = watermark
+      ? `<div style="position:fixed;right:8px;bottom:8px;color:#ddd;font-size:12px;">DRAFT</div>`
+      : "";
 
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(draft.name)}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:24px;line-height:1.4;color:#222}h1{font-size:20px;margin-bottom:6px}h2{font-size:14px;margin-top:18px;margin-bottom:6px;color:#333}hr{border:none;border-top:1px solid #eee;margin:12px 0}</style></head><body>${watermarkHtml}<div class="resume">${header}${sections.join('')}</div></body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(
+      draft.name
+    )}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:24px;line-height:1.4;color:#222}h1{font-size:20px;margin-bottom:6px}h2{font-size:14px;margin-top:18px;margin-bottom:6px;color:#333}hr{border:none;border-top:1px solid #eee;margin:12px 0}</style></head><body>${watermarkHtml}<div class="resume">${header}${sections.join(
+      ""
+    )}</div></body></html>`;
   };
 
   const renderResumeText = (
-    draft: any,
+    draft: {
+      name: string;
+      content: {
+        summary?: string;
+        skills?: string[];
+        experience?: Array<{
+          role?: string;
+          company?: string;
+          dates?: string;
+          bullets: string[];
+        }>;
+        education?: Array<{
+          degree?: string;
+          institution?: string;
+          graduation_date?: string;
+          details?: string[];
+        }>;
+      };
+    },
     userProfile?: { full_name?: string; email?: string; phone?: string },
     watermark?: boolean
   ) => {
     const lines: string[] = [];
     if (userProfile?.full_name) lines.push(userProfile.full_name);
     if (userProfile?.email || userProfile?.phone)
-      lines.push([userProfile?.email, userProfile?.phone].filter(Boolean).join(' • '));
-    lines.push('');
-    if (watermark) lines.push('--- DRAFT ---', '');
+      lines.push(
+        [userProfile?.email, userProfile?.phone].filter(Boolean).join(" • ")
+      );
+    lines.push("");
+    if (watermark) lines.push("--- DRAFT ---", "");
     if (draft.content.summary) {
-      lines.push('PROFESSIONAL SUMMARY', draft.content.summary, '');
+      lines.push("PROFESSIONAL SUMMARY", draft.content.summary, "");
     }
     if (draft.content.skills && draft.content.skills.length) {
-      lines.push('SKILLS', draft.content.skills.join(' • '), '');
+      lines.push("SKILLS", draft.content.skills.join(" • "), "");
     }
     if (draft.content.experience && draft.content.experience.length) {
-      lines.push('EXPERIENCE');
-      draft.content.experience.forEach((exp) => {
-        lines.push(`${exp.role || ''} ${exp.company ? '@ ' + exp.company : ''} ${exp.dates || ''}`.trim());
-        exp.bullets.forEach((b) => lines.push(` - ${b}`));
-        lines.push('');
-      });
+      lines.push("EXPERIENCE");
+      draft.content.experience.forEach(
+        (exp: {
+          role?: string;
+          company?: string;
+          dates?: string;
+          bullets: string[];
+        }) => {
+          lines.push(
+            `${exp.role || ""} ${exp.company ? "@ " + exp.company : ""} ${
+              exp.dates || ""
+            }`.trim()
+          );
+          exp.bullets.forEach((b: string) => lines.push(` - ${b}`));
+          lines.push("");
+        }
+      );
     }
     if (draft.content.education && draft.content.education.length) {
-      lines.push('EDUCATION');
-      draft.content.education.forEach((edu) => {
-        lines.push(`${edu.degree || ''} - ${edu.institution || ''}`);
-        if (edu.details) edu.details.forEach((d) => lines.push(` - ${d}`));
-        lines.push('');
-      });
+      lines.push("EDUCATION");
+      draft.content.education.forEach(
+        (edu: {
+          degree?: string;
+          institution?: string;
+          graduation_date?: string;
+          details?: string[];
+        }) => {
+          lines.push(`${edu.degree || ""} - ${edu.institution || ""}`);
+          if (edu.details)
+            edu.details.forEach((d: string) => lines.push(` - ${d}`));
+          lines.push("");
+        }
+      );
     }
-    return lines.join('\n');
+    return lines.join("\n");
   };
 
   const escapeHtml = (s: string) =>
@@ -448,7 +586,7 @@ export default function ResumeEditorV2() {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
+      .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
   const handleCreateNewDraft = async () => {
@@ -504,6 +642,13 @@ export default function ResumeEditorV2() {
     setSuccessMessage("↷ Redo");
   };
 
+  const handleBackToLibrary = () => {
+    // Deselect the active draft (auto-saves to cache)
+    // This will show the ResumeStarter (library view)
+    deselectDraft();
+    console.log("↩️ Returning to resume library");
+  };
+
   // Show loading state while initializing
   if (isInitializing) {
     return (
@@ -518,18 +663,23 @@ export default function ResumeEditorV2() {
     );
   }
 
-  // Show loading if no draft yet
+  // Always show starter screen if no active draft (even if drafts exist)
+  // This forces user to choose which resume to work on every time
   if (!activeDraft) {
+    console.log("✅ Showing ResumeStarter (no active draft)");
     return (
-      <Container maxWidth={false}>
-        <Box sx={{ py: 4, textAlign: "center" }}>
-          <Typography variant="h6" color="text.secondary">
-            No draft available. Creating one...
-          </Typography>
-        </Box>
-      </Container>
+      <ResumeStarter
+        onStart={(draftId) => {
+          // Draft is already loaded by the starter
+          console.log("✓ Draft started:", draftId);
+          // Component will re-render with activeDraft set
+        }}
+        onCancel={() => navigate("/ai")}
+      />
     );
   }
+
+  console.log("📝 Showing full editor for draft:", activeDraft.name);
 
   return (
     <Box
@@ -557,7 +707,7 @@ export default function ResumeEditorV2() {
           justifyContent="space-between"
         >
           <Stack direction="row" spacing={2} alignItems="center">
-            <IconButton size="small" onClick={() => navigate("/ai")}>
+            <IconButton size="small" onClick={handleBackToLibrary}>
               <ArrowBackIcon />
             </IconButton>
 
@@ -645,9 +795,6 @@ export default function ResumeEditorV2() {
             </Button>
             <Button size="small" onClick={() => setShowVersionsOpen(true)}>
               Versions
-            </Button>
-            <Button size="small" onClick={() => setShowShareOpen(true)}>
-              Share
             </Button>
           </Stack>
         </Stack>
@@ -830,8 +977,10 @@ export default function ResumeEditorV2() {
                 value={exportFormat}
                 label="Format"
                 onChange={(e) =>
-                    setExportFormat(e.target.value as "pdf" | "docx" | "html" | "txt")
-                  }
+                  setExportFormat(
+                    e.target.value as "pdf" | "docx" | "html" | "txt"
+                  )
+                }
               >
                 <MenuItem value="pdf">PDF</MenuItem>
                 <MenuItem value="docx">Word (.docx)</MenuItem>
@@ -886,13 +1035,10 @@ export default function ResumeEditorV2() {
       <ProductTour run={showTour} onComplete={endTour} onSkip={endTour} />
 
       {/* Versions Panel */}
-      <ResumeVersionsPanel open={showVersionsOpen} onClose={() => setShowVersionsOpen(false)} />
-      <ShareDialog open={showShareOpen} onClose={() => setShowShareOpen(false)} />
-
-      {/* Feedback panel: will render when URL contains ?share=TOKEN */}
-      <Box sx={{ position: 'fixed', right: 16, bottom: 24, width: 360, zIndex: 1400 }}>
-        <FeedbackPanel />
-      </Box>
+      <ResumeVersionsPanel
+        open={showVersionsOpen}
+        onClose={() => setShowVersionsOpen(false)}
+      />
     </Box>
   );
 }

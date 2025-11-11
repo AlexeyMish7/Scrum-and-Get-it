@@ -23,19 +23,19 @@ import CoverLetterTemplateManager from "@workspaces/ai/components/cover-letter/C
 /**
  * TemplatesHub
  * Centralized page for managing resume & cover letter templates.
- * 
+ *
  * PURPOSE: Template library and management (create custom, import, export)
  * NOT FOR: Choosing templates for new documents (that happens in the editors)
- * 
+ *
  * Flow:
  * - Users manage templates here (create custom, import from JSON, export)
  * - When creating a resume/cover letter, template selection happens in the editor
  */
 export default function TemplatesHub() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<
-    "resume" | "cover-letter"
-  >("resume");
+  const [activeTab, setActiveTab] = useState<"resume" | "cover-letter">(
+    "resume"
+  );
 
   return (
     <Box>
