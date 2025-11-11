@@ -375,3 +375,131 @@ export async function deleteJobNote(
   return userCrud.deleteRow("job_notes", { eq: { id: noteId } });
 }
 
+// --- Cover Letter Drafts mapping + helpers ---
+/**
+ * mapCoverLetterDraft()
+ * Normalize and validate incoming cover letter draft payloads from UI forms.
+ * Inputs: formData (free-form object from the page)
+ * Output: { payload } on success or { error } when validation fails
+ */
+export const mapCoverLetterDraft = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const name = String(formData.name ?? formData.title ?? "").trim();
+  if (!name) return { error: "Draft name is required" };
+
+  // Ensure content is a JSON object. Accept object or JSON string. Default to {}
+  let content: unknown = formData.content ?? formData.body ?? {};
+  if (typeof content === "string") {
+    try {
+      content = JSON.parse(content);
+    } catch {
+      // If parsing fails, keep as-string inside an object to avoid DB errors
+      content = { text: formData.content };
+    }
+  }
+  if (content == null) content = {};
+
+  // Metadata defaults align with DB defaults
+  let metadata: unknown = formData.metadata ?? formData.meta ?? null;
+  if (typeof metadata === "string") {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      metadata = null;
+    }
+  }
+  if (metadata == null)
+    metadata = { tone: "formal", length: "standard", culture: "corporate" };
+
+  const payload: Record<string, unknown> = {
+    name,
+    template_id: (formData.template_id as string) ?? (formData.template as string) ?? "formal",
+    job_id: formData.job_id == null ? null : Number(formData.job_id) || null,
+    company_name: (formData.company_name as string) ?? null,
+    job_title: (formData.job_title as string) ?? null,
+    content,
+    metadata,
+    company_research:
+      formData.company_research == null
+        ? null
+        : typeof formData.company_research === "string"
+        ? (() => {
+            try {
+              return JSON.parse(formData.company_research as string);
+            } catch {
+              return null;
+            }
+          })()
+        : (formData.company_research as Record<string, unknown>),
+    version: formData.version == null ? 1 : Number(formData.version) || 1,
+    is_active: (formData.is_active as unknown) === false ? false : true,
+  };
+
+  return { payload };
+};
+
+export async function listCoverLetterDrafts(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("cover_letter_drafts", "*", opts);
+}
+
+export async function getCoverLetterDraft(
+  userId: string,
+  draftId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("cover_letter_drafts", "*", {
+    eq: { id: draftId },
+    single: true,
+  });
+}
+
+export async function createCoverLetterDraft(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapCoverLetterDraft(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("cover_letter_drafts", mapped.payload ?? {});
+}
+
+export async function updateCoverLetterDraft(
+  userId: string,
+  draftId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  // For updates, allow partial patches. If name is present validate it.
+  if (formData.name != null) {
+    const name = String(formData.name ?? "").trim();
+    if (!name) {
+      return {
+        data: null,
+        error: { message: "Draft name is required", status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+  }
+
+  const userCrud = withUser(userId);
+  return userCrud.updateRow("cover_letter_drafts", formData, { eq: { id: draftId } });
+}
+
+export async function deleteCoverLetterDraft(
+  userId: string,
+  draftId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("cover_letter_drafts", { eq: { id: draftId } });
+}
+
