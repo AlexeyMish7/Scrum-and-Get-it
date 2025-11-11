@@ -32,10 +32,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 }) => {
   const templates = getTemplateList();
 
-  // Separate system and custom templates
-  const systemTemplates = templates.filter((t) => t.isSystem);
-  const customTemplates = templates.filter((t) => !t.isSystem);
-
   const getCategoryColor = (
     category: ResumeTemplate["category"]
   ): "primary" | "secondary" | "success" | "info" => {
@@ -61,20 +57,21 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ display: "block", mb: 3 }}
+        sx={{ display: "block", mb: 1 }}
       >
-        Select a resume template to apply formatting and styling
+        Templates control HOW the AI writes: tone, emphasis, and industry
+        language.
       </Typography>
-
-      {/* System Templates Section */}
       <Typography
         variant="caption"
-        fontWeight="bold"
-        color="text.secondary"
-        sx={{ mb: 1, display: "block" }}
+        color="primary.main"
+        sx={{ display: "block", mb: 3, fontWeight: 500 }}
       >
-        SYSTEM TEMPLATES
+        💡 Visual styling (fonts, colors, layout) is chosen later when you
+        export your resume.
       </Typography>
+
+      {/* Templates Grid - All system templates */}
       <Box
         sx={{
           display: "grid",
@@ -83,7 +80,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           mb: 3,
         }}
       >
-        {systemTemplates.map((template) => {
+        {templates.map((template) => {
           const isSelected = selectedTemplateId === template.id;
 
           return (
@@ -144,36 +141,34 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                         {template.description}
                       </Typography>
 
-                      {/* Font and style preview */}
+                      {/* AI Behavior Indicator */}
                       <Box
                         sx={{
                           p: 1.5,
-                          bgcolor: "grey.50",
+                          bgcolor: "primary.50",
                           borderRadius: 1,
                           borderLeft: 3,
-                          borderColor: template.style.colors.primary,
+                          borderColor: "primary.main",
                         }}
                       >
                         <Typography
                           variant="caption"
                           sx={{
-                            fontFamily: template.style.fontFamily,
-                            color: template.style.colors.primary,
+                            color: "primary.dark",
                             fontWeight: 600,
+                            display: "block",
                           }}
                         >
-                          {template.style.fontFamily}
+                          🤖 AI Behavior: {template.category}
                         </Typography>
                         <Typography
                           variant="caption"
-                          display="block"
                           sx={{
-                            fontFamily: template.style.fontFamily,
-                            color: template.style.colors.text,
-                            mt: 0.5,
+                            color: "text.secondary",
+                            fontSize: "0.7rem",
                           }}
                         >
-                          {template.formatting.bulletStyle} Sample bullet point
+                          Guides content tone and emphasis
                         </Typography>
                       </Box>
                     </Stack>
@@ -184,147 +179,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           );
         })}
       </Box>
-
-      {/* Custom Templates Section */}
-      {customTemplates.length > 0 && (
-        <>
-          <Typography
-            variant="caption"
-            fontWeight="bold"
-            color="text.secondary"
-            sx={{ mb: 1, display: "block" }}
-          >
-            CUSTOM TEMPLATES
-          </Typography>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "1fr 1fr",
-                md: "1fr 1fr 1fr",
-              },
-              gap: 2,
-            }}
-          >
-            {customTemplates.map((template) => {
-              const isSelected = selectedTemplateId === template.id;
-
-              return (
-                <Box key={template.id}>
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      position: "relative",
-                      borderColor: isSelected ? "primary.main" : "divider",
-                      borderWidth: isSelected ? 2 : 1,
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        borderColor: "primary.main",
-                        boxShadow: 1,
-                      },
-                    }}
-                  >
-                    <CardActionArea
-                      onClick={() => onSelectTemplate(template.id)}
-                    >
-                      <CardContent>
-                        <Stack spacing={1.5}>
-                          {/* Header with radio and badges */}
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                            justifyContent="space-between"
-                          >
-                            <Radio
-                              checked={isSelected}
-                              size="small"
-                              sx={{ p: 0 }}
-                            />
-                            <Stack direction="row" spacing={0.5}>
-                              {/* System or Custom badge */}
-                              <Chip
-                                label={template.isSystem ? "System" : "Custom"}
-                                size="small"
-                                variant={
-                                  template.isSystem ? "filled" : "outlined"
-                                }
-                                color={
-                                  template.isSystem ? "default" : "secondary"
-                                }
-                                sx={{ fontSize: "0.7rem" }}
-                              />
-                              {/* Category badge */}
-                              <Chip
-                                label={template.category}
-                                size="small"
-                                color={getCategoryColor(template.category)}
-                                sx={{
-                                  textTransform: "capitalize",
-                                  fontSize: "0.7rem",
-                                }}
-                              />
-                            </Stack>
-                          </Stack>
-
-                          {/* Template name */}
-                          <Typography variant="subtitle2" fontWeight="bold">
-                            {template.name}
-                          </Typography>
-
-                          {/* Description */}
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ minHeight: 40 }}
-                          >
-                            {template.description}
-                          </Typography>
-
-                          {/* Font and style preview */}
-                          <Box
-                            sx={{
-                              p: 1.5,
-                              bgcolor: "grey.50",
-                              borderRadius: 1,
-                              borderLeft: 3,
-                              borderColor: template.style.colors.primary,
-                            }}
-                          >
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontFamily: template.style.fontFamily,
-                                color: template.style.colors.primary,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {template.style.fontFamily}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              display="block"
-                              sx={{
-                                fontFamily: template.style.fontFamily,
-                                color: template.style.colors.text,
-                                mt: 0.5,
-                              }}
-                            >
-                              {template.formatting.bulletStyle} Sample bullet
-                              point
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                </Box>
-              );
-            })}
-          </Box>
-        </>
-      )}
     </Box>
   );
 };

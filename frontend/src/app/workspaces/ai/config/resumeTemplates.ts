@@ -1,12 +1,23 @@
 /**
  * Resume Templates Configuration
  *
- * Defines available resume templates with their styling and formatting options.
- * Each template specifies visual appearance, section ordering preferences, and export formatting.
+ * CRITICAL DISTINCTION:
+ * - TEMPLATE = AI behavior/content generation strategy (classic, modern, creative, etc.)
+ *   Controls HOW the AI writes: tone, emphasis, industry language, achievement framing
+ *   Example: "Modern Tech" template tells AI to emphasize innovation, quantifiable impact, cutting-edge skills
  *
- * Templates can be:
- * - System defaults (isSystem: true) - read-only, always available
- * - User custom templates (isSystem: false) - created in TemplatesHub, editable
+ * - VISUAL STYLE = Export appearance (fonts, colors, layout)
+ *   Controls HOW the resume LOOKS when exported to PDF/DOCX
+ *   Example: "Modern" visual style uses Calibri font, blue accents, arrow bullets
+ *
+ * Templates include both: AI generation guidance + default visual styling
+ * Users can override visual style at export time while keeping the template's AI behavior
+ *
+ * Each template specifies:
+ * - AI generation behavior (described in template description)
+ * - Visual appearance (style object with fonts, colors, formatting)
+ * - Section ordering preferences
+ * - Target industries/roles
  */
 
 export interface ResumeTemplate {
@@ -56,7 +67,7 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
     id: "classic",
     name: "Classic Professional",
     description:
-      "Traditional format perfect for corporate and established industries",
+      "Traditional format perfect for corporate and established industries. AI emphasizes formal tone, proven results, and industry-standard terminology. Best for: Finance, Law, Government, Healthcare.",
     category: "professional",
     isSystem: true,
     style: {
@@ -91,7 +102,8 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
   modern: {
     id: "modern",
     name: "Modern Tech",
-    description: "Clean, contemporary design for tech and startup roles",
+    description:
+      "Clean, contemporary design for tech and startup roles. AI emphasizes innovation, technical achievements, and quantifiable impact. Highlights cutting-edge skills and modern methodologies. Best for: Software Engineering, Product Management, Data Science.",
     category: "professional",
     isSystem: true,
     style: {
@@ -127,7 +139,8 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
   minimal: {
     id: "minimal",
     name: "Minimal Clean",
-    description: "Minimalist design focusing on content over decoration",
+    description:
+      "Minimalist design focusing on content over decoration. AI emphasizes clarity, conciseness, and essential information. Creates streamlined, distraction-free content. Best for: Consulting, Operations, General Management.",
     category: "minimal",
     isSystem: true,
     style: {
@@ -162,7 +175,8 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
   creative: {
     id: "creative",
     name: "Creative Bold",
-    description: "Eye-catching design for creative and design roles",
+    description:
+      "Eye-catching design for creative and design roles. AI emphasizes creativity, storytelling, and unique achievements. Highlights portfolio work, design thinking, and innovative solutions. Best for: Design, Marketing, Creative Direction, UX/UI.",
     category: "creative",
     isSystem: true,
     style: {
@@ -198,7 +212,8 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
   academic: {
     id: "academic",
     name: "Academic CV",
-    description: "Formal CV format for academic and research positions",
+    description:
+      "Formal CV format for academic and research positions. AI emphasizes publications, research contributions, grants, and teaching experience. Focuses on scholarly achievements and detailed methodology. Best for: Research, Academia, Science, PhD roles.",
     category: "academic",
     isSystem: true,
     style: {
@@ -233,107 +248,22 @@ export const RESUME_TEMPLATES: Record<string, ResumeTemplate> = {
 
 export const DEFAULT_TEMPLATE_ID = "modern";
 
-// Storage key for user custom templates (from TemplatesHub)
-const STORAGE_KEY = "sgt:resume_templates";
-
 /**
- * User custom template from TemplatesHub (localStorage format)
+ * Get template by ID
+ * Only returns system templates (AI behavior templates)
+ * Custom visual styles are handled at export time, not as templates
  */
-interface StoredTemplate {
-  id: string;
-  name: string;
-  type: "chronological" | "functional" | "hybrid" | "custom";
-  colors: {
-    primary: string;
-    accent: string;
-    bg: string;
-  };
-  font: string;
-  layout: "single" | "two-column" | "modern";
-  createdAt: string;
-  sharedWith?: string[];
-  master?: boolean;
-}
-
-/**
- * Convert TemplatesHub stored template to ResumeTemplate format
- */
-function convertStoredTemplate(stored: StoredTemplate): ResumeTemplate {
-  return {
-    id: stored.id,
-    name: stored.name,
-    description: `Custom ${stored.type} template`,
-    category: stored.type === "hybrid" ? "professional" : "professional", // Map types to categories
-    isSystem: false, // User custom templates are not system templates
-    style: {
-      fontFamily: stored.font,
-      fontSize: 11,
-      lineHeight: 1.2,
-      sectionSpacing: 14,
-      margins: { top: 0.75, right: 0.75, bottom: 0.75, left: 0.75 },
-      colors: {
-        primary: stored.colors.primary,
-        secondary: stored.colors.accent,
-        text: "#000000",
-        accent: stored.colors.accent,
-      },
-    },
-    formatting: {
-      sectionHeaderStyle: "uppercase",
-      sectionHeaderUnderline: false,
-      bulletStyle: "•",
-      dateFormat: "MM/YYYY",
-      nameSize: "large",
-      showSectionIcons: false,
-    },
-    recommendedSectionOrder: [
-      "summary",
-      "experience",
-      "education",
-      "skills",
-      "projects",
-    ],
-  };
-}
-
-/**
- * Load user custom templates from TemplatesHub localStorage
- */
-function getUserCustomTemplates(): ResumeTemplate[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-
-    const templates = JSON.parse(stored) as StoredTemplate[];
-    return templates.map(convertStoredTemplate);
-  } catch (error) {
-    console.error("Failed to load custom templates:", error);
-    return [];
-  }
-}
-
 export function getTemplate(templateId?: string): ResumeTemplate {
-  // Check system templates first
-  if (RESUME_TEMPLATES[templateId || DEFAULT_TEMPLATE_ID]) {
-    return RESUME_TEMPLATES[templateId || DEFAULT_TEMPLATE_ID];
-  }
-
-  // Check user custom templates
-  const customTemplates = getUserCustomTemplates();
-  const customTemplate = customTemplates.find((t) => t.id === templateId);
-  if (customTemplate) {
-    return customTemplate;
-  }
-
-  // Fallback to default
-  return RESUME_TEMPLATES[DEFAULT_TEMPLATE_ID];
+  const id = templateId || DEFAULT_TEMPLATE_ID;
+  return RESUME_TEMPLATES[id] || RESUME_TEMPLATES[DEFAULT_TEMPLATE_ID];
 }
 
+/**
+ * Get list of all available templates
+ * Only returns system templates (AI behavior templates)
+ * Custom templates removed - use 5 system templates for AI behavior,
+ * customize visual styling at export time instead
+ */
 export function getTemplateList(): ResumeTemplate[] {
-  // Merge system templates with user custom templates
-  const systemTemplates = Object.values(RESUME_TEMPLATES);
-  const customTemplates = getUserCustomTemplates();
-
-  // System templates first, then custom templates
-  return [...systemTemplates, ...customTemplates];
+  return Object.values(RESUME_TEMPLATES);
 }

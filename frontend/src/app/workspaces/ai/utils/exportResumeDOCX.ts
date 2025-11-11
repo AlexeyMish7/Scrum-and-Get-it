@@ -112,227 +112,249 @@ export function exportResumeToDOCX(
     }
 
     // ========================================================================
-    // SUMMARY SECTION
+    // RENDER SECTIONS IN USER-DEFINED ORDER
+    // Read section order from metadata, respecting visibility and custom order
     // ========================================================================
-    if (draft.content.summary) {
-      sections.push(
-        new Paragraph({
-          text: "PROFESSIONAL SUMMARY",
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 200, after: 100 },
-        })
-      );
+    const visibleSections = draft.metadata.sections
+      ?.filter((s) => s.visible)
+      .map((s) => s.type) || [
+      "summary",
+      "skills",
+      "experience",
+      "education",
+      "projects",
+    ];
 
-      sections.push(
-        new Paragraph({
-          text: draft.content.summary,
-          spacing: { after: 200 },
-        })
-      );
-    }
-
-    // ========================================================================
-    // SKILLS SECTION
-    // ========================================================================
-    if (draft.content.skills && draft.content.skills.length > 0) {
-      sections.push(
-        new Paragraph({
-          text: "SKILLS",
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 200, after: 100 },
-        })
-      );
-
-      sections.push(
-        new Paragraph({
-          text: draft.content.skills.join(" • "),
-          spacing: { after: 200 },
-        })
-      );
-    }
-
-    // ========================================================================
-    // EXPERIENCE SECTION
-    // ========================================================================
-    if (draft.content.experience && draft.content.experience.length > 0) {
-      sections.push(
-        new Paragraph({
-          text: "PROFESSIONAL EXPERIENCE",
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 200, after: 100 },
-        })
-      );
-
-      draft.content.experience.forEach((exp, index: number) => {
-        // Job title and company (bold)
-        const titleCompany = `${exp.role || "Position"} - ${
-          exp.company || "Company"
-        }`;
-        sections.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: titleCompany,
-                bold: true,
-              }),
-            ],
-            spacing: { before: index > 0 ? 150 : 0, after: 50 },
-          })
-        );
-
-        // Dates (if available)
-        if (exp.dates) {
-          sections.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: exp.dates,
-                  italics: true,
-                }),
-              ],
-              spacing: { after: 100 },
-            })
-          );
-        }
-
-        // Bullet points
-        exp.bullets.forEach((bullet: string) => {
-          sections.push(
-            new Paragraph({
-              text: bullet,
-              bullet: { level: 0 },
-              spacing: { after: 50 },
-            })
-          );
-        });
-
-        // Add spacing after each role
-        if (index < draft.content.experience!.length - 1) {
-          sections.push(
-            new Paragraph({
-              text: "",
-              spacing: { after: 100 },
-            })
-          );
-        }
-      });
-
-      sections.push(
-        new Paragraph({
-          text: "",
-          spacing: { after: 200 },
-        })
-      );
-    }
-
-    // ========================================================================
-    // EDUCATION SECTION
-    // ========================================================================
-    if (draft.content.education && draft.content.education.length > 0) {
-      sections.push(
-        new Paragraph({
-          text: "EDUCATION",
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 200, after: 100 },
-        })
-      );
-
-      draft.content.education.forEach((edu, index: number) => {
-        // Degree and institution (bold)
-        const degreeInfo = `${edu.degree} - ${edu.institution}`;
-        sections.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: degreeInfo,
-                bold: true,
-              }),
-            ],
-            spacing: { before: index > 0 ? 150 : 0, after: 50 },
-          })
-        );
-
-        // Graduation date (if available)
-        if (edu.graduation_date) {
-          sections.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: edu.graduation_date,
-                  italics: true,
-                }),
-              ],
-              spacing: { after: 100 },
-            })
-          );
-        }
-
-        // Details (if available)
-        if (edu.details && edu.details.length > 0) {
-          edu.details.forEach((detail: string) => {
+    visibleSections.forEach((sectionType) => {
+      switch (sectionType) {
+        case "summary":
+          // SUMMARY SECTION
+          if (draft.content.summary) {
             sections.push(
               new Paragraph({
-                text: detail,
-                bullet: { level: 0 },
-                spacing: { after: 50 },
+                text: "PROFESSIONAL SUMMARY",
+                heading: HeadingLevel.HEADING_1,
+                spacing: { before: 200, after: 100 },
               })
             );
-          });
-        }
-      });
 
-      sections.push(
-        new Paragraph({
-          text: "",
-          spacing: { after: 200 },
-        })
-      );
-    }
-
-    // ========================================================================
-    // PROJECTS SECTION
-    // ========================================================================
-    if (draft.content.projects && draft.content.projects.length > 0) {
-      sections.push(
-        new Paragraph({
-          text: "PROJECTS",
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 200, after: 100 },
-        })
-      );
-
-      draft.content.projects.forEach((project, index: number) => {
-        // Project name and role (bold)
-        const projectInfo = project.role
-          ? `${project.name} - ${project.role}`
-          : project.name;
-
-        sections.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: projectInfo,
-                bold: true,
-              }),
-            ],
-            spacing: { before: index > 0 ? 150 : 0, after: 50 },
-          })
-        );
-
-        // Bullet points (if available)
-        if (project.bullets && project.bullets.length > 0) {
-          project.bullets.forEach((bullet: string) => {
             sections.push(
               new Paragraph({
-                text: bullet,
-                bullet: { level: 0 },
-                spacing: { after: 50 },
+                text: draft.content.summary,
+                spacing: { after: 200 },
               })
             );
-          });
-        }
-      });
-    }
+          }
+          break;
+
+        case "skills":
+          // SKILLS SECTION
+          if (draft.content.skills && draft.content.skills.length > 0) {
+            sections.push(
+              new Paragraph({
+                text: "SKILLS",
+                heading: HeadingLevel.HEADING_1,
+                spacing: { before: 200, after: 100 },
+              })
+            );
+
+            sections.push(
+              new Paragraph({
+                text: draft.content.skills.join(" • "),
+                spacing: { after: 200 },
+              })
+            );
+          }
+          break;
+
+        case "experience":
+          // EXPERIENCE SECTION
+          if (draft.content.experience && draft.content.experience.length > 0) {
+            sections.push(
+              new Paragraph({
+                text: "PROFESSIONAL EXPERIENCE",
+                heading: HeadingLevel.HEADING_1,
+                spacing: { before: 200, after: 100 },
+              })
+            );
+
+            draft.content.experience.forEach((exp, index: number) => {
+              // Job title and company (bold)
+              const titleCompany = `${exp.role || "Position"} - ${
+                exp.company || "Company"
+              }`;
+              sections.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: titleCompany,
+                      bold: true,
+                    }),
+                  ],
+                  spacing: { before: index > 0 ? 150 : 0, after: 50 },
+                })
+              );
+
+              // Dates (if available)
+              if (exp.dates) {
+                sections.push(
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: exp.dates,
+                        italics: true,
+                      }),
+                    ],
+                    spacing: { after: 100 },
+                  })
+                );
+              }
+
+              // Bullet points
+              exp.bullets.forEach((bullet: string) => {
+                sections.push(
+                  new Paragraph({
+                    text: bullet,
+                    bullet: { level: 0 },
+                    spacing: { after: 50 },
+                  })
+                );
+              });
+
+              // Add spacing after each role
+              if (index < draft.content.experience!.length - 1) {
+                sections.push(
+                  new Paragraph({
+                    text: "",
+                    spacing: { after: 100 },
+                  })
+                );
+              }
+            });
+
+            sections.push(
+              new Paragraph({
+                text: "",
+                spacing: { after: 200 },
+              })
+            );
+          }
+          break;
+
+        case "education":
+          // EDUCATION SECTION
+          if (draft.content.education && draft.content.education.length > 0) {
+            sections.push(
+              new Paragraph({
+                text: "EDUCATION",
+                heading: HeadingLevel.HEADING_1,
+                spacing: { before: 200, after: 100 },
+              })
+            );
+
+            draft.content.education.forEach((edu, index: number) => {
+              // Degree and institution (bold)
+              const degreeInfo = `${edu.degree} - ${edu.institution}`;
+              sections.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: degreeInfo,
+                      bold: true,
+                    }),
+                  ],
+                  spacing: { before: index > 0 ? 150 : 0, after: 50 },
+                })
+              );
+
+              // Graduation date (if available)
+              if (edu.graduation_date) {
+                sections.push(
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: edu.graduation_date,
+                        italics: true,
+                      }),
+                    ],
+                    spacing: { after: 100 },
+                  })
+                );
+              }
+
+              // Details (if available)
+              if (edu.details && edu.details.length > 0) {
+                edu.details.forEach((detail: string) => {
+                  sections.push(
+                    new Paragraph({
+                      text: detail,
+                      bullet: { level: 0 },
+                      spacing: { after: 50 },
+                    })
+                  );
+                });
+              }
+            });
+
+            sections.push(
+              new Paragraph({
+                text: "",
+                spacing: { after: 200 },
+              })
+            );
+          }
+          break;
+
+        case "projects":
+          // PROJECTS SECTION
+          if (draft.content.projects && draft.content.projects.length > 0) {
+            sections.push(
+              new Paragraph({
+                text: "PROJECTS",
+                heading: HeadingLevel.HEADING_1,
+                spacing: { before: 200, after: 100 },
+              })
+            );
+
+            draft.content.projects.forEach((project, index: number) => {
+              // Project name and role (bold)
+              const projectInfo = project.role
+                ? `${project.name} - ${project.role}`
+                : project.name;
+
+              sections.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: projectInfo,
+                      bold: true,
+                    }),
+                  ],
+                  spacing: { before: index > 0 ? 150 : 0, after: 50 },
+                })
+              );
+
+              // Bullet points (if available)
+              if (project.bullets && project.bullets.length > 0) {
+                project.bullets.forEach((bullet: string) => {
+                  sections.push(
+                    new Paragraph({
+                      text: bullet,
+                      bullet: { level: 0 },
+                      spacing: { after: 50 },
+                    })
+                  );
+                });
+              }
+            });
+          }
+          break;
+
+        default:
+          // Unknown section type - skip silently
+          break;
+      }
+    });
 
     // ========================================================================
     // CREATE DOCUMENT
@@ -363,9 +385,10 @@ export function exportResumeToDOCX(
       .replace(/[^a-z0-9]/gi, "_")
       .toLowerCase()
       .substring(0, 50);
-    const filename = options?.filename && options.filename.trim()
-      ? options.filename.trim()
-      : `${cleanName}_${dateStr}.docx`;
+    const filename =
+      options?.filename && options.filename.trim()
+        ? options.filename.trim()
+        : `${cleanName}_${dateStr}.docx`;
 
     // Convert document to blob and trigger download
     import("docx").then((docxModule) => {

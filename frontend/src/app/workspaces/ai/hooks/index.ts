@@ -5,6 +5,7 @@
 
 export { default as useResumeDrafts } from "./useResumeDrafts";
 export { default as useResumeGenerationFlowV2 } from "./useResumeGenerationFlowV2";
+export { default as useAIDashboardData } from "./useAIDashboardData";
 
 // Re-export types from useResumeDrafts
 export type {

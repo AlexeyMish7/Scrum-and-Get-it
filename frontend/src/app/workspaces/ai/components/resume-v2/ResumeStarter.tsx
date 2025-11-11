@@ -21,7 +21,6 @@ import {
   Button,
   Card,
   CardActionArea,
-  CardContent,
   Chip,
   Container,
   Dialog,
@@ -50,38 +49,12 @@ import {
 } from "@mui/icons-material";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import useUserJobs from "@shared/hooks/useUserJobs";
+import { TemplateSelector } from "../ResumeEditorV2/TemplateSelector";
 
 interface ResumeStarterProps {
   onStart: (draftId: string) => void;
   onCancel?: () => void;
 }
-
-const RESUME_TEMPLATES = [
-  {
-    id: "modern",
-    name: "Modern",
-    description: "Clean, contemporary design with accent colors",
-    preview: "📄",
-  },
-  {
-    id: "classic",
-    name: "Classic",
-    description: "Traditional professional layout",
-    preview: "📋",
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    description: "Simple, elegant, distraction-free",
-    preview: "📝",
-  },
-  {
-    id: "creative",
-    name: "Creative",
-    description: "Bold design for creative industries",
-    preview: "🎨",
-  },
-];
 
 export default function ResumeStarter({
   onStart,
@@ -94,7 +67,7 @@ export default function ResumeStarter({
   // Dialog states
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newDraftName, setNewDraftName] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("modern");
+  const [selectedTemplate, setSelectedTemplate] = useState("modern"); // AI behavior template
   const [selectedJobId, setSelectedJobId] = useState<number | "">("");
   const [error, setError] = useState<string | null>(null);
 
@@ -387,46 +360,28 @@ export default function ResumeStarter({
               autoFocus
             />
 
-            {/* Template Selection */}
+            {/* Template Selection - AI Behavior Only */}
             <Box>
-              <Typography variant="subtitle2" gutterBottom fontWeight={500}>
-                Choose Template
+              <TemplateSelector
+                selectedTemplateId={selectedTemplate}
+                onSelectTemplate={setSelectedTemplate}
+              />
+              <Typography
+                variant="caption"
+                color="info.main"
+                sx={{
+                  display: "block",
+                  mt: 2,
+                  p: 1.5,
+                  bgcolor: "info.50",
+                  borderRadius: 1,
+                  borderLeft: 3,
+                  borderColor: "info.main",
+                }}
+              >
+                ℹ️ You'll choose visual styling (fonts, colors, layout) later
+                when you export your resume.
               </Typography>
-              <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                {RESUME_TEMPLATES.map((template) => (
-                  <Card
-                    key={template.id}
-                    variant="outlined"
-                    sx={{
-                      width: "calc(50% - 8px)",
-                      cursor: "pointer",
-                      borderColor:
-                        selectedTemplate === template.id
-                          ? "primary.main"
-                          : "divider",
-                      borderWidth: selectedTemplate === template.id ? 2 : 1,
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        borderColor: "primary.main",
-                        boxShadow: 1,
-                      },
-                    }}
-                    onClick={() => setSelectedTemplate(template.id)}
-                  >
-                    <CardContent sx={{ textAlign: "center", py: 2 }}>
-                      <Typography variant="h3" sx={{ mb: 1 }}>
-                        {template.preview}
-                      </Typography>
-                      <Typography variant="subtitle2" fontWeight={500}>
-                        {template.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {template.description}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Stack>
             </Box>
 
             {/* Optional Job Link */}

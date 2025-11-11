@@ -9,7 +9,8 @@
  * - State indicators: [Empty], ✓ Applied from AI, ↳ From profile, ✏️ Manually edited
  * - Inline editing per section
  * - Section controls: show/hide, reorder
- * - Export actions: PDF, DOCX, Save Draft
+ * - Export actions: PDF, DOCX (auto-saves as version)
+ * - Version indicator showing current version
  *
  * Inputs: draft (current resume draft), template info
  * Output: Emits edit events, export actions
@@ -42,7 +43,6 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DownloadIcon from "@mui/icons-material/Download";
-import SaveIcon from "@mui/icons-material/Save";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
@@ -52,7 +52,6 @@ import ErrorIcon from "@mui/icons-material/Error";
 import InfoIcon from "@mui/icons-material/Info";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import PaletteIcon from "@mui/icons-material/Palette";
 import {
   validateResume,
   getHealthScoreColor,
@@ -60,7 +59,6 @@ import {
   type ValidationResult,
 } from "@workspaces/ai/utils/resumeValidation";
 import { useAuth } from "@shared/context/AuthContext";
-import { TemplateSelector } from "../ResumeEditorV2/TemplateSelector";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
 import FeedbackDialog from "@workspaces/ai/components/resume-v2/FeedbackDialog";
 
@@ -112,8 +110,6 @@ interface DraftPreviewPanelProps {
   onEditSection: (section: string, content: unknown) => void;
   onToggleSection: (section: string, visible: boolean) => void;
   onReorderSections: (newOrder: string[]) => void;
-  onChangeTemplate?: (templateId: string) => void;
-  onSaveDraft: () => void;
   onExport: (format: "pdf" | "docx") => void;
 }
 
@@ -122,8 +118,6 @@ export default function DraftPreviewPanel({
   onEditSection,
   onToggleSection,
   onReorderSections,
-  onChangeTemplate,
-  onSaveDraft,
   onExport,
 }: DraftPreviewPanelProps) {
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -131,7 +125,6 @@ export default function DraftPreviewPanel({
   const [editContent, setEditContent] = useState<string>("");
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [showValidation, setShowValidation] = useState(false);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
   // Calculate validation when draft changes
   const { user } = useAuth();
@@ -269,11 +262,16 @@ export default function DraftPreviewPanel({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             <Typography
               variant="subtitle2"
               sx={{
@@ -286,7 +284,7 @@ export default function DraftPreviewPanel({
             </Typography>
             {summarySection && getStateIndicator(summarySection)}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
@@ -309,21 +307,25 @@ export default function DraftPreviewPanel({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              onClick={() => onToggleSection("summary", false)}
-            >
-              <VisibilityOffIcon fontSize="small" />
-            </IconButton>
-            {summarySection && summarySection.state !== "empty" && (
+            <Tooltip title="Hide section">
               <IconButton
                 size="small"
-                onClick={() =>
-                  handleStartEdit("summary", draft.content.summary || "")
-                }
+                onClick={() => onToggleSection("summary", false)}
               >
-                <EditIcon fontSize="small" />
+                <VisibilityOffIcon fontSize="small" />
               </IconButton>
+            </Tooltip>
+            {summarySection && summarySection.state !== "empty" && (
+              <Tooltip title="Edit summary">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleStartEdit("summary", draft.content.summary || "")
+                  }
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             )}
           </Stack>
         </Stack>
@@ -349,11 +351,16 @@ export default function DraftPreviewPanel({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             <Typography
               variant="subtitle2"
               sx={{
@@ -366,7 +373,7 @@ export default function DraftPreviewPanel({
             </Typography>
             {skillsSection && getStateIndicator(skillsSection)}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
@@ -389,12 +396,29 @@ export default function DraftPreviewPanel({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              onClick={() => onToggleSection("skills", false)}
-            >
-              <VisibilityOffIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Hide section">
+              <IconButton
+                size="small"
+                onClick={() => onToggleSection("skills", false)}
+              >
+                <VisibilityOffIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {skillsSection && skillsSection.state !== "empty" && (
+              <Tooltip title="Edit skills">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleStartEdit(
+                      "skills",
+                      draft.content.skills?.join(", ") || ""
+                    )
+                  }
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         </Stack>
         <Divider sx={{ mb: 1.5 }} />
@@ -419,11 +443,16 @@ export default function DraftPreviewPanel({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             <Typography
               variant="subtitle2"
               sx={{
@@ -436,7 +465,7 @@ export default function DraftPreviewPanel({
             </Typography>
             {experienceSection && getStateIndicator(experienceSection)}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
@@ -459,12 +488,29 @@ export default function DraftPreviewPanel({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              onClick={() => onToggleSection("experience", false)}
-            >
-              <VisibilityOffIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Hide section">
+              <IconButton
+                size="small"
+                onClick={() => onToggleSection("experience", false)}
+              >
+                <VisibilityOffIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {experienceSection && experienceSection.state !== "empty" && (
+              <Tooltip title="Edit experience">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleStartEdit(
+                      "experience",
+                      JSON.stringify(draft.content.experience, null, 2)
+                    )
+                  }
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         </Stack>
         <Divider sx={{ mb: 1.5 }} />
@@ -528,11 +574,16 @@ export default function DraftPreviewPanel({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             <Typography
               variant="subtitle2"
               sx={{
@@ -545,7 +596,7 @@ export default function DraftPreviewPanel({
             </Typography>
             {educationSection && getStateIndicator(educationSection)}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
@@ -568,18 +619,35 @@ export default function DraftPreviewPanel({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              onClick={() => onToggleSection("education", false)}
-            >
-              <VisibilityOffIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Hide section">
+              <IconButton
+                size="small"
+                onClick={() => onToggleSection("education", false)}
+              >
+                <VisibilityOffIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {educationSection && educationSection.state !== "empty" && (
+              <Tooltip title="Edit education">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleStartEdit(
+                      "education",
+                      JSON.stringify(draft.content.education, null, 2)
+                    )
+                  }
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         </Stack>
         <Divider sx={{ mb: 1.5 }} />
         {educationSection.state === "empty" ? (
           <Typography variant="body2" color="text.disabled" fontStyle="italic">
-            [Empty - From your profile]
+            [Empty - Apply from AI Results or your profile]
           </Typography>
         ) : (
           <Stack spacing={2}>
@@ -634,11 +702,16 @@ export default function DraftPreviewPanel({
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
+          alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
+          >
             <Typography
               variant="subtitle2"
               sx={{
@@ -651,7 +724,7 @@ export default function DraftPreviewPanel({
             </Typography>
             {projectsSection && getStateIndicator(projectsSection)}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
@@ -674,12 +747,29 @@ export default function DraftPreviewPanel({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              onClick={() => onToggleSection("projects", false)}
-            >
-              <VisibilityOffIcon fontSize="small" />
-            </IconButton>
+            <Tooltip title="Hide section">
+              <IconButton
+                size="small"
+                onClick={() => onToggleSection("projects", false)}
+              >
+                <VisibilityOffIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {projectsSection && (
+              <Tooltip title="Edit projects">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    handleStartEdit(
+                      "projects",
+                      JSON.stringify(draft.content.projects, null, 2)
+                    )
+                  }
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         </Stack>
         <Divider sx={{ mb: 1.5 }} />
@@ -798,7 +888,35 @@ export default function DraftPreviewPanel({
   };
 
   const handleSaveEdit = () => {
-    if (editingSection) {
+    if (!editingSection) return;
+
+    // Validate JSON for structured sections
+    if (["experience", "education", "projects"].includes(editingSection)) {
+      try {
+        const parsed = JSON.parse(editContent);
+
+        // Ensure it's an array for these sections
+        if (!Array.isArray(parsed)) {
+          alert(
+            "Invalid format: Content must be a JSON array (wrapped in [ ])"
+          );
+          return;
+        }
+
+        // Success - content is valid JSON array
+        onEditSection(editingSection, editContent);
+        setEditingSection(null);
+        setEditContent("");
+      } catch (error) {
+        alert(
+          `Invalid JSON format. Please check your syntax:\n\n${
+            error instanceof Error ? error.message : "Unknown error"
+          }\n\nMake sure arrays are wrapped in [ ], objects in { }, and strings in quotes.`
+        );
+        return;
+      }
+    } else {
+      // Simple sections (summary, skills) - no validation needed
       onEditSection(editingSection, editContent);
       setEditingSection(null);
       setEditContent("");
@@ -831,31 +949,78 @@ export default function DraftPreviewPanel({
         }}
       >
         {/* Header */}
-        <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+        <Box sx={{ px: { xs: 1.5, sm: 2 }, pt: { xs: 1.5, sm: 2 }, pb: 1 }}>
           <Stack
-            direction="row"
+            direction={{ xs: "column", sm: "row" }}
             spacing={1}
-            alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
             justifyContent="space-between"
           >
-            <Box>
-              <Typography variant="h6">📄 {draft.name}</Typography>
+            <Box sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+              >
+                📄 {draft.name}
+              </Typography>
               {draft.metadata.jobTitle && draft.metadata.jobCompany && (
                 <Typography
                   variant="body2"
                   color="primary"
-                  sx={{ fontWeight: 500, mt: 0.5 }}
+                  sx={{
+                    fontWeight: 500,
+                    mt: 0.5,
+                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                  }}
                 >
                   🎯 For: {draft.metadata.jobTitle} @{" "}
                   {draft.metadata.jobCompany}
                 </Typography>
               )}
-              <Typography variant="caption" color="text.secondary">
-                Last modified:{" "}
-                {new Date(draft.metadata.lastModified).toLocaleString()}
-              </Typography>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={{ xs: 0, sm: 1 }}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                sx={{ mt: 0.5 }}
+              >
+                <Tooltip
+                  title={`Template controls AI generation style. ${
+                    getTemplate(draft.templateId).description
+                  }`}
+                  arrow
+                  placement="bottom-start"
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ cursor: "help" }}
+                  >
+                    🤖 Template: {getTemplate(draft.templateId).name}
+                  </Typography>
+                </Tooltip>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: { xs: "none", sm: "block" } }}
+                >
+                  •
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Last modified:{" "}
+                  {new Date(draft.metadata.lastModified).toLocaleString()}
+                </Typography>
+              </Stack>
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="nowrap"
+              alignItems="center"
+              sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "flex-start", sm: "flex-end" },
+              }}
+            >
               <Tooltip title="Export options">
                 <IconButton
                   size="small"
@@ -868,17 +1033,21 @@ export default function DraftPreviewPanel({
                 variant="outlined"
                 size="small"
                 onClick={() => setFeedbackDialogOpen(true)}
+                sx={{
+                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                  whiteSpace: "nowrap",
+                }}
               >
                 Feedback
               </Button>
-              <Button
-                variant="outlined"
+              <Chip
+                icon={<CheckCircleIcon />}
+                label="Auto-saved"
                 size="small"
-                startIcon={<SaveIcon />}
-                onClick={onSaveDraft}
-              >
-                Save
-              </Button>
+                color="success"
+                variant="outlined"
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+              />
             </Stack>
           </Stack>
 
@@ -1090,13 +1259,20 @@ export default function DraftPreviewPanel({
         <Divider />
 
         {/* Preview Content */}
-        <Box sx={{ flex: 1, overflow: "auto", p: 3, bgcolor: "grey.50" }}>
+        <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            p: { xs: 1.5, sm: 2, md: 3 },
+            bgcolor: "grey.50",
+          }}
+        >
           <Box
             sx={{
               maxWidth: 800,
               mx: "auto",
               bgcolor: "white",
-              p: 4,
+              p: { xs: 2, sm: 3, md: 4 },
               boxShadow: 1,
               borderRadius: 1,
             }}
@@ -1160,16 +1336,6 @@ export default function DraftPreviewPanel({
                 : "Empty draft - generate or apply content to start"}
             </Typography>
             <Stack direction="row" spacing={1} data-tour="export-section">
-              {onChangeTemplate && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<PaletteIcon />}
-                  onClick={() => setShowTemplateSelector(true)}
-                >
-                  Template
-                </Button>
-              )}
               <Button
                 variant="outlined"
                 size="small"
@@ -1179,12 +1345,12 @@ export default function DraftPreviewPanel({
                 Export PDF
               </Button>
               <Button
-                variant="contained"
+                variant="outlined"
                 size="small"
-                startIcon={<CheckCircleIcon />}
-                onClick={onSaveDraft}
+                startIcon={<DownloadIcon />}
+                onClick={() => onExport("docx")}
               >
-                Save Draft
+                Export DOCX
               </Button>
             </Stack>
           </Stack>
@@ -1222,65 +1388,96 @@ export default function DraftPreviewPanel({
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Edit {editingSection}</DialogTitle>
+        <DialogTitle>
+          Edit {editingSection?.charAt(0).toUpperCase()}
+          {editingSection?.slice(1)}
+          {editingSection &&
+            ["experience", "education", "projects"].includes(
+              editingSection
+            ) && (
+              <Typography
+                variant="caption"
+                display="block"
+                color="warning.main"
+                sx={{ mt: 1, fontWeight: 600 }}
+              >
+                ⚠️ JSON Format Required - Keep array structure [ ] and proper
+                quotes
+              </Typography>
+            )}
+        </DialogTitle>
         <DialogContent>
+          {editingSection === "skills" && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              💡 Tip: Enter skills separated by commas. Example: JavaScript,
+              React, TypeScript, Node.js
+            </Typography>
+          )}
+          {editingSection === "summary" && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              💡 Tip: Write 2-4 sentences highlighting your key qualifications
+              and career goals
+            </Typography>
+          )}
+          {editingSection &&
+            ["experience", "education", "projects"].includes(
+              editingSection
+            ) && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                💡 Tip: Modify the JSON below. Don't remove brackets [ ] or
+                change field names. Use proper JSON syntax.
+              </Typography>
+            )}
           <TextField
             autoFocus
             multiline
-            rows={8}
+            rows={
+              editingSection &&
+              ["experience", "education", "projects"].includes(editingSection)
+                ? 15
+                : 8
+            }
             fullWidth
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+              fontFamily:
+                editingSection &&
+                ["experience", "education", "projects"].includes(editingSection)
+                  ? "monospace"
+                  : "inherit",
+              fontSize:
+                editingSection &&
+                ["experience", "education", "projects"].includes(editingSection)
+                  ? "0.875rem"
+                  : "inherit",
+            }}
+            placeholder={
+              editingSection === "skills"
+                ? "JavaScript, React, TypeScript, Node.js, Python..."
+                : editingSection === "summary"
+                ? "Experienced software engineer with 5+ years building scalable web applications..."
+                : "Edit content below"
+            }
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelEdit}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCancelEdit} color="inherit">
+            Cancel
+          </Button>
           <Button variant="contained" onClick={handleSaveEdit}>
             Save Changes
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Template Selector Dialog */}
-      <Dialog
-        open={showTemplateSelector}
-        onClose={() => setShowTemplateSelector(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Change Resume Template
-          {draft?.templateId && (
-            <Typography
-              variant="caption"
-              display="block"
-              color="text.secondary"
-            >
-              Current: {getTemplate(draft.templateId).name}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent>
-          <TemplateSelector
-            selectedTemplateId={draft?.templateId}
-            onSelectTemplate={(templateId) => {
-              if (onChangeTemplate) {
-                onChangeTemplate(templateId);
-                setShowTemplateSelector(false);
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowTemplateSelector(false)}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
-
-  {/* Feedback Dialog (author-facing) */}
-  <FeedbackDialog open={feedbackDialogOpen} onClose={() => setFeedbackDialogOpen(false)} draftId={draft?.id || ""} />
+      {/* Feedback Dialog (author-facing) */}
+      <FeedbackDialog
+        open={feedbackDialogOpen}
+        onClose={() => setFeedbackDialogOpen(false)}
+        draftId={draft?.id || ""}
+      />
     </Card>
   );
 }
-
-
