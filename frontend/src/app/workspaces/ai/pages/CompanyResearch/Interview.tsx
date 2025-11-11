@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
   Box,
   Card,
@@ -90,6 +90,46 @@ export default function Interview({ company }: { company: CompanyMinimal }) {
 
   function toggle(id: string) {
     setChecked((s) => ({ ...s, [id]: !s[id] }));
+  }
+
+  const checklistRef = useRef<HTMLDivElement | null>(null);
+
+  // Print only the checklist section by opening a new window containing
+  // just that markup and invoking print. This avoids printing the rest
+  // of the page.
+  function printChecklist() {
+    if (!checklistRef.current) return;
+
+    const markup = checklistRef.current.innerHTML;
+    const win = window.open("", "_blank", "toolbar=0,location=0,menubar=0");
+    if (!win) {
+      window.alert("Unable to open print window — please allow popups for this site.");
+      return;
+    }
+
+    const styles = `
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin: 20px; color: #222 }
+      h2 { margin-top: 0 }
+      ul { padding-left: 0; list-style: none }
+      /* Ensure list items align nicely with checkboxes */
+      li, .MuiListItem-root { margin: 8px 0; font-size: 14px; display: flex; align-items: center; gap: 8px }
+      /* Normalize native checkbox size */
+      input[type="checkbox"] { width: 16px; height: 16px; margin: 0; vertical-align: middle; transform: none !important }
+      /* MUI renders SVG icons for checkboxes; ensure they are small for print */
+      .MuiSvgIcon-root { width: 16px; height: 16px; font-size: 16px }
+      .MuiCheckbox-root { padding: 0 }
+      .MuiListItemText-root { margin: 0 }
+    `;
+
+    win.document.write(`<!doctype html><html><head><title>Interview Checklist</title><style>${styles}</style></head><body><h2>Interview Preparation Checklist</h2><div>${markup}</div></body></html>`);
+    win.document.close();
+    // Give the new window a moment to render before printing
+    setTimeout(() => {
+      win.focus();
+      win.print();
+      // Close the window after printing
+      win.close();
+    }, 250);
   }
 
   return (
@@ -187,18 +227,20 @@ export default function Interview({ company }: { company: CompanyMinimal }) {
         <Divider sx={{ my: 2 }} />
 
         <Typography variant="subtitle1">Interview Preparation Checklist</Typography>
-        <List>
-          {checklist.map((c) => (
-            <ListItem key={c.id} disableGutters>
-              <Checkbox checked={!!checked[c.id]} onChange={() => toggle(c.id)} />
-              <ListItemText primary={c.label} />
-            </ListItem>
-          ))}
-        </List>
+        <div ref={checklistRef} id="sgt-interview-checklist">
+          <List>
+            {checklist.map((c) => (
+              <ListItem key={c.id} disableGutters>
+                <Checkbox checked={!!checked[c.id]} onChange={() => toggle(c.id)} />
+                <ListItemText primary={c.label} />
+              </ListItem>
+            ))}
+          </List>
+        </div>
 
         <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
           <Button variant="contained" onClick={() => window.alert("Mock: Start mock interview")}>Start Mock Interview</Button>
-          <Button variant="outlined" onClick={() => window.print()}>Print Checklist</Button>
+          <Button variant="outlined" onClick={printChecklist}>Print Checklist</Button>
         </Stack>
       </CardContent>
     </Card>
