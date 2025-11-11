@@ -142,6 +142,7 @@ interface ResumeDraftsStore {
     sourceArtifactId?: string | null
   ) => Promise<string | null>;
   loadDraft: (id: string) => Promise<void>;
+  deselectDraft: () => void; // Deselect active draft (return to library view)
   loadAllDrafts: () => Promise<void>; // Load user's drafts from database
   deleteDraft: (id: string) => Promise<void>;
   renameDraft: (id: string, name: string) => Promise<void>;
@@ -297,7 +298,8 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
 
       set({
         drafts,
-        activeDraftId: cached.activeDraftId,
+        // Don't restore activeDraftId from cache - let user choose from starter
+        // activeDraftId: cached.activeDraftId,
       });
 
       // Successfully loaded from cache (instant)
@@ -322,17 +324,16 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
       const dbDrafts = result.data.map(dbRowToDraft);
 
       // Update store with fresh data
+      // Keep the current activeDraftId (even if null) - don't auto-select
       const currentActiveDraftId = get().activeDraftId;
-      const activeDraftId =
-        currentActiveDraftId || (dbDrafts.length > 0 ? dbDrafts[0].id : null);
 
       set({
         drafts: dbDrafts,
-        activeDraftId,
+        activeDraftId: currentActiveDraftId,
       });
 
       // Update cache with fresh data
-      saveToCache(userId, dbDrafts, activeDraftId);
+      saveToCache(userId, dbDrafts, currentActiveDraftId);
 
       console.log(`✓ Synced ${dbDrafts.length} drafts from database`);
     } catch (error) {
@@ -491,6 +492,26 @@ export const useResumeDraftsV2 = create<ResumeDraftsStore>((set, get) => ({
         error instanceof Error ? error.message : "Unknown error";
       set({ isLoading: false, error: errorMessage });
     }
+  },
+
+  // Deselect the active draft and return to library view
+  deselectDraft: () => {
+    const { userId, drafts, activeDraftId } = get();
+
+    // Save current state to cache before deselecting
+    if (userId && activeDraftId) {
+      saveToCache(userId, drafts, null); // null = no active draft
+    }
+
+    set({
+      activeDraftId: null,
+      history: [],
+      historyIndex: -1,
+      appliedSections: new Set<string>(),
+      pendingAIContent: null,
+    });
+
+    console.log("↩️ Deselected active draft - returning to library");
   },
 
   deleteDraft: async (id: string): Promise<void> => {

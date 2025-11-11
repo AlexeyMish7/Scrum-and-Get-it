@@ -250,7 +250,9 @@ export async function updateResumeDraft(
       const delay = 100 * Math.pow(2, attempt - 1);
       await new Promise((resolve) => setTimeout(resolve, delay));
       console.log(
-        `🔄 Retrying resume draft update (attempt ${attempt + 1}/${maxRetries})...`
+        `🔄 Retrying resume draft update (attempt ${
+          attempt + 1
+        }/${maxRetries})...`
       );
     }
 
@@ -259,7 +261,9 @@ export async function updateResumeDraft(
     // Success - return immediately
     if (!result.error && result.data) {
       if (attempt > 0) {
-        console.log(`✓ Resume draft update succeeded after ${attempt + 1} attempts`);
+        console.log(
+          `✓ Resume draft update succeeded after ${attempt + 1} attempts`
+        );
       }
       return result;
     }

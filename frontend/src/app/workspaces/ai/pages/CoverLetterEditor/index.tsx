@@ -55,6 +55,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { useAuth } from "@shared/context/AuthContext";
+import CoverLetterStarter from "@workspaces/ai/components/cover-letter/CoverLetterStarter";
 import {
   COVER_LETTER_TEMPLATES,
   getCoverLetterTemplateList,
@@ -178,6 +179,10 @@ export default function CoverLetterEditor() {
       setUserId(user.id);
       loadFromCacheSync(); // Instant load from cache
       syncWithDatabase(); // Background sync
+
+      // Clear active draft to force starter screen
+      const { clearDraft } = useCoverLetterDrafts.getState();
+      clearDraft();
     }
   }, [user?.id, setUserId, loadFromCacheSync, syncWithDatabase]);
 
@@ -463,6 +468,18 @@ export default function CoverLetterEditor() {
       setIsLinking(false);
     }
   };
+
+  // Show starter screen if no drafts exist
+  if (drafts.length === 0 && !activeDraft) {
+    return (
+      <CoverLetterStarter
+        onStart={(draftId) => {
+          console.log("✓ Cover letter draft started:", draftId);
+        }}
+        onCancel={() => navigate("/ai")}
+      />
+    );
+  }
 
   return (
     <Container maxWidth={false} sx={{ py: 3 }}>
