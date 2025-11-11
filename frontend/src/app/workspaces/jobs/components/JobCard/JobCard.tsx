@@ -1,8 +1,25 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
+interface JobCardData {
+  id?: string | number;
+  job_title?: string;
+  title?: string;
+  company_name?: string;
+  company?: string;
+  city_name?: string;
+  city?: string;
+  state_code?: string;
+  state?: string;
+  job_status?: string;
+  jobStatus?: string;
+  application_deadline?: string;
+  job_description?: string;
+  [key: string]: unknown;
+}
+
 type Props = {
-  job: Record<string, any>;
+  job: JobCardData;
   onOpen?: (id: string | number) => void;
 };
 
@@ -57,7 +74,7 @@ export default function JobCard({ job, onOpen }: Props) {
     <Card
       variant="outlined"
       sx={{ mb: 1, position: "relative", cursor: onOpen ? "pointer" : undefined }}
-      onClick={() => onOpen && onOpen(job.id)}
+      onClick={() => onOpen && job.id !== undefined && onOpen(job.id)}
     >
       <CardContent sx={{ p: 1 }}>
         {/* Top-right days-left indicator */}
@@ -108,7 +125,19 @@ export default function JobCard({ job, onOpen }: Props) {
           </Box>
         </Box>
         {job.job_description && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }} noWrap>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              wordBreak: "break-word",
+            }}
+          >
             {String(job.job_description)}
           </Typography>
         )}
