@@ -40,6 +40,7 @@ import {
   handleGenerateCoverLetter,
   handleSkillsOptimization,
   handleExperienceTailoring,
+  handleCompanyResearch,
   handleListArtifacts,
   handleGetArtifact,
   handleCreateJobMaterials,
@@ -335,6 +336,20 @@ async function handleRequest(
     ) {
       const userId = await requireAuth(req);
       await handleExperienceTailoring(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters
+      );
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/company-research") {
+      const userId = await requireAuth(req);
+      await handleCompanyResearch(
         req,
         res,
         url,
