@@ -261,36 +261,35 @@ export default function DraftPreviewPanel({
       <Box key="summary" sx={{ mb: 3 }}>
         <Stack
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="subtitle1"
               sx={{
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.8,
+                fontSize: "0.95rem",
+                mb: 0.5,
+                color: "text.primary",
               }}
             >
               Professional Summary
             </Typography>
             {summarySection && getStateIndicator(summarySection)}
-          </Stack>
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          </Box>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
                   size="small"
                   onClick={() => handleMoveSectionUp("summary")}
                   disabled={!canMoveUp("summary")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowUpwardIcon fontSize="small" />
                 </IconButton>
@@ -302,6 +301,7 @@ export default function DraftPreviewPanel({
                   size="small"
                   onClick={() => handleMoveSectionDown("summary")}
                   disabled={!canMoveDown("summary")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowDownwardIcon fontSize="small" />
                 </IconButton>
@@ -311,6 +311,7 @@ export default function DraftPreviewPanel({
               <IconButton
                 size="small"
                 onClick={() => onToggleSection("summary", false)}
+                sx={{ p: 0.5 }}
               >
                 <VisibilityOffIcon fontSize="small" />
               </IconButton>
@@ -322,6 +323,7 @@ export default function DraftPreviewPanel({
                   onClick={() =>
                     handleStartEdit("summary", draft.content.summary || "")
                   }
+                  sx={{ p: 0.5 }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -350,36 +352,35 @@ export default function DraftPreviewPanel({
       <Box key="skills" sx={{ mb: 3 }}>
         <Stack
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="subtitle1"
               sx={{
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.8,
+                fontSize: "0.95rem",
+                mb: 0.5,
+                color: "text.primary",
               }}
             >
               Technical Skills
             </Typography>
             {skillsSection && getStateIndicator(skillsSection)}
-          </Stack>
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          </Box>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
                   size="small"
                   onClick={() => handleMoveSectionUp("skills")}
                   disabled={!canMoveUp("skills")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowUpwardIcon fontSize="small" />
                 </IconButton>
@@ -391,6 +392,7 @@ export default function DraftPreviewPanel({
                   size="small"
                   onClick={() => handleMoveSectionDown("skills")}
                   disabled={!canMoveDown("skills")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowDownwardIcon fontSize="small" />
                 </IconButton>
@@ -400,6 +402,7 @@ export default function DraftPreviewPanel({
               <IconButton
                 size="small"
                 onClick={() => onToggleSection("skills", false)}
+                sx={{ p: 0.5 }}
               >
                 <VisibilityOffIcon fontSize="small" />
               </IconButton>
@@ -414,6 +417,7 @@ export default function DraftPreviewPanel({
                       draft.content.skills?.join(", ") || ""
                     )
                   }
+                  sx={{ p: 0.5 }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -442,36 +446,35 @@ export default function DraftPreviewPanel({
       <Box key="experience" sx={{ mb: 3 }}>
         <Stack
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="subtitle1"
               sx={{
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.8,
+                fontSize: "0.95rem",
+                mb: 0.5,
+                color: "text.primary",
               }}
             >
               Professional Experience
             </Typography>
             {experienceSection && getStateIndicator(experienceSection)}
-          </Stack>
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          </Box>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
                   size="small"
                   onClick={() => handleMoveSectionUp("experience")}
                   disabled={!canMoveUp("experience")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowUpwardIcon fontSize="small" />
                 </IconButton>
@@ -483,6 +486,7 @@ export default function DraftPreviewPanel({
                   size="small"
                   onClick={() => handleMoveSectionDown("experience")}
                   disabled={!canMoveDown("experience")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowDownwardIcon fontSize="small" />
                 </IconButton>
@@ -492,6 +496,7 @@ export default function DraftPreviewPanel({
               <IconButton
                 size="small"
                 onClick={() => onToggleSection("experience", false)}
+                sx={{ p: 0.5 }}
               >
                 <VisibilityOffIcon fontSize="small" />
               </IconButton>
@@ -506,6 +511,7 @@ export default function DraftPreviewPanel({
                       JSON.stringify(draft.content.experience, null, 2)
                     )
                   }
+                  sx={{ p: 0.5 }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -573,36 +579,35 @@ export default function DraftPreviewPanel({
       <Box key="education" sx={{ mb: 3 }}>
         <Stack
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="subtitle1"
               sx={{
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.8,
+                fontSize: "0.95rem",
+                mb: 0.5,
+                color: "text.primary",
               }}
             >
               Education
             </Typography>
             {educationSection && getStateIndicator(educationSection)}
-          </Stack>
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          </Box>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
                   size="small"
                   onClick={() => handleMoveSectionUp("education")}
                   disabled={!canMoveUp("education")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowUpwardIcon fontSize="small" />
                 </IconButton>
@@ -614,6 +619,7 @@ export default function DraftPreviewPanel({
                   size="small"
                   onClick={() => handleMoveSectionDown("education")}
                   disabled={!canMoveDown("education")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowDownwardIcon fontSize="small" />
                 </IconButton>
@@ -623,6 +629,7 @@ export default function DraftPreviewPanel({
               <IconButton
                 size="small"
                 onClick={() => onToggleSection("education", false)}
+                sx={{ p: 0.5 }}
               >
                 <VisibilityOffIcon fontSize="small" />
               </IconButton>
@@ -637,6 +644,7 @@ export default function DraftPreviewPanel({
                       JSON.stringify(draft.content.education, null, 2)
                     )
                   }
+                  sx={{ p: 0.5 }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -701,36 +709,35 @@ export default function DraftPreviewPanel({
       <Box key="projects">
         <Stack
           direction="row"
-          spacing={1}
+          spacing={2}
           alignItems="flex-start"
           justifyContent="space-between"
           sx={{ mb: 1 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
             <Typography
-              variant="subtitle2"
+              variant="subtitle1"
               sx={{
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.8,
+                fontSize: "0.95rem",
+                mb: 0.5,
+                color: "text.primary",
               }}
             >
               Projects
             </Typography>
             {projectsSection && getStateIndicator(projectsSection)}
-          </Stack>
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          </Box>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0, ml: 1 }}>
             <Tooltip title="Move up">
               <span>
                 <IconButton
                   size="small"
                   onClick={() => handleMoveSectionUp("projects")}
                   disabled={!canMoveUp("projects")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowUpwardIcon fontSize="small" />
                 </IconButton>
@@ -742,6 +749,7 @@ export default function DraftPreviewPanel({
                   size="small"
                   onClick={() => handleMoveSectionDown("projects")}
                   disabled={!canMoveDown("projects")}
+                  sx={{ p: 0.5 }}
                 >
                   <ArrowDownwardIcon fontSize="small" />
                 </IconButton>
@@ -751,6 +759,7 @@ export default function DraftPreviewPanel({
               <IconButton
                 size="small"
                 onClick={() => onToggleSection("projects", false)}
+                sx={{ p: 0.5 }}
               >
                 <VisibilityOffIcon fontSize="small" />
               </IconButton>
@@ -765,6 +774,7 @@ export default function DraftPreviewPanel({
                       JSON.stringify(draft.content.projects, null, 2)
                     )
                   }
+                  sx={{ p: 0.5 }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -837,34 +847,46 @@ export default function DraftPreviewPanel({
       case "applied":
         return (
           <Chip
-            icon={<AutoAwesomeIcon />}
+            icon={<AutoAwesomeIcon sx={{ fontSize: "0.65rem" }} />}
             label="Applied from AI"
             size="small"
             color="success"
             variant="outlined"
-            sx={{ fontSize: "0.7rem", height: 20 }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "from-profile":
         return (
           <Chip
-            icon={<AccountTreeIcon />}
+            icon={<AccountTreeIcon sx={{ fontSize: "0.65rem" }} />}
             label="From profile"
             size="small"
             color="info"
             variant="outlined"
-            sx={{ fontSize: "0.7rem", height: 20 }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "edited":
         return (
           <Chip
-            icon={<EditIcon />}
+            icon={<EditIcon sx={{ fontSize: "0.65rem" }} />}
             label="Manually edited"
             size="small"
             color="warning"
             variant="outlined"
-            sx={{ fontSize: "0.7rem", height: 20 }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "empty":
@@ -874,7 +896,11 @@ export default function DraftPreviewPanel({
             size="small"
             color="default"
             variant="outlined"
-            sx={{ fontSize: "0.7rem", height: 20 }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       default:
@@ -1335,7 +1361,7 @@ export default function DraftPreviewPanel({
                 ? "✓ Draft has content"
                 : "Empty draft - generate or apply content to start"}
             </Typography>
-            <Stack direction="row" spacing={1} data-tour="export-section">
+            <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
                 size="small"

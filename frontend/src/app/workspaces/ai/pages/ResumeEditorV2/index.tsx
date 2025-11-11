@@ -770,7 +770,6 @@ export default function ResumeEditorV2() {
                   size="small"
                   onClick={handleUndo}
                   disabled={!canUndo()}
-                  data-tour="undo-redo-controls"
                 >
                   <UndoIcon />
                 </IconButton>
@@ -838,7 +837,6 @@ export default function ResumeEditorV2() {
             minWidth: 0,
             overflow: "hidden",
           }}
-          data-tour="generation-panel"
         >
           <GenerationPanel
             onGenerationStart={() => console.log("🚀 Generation started")}
@@ -858,7 +856,6 @@ export default function ResumeEditorV2() {
             minWidth: 0,
             overflow: "hidden",
           }}
-          data-tour="ai-results-panel"
         >
           <AIResultsPanel
             content={pendingAIContent}
@@ -880,7 +877,6 @@ export default function ResumeEditorV2() {
             minWidth: 0,
             overflow: "hidden",
           }}
-          data-tour="draft-preview-panel"
         >
           <DraftPreviewPanel
             draft={activeDraft}
