@@ -852,7 +852,11 @@ export default function DraftPreviewPanel({
             size="small"
             color="success"
             variant="outlined"
-            sx={{ fontSize: "0.65rem", height: 18, "& .MuiChip-label": { px: 0.75, py: 0 } }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "from-profile":
@@ -863,7 +867,11 @@ export default function DraftPreviewPanel({
             size="small"
             color="info"
             variant="outlined"
-            sx={{ fontSize: "0.65rem", height: 18, "& .MuiChip-label": { px: 0.75, py: 0 } }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "edited":
@@ -874,7 +882,11 @@ export default function DraftPreviewPanel({
             size="small"
             color="warning"
             variant="outlined"
-            sx={{ fontSize: "0.65rem", height: 18, "& .MuiChip-label": { px: 0.75, py: 0 } }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       case "empty":
@@ -884,7 +896,11 @@ export default function DraftPreviewPanel({
             size="small"
             color="default"
             variant="outlined"
-            sx={{ fontSize: "0.65rem", height: 18, "& .MuiChip-label": { px: 0.75, py: 0 } }}
+            sx={{
+              fontSize: "0.65rem",
+              height: 18,
+              "& .MuiChip-label": { px: 0.75, py: 0 },
+            }}
           />
         );
       default:
