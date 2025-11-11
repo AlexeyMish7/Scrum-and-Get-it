@@ -26,6 +26,7 @@ import InterviewScheduling from "./InterviewScheduling";
 import { useAuth } from "@shared/context/AuthContext";
 import { supabase } from "@shared/services/supabaseClient";
 import JSZip from "jszip";
+import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 
 export default function AutomationsPage() {
   const { user } = useAuth() as any;
@@ -56,17 +57,48 @@ export default function AutomationsPage() {
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      const { data: resumes } = await supabase
-        .from("resume_drafts")
-        .select("*")
-        .eq("user_id", user.id);
-      const { data: covers } = await supabase
-        .from("cover_letter_drafts")
-        .select("*")
-        .eq("user_id", user.id);
+      try {
+        // First, try to read any locally cached cover-letter drafts from the
+        // cover-letter Zustand store. This lets users see drafts that haven't
+        // been synced to the DB yet (created/edited in the Cover Letter editor).
+        const store = useCoverLetterDrafts.getState();
 
-      setResumeList(resumes || []);
-      setCoverList(covers || []);
+        // If the store expects a user id / cache load, call those helpers.
+        // These are no-ops if the implementation doesn't require them.
+        if (store.setUserId) store.setUserId(user.id);
+        if (store.loadFromCacheSync) store.loadFromCacheSync();
+
+        const cachedCovers = store.drafts ?? [];
+
+        // Then fetch persisted drafts from the DB as a fallback / canonical source.
+        const { data: resumes } = await supabase
+          .from("resume_drafts")
+          .select("*")
+          .eq("user_id", user.id);
+
+        const { data: covers } = await supabase
+          .from("cover_letter_drafts")
+          .select("*")
+          .eq("user_id", user.id);
+
+        // Merge cached covers with DB covers. If an ID exists in DB, prefer DB
+        // (assumed canonical). Otherwise include the cached draft so it is
+        // available to the Automations UI immediately.
+        const dbCovers = covers || [];
+        const mergedMap = new Map<string, any>();
+
+        dbCovers.forEach((c: any) => mergedMap.set(String(c.id), c));
+        cachedCovers.forEach((c: any) => {
+          if (!mergedMap.has(String(c.id))) mergedMap.set(String(c.id), c);
+        });
+
+        setResumeList(resumes || []);
+        setCoverList(Array.from(mergedMap.values()));
+      } catch (err) {
+        console.error("Failed to load resumes/covers:", err);
+        setResumeList([]);
+        setCoverList([]);
+      }
     })();
   }, [user]);
 

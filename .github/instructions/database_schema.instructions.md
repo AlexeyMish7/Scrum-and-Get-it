@@ -204,6 +204,38 @@ CREATE TABLE public.skills (
 	created_at timestamptz DEFAULT now(),
 	updated_at timestamptz DEFAULT now()
 );
+
+CREATE TABLE public.cover_letter_drafts (
+	id uuid NOT NULL DEFAULT gen_random_uuid(),
+	user_id uuid NOT NULL,
+	name text NOT NULL,
+	template_id text NULL DEFAULT 'formal'::text,
+	job_id bigint NULL,
+	company_name text NULL,
+	job_title text NULL,
+	content jsonb NOT NULL DEFAULT '{}'::jsonb,
+	metadata jsonb NOT NULL DEFAULT '{"tone": "formal", "length": "standard", "culture": "corporate"}'::jsonb,
+	company_research jsonb NULL DEFAULT '{}'::jsonb,
+	version integer NOT NULL DEFAULT 1,
+	is_active boolean NOT NULL DEFAULT true,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	last_accessed_at timestamptz NULL DEFAULT now(),
+	CONSTRAINT cover_letter_drafts_pkey PRIMARY KEY (id),
+	CONSTRAINT cover_letter_drafts_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.jobs(id) ON DELETE SET NULL,
+	CONSTRAINT cover_letter_drafts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_user_id ON public.cover_letter_drafts USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_job_id ON public.cover_letter_drafts USING btree (job_id);
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_updated_at ON public.cover_letter_drafts USING btree (updated_at desc);
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_is_active ON public.cover_letter_drafts USING btree (is_active) WHERE (is_active = true);
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_template ON public.cover_letter_drafts USING btree (template_id);
+CREATE INDEX IF NOT EXISTS idx_cover_letter_drafts_company ON public.cover_letter_drafts USING btree (company_name);
+
+CREATE TRIGGER cover_letter_drafts_updated_at_trigger BEFORE
+	UPDATE ON cover_letter_drafts FOR EACH ROW
+	EXECUTE FUNCTION update_cover_letter_drafts_updated_at();
 ```
 
 ## Relationship Map (simplified)
