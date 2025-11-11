@@ -55,7 +55,10 @@ import { useNavigate } from "react-router-dom";
 
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { useAuth } from "@shared/context/AuthContext";
-import { COVER_LETTER_TEMPLATES } from "../../config/coverLetterTemplates";
+import {
+  COVER_LETTER_TEMPLATES,
+  getCoverLetterTemplateList,
+} from "../../config/coverLetterTemplates";
 import type {
   Tone,
   Length,
@@ -598,11 +601,11 @@ export default function CoverLetterEditor() {
                 label="Template"
                 onChange={(e) => setSelectedTemplate(e.target.value)}
               >
-                <MenuItem value="formal">Formal Corporate</MenuItem>
-                <MenuItem value="creative">Creative Design</MenuItem>
-                <MenuItem value="technical">Technical Professional</MenuItem>
-                <MenuItem value="modern">Modern Startup</MenuItem>
-                <MenuItem value="minimal">Minimal Clean</MenuItem>
+                {getCoverLetterTemplateList().map((template) => (
+                  <MenuItem key={template.id} value={template.id}>
+                    {template.name} {!template.isSystem && "(Custom)"}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Stack>
