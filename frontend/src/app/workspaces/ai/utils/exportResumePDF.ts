@@ -63,9 +63,16 @@ const BULLET_INDENT = 5;
  * @param draft - Resume draft to export
  * @param userProfile - Optional user profile for contact info header
  */
+interface ExportOptions {
+  filename?: string;
+  watermark?: boolean;
+  theme?: string;
+}
+
 export function exportResumeToPDF(
   draft: ResumeDraft,
-  userProfile?: { full_name?: string; email?: string; phone?: string }
+  userProfile?: { full_name?: string; email?: string; phone?: string },
+  options?: ExportOptions
 ): void {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -287,10 +294,26 @@ export function exportResumeToPDF(
     });
   }
 
-  // Generate filename
+  // Generate filename (allow override from options)
   const timestamp = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const cleanName = draft.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-  const filename = `${cleanName}_${timestamp}.pdf`;
+  const filename =
+    options?.filename && options.filename.trim()
+      ? options.filename.trim()
+      : `${cleanName}_${timestamp}.pdf`;
+
+  // Optional watermark - simple text at bottom of each page
+  if (options?.watermark) {
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(12);
+      doc.setTextColor(150);
+      doc.text("DRAFT", PAGE_WIDTH / 2, PAGE_HEIGHT - 12, {
+        align: "center",
+      });
+    }
+  }
 
   // Save/download PDF
   doc.save(filename);

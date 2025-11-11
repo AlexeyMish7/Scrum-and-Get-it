@@ -50,9 +50,16 @@ interface UserProfile {
  *
  * Error handling: Logs errors but doesn't throw, provides user feedback
  */
+interface ExportOptions {
+  filename?: string;
+  watermark?: boolean; // watermark not implemented for DOCX but accepted
+  theme?: string;
+}
+
 export function exportResumeToDOCX(
   draft: ResumeDraft,
-  userProfile?: UserProfile
+  userProfile?: UserProfile,
+  options?: ExportOptions
 ): void {
   try {
     const sections: Paragraph[] = [];
@@ -351,12 +358,14 @@ export function exportResumeToDOCX(
     // ========================================================================
     // GENERATE FILENAME AND SAVE
     // ========================================================================
+    const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const cleanName = draft.name
       .replace(/[^a-z0-9]/gi, "_")
       .toLowerCase()
       .substring(0, 50);
-    const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const filename = `${cleanName}_${dateStr}.docx`;
+    const filename = options?.filename && options.filename.trim()
+      ? options.filename.trim()
+      : `${cleanName}_${dateStr}.docx`;
 
     // Convert document to blob and trigger download
     import("docx").then((docxModule) => {
