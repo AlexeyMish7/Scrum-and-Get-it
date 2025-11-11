@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
-  Grid,
+  Stack,
   Paper,
   Button,
   LinearProgress,
@@ -92,11 +92,20 @@ export default function AnalyticsPage() {
     return buckets;
   }, [jobs]);
 
-  const total = useMemo(() => Object.values(funnel).reduce((a, b) => a + b, 0), [funnel]);
+  const total = useMemo(
+    () => Object.values(funnel).reduce((a, b) => a + b, 0),
+    [funnel]
+  );
 
   // Base analytics
-  const byCompany = useMemo(() => computeAvgResponseDays(jobs, "company", 10), [jobs]);
-  const byIndustry = useMemo(() => computeAvgResponseDays(jobs, "industry", 10), [jobs]);
+  const byCompany = useMemo(
+    () => computeAvgResponseDays(jobs, "company", 10),
+    [jobs]
+  );
+  const byIndustry = useMemo(
+    () => computeAvgResponseDays(jobs, "industry", 10),
+    [jobs]
+  );
   const successByIndustry = useMemo(
     () =>
       computeSuccessRates(jobs, "industry") as Array<{
@@ -120,10 +129,15 @@ export default function AnalyticsPage() {
     const offers = funnel.Offer ?? 0;
     const offerRate = offers / Math.max(1, total);
     if (offerRate < 0.05)
-      recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
+      recs.push(
+        "Offer rate is low. Improve tailoring or prioritize higher-match roles."
+      );
     if (byIndustry.length && byIndustry[0].avgDays > 14)
-      recs.push("Response times are long in your common industries; consider earlier follow-ups.");
-    if (recs.length === 0) recs.push("Metrics look healthy — continue monitoring trends.");
+      recs.push(
+        "Response times are long in your common industries; consider earlier follow-ups."
+      );
+    if (recs.length === 0)
+      recs.push("Metrics look healthy — continue monitoring trends.");
     return recs;
   }, [funnel, total, byIndustry]);
 
@@ -140,7 +154,10 @@ export default function AnalyticsPage() {
     rows.push(["Metric", "Value"]);
     rows.push(["Total jobs", String(total)]);
     rows.push(["Offers", String(funnel.Offer ?? 0)]);
-    rows.push(["Offer rate", String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3))]);
+    rows.push([
+      "Offer rate",
+      String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3)),
+    ]);
     rows.push(["Weekly goal", String(weeklyGoal)]);
     rows.push([]);
     rows.push(["Funnel breakdown"]);
@@ -160,10 +177,15 @@ export default function AnalyticsPage() {
       ]);
     rows.push(["Response rate", `${(responseRate * 100).toFixed(1)}%`]);
     rows.push(["Average time to offer (days)", String(timeToOffer.toFixed(1))]);
-    rows.push(["Deadline adherence", `${(deadlineStats.adherence * 100).toFixed(1)}%`]);
+    rows.push([
+      "Deadline adherence",
+      `${(deadlineStats.adherence * 100).toFixed(1)}%`,
+    ]);
 
     const csv = rows
-      .map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .map((r) =>
+        r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")
+      )
       .join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -182,7 +204,14 @@ export default function AnalyticsPage() {
         Jobs Analytics
       </Typography>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 2, flexDirection: { xs: "column", md: "row" } }}>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 2,
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
         <Box sx={{ width: { xs: "100%", md: "33%" } }}>
           <NextDeadlinesWidget />
         </Box>
@@ -194,8 +223,8 @@ export default function AnalyticsPage() {
       {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
 
       {/* --- Application Funnel --- */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={4}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Application Funnel</Typography>
             <Divider sx={{ my: 1 }} />
@@ -214,9 +243,9 @@ export default function AnalyticsPage() {
               </TableBody>
             </Table>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Avg response (by company)</Typography>
             <Divider sx={{ my: 1 }} />
@@ -238,9 +267,9 @@ export default function AnalyticsPage() {
               </TableBody>
             </Table>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Success rate by industry</Typography>
             <Divider sx={{ my: 1 }} />
@@ -262,16 +291,25 @@ export default function AnalyticsPage() {
               </TableBody>
             </Table>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
 
       {/* --- Benchmark & Weekly Application Volume --- */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={6}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Application volume (last 12 weeks)</Typography>
+            <Typography variant="h6">
+              Application volume (last 12 weeks)
+            </Typography>
             <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", height: 120 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                alignItems: "flex-end",
+                height: 120,
+              }}
+            >
               {monthlyApps.map((m) => (
                 <Box key={m.month} sx={{ flex: 1, textAlign: "center" }}>
                   <Box
@@ -282,29 +320,37 @@ export default function AnalyticsPage() {
                       borderRadius: 0.5,
                     }}
                   />
-                  <Typography variant="caption">{m.month.split("-")[1]}</Typography>
+                  <Typography variant="caption">
+                    {m.month.split("-")[1]}
+                  </Typography>
                 </Box>
               ))}
             </Box>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <BenchmarkCard jobs={jobs} />
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
 
       {/* --- Additional Analytics Sections --- */}
-      <Grid container spacing={2} sx={{ mb: 2, mt: 2 }}>
-        <Grid item xs={12} md={4}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        sx={{ mb: 2, mt: 2 }}
+      >
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Response Rate</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{(responseRate * 100).toFixed(1)}%</Typography>
+            <Typography variant="body1">
+              {(responseRate * 100).toFixed(1)}%
+            </Typography>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Average Days per Stage</Typography>
             <Divider sx={{ my: 1 }} />
@@ -319,30 +365,32 @@ export default function AnalyticsPage() {
               </TableBody>
             </Table>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Deadline Adherence</Typography>
             <Divider sx={{ my: 1 }} />
             <Typography variant="body1">
-              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met (
-              {(deadlineStats.adherence * 100).toFixed(1)}%)
+              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met
+              ({(deadlineStats.adherence * 100).toFixed(1)}%)
             </Typography>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
 
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={6}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Time to Offer</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{timeToOffer.toFixed(1)} days</Typography>
+            <Typography variant="body1">
+              {timeToOffer.toFixed(1)} days
+            </Typography>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Recommendations</Typography>
             <Divider sx={{ my: 1 }} />
@@ -354,40 +402,38 @@ export default function AnalyticsPage() {
               ))}
             </Box>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
 
       {/* --- Goals & Progress --- */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={12}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Goals & Progress</Typography>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="body2">Weekly application goal</Typography>
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}>
-              <TextField
-                size="small"
-                type="number"
-                value={weeklyGoal}
-                onChange={(e) => setWeeklyGoal(Number(e.target.value) || 0)}
-              />
-              <Button variant="contained" onClick={saveGoal}>
-                Save
-              </Button>
-              <Button variant="outlined" onClick={exportCsv}>
-                Export CSV
-              </Button>
-            </Box>
-            <Typography sx={{ mt: 1 }} variant="caption">
-              Progress this week: 0/{weeklyGoal}
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Stack spacing={2} sx={{ mb: 2 }}>
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6">Goals & Progress</Typography>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="body2">Weekly application goal</Typography>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}>
+            <TextField
+              size="small"
+              type="number"
+              value={weeklyGoal}
+              onChange={(e) => setWeeklyGoal(Number(e.target.value) || 0)}
+            />
+            <Button variant="contained" onClick={saveGoal}>
+              Save
+            </Button>
+            <Button variant="outlined" onClick={exportCsv}>
+              Export CSV
+            </Button>
+          </Box>
+          <Typography sx={{ mt: 1 }} variant="caption">
+            Progress this week: 0/{weeklyGoal}
+          </Typography>
+        </Paper>
+      </Stack>
 
       <Typography color="text.secondary">
-        Data is computed from your jobs list (scoped to your account). Benchmarks are basic static
-        values for quick comparison.
+        Data is computed from your jobs list (scoped to your account).
+        Benchmarks are basic static values for quick comparison.
       </Typography>
       {error ? <Typography color="error">{error}</Typography> : null}
     </Box>

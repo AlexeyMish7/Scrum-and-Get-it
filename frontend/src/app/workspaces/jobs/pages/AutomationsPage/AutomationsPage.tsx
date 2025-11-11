@@ -100,8 +100,7 @@ export default function AutomationsPage() {
   const handleTemplateResponse = () => {
     setSnackbar({
       open: true,
-      message:
-        "Template responses ready for common application questions.",
+      message: "Template responses ready for common application questions.",
       severity: "success",
     });
   };
@@ -124,7 +123,9 @@ export default function AutomationsPage() {
         <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Generate Application Packages</Typography>
+              <Typography variant="h6">
+                Generate Application Packages
+              </Typography>
               <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
                 Combine your resume, cover letter, and portfolio into one
                 downloadable application package.
@@ -140,10 +141,12 @@ export default function AutomationsPage() {
         <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Schedule Application Submissions</Typography>
+              <Typography variant="h6">
+                Schedule Application Submissions
+              </Typography>
               <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-                Set a date and time for your job applications to be automatically
-                submitted.
+                Set a date and time for your job applications to be
+                automatically submitted.
               </Typography>
               <TextField
                 type="datetime-local"
@@ -163,7 +166,9 @@ export default function AutomationsPage() {
         <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Automated Follow-up Reminders</Typography>
+              <Typography variant="h6">
+                Automated Follow-up Reminders
+              </Typography>
               <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
                 Enable reminders to follow up after a set number of days.
               </Typography>
@@ -176,7 +181,11 @@ export default function AutomationsPage() {
                 }
                 label="Enable follow-up reminders"
               />
-              <Button variant="contained" sx={{ mt: 1 }} onClick={handleFollowUp}>
+              <Button
+                variant="contained"
+                sx={{ mt: 1 }}
+                onClick={handleFollowUp}
+              >
                 Save Preference
               </Button>
             </CardContent>
@@ -215,10 +224,12 @@ export default function AutomationsPage() {
         </Grid>
 
         {/* Application Checklist Automation */}
-        <Grid size={12} >
+        <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Application Checklist Automation</Typography>
+              <Typography variant="h6">
+                Application Checklist Automation
+              </Typography>
               <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
                 Automatically verify you’ve completed each part of your
                 application before submission.
