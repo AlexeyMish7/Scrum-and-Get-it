@@ -18,7 +18,7 @@ import DeadlineCalendar from "@workspaces/jobs/components/DeadlineCalendar/Deadl
 import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "./BenchmarkCard";
-import SalaryResearchCard from "@workspaces/jobs/components/SalaryResearchCard/SalaryResearchCard";
+//import SalaryResearchCard from "@workspaces/jobs/components/SalaryResearchCard/SalaryResearchCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -193,7 +193,7 @@ export default function AnalyticsPage() {
 
       {/* Funnel + basics */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Application Funnel</Typography>
             <Divider sx={{ my: 1 }} />
@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Avg response (by company)</Typography>
             <Divider sx={{ my: 1 }} />
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Success rate by industry</Typography>
             <Divider sx={{ my: 1 }} />
@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
 
       {/* Volume + Benchmarks */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={6}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Application volume (last 12 weeks)</Typography>
             <Divider sx={{ my: 1 }} />
@@ -287,14 +287,14 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={12}>
           <BenchmarkCard jobs={jobs} />
         </Grid>
       </Grid>
 
       {/* Additional metrics */}
       <Grid container spacing={2} sx={{ mb: 2, mt: 2 }}>
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Response Rate</Typography>
             <Divider sx={{ my: 1 }} />
@@ -302,7 +302,7 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Average Days per Stage</Typography>
             <Divider sx={{ my: 1 }} />
@@ -319,7 +319,7 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Deadline Adherence</Typography>
             <Divider sx={{ my: 1 }} />
@@ -333,7 +333,7 @@ export default function AnalyticsPage() {
 
       {/* Time to offer + Recommendations */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={6}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Time to Offer</Typography>
             <Divider sx={{ my: 1 }} />
@@ -341,7 +341,7 @@ export default function AnalyticsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Recommendations</Typography>
             <Divider sx={{ my: 1 }} />
@@ -358,7 +358,7 @@ export default function AnalyticsPage() {
 
       {/* Goals & Progress */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Goals & Progress</Typography>
             <Divider sx={{ my: 1 }} />
@@ -386,9 +386,9 @@ export default function AnalyticsPage() {
 
       {/* NEW: Salary research (your user story) */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12}>
+        {/* <Grid size={12}>
           <SalaryResearchCard />
-        </Grid>
+        </Grid> */}
       </Grid>
 
       <Typography color="text.secondary">
