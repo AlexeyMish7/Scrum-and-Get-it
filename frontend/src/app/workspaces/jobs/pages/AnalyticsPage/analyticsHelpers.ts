@@ -63,6 +63,8 @@ export function computeAvgResponseDays(
     const changed = new Date(j.status_changed_at);
     if (isNaN(created.getTime()) || isNaN(changed.getTime())) continue;
     const days = (changed.getTime() - created.getTime()) / 86400000;
+    // Skip negative or zero day differences
+    if (days <= 0) continue;
     const key =
       groupBy === "company"
         ? j.company_name ?? "(unknown)"
@@ -71,18 +73,26 @@ export function computeAvgResponseDays(
     map[key].totalDays += days;
     map[key].count += 1;
   }
-  const out = Object.keys(map).map((k) => ({
-    key: k,
-    avgDays: map[k].totalDays / map[k].count,
-    count: map[k].count,
-  }));
+  const out = Object.keys(map).map((k) => {
+    const avgDays = map[k].count > 0 ? map[k].totalDays / map[k].count : 0;
+    return {
+      key: k,
+      avgDays: Math.max(0, avgDays), // Ensure non-negative
+      count: map[k].count,
+    };
+  });
   out.sort((a, b) => b.count - a.count);
   return out.slice(0, topN);
 }
 
 /** ✅ Compare user’s success rate vs benchmarks */
 export function compareToBenchmarks(
-  successRates: Array<{ key: string; rate: number; offers: number; total: number }>,
+  successRates: Array<{
+    key: string;
+    rate: number;
+    offers: number;
+    total: number;
+  }>,
   benchmarks = industryBenchmarks
 ) {
   return successRates
@@ -107,20 +117,37 @@ export function formatPercent(v: number) {
 
 /** ✅ Compute overall response rate (Applied → got Interview or Offer) */
 export function computeResponseRate(jobs: JobRecord[]) {
-  const applied = jobs.filter((j) => j.job_status?.toLowerCase() === "applied")
-    .length;
-  const responded = jobs.filter((j) =>
-    ["interview", "offer", "phone screen"].includes(
-      (j.job_status ?? "").toLowerCase()
-    )
+  // Count jobs that were applied to (Applied status or beyond)
+  const appliedStatuses = [
+    "applied",
+    "phone screen",
+    "interview",
+    "offer",
+    "rejected",
+  ];
+  const applied = jobs.filter((j) =>
+    appliedStatuses.includes((j.job_status ?? "").toLowerCase())
   ).length;
-  return applied === 0 ? 0 : responded / applied;
+
+  // Count jobs that got a response (moved beyond Applied)
+  const respondedStatuses = ["phone screen", "interview", "offer"];
+  const responded = jobs.filter((j) =>
+    respondedStatuses.includes((j.job_status ?? "").toLowerCase())
+  ).length;
+
+  return applied === 0 ? 0 : Math.max(0, responded / applied);
 }
 
 /** ✅ Compute average time spent per pipeline stage (roughly) */
 export function computeAvgStageDurations(jobs: JobRecord[]) {
   // For demonstration, assign synthetic averages per stage
-  const stages = ["Interested", "Applied", "Phone Screen", "Interview", "Offer"];
+  const stages = [
+    "Interested",
+    "Applied",
+    "Phone Screen",
+    "Interview",
+    "Offer",
+  ];
   const durations: Record<string, number> = {};
   for (const stage of stages) {
     const relevant = jobs.filter(
@@ -131,15 +158,20 @@ export function computeAvgStageDurations(jobs: JobRecord[]) {
       continue;
     }
     let total = 0;
+    let validCount = 0;
     for (const j of relevant) {
       if (!j.created_at || !j.status_changed_at) continue;
       const diff =
         (new Date(j.status_changed_at).getTime() -
           new Date(j.created_at).getTime()) /
         86400000;
-      total += diff;
+      // Only count positive durations
+      if (diff > 0) {
+        total += diff;
+        validCount += 1;
+      }
     }
-    durations[stage] = total / Math.max(1, relevant.length);
+    durations[stage] = validCount > 0 ? Math.max(0, total / validCount) : 0;
   }
   return durations;
 }
@@ -150,7 +182,10 @@ export function computeMonthlyApplications(jobs: JobRecord[]) {
   for (const j of jobs) {
     if (!j.created_at) continue;
     const d = new Date(j.created_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
     map[key] = (map[key] ?? 0) + 1;
   }
   return Object.keys(map)
@@ -186,7 +221,128 @@ export function computeTimeToOffer(jobs: JobRecord[]) {
         (new Date(j.status_changed_at!).getTime() -
           new Date(j.created_at!).getTime()) /
         86400000
-    );
+    )
+    .filter((d) => d > 0); // Only count positive durations
   if (diffs.length === 0) return 0;
-  return diffs.reduce((a, b) => a + b, 0) / diffs.length;
+  const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+  return Math.max(0, avg); // Ensure non-negative
+}
+
+/** ✅ Generate AI-powered insights and recommendations */
+export function generateAIInsights(
+  jobs: JobRecord[],
+  funnel: Record<string, number>,
+  responseRate: number,
+  deadlineAdherence: number,
+  avgTimeToOffer: number,
+  weeklyGoal: number,
+  thisWeekApplications: number
+): string[] {
+  const insights: string[] = [];
+  const total = jobs.length;
+  const offers = funnel.Offer ?? 0;
+  const offerRate = offers / Math.max(1, total);
+
+  // Performance analysis
+  if (offerRate < 0.05 && total > 10) {
+    insights.push(
+      `🎯 Low offer rate (${(offerRate * 100).toFixed(
+        1
+      )}%). Consider: (1) Tailoring resumes more closely to job requirements, (2) Applying to positions that better match your experience level, (3) Using AI-generated content to improve application quality.`
+    );
+  } else if (offerRate >= 0.1 && total > 5) {
+    insights.push(
+      `🌟 Excellent offer rate (${(offerRate * 100).toFixed(
+        1
+      )}%)! Your application strategy is working well. Keep applying the same tailoring approach.`
+    );
+  }
+
+  // Response rate insights
+  if (responseRate < 0.2 && total > 10) {
+    insights.push(
+      `📧 Low response rate (${(responseRate * 100).toFixed(
+        1
+      )}%). Recommendations: (1) Review your resume with AI optimization, (2) Ensure your applications are submitted early in the posting cycle, (3) Follow up with hiring managers after 1 week.`
+    );
+  } else if (responseRate >= 0.3) {
+    insights.push(
+      `✅ Strong response rate (${(responseRate * 100).toFixed(
+        1
+      )}%)! Your applications are getting noticed. Focus on interview preparation.`
+    );
+  }
+
+  // Deadline management
+  if (deadlineAdherence < 0.8 && total > 5) {
+    const missedCount = Math.round((1 - deadlineAdherence) * total);
+    insights.push(
+      `⏰ You've missed approximately ${missedCount} deadlines (${(
+        (1 - deadlineAdherence) *
+        100
+      ).toFixed(
+        0
+      )}% miss rate). Set reminders 2-3 days before each deadline to improve adherence.`
+    );
+  }
+
+  // Volume insights
+  if (thisWeekApplications < weeklyGoal && weeklyGoal > 0) {
+    const behind = weeklyGoal - thisWeekApplications;
+    insights.push(
+      `📊 You're ${behind} application${
+        behind !== 1 ? "s" : ""
+      } behind your weekly goal. Dedicate focused time today to catch up. Use AI tools to speed up resume and cover letter creation.`
+    );
+  } else if (thisWeekApplications >= weeklyGoal && weeklyGoal > 0) {
+    insights.push(
+      `🎉 You've met your weekly goal! Consider reviewing applications from companies you're most interested in or raising your goal for next week.`
+    );
+  }
+
+  // Industry targeting
+  const industries = jobs.reduce((acc, j) => {
+    const ind = j.industry ?? "(unknown)";
+    acc[ind] = (acc[ind] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topIndustry = Object.entries(industries).sort((a, b) => b[1] - a[1])[0];
+  if (topIndustry && topIndustry[1] > total * 0.4) {
+    insights.push(
+      `🎯 You're focusing heavily on ${topIndustry[0]} (${topIndustry[1]} applications). Consider diversifying to related industries to increase opportunities.`
+    );
+  }
+
+  // Time to offer insights
+  if (avgTimeToOffer > 30 && offers > 0) {
+    insights.push(
+      `⏳ Your average time to offer is ${avgTimeToOffer.toFixed(
+        0
+      )} days. Long hiring processes are normal, but consider prioritizing companies with faster decision cycles.`
+    );
+  }
+
+  // Conversion funnel analysis
+  const phoneScreens = funnel["Phone Screen"] ?? 0;
+  const interviews = funnel.Interview ?? 0;
+  if (phoneScreens > 5 && interviews < phoneScreens * 0.5) {
+    insights.push(
+      `📞 You're getting phone screens but not advancing to interviews. Focus on: (1) Researching companies thoroughly before calls, (2) Practicing behavioral questions, (3) Clearly articulating your value proposition.`
+    );
+  }
+
+  if (interviews > 3 && offers < interviews * 0.3) {
+    insights.push(
+      `💼 You're reaching interviews but not converting to offers. Recommendations: (1) Request feedback from interviewers, (2) Practice technical/case questions more deeply, (3) Improve your follow-up communication.`
+    );
+  }
+
+  // Default positive message
+  if (insights.length === 0) {
+    insights.push(
+      `✨ Your metrics look healthy! Continue monitoring trends and applying consistently. Use AI tools to maintain high-quality applications.`
+    );
+  }
+
+  return insights;
 }

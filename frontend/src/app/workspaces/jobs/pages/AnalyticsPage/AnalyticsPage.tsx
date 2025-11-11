@@ -12,6 +12,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Chip,
 } from "@mui/material";
 import NextDeadlinesWidget from "@workspaces/jobs/components/NextDeadlinesWidget/NextDeadlinesWidget";
 import DeadlineCalendar from "@workspaces/jobs/components/DeadlineCalendar/DeadlineCalendar";
@@ -28,6 +29,7 @@ import {
   computeMonthlyApplications,
   computeDeadlineAdherence,
   computeTimeToOffer,
+  generateAIInsights,
 } from "./analyticsHelpers";
 import type { JobRecord } from "./analyticsHelpers";
 
@@ -94,11 +96,20 @@ export default function AnalyticsPage() {
     return buckets;
   }, [jobs]);
 
-  const total = useMemo(() => Object.values(funnel).reduce((a, b) => a + b, 0), [funnel]);
+  const total = useMemo(
+    () => Object.values(funnel).reduce((a, b) => a + b, 0),
+    [funnel]
+  );
 
   // Base analytics
-  const byCompany = useMemo(() => computeAvgResponseDays(jobs, "company", 10), [jobs]);
-  const byIndustry = useMemo(() => computeAvgResponseDays(jobs, "industry", 10), [jobs]);
+  const byCompany = useMemo(
+    () => computeAvgResponseDays(jobs, "company", 10),
+    [jobs]
+  );
+  const byIndustry = useMemo(
+    () => computeAvgResponseDays(jobs, "industry", 10),
+    [jobs]
+  );
   const successByIndustry = useMemo(
     () =>
       computeSuccessRates(jobs, "industry") as Array<{
@@ -117,17 +128,40 @@ export default function AnalyticsPage() {
   const deadlineStats = useMemo(() => computeDeadlineAdherence(jobs), [jobs]);
   const timeToOffer = useMemo(() => computeTimeToOffer(jobs), [jobs]);
 
+  // Calculate applications this week
+  const thisWeekApplications = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+    weekStart.setHours(0, 0, 0, 0);
+
+    return jobs.filter((j) => {
+      if (!j.created_at) return false;
+      const created = new Date(j.created_at);
+      return created >= weekStart && created <= now;
+    }).length;
+  }, [jobs]);
+
+  // AI-powered recommendations
   const recommendations = useMemo(() => {
-    const recs: string[] = [];
-    const offers = funnel.Offer ?? 0;
-    const offerRate = offers / Math.max(1, total);
-    if (offerRate < 0.05)
-      recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
-    if (byIndustry.length && byIndustry[0].avgDays > 14)
-      recs.push("Response times are long in your common industries; consider earlier follow-ups.");
-    if (recs.length === 0) recs.push("Metrics look healthy — continue monitoring trends.");
-    return recs;
-  }, [funnel, total, byIndustry]);
+    return generateAIInsights(
+      jobs,
+      funnel,
+      responseRate,
+      deadlineStats.adherence,
+      timeToOffer,
+      weeklyGoal,
+      thisWeekApplications
+    );
+  }, [
+    jobs,
+    funnel,
+    responseRate,
+    deadlineStats.adherence,
+    timeToOffer,
+    weeklyGoal,
+    thisWeekApplications,
+  ]);
 
   function saveGoal() {
     try {
@@ -142,14 +176,19 @@ export default function AnalyticsPage() {
     rows.push(["Metric", "Value"]);
     rows.push(["Total jobs", String(total)]);
     rows.push(["Offers", String(funnel.Offer ?? 0)]);
-    rows.push(["Offer rate", String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3))]);
+    rows.push([
+      "Offer rate",
+      String(((funnel.Offer ?? 0) / Math.max(1, total)).toFixed(3)),
+    ]);
     rows.push(["Weekly goal", String(weeklyGoal)]);
+    rows.push(["Applications this week", String(thisWeekApplications)]);
     rows.push([]);
     rows.push(["Funnel breakdown"]);
     for (const k of Object.keys(funnel)) rows.push([k, String(funnel[k])]);
     rows.push([]);
     rows.push(["Avg response by company (days)"]);
-    for (const r of byCompany) rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
+    for (const r of byCompany)
+      rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
     rows.push([]);
     rows.push(["Success by industry"]);
     for (const r of successByIndustry)
@@ -159,9 +198,21 @@ export default function AnalyticsPage() {
         String(r.offers),
         String(r.total),
       ]);
+    rows.push([]);
+    rows.push(["Extended Metrics"]);
     rows.push(["Response rate", `${(responseRate * 100).toFixed(1)}%`]);
     rows.push(["Average time to offer (days)", String(timeToOffer.toFixed(1))]);
-    rows.push(["Deadline adherence", `${(deadlineStats.adherence * 100).toFixed(1)}%`]);
+    rows.push([
+      "Deadline adherence",
+      `${(deadlineStats.adherence * 100).toFixed(1)}%`,
+    ]);
+    rows.push(["Deadlines met", String(deadlineStats.met)]);
+    rows.push(["Deadlines missed", String(deadlineStats.missed)]);
+    rows.push([]);
+    rows.push(["Average days per stage"]);
+    for (const [stage, days] of Object.entries(stageDurations)) {
+      rows.push([stage, String(days.toFixed(1))]);
+    }
 
     const csv = rows.map((r) => r.join(",")).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -181,7 +232,14 @@ export default function AnalyticsPage() {
         Jobs Analytics
       </Typography>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 2, flexDirection: { xs: "column", md: "row" } }}>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 2,
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
         <Box sx={{ width: { xs: "100%", md: "33%" } }}>
           <NextDeadlinesWidget />
         </Box>
@@ -262,15 +320,48 @@ export default function AnalyticsPage() {
             </Table>
           </Paper>
         </Grid>
+
+        <Grid size={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6">Avg response (by industry)</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Table size="small">
+              <TableBody>
+                {byIndustry.map((r) => (
+                  <TableRow key={r.key}>
+                    <TableCell>{r.key}</TableCell>
+                    <TableCell align="right">
+                      {r.avgDays.toFixed(1)} d ({r.count})
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {byIndustry.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2}>No response data yet</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Grid>
       </Grid>
 
       {/* Volume + Benchmarks */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={12}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Application volume (last 12 weeks)</Typography>
+            <Typography variant="h6">
+              Application volume (last 12 weeks)
+            </Typography>
             <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", height: 120 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                alignItems: "flex-end",
+                height: 120,
+              }}
+            >
               {monthlyApps.map((m) => (
                 <Box key={m.month} sx={{ flex: 1, textAlign: "center" }}>
                   <Box
@@ -281,7 +372,9 @@ export default function AnalyticsPage() {
                       borderRadius: 0.5,
                     }}
                   />
-                  <Typography variant="caption">{m.month.split("-")[1]}</Typography>
+                  <Typography variant="caption">
+                    {m.month.split("-")[1]}
+                  </Typography>
                 </Box>
               ))}
             </Box>
@@ -299,7 +392,9 @@ export default function AnalyticsPage() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Response Rate</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{(responseRate * 100).toFixed(1)}%</Typography>
+            <Typography variant="body1">
+              {(responseRate * 100).toFixed(1)}%
+            </Typography>
           </Paper>
         </Grid>
 
@@ -325,8 +420,8 @@ export default function AnalyticsPage() {
             <Typography variant="h6">Deadline Adherence</Typography>
             <Divider sx={{ my: 1 }} />
             <Typography variant="body1">
-              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met (
-              {(deadlineStats.adherence * 100).toFixed(1)}%)
+              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met
+              ({(deadlineStats.adherence * 100).toFixed(1)}%)
             </Typography>
           </Paper>
         </Grid>
@@ -338,18 +433,25 @@ export default function AnalyticsPage() {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Time to Offer</Typography>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="body1">{timeToOffer.toFixed(1)} days</Typography>
+            <Typography variant="body1">
+              {timeToOffer.toFixed(1)} days
+            </Typography>
           </Paper>
         </Grid>
 
         <Grid size={12}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Recommendations</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="h6">AI-Powered Insights</Typography>
+              <Chip label="AI" size="small" color="primary" />
+            </Box>
             <Divider sx={{ my: 1 }} />
             <Box component="ul" sx={{ pl: 2, m: 0 }}>
               {recommendations.map((r, i) => (
                 <li key={i}>
-                  <Typography variant="body2">{r}</Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    {r}
+                  </Typography>
                 </li>
               ))}
             </Box>
@@ -379,23 +481,33 @@ export default function AnalyticsPage() {
               </Button>
             </Box>
             <Typography sx={{ mt: 1 }} variant="caption">
-              Progress this week: 0/{weeklyGoal}
+              Progress this week: {thisWeekApplications}/{weeklyGoal}
             </Typography>
+            {thisWeekApplications >= weeklyGoal && weeklyGoal > 0 && (
+              <Typography
+                sx={{ mt: 0.5 }}
+                variant="caption"
+                color="success.main"
+              >
+                ✓ Goal achieved!
+              </Typography>
+            )}
           </Paper>
         </Grid>
       </Grid>
 
       {/* NEW: Salary research (your user story) */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        { <Grid size={{ xs: 12, md: 6 }}>
-          <SalaryResearchCard />
-        </Grid> }
+        {
+          <Grid size={{ xs: 12, md: 6 }}>
+            <SalaryResearchCard />
+          </Grid>
+        }
       </Grid>
-      
 
       <Typography color="text.secondary">
-        Data is computed from your jobs list (scoped to your account). Benchmarks are basic static
-        values for quick comparison.
+        Data is computed from your jobs list (scoped to your account).
+        Benchmarks are basic static values for quick comparison.
       </Typography>
       {error ? <Typography color="error">{error}</Typography> : null}
     </Box>
