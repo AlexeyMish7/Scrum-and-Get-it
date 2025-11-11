@@ -18,7 +18,15 @@ import DeadlineCalendar from "@workspaces/jobs/components/DeadlineCalendar/Deadl
 import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "./BenchmarkCard";
-import { computeSuccessRates, computeAvgResponseDays } from "./analyticsHelpers";
+import {
+  computeSuccessRates,
+  computeAvgResponseDays,
+  computeResponseRate,
+  computeAvgStageDurations,
+  computeMonthlyApplications,
+  computeDeadlineAdherence,
+  computeTimeToOffer,
+} from "./analyticsHelpers";
 import type { JobRecord } from "./analyticsHelpers";
 
 export default function AnalyticsPage() {
@@ -41,7 +49,10 @@ export default function AnalyticsPage() {
     setLoading(true);
     const userCrud = crud.withUser(user.id);
     userCrud
-      .listRows<JobRecord>("jobs", "id, job_title, company_name, industry, job_type, created_at, job_status, status_changed_at, application_deadline")
+      .listRows<JobRecord>(
+        "jobs",
+        "id, job_title, company_name, industry, job_type, created_at, job_status, status_changed_at, application_deadline"
+      )
       .then((res) => {
         if (!mounted) return;
         if (res.error) {
@@ -83,45 +94,38 @@ export default function AnalyticsPage() {
 
   const total = useMemo(() => Object.values(funnel).reduce((a, b) => a + b, 0), [funnel]);
 
-  // Time-to-response
-  const byCompany = useMemo(() => computeAvgResponseDays(jobs as JobRecord[], "company", 10), [jobs]);
-  const byIndustry = useMemo(() => computeAvgResponseDays(jobs as JobRecord[], "industry", 10), [jobs]);
+  // Base analytics
+  const byCompany = useMemo(() => computeAvgResponseDays(jobs, "company", 10), [jobs]);
+  const byIndustry = useMemo(() => computeAvgResponseDays(jobs, "industry", 10), [jobs]);
+  const successByIndustry = useMemo(
+    () =>
+      computeSuccessRates(jobs, "industry") as Array<{
+        key: string;
+        rate: number;
+        offers: number;
+        total: number;
+      }>,
+    [jobs]
+  );
 
-  // Success rates
-  const successByIndustry = useMemo(() => computeSuccessRates(jobs as JobRecord[], "industry") as Array<{ key: string; rate: number; offers: number; total: number }>, [jobs]);
+  // Extended analytics
+  const responseRate = useMemo(() => computeResponseRate(jobs), [jobs]);
+  const stageDurations = useMemo(() => computeAvgStageDurations(jobs), [jobs]);
+  const monthlyApps = useMemo(() => computeMonthlyApplications(jobs), [jobs]);
+  const deadlineStats = useMemo(() => computeDeadlineAdherence(jobs), [jobs]);
+  const timeToOffer = useMemo(() => computeTimeToOffer(jobs), [jobs]);
 
-  // Weekly trends (last 12 weeks)
-  const weeklyTrends = useMemo(() => {
-    const now = new Date();
-    const buckets: Record<string, number> = {};
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i * 7);
-      const w = `${d.getFullYear()}-${getWeekNumber(d)}`;
-      buckets[w] = 0;
-    }
-    for (const j of jobs) {
-      if (!j.created_at) continue;
-      const d = new Date(j.created_at);
-      const w = `${d.getFullYear()}-${getWeekNumber(d)}`;
-      if (buckets[w] === undefined) buckets[w] = 0;
-      buckets[w] += 1;
-    }
-    return Object.keys(buckets).map((k) => ({ week: k, count: buckets[k] })).sort((a, b) => a.week.localeCompare(b.week));
-  }, [jobs]);
-
-  // Recommendations
   const recommendations = useMemo(() => {
     const recs: string[] = [];
     const offers = funnel.Offer ?? 0;
     const offerRate = offers / Math.max(1, total);
-    if (offerRate < 0.05) recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
-    if (byIndustry.length && byIndustry[0].avgDays > 14) recs.push("Response times are long in your common industries; consider earlier follow-ups.");
-    const appliedThisWeek = weeklyTrends.length ? weeklyTrends[weeklyTrends.length - 1].count : 0;
-    if (appliedThisWeek < weeklyGoal) recs.push("You're below your weekly application goal — schedule focused application time.");
+    if (offerRate < 0.05)
+      recs.push("Offer rate is low. Improve tailoring or prioritize higher-match roles.");
+    if (byIndustry.length && byIndustry[0].avgDays > 14)
+      recs.push("Response times are long in your common industries; consider earlier follow-ups.");
     if (recs.length === 0) recs.push("Metrics look healthy — continue monitoring trends.");
     return recs;
-  }, [funnel, total, byIndustry, weeklyTrends, weeklyGoal]);
+  }, [funnel, total, byIndustry]);
 
   function saveGoal() {
     try {
@@ -140,20 +144,32 @@ export default function AnalyticsPage() {
     rows.push(["Weekly goal", String(weeklyGoal)]);
     rows.push([]);
     rows.push(["Funnel breakdown"]);
-    for (const k of Object.keys(funnel)) rows.push([k, String((funnel as any)[k])]);
+    for (const k of Object.keys(funnel)) rows.push([k, String(funnel[k])]);
     rows.push([]);
     rows.push(["Avg response by company (days)"]);
-    for (const r of byCompany) rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
+    for (const r of byCompany)
+      rows.push([r.key, String(r.avgDays.toFixed(1)), String(r.count)]);
     rows.push([]);
     rows.push(["Success by industry"]);
-    for (const r of successByIndustry) rows.push([r.key, String((r.rate * 100).toFixed(1) + "%"), String(r.offers), String(r.total)]);
+    for (const r of successByIndustry)
+      rows.push([
+        r.key,
+        String((r.rate * 100).toFixed(1) + "%"),
+        String(r.offers),
+        String(r.total),
+      ]);
+    rows.push(["Response rate", `${(responseRate * 100).toFixed(1)}%`]);
+    rows.push(["Average time to offer (days)", String(timeToOffer.toFixed(1))]);
+    rows.push(["Deadline adherence", `${(deadlineStats.adherence * 100).toFixed(1)}%`]);
 
-    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const csv = rows
+      .map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `jobs-analytics-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `jobs-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -177,6 +193,7 @@ export default function AnalyticsPage() {
 
       {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
 
+      {/* --- Application Funnel --- */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2 }}>
@@ -208,11 +225,15 @@ export default function AnalyticsPage() {
                 {byCompany.map((r) => (
                   <TableRow key={r.key}>
                     <TableCell>{r.key}</TableCell>
-                    <TableCell align="right">{r.avgDays.toFixed(1)} d ({r.count})</TableCell>
+                    <TableCell align="right">
+                      {r.avgDays.toFixed(1)} d ({r.count})
+                    </TableCell>
                   </TableRow>
                 ))}
                 {byCompany.length === 0 && (
-                  <TableRow><TableCell colSpan={2}>No response data yet</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={2}>No response data yet</TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
@@ -228,11 +249,15 @@ export default function AnalyticsPage() {
                 {successByIndustry.map((r) => (
                   <TableRow key={r.key}>
                     <TableCell>{r.key}</TableCell>
-                    <TableCell align="right">{(r.rate * 100).toFixed(1)}% ({r.offers}/{r.total})</TableCell>
+                    <TableCell align="right">
+                      {(r.rate * 100).toFixed(1)}% ({r.offers}/{r.total})
+                    </TableCell>
                   </TableRow>
                 ))}
                 {successByIndustry.length === 0 && (
-                  <TableRow><TableCell colSpan={2}>No offers recorded yet</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={2}>No offers recorded yet</TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
@@ -240,16 +265,24 @@ export default function AnalyticsPage() {
         </Grid>
       </Grid>
 
+      {/* --- Benchmark & Weekly Application Volume --- */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Application volume (last 12 weeks)</Typography>
             <Divider sx={{ my: 1 }} />
             <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", height: 120 }}>
-              {weeklyTrends.map((w) => (
-                <Box key={w.week} sx={{ flex: 1, textAlign: "center" }}>
-                  <Box sx={{ height: `${Math.min(100, w.count * 12)}%`, bgcolor: "primary.main", mx: 0.5, borderRadius: 0.5 }} />
-                  <Typography variant="caption">{w.week.split("-")[1]}</Typography>
+              {monthlyApps.map((m) => (
+                <Box key={m.month} sx={{ flex: 1, textAlign: "center" }}>
+                  <Box
+                    sx={{
+                      height: `${Math.min(100, m.count * 12)}%`,
+                      bgcolor: "primary.main",
+                      mx: 0.5,
+                      borderRadius: 0.5,
+                    }}
+                  />
+                  <Typography variant="caption">{m.month.split("-")[1]}</Typography>
                 </Box>
               ))}
             </Box>
@@ -261,46 +294,102 @@ export default function AnalyticsPage() {
         </Grid>
       </Grid>
 
+      {/* --- Additional Analytics Sections --- */}
+      <Grid container spacing={2} sx={{ mb: 2, mt: 2 }}>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6">Response Rate</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="body1">{(responseRate * 100).toFixed(1)}%</Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6">Average Days per Stage</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Table size="small">
+              <TableBody>
+                {Object.entries(stageDurations).map(([stage, days]) => (
+                  <TableRow key={stage}>
+                    <TableCell>{stage}</TableCell>
+                    <TableCell align="right">{days.toFixed(1)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6">Deadline Adherence</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="body1">
+              {deadlineStats.met}/{deadlineStats.met + deadlineStats.missed} met (
+              {(deadlineStats.adherence * 100).toFixed(1)}%)
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6">Time to Offer</Typography>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="body1">{timeToOffer.toFixed(1)} days</Typography>
+          </Paper>
+        </Grid>
+
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Recommendations</Typography>
             <Divider sx={{ my: 1 }} />
             <Box component="ul" sx={{ pl: 2, m: 0 }}>
               {recommendations.map((r, i) => (
-                <li key={i}><Typography variant="body2">{r}</Typography></li>
+                <li key={i}>
+                  <Typography variant="body2">{r}</Typography>
+                </li>
               ))}
             </Box>
           </Paper>
         </Grid>
+      </Grid>
 
-        <Grid item xs={12} md={6}>
+      {/* --- Goals & Progress --- */}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6">Goals & Progress</Typography>
             <Divider sx={{ my: 1 }} />
             <Typography variant="body2">Weekly application goal</Typography>
             <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}>
-              <TextField size="small" type="number" value={weeklyGoal} onChange={(e) => setWeeklyGoal(Number(e.target.value) || 0)} />
-              <Button variant="contained" onClick={saveGoal}>Save</Button>
-              <Button variant="outlined" onClick={exportCsv}>Export CSV</Button>
+              <TextField
+                size="small"
+                type="number"
+                value={weeklyGoal}
+                onChange={(e) => setWeeklyGoal(Number(e.target.value) || 0)}
+              />
+              <Button variant="contained" onClick={saveGoal}>
+                Save
+              </Button>
+              <Button variant="outlined" onClick={exportCsv}>
+                Export CSV
+              </Button>
             </Box>
-            <Typography sx={{ mt: 1 }} variant="caption">Progress this week: {weeklyTrends.length ? weeklyTrends[weeklyTrends.length - 1].count : 0}/{weeklyGoal}</Typography>
+            <Typography sx={{ mt: 1 }} variant="caption">
+              Progress this week: 0/{weeklyGoal}
+            </Typography>
           </Paper>
         </Grid>
       </Grid>
 
-      <Typography color="text.secondary">Data is computed from your jobs list (scoped to your account). Benchmarks are basic static values for quick comparison.</Typography>
+      <Typography color="text.secondary">
+        Data is computed from your jobs list (scoped to your account). Benchmarks are basic static
+        values for quick comparison.
+      </Typography>
       {error ? <Typography color="error">{error}</Typography> : null}
     </Box>
   );
 }
-
-// --- Helpers ---
-function getWeekNumber(d: Date) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7).toString().padStart(2, "0");
-}
-
