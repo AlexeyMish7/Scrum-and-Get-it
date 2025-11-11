@@ -239,7 +239,6 @@ export default function Interview({ company }: { company: CompanyMinimal }) {
         </div>
 
         <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-          <Button variant="contained" onClick={() => window.alert("Mock: Start mock interview")}>Start Mock Interview</Button>
           <Button variant="outlined" onClick={printChecklist}>Print Checklist</Button>
         </Stack>
       </CardContent>
