@@ -532,7 +532,7 @@ export default function PipelinePage() {
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
-                  sx={{
+                                sx={{
                                   border: "1px solid",
                                   borderColor: "divider",
                                   borderRadius: 1,
@@ -613,7 +613,10 @@ export default function PipelinePage() {
                                       const d = daysUntilDeadline(job);
                                       if (d === null) return null;
                                       const token = deadlineColor(d);
-                                      const label = d < 0 ? `Overdue` : `Due: ${d-1}d`;
+                                      // clamp the displayed days so we never show negative values
+                                      // analytics uses (d-1) logic; keep that but floor at 0
+                                      const display = Math.max(0, d);
+                                      const label = d < 0 ? `Overdue` : display === 0 ? `Due: Today` : `Due: ${display}d`;
                                       return (
                                         <Chip
                                           label={label}

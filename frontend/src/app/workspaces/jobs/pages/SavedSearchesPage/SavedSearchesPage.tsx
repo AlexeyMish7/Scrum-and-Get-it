@@ -125,7 +125,6 @@ export default function SavedSearchesPage() {
         <JobDetails jobId={selectedJobId} />
       </RightDrawer>
 
-      <Typography color="text.secondary">TODO: List and manage saved job searches.</Typography>
     </Box>
   );
 }
