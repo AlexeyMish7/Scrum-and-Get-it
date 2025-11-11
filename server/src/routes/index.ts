@@ -20,6 +20,7 @@ export {
   handleGenerateCoverLetter,
   handleSkillsOptimization,
   handleExperienceTailoring,
+  handleCompanyResearch,
   type GenerationCounters,
 } from "./ai.js";
 

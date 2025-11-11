@@ -72,6 +72,19 @@ export async function generateExperienceTailoring(
   );
 }
 
+export async function generateCompanyResearch(
+  userId: string,
+  companyName: string,
+  jobId?: number
+): Promise<GenerateResponse> {
+  // POST /api/generate/company-research
+  return aiClient.postJson<GenerateResponse>(
+    "/api/generate/company-research",
+    { companyName, jobId },
+    userId
+  );
+}
+
 // Artifacts listing / retrieval -------------------------------------------
 export async function listArtifacts(
   userId: string,
@@ -105,6 +118,7 @@ export const aiGeneration = {
   generateCoverLetter,
   generateSkillsOptimization,
   generateExperienceTailoring,
+  generateCompanyResearch,
   // New job materials endpoints
   linkJobMaterials,
   listJobMaterials,

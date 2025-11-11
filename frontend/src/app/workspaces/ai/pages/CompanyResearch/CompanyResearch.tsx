@@ -12,112 +12,55 @@ import {
   Button,
   CircularProgress,
   Chip,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
+import {
+  Business as BusinessIcon,
+  Save as SaveIcon,
+  Refresh as RefreshIcon,
+} from "@mui/icons-material";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
 import Interview from "./Interview";
-
-interface NewsItem {
-  title: string;
-  category: string;
-  date: string;
-  source: string;
-  relevance: number;
-  summary: string;
-  link: string;
-}
-
-interface CompanyInfo {
-  name: string;
-  logo?: string;
-  industry?: string;
-  size?: string;
-  location?: string;
-  website?: string;
-  description?: string;
-  mission?: string;
-  news?: NewsItem[];
-  rating?: number | null;
-  contact?: string;
-}
+import useCompanyResearch from "@workspaces/ai/hooks/useCompanyResearch";
+import useUserJobs from "@shared/hooks/useUserJobs";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
 
 export default function CompanyResearch() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [company, setCompany] = useState<CompanyInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<number | "">("");
+  const cr = useCompanyResearch();
+  const { jobs, loading: jobsLoading } = useUserJobs(50);
+  const { notification, closeNotification, showSuccess } = useErrorHandler();
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
-    setLoading(true);
-    setError(null);
-    setCompany(null);
+    await cr.runResearch(searchTerm, selectedJobId ? Number(selectedJobId) : undefined);
+  };
 
-    try {
-      // FUTURE: Replace with real API calls for company info and news
-      // - Backend endpoint: POST /api/research/company
-      // - Use external APIs: Clearbit, LinkedIn, news aggregators
-      const mockData: CompanyInfo = {
-        name: searchTerm,
-        logo: "/placeholder-logo.png",
-        industry: "Technology",
-        size: "10,000+ employees",
-        location: "New York, NY",
-        website: "https://www.example.com",
-        description:
-          "A leading innovator in cloud computing and AI-driven business solutions.",
-        mission:
-          "To make advanced technology accessible and sustainable for everyone.",
-        rating: 4.3,
-        contact: "info@example.com",
-        news: [
-          {
-            title: "Company raises $50M in Series C funding",
-            category: "Funding",
-            date: "2025-11-03",
-            source: "TechCrunch",
-            relevance: 0.95,
-            summary:
-              "The company secured new funding to expand its AI platform and enter new markets.",
-            link: "https://techcrunch.com/example",
-          },
-          {
-            title: "Company launches new enterprise cloud product",
-            category: "Product Launch",
-            date: "2025-10-20",
-            source: "Business Insider",
-            relevance: 0.87,
-            summary:
-              "The new platform offers improved scalability and advanced analytics for business users.",
-            link: "https://businessinsider.com/example",
-          },
-          {
-            title: "Company announces major hiring initiative",
-            category: "Hiring",
-            date: "2025-09-15",
-            source: "Forbes",
-            relevance: 0.79,
-            summary:
-              "The initiative aims to create 2,000 new jobs across its global offices by 2026.",
-            link: "https://forbes.com/example",
-          },
-        ],
-      };
-
-      await new Promise((res) => setTimeout(res, 1000));
-      setCompany(mockData);
-    } catch {
-      setError("Failed to fetch company information.");
-    } finally {
-      setLoading(false);
+  const handleSave = async () => {
+    if (!cr.researchData) return;
+    const res = await cr.saveArtifact({
+      title: `Research: ${cr.researchData.name}`,
+      jobId: selectedJobId ? Number(selectedJobId) : undefined,
+    });
+    if (res.error) {
+      showSuccess("Failed to save: " + res.error.message);
+    } else {
+      showSuccess("Company research saved successfully!");
     }
   };
 
   const handleExportNews = () => {
-    if (!company?.news) return;
-    const summaryText = company.news
+    if (!cr.researchData?.recentNews) return;
+    const summaryText = cr.researchData.recentNews
       .map(
         (n) =>
-          `${n.title} (${n.category}, ${n.date})\nSummary: ${n.summary}\nSource: ${n.source}\nRelevance: ${n.relevance}\nLink: ${n.link}\n`
+          `${n.title} (${n.category}, ${n.date})\nSummary: ${n.summary}\nSource: ${n.source}\nRelevance: ${n.relevance}\n${n.link ? `Link: ${n.link}` : ""}\n`
       )
       .join("\n-------------------\n");
 
@@ -125,7 +68,7 @@ export default function CompanyResearch() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${company.name}_news_summary.txt`;
+    a.download = `${cr.researchData.name}_news_summary.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -143,25 +86,58 @@ export default function CompanyResearch() {
       {/* Search Bar */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <TextField
-          label="Search Company"
+          label="Company Name"
           variant="outlined"
           fullWidth
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="e.g., Google, Microsoft, Tesla"
         />
-        <Button variant="contained" onClick={handleSearch} disabled={loading}>
-          {loading ? <CircularProgress size={24} /> : "Search"}
+        <FormControl sx={{ minWidth: 250 }}>
+          <InputLabel>Link to Job (Optional)</InputLabel>
+          <Select
+            value={selectedJobId}
+            onChange={(e) => setSelectedJobId(e.target.value as number)}
+            label="Link to Job (Optional)"
+            disabled={jobsLoading}
+          >
+            <MenuItem value="">None</MenuItem>
+            {jobs.map((j) => (
+              <MenuItem key={j.id} value={j.id}>
+                {j.title} — {j.company}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button 
+          variant="contained" 
+          onClick={handleSearch} 
+          disabled={cr.isLoading}
+          startIcon={cr.researchData ? <RefreshIcon /> : <BusinessIcon />}
+          sx={{ minWidth: 140 }}
+        >
+          {cr.isLoading ? <CircularProgress size={24} /> : cr.researchData ? "Re-research" : "Research"}
         </Button>
+        {cr.researchData && (
+          <Button
+            variant="outlined"
+            onClick={handleSave}
+            startIcon={<SaveIcon />}
+            sx={{ minWidth: 120 }}
+          >
+            Save
+          </Button>
+        )}
       </Stack>
 
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
+      {cr.error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {cr.error}
+        </Alert>
       )}
 
       {/* Company Info */}
-      {company && (
+      {cr.researchData && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Stack
@@ -171,35 +147,61 @@ export default function CompanyResearch() {
               sx={{ mb: 2 }}
             >
               <Avatar
-                src={company.logo}
-                alt={company.name}
-                sx={{ width: 64, height: 64 }}
-              />
+                sx={{ width: 64, height: 64, bgcolor: "primary.main" }}
+              >
+                <BusinessIcon fontSize="large" />
+              </Avatar>
               <Box>
-                <Typography variant="h6">{company.name}</Typography>
-                <Typography color="text.secondary">
-                  {company.industry}
-                </Typography>
-                <Typography color="text.secondary">
-                  {company.location}
-                </Typography>
-                <Link href={company.website} target="_blank" rel="noopener">
-                  {company.website}
-                </Link>
+                <Typography variant="h6">{cr.researchData.name}</Typography>
+                {cr.researchData.industry && (
+                  <Typography color="text.secondary">
+                    {cr.researchData.industry}
+                  </Typography>
+                )}
+                {cr.researchData.location && (
+                  <Typography color="text.secondary">
+                    {cr.researchData.location}
+                  </Typography>
+                )}
+                {cr.researchData.website && (
+                  <Link href={cr.researchData.website} target="_blank" rel="noopener">
+                    {cr.researchData.website}
+                  </Link>
+                )}
               </Box>
             </Stack>
 
-            <Typography variant="body1" sx={{ mb: 1 }}>
-              <strong>Company Size:</strong> {company.size}
-            </Typography>
+            {cr.researchData.size && (
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                <strong>Company Size:</strong> {cr.researchData.size}
+              </Typography>
+            )}
 
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              <strong>Mission Statement:</strong> {company.mission}
-            </Typography>
+            {cr.researchData.mission && (
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                <strong>Mission Statement:</strong> {cr.researchData.mission}
+              </Typography>
+            )}
 
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              <strong>Description:</strong> {company.description}
-            </Typography>
+            {cr.researchData.description && (
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                <strong>Description:</strong> {cr.researchData.description}
+              </Typography>
+            )}
+
+            {cr.researchData.products && cr.researchData.products.length > 0 && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  Products & Services
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {cr.researchData.products.map((product, idx) => (
+                    <Chip key={idx} label={product} />
+                  ))}
+                </Stack>
+              </>
+            )}
 
             <Divider sx={{ my: 2 }} />
 
@@ -207,29 +209,36 @@ export default function CompanyResearch() {
               Glassdoor Rating
             </Typography>
             <Typography color="text.secondary">
-              {company.rating ? `⭐ ${company.rating}/5` : "Not available"}
-            </Typography>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Contact Information
-            </Typography>
-            <Typography color="text.secondary">
-              {company.contact || "No contact info available"}
+              {cr.researchData.rating ? (
+                typeof cr.researchData.rating === 'number' ? (
+                  `⭐ ${cr.researchData.rating}/5`
+                ) : (
+                  <>
+                    ⭐ {cr.researchData.rating.glassdoor ?? 'N/A'}/5
+                    {cr.researchData.rating.reviewCount && (
+                      <Typography variant="caption" display="block" sx={{ ml: 0.5 }}>
+                        ({cr.researchData.rating.reviewCount.toLocaleString()} reviews)
+                        {cr.researchData.rating.source && ` • ${cr.researchData.rating.source}`}
+                      </Typography>
+                    )}
+                  </>
+                )
+              ) : (
+                "Not available"
+              )}
             </Typography>
           </CardContent>
         </Card>
       )}
 
       {/* Company News Section */}
-      {company?.news && (
+      {cr.researchData?.recentNews && cr.researchData.recentNews.length > 0 && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h5" sx={{ mb: 2 }}>
               Recent Company News
             </Typography>
-            {company.news.map((item, i) => (
+            {cr.researchData.recentNews.map((item, i) => (
               <Box key={i} sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {item.title}
@@ -250,9 +259,11 @@ export default function CompanyResearch() {
                 <Typography color="text.secondary" sx={{ mb: 1 }}>
                   {item.summary}
                 </Typography>
-                <Link href={item.link} target="_blank" rel="noopener">
-                  Read more
-                </Link>
+                {item.link && (
+                  <Link href={item.link} target="_blank" rel="noopener">
+                    Read more
+                  </Link>
+                )}
                 <Divider sx={{ my: 2 }} />
               </Box>
             ))}
@@ -268,7 +279,18 @@ export default function CompanyResearch() {
       )}
 
       {/* Interview insights & preparation (UC-068) */}
-      {company && <Interview company={{ name: company.name, website: company.website, industry: company.industry, size: company.size }} />}
+      {cr.researchData && (
+        <Interview 
+          company={{ 
+            name: cr.researchData.name, 
+            website: cr.researchData.website, 
+            industry: cr.researchData.industry, 
+            size: cr.researchData.size 
+          }} 
+        />
+      )}
+
+      <ErrorSnackbar notification={notification} onClose={closeNotification} />
     </Box>
   );
 }

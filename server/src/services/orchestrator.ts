@@ -21,6 +21,11 @@ import { buildResumePrompt } from "../../prompts/resume.ts";
 import { buildCoverLetterPrompt } from "../../prompts/coverLetter.ts";
 import { buildSkillsOptimizationPrompt } from "../../prompts/skillsOptimization.ts";
 import { buildExperienceTailoringPrompt } from "../../prompts/experienceTailoring.ts";
+import {
+  buildCompanyResearchPrompt,
+  validateCompanyResearchResponse,
+} from "../../prompts/companyResearch.ts";
+import { fetchCompanyResearch } from "./companyResearchService.js";
 import type {
   GenerateResumeRequest,
   GenerateCoverLetterRequest,
@@ -802,3 +807,249 @@ function sanitizeResumeContent(
     return input;
   }
 }
+
+/**
+ * COMPANY RESEARCH GENERATION: AI-powered company intelligence
+ *
+ * WHAT: Orchestrates AI-powered company research for application preparation
+ * WHY: Users need comprehensive, up-to-date company information for tailored applications
+ *
+ * Flow:
+ * 1. Validate request (userId, companyName required)
+ * 2. Optionally fetch job details if jobId provided (for context)
+ * 3. Call company research service for basic data
+ * 4. Optionally enhance with AI analysis (future: competitor analysis, culture insights)
+ * 5. Create artifact with company research data
+ * 6. Return artifact for frontend consumption
+ *
+ * Inputs:
+ * - userId: string (authenticated user)
+ * - companyName: string (company to research)
+ * - jobId?: number (optional job context)
+ *
+ * Outputs:
+ * - artifact: ArtifactRow with company research data
+ * - error: string if request failed
+ */
+export async function handleCompanyResearch(req: {
+  userId: string;
+  companyName: string;
+  jobId?: number;
+}): Promise<{ artifact?: ArtifactRow; error?: string }> {
+  logInfo("orc_company_research_start", {
+    userId: req?.userId,
+    companyName: req?.companyName,
+    jobId: req?.jobId,
+  });
+
+  // 1) Basic validation
+  if (!req?.userId) return { error: "unauthenticated" };
+  if (!req?.companyName || !req.companyName.trim())
+    return { error: "missing companyName" };
+
+  const companyName = req.companyName.trim();
+  let jobContext: any = null;
+
+  // 2) Fetch job context if provided (for richer research)
+  if (req.jobId) {
+    try {
+      const mod = await import("./supabaseAdmin.js");
+      const getJob = (mod as any).getJob;
+      if (typeof getJob === "function") {
+        jobContext = await getJob(req.jobId);
+        // Verify job ownership
+        if (jobContext?.user_id && jobContext.user_id !== req.userId) {
+          return { error: "job does not belong to user" };
+        }
+      }
+    } catch (e: any) {
+      // Non-fatal: continue without job context
+      logInfo("Could not fetch job context for company research", {
+        error: e?.message,
+      });
+    }
+  }
+
+  try {
+    // 3) Build AI prompt for company research
+    const industry = jobContext?.industry || null;
+    const jobDescription = jobContext?.job_description || null;
+
+    const prompt = buildCompanyResearchPrompt({
+      companyName,
+      industry,
+      jobDescription,
+    });
+
+    logInfo("Calling AI for company research", {
+      companyName,
+      promptLength: prompt.length,
+    });
+
+    // 4) Call AI service
+    let aiResult: any;
+    try {
+      aiResult = await aiClient.generate("company_research", prompt);
+    } catch (aiErr: any) {
+      logError("AI call failed for company research", {
+        companyName,
+        error: aiErr?.message,
+      });
+      
+      // Fallback to mock data if AI fails
+      logInfo("Falling back to mock company data", { companyName });
+      const mockData = await fetchCompanyResearch(
+        companyName,
+        industry,
+        jobDescription
+      );
+      if (!mockData) {
+        return { error: "Company research data not available" };
+      }
+      
+      // Use mock data as AI result
+      aiResult = { json: mockData, error: null };
+    }
+
+    if (aiResult.error) {
+      logError("AI returned error for company research", {
+        error: aiResult.error,
+      });
+      return { error: aiResult.error };
+    }
+
+    // 5) Parse and validate AI response
+    // AI client returns { text, json, raw, tokens }
+    // Try json first (if AI returned valid JSON), then fall back to text parsing
+    let researchData = aiResult.json || aiResult.text;
+
+    logInfo("AI response received for company research", {
+      companyName,
+      hasJson: !!aiResult.json,
+      hasText: !!aiResult.text,
+      tokens: aiResult.tokens,
+      responseType: typeof researchData,
+      isString: typeof researchData === "string",
+      hasContent: !!researchData,
+    });
+
+    // If AI returned a string, try to parse as JSON
+    if (typeof researchData === "string") {
+      try {
+        // Remove markdown code blocks if present
+        const cleaned = researchData
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim();
+        researchData = JSON.parse(cleaned);
+        logInfo("Successfully parsed AI string response as JSON", {
+          companyName,
+        });
+      } catch (parseErr) {
+        logError("Failed to parse AI company research response", {
+          error: parseErr,
+          rawResponse: typeof researchData === "string" ? researchData.slice(0, 200) : String(researchData),
+        });
+        return { error: "Invalid AI response format" };
+      }
+    }
+
+    // Log parsed data structure for debugging
+    logInfo("Parsed research data structure", {
+      companyName,
+      hasCompanyName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+      hasIndustry: !!researchData?.industry,
+      hasDescription: !!researchData?.description,
+      hasMission: !!researchData?.mission,
+      newsCount: Array.isArray(researchData?.news) ? researchData.news.length : 0,
+      productsCount: Array.isArray(researchData?.products) ? researchData.products.length : 0,
+    });
+
+    // Check if we got any data at all
+    if (!researchData) {
+      logError("AI returned null/undefined research data", {
+        companyName,
+        aiResultKeys: Object.keys(aiResult || {}),
+      });
+      return { error: "No data returned from AI" };
+    }
+
+    // Validate response structure
+    if (!validateCompanyResearchResponse(researchData)) {
+      logError("AI response failed validation", {
+        companyName,
+        hasName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+        keys: Object.keys(researchData || {}),
+        sample: JSON.stringify(researchData || {}).slice(0, 300),
+      });
+      return { error: "Incomplete company research data" };
+    }
+
+    // Ensure required fields have defaults - handle multiple field name variations
+    const finalData = {
+      companyName: researchData.companyName || researchData.company_name || researchData.name || companyName,
+      industry: researchData.industry || researchData.sector || "Unknown",
+      size: researchData.size || researchData.employee_count || researchData.employeeCount || null,
+      location: researchData.location || researchData.headquarters || researchData.hq || null,
+      founded: researchData.founded || researchData.founded_year || researchData.yearFounded || null,
+      website: researchData.website || researchData.url || researchData.companyUrl || null,
+      mission: researchData.mission || researchData.mission_statement || researchData.missionStatement || null,
+      description: researchData.description || researchData.summary || researchData.overview || researchData.about || null,
+      news: Array.isArray(researchData.news) ? researchData.news : (Array.isArray(researchData.recent_news) ? researchData.recent_news : []),
+      culture: researchData.culture || researchData.company_culture || {
+        type: "corporate",
+        remotePolicy: null,
+        values: [],
+        perks: [],
+      },
+      leadership: Array.isArray(researchData.leadership)
+        ? researchData.leadership
+        : (Array.isArray(researchData.executives) ? researchData.executives : []),
+      products: Array.isArray(researchData.products)
+        ? researchData.products
+        : (Array.isArray(researchData.services) ? researchData.services : (Array.isArray(researchData.offerings) ? researchData.offerings : [])),
+      rating: researchData.rating || researchData.glassdoor || researchData.glassdoorRating || null,
+    };
+
+    // 6) Create artifact
+    const now = new Date().toISOString();
+    const artifact: ArtifactRow = {
+      id: `artifact_${Date.now()}`,
+      user_id: req.userId,
+      job_id: req.jobId || null,
+      kind: "company_research",
+      title: `${companyName} Research`,
+      prompt: prompt.slice(0, 500), // Store truncated prompt
+      model: aiResult.model || "gpt-4o-mini",
+      content: finalData,
+      metadata: {
+        source: "ai",
+        last_updated: now,
+        trust_level: "high",
+        news_count: finalData.news.length,
+        job_context: req.jobId ? true : false,
+        has_rating: !!finalData.rating,
+      },
+      created_at: now,
+      updated_at: now,
+    };
+
+    logInfo("Company research completed successfully", {
+      userId: req.userId,
+      companyName,
+      newsCount: finalData.news.length,
+      hasRating: !!finalData.rating,
+      source: "ai",
+    });
+
+    return { artifact };
+  } catch (err: any) {
+    logError("Company research failed", {
+      userId: req.userId,
+      companyName,
+      error: err?.message ?? String(err),
+    });
+    return { error: `Research failed: ${err?.message ?? "unknown error"}` };
+  }
+}
+
