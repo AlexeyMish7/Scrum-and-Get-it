@@ -36,7 +36,7 @@ import ProfileLayout from "@profile/ProfileLayout";
 // AI & Jobs workspaces
 import AiLayout from "@workspaces/ai/AiLayout";
 import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
-import JobMatching from "@workspaces/ai/pages/JobMatching/index";
+import JobMatchPage from "@workspaces/ai/pages/JobMatch/index";
 import CompanyResearch from "@workspaces/ai/pages/CompanyResearch/index";
 import TemplatesHub from "@workspaces/ai/pages/TemplatesHub/index";
 import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       { path: "cover-letter", element: <GenerateCoverLetter /> },
       { path: "cover-letter-templates", element: <CoverLetterTemplates /> },
       { path: "cover-letter-edit", element: <EditCoverLetter /> },
-      { path: "job-match", element: <JobMatching /> },
+      { path: "job-match", element: <JobMatchPage /> },
       { path: "company-research", element: <CompanyResearch /> },
       { path: "templates", element: <TemplatesHub /> },
     ],
