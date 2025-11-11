@@ -62,6 +62,7 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import { TemplateSelector } from "../ResumeEditorV2/TemplateSelector";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
+import FeedbackDialog from "@workspaces/ai/components/resume-v2/FeedbackDialog";
 
 interface DraftSection {
   type: "summary" | "skills" | "experience" | "education" | "projects";
@@ -125,6 +126,7 @@ export default function DraftPreviewPanel({
   onSaveDraft,
   onExport,
 }: DraftPreviewPanelProps) {
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>("");
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -865,6 +867,13 @@ export default function DraftPreviewPanel({
               <Button
                 variant="outlined"
                 size="small"
+                onClick={() => setFeedbackDialogOpen(true)}
+              >
+                Feedback
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
                 startIcon={<SaveIcon />}
                 onClick={onSaveDraft}
               >
@@ -1267,6 +1276,11 @@ export default function DraftPreviewPanel({
           <Button onClick={() => setShowTemplateSelector(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
+
+  {/* Feedback Dialog (author-facing) */}
+  <FeedbackDialog open={feedbackDialogOpen} onClose={() => setFeedbackDialogOpen(false)} draftId={draft?.id || ""} />
     </Card>
   );
 }
+
+

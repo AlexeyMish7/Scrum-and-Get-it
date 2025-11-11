@@ -68,6 +68,8 @@ import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
+import ShareDialog from "@workspaces/ai/components/resume-v2/ShareDialog";
+import FeedbackPanel from "@workspaces/ai/components/resume-v2/FeedbackPanel";
 
 export default function ResumeEditorV2() {
   const navigate = useNavigate();
@@ -123,6 +125,7 @@ export default function ResumeEditorV2() {
   const [exportTheme, setExportTheme] = useState<string>("modern");
   const [isInitializing, setIsInitializing] = useState(true);
   const [showVersionsOpen, setShowVersionsOpen] = useState(false);
+  const [showShareOpen, setShowShareOpen] = useState(false);
 
   // Set userId when user changes
   useEffect(() => {
@@ -643,6 +646,9 @@ export default function ResumeEditorV2() {
             <Button size="small" onClick={() => setShowVersionsOpen(true)}>
               Versions
             </Button>
+            <Button size="small" onClick={() => setShowShareOpen(true)}>
+              Share
+            </Button>
           </Stack>
         </Stack>
       </Box>
@@ -881,6 +887,12 @@ export default function ResumeEditorV2() {
 
       {/* Versions Panel */}
       <ResumeVersionsPanel open={showVersionsOpen} onClose={() => setShowVersionsOpen(false)} />
+      <ShareDialog open={showShareOpen} onClose={() => setShowShareOpen(false)} />
+
+      {/* Feedback panel: will render when URL contains ?share=TOKEN */}
+      <Box sx={{ position: 'fixed', right: 16, bottom: 24, width: 360, zIndex: 1400 }}>
+        <FeedbackPanel />
+      </Box>
     </Box>
   );
 }
