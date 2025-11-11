@@ -408,7 +408,7 @@ export default function PipelinePage() {
                   {s}
                 </MenuItem>
               ))}
-              <MenuItem value="archive">Archive selected</MenuItem>
+              <MenuItem value="archive">Move to Archive</MenuItem>
             </TextField>
           </Stack>
         </Stack>
@@ -458,20 +458,20 @@ export default function PipelinePage() {
           select jobs for bulk actions.
         </Typography>
 
-        <DragDropContext
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
+        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <Box
             sx={{
               display: "grid",
               gap: 2,
+              // Responsive wrapping grid using minmax to allow columns to shrink and avoid horizontal scroll
               gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                md: "repeat(3, 1fr)",
-                lg: "repeat(6, 1fr)",
+                xs: "repeat(1, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+                lg: "repeat(4, minmax(0, 1fr))",
+                xl: "repeat(6, minmax(0, 1fr))",
               },
+              alignItems: "stretch",
             }}
           >
             {stagesToRender.map((stage) => {
@@ -491,6 +491,13 @@ export default function PipelinePage() {
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       variant="outlined"
+                      sx={{
+                        minWidth: 0,
+                        width: "100%",
+                        flexGrow: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
                     >
                       <CardHeader
                         title={
@@ -516,35 +523,21 @@ export default function PipelinePage() {
                           minHeight: 120,
                         }}
                       >
-                        {visible.length === 0 && (
-                          <Typography color="text.secondary" fontStyle="italic">
-                            No jobs
-                          </Typography>
-                        )}
-                        {visible.map((job: JobRow, idx: number) => (
-                          <Draggable
-                            key={String(job.id)}
-                            draggableId={String(job.id)}
-                            index={idx}
-                          >
+                        {visible.map((job, idx) => (
+                          <Draggable key={String(job.id)} draggableId={String(job.id)} index={idx}>
                             {(prov) => (
                               <Box
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
                                 sx={{
+                                  position: "relative",
+                                  p: 1,
+                                  borderRadius: 1,
                                   border: "1px solid",
                                   borderColor: "divider",
-                                  borderRadius: 1,
-                                  p: 1,
-                                  position: "relative",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: 1,
+                                  minHeight: 70,
                                   bgcolor: (theme) => {
-                                    // Map stages to semantic palette tokens. Keep this simple
-                                    // and explicit to avoid using `any` typed casts.
                                     const token = (() => {
                                       switch (stage) {
                                         case "Interested":
@@ -563,133 +556,141 @@ export default function PipelinePage() {
                                           return undefined;
                                       }
                                     })();
-                                    return token?.main
-                                      ? alpha(token.main, 0.4)
-                                      : "transparent";
+                                    return token?.main ? alpha(token.main, 0.4) : "transparent";
                                   },
                                 }}
                               >
-                                <Box
+                                {/* top-left checkbox */}
+                                <Checkbox
+                                  size="small"
+                                  checked={!!selectedIds[String(job.id)]}
+                                  onChange={() => toggleSelect(String(job.id))}
                                   sx={{
-                                    display: "flex",
-                                    gap: 1,
-                                    alignItems: "center",
+                                    position: "absolute",
+                                    top: 8,
+                                    left: 8,
+                                    zIndex: 2,
+                                    p: 0,
+                                    transform: "scale(0.95)",
+                                  }}
+                                />
+
+                                {/* three-dots: open details (top-right) */}
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setSelectedJobId(String(job.id));
+                                    setOpen(true);
+                                  }}
+                                  sx={{
+                                    position: "absolute",
+                                    top: 8,
+                                    right: 8,
+                                    zIndex: 2,
+                                    p: 0,
+                                    transform: "scale(0.95)",
                                   }}
                                 >
-                                  <Checkbox
-                                    checked={!!selectedIds[String(job.id)]}
-                                    onChange={() =>
-                                      toggleSelect(String(job.id))
-                                    }
-                                  />
-                                  <Box>
-                                    <Typography sx={{ fontWeight: 600 }}>
-                                      {String(
-                                        job.job_title ?? job.title ?? "Untitled"
-                                      )}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                    >
-                                      {String(
-                                        job.company_name ??
-                                          job.company ??
-                                          "Unknown"
-                                      )}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{ display: "block", mt: 0.5 }}
-                                    >
-                                      {daysInStage(job)}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                                  {/* top-left deadline indicator for Interested stage */}
-                                  {stage === "Interested" && (
-                                    (() => {
-                                      const d = daysUntilDeadline(job);
-                                      if (d === null) return null;
-                                      const token = deadlineColor(d);
-                                      // clamp the displayed days so we never show negative values
-                                      // analytics uses (d-1) logic; keep that but floor at 0
-                                      const display = Math.max(0, d);
-                                      const label = d < 0 ? `Overdue` : display === 0 ? `Due: Today` : `Due: ${display}d`;
-                                      return (
-                                        <Chip
-                                          label={label}
-                                          size="small"
-                                          sx={{
-                                            position: "absolute",
-                                            right: 4,
-                                            bottom: 8,
-                                            bgcolor: (theme) => {
-                                              const p = theme.palette as any;
-                                              switch (token) {
-                                                case "error":
-                                                  return p.error.main;
-                                                case "warning":
-                                                  return p.warning.main;
-                                                case "success":
-                                                  return p.success.main;
-                                                default:
-                                                  return p.grey?.[300] ?? p.divider;
-                                              }
-                                            },
-                                            color: (theme) => {
-                                              const p = theme.palette as any;
-                                              const bg =
-                                                token === "error"
-                                                  ? p.error.main
-                                                  : token === "warning"
-                                                  ? p.warning.main
-                                                  : token === "success"
-                                                  ? p.success.main
-                                                  : p.grey?.[300];
-                                              try {
-                                                return theme.palette.getContrastText(bg);
-                                              } catch {
-                                                return "#000";
-                                              }
-                                            },
-                                            fontWeight: 600,
-                                            fontSize: "0.65rem"
-                                          }}
-                                        />
-                                      );
-                                    })()
-                                  )}
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    gap: 1,
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                      setSelectedJobId(String(job.id));
-                                      setOpen(true);
-                                      /* could set selected job into a details drawer */
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z" fill="currentColor" />
+                                  </svg>
+                                </IconButton>
+
+                                {/* main content */}
+                                <Box sx={{ pl: 6, pr: 6 }}>
+                                  <Typography
+                                    sx={{
+                                      fontWeight: 600,
+                                      fontSize: "0.95rem",
+                                      lineHeight: 1.15,
+                                      // clamp to two lines with ellipsis for long titles
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "normal",
+                                      // prefer breaking at word boundaries, allow breaking long words if needed
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
                                     }}
                                   >
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                      <path
-                                        d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z"
-                                        fill="currentColor"
-                                      />
-                                    </svg>
-                                  </IconButton>
+                                    {String(job.job_title ?? job.title ?? "Untitled")}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                      display: "block",
+                                      fontSize: "0.75rem",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {String(job.company_name ?? job.company ?? "Unknown")}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ fontSize: "0.7rem", mt: 0.5 }}
+                                  >
+                                    {daysInStage(job)}
+                                  </Typography>
                                 </Box>
+
+                                {/* top-left deadline indicator for Interested stage */}
+                                {stage === "Interested" && (() => {
+                                  const d = daysUntilDeadline(job);
+                                  if (d === null) return null;
+                                  const token = deadlineColor(d);
+                                  const display = Math.max(0, d);
+                                  const label = d < 0 ? `Overdue` : display === 0 ? `Due: Today` : `Due: ${display}d`;
+                                  return (
+                                    <Chip
+                                      label={label}
+                                      size="small"
+                                      sx={{
+                                        position: "absolute",
+                                        right: 4,
+                                        bottom: 8,
+                                        bgcolor: (theme) => {
+                                          const p = theme.palette as any;
+                                          switch (token) {
+                                            case "error":
+                                              return p.error.main;
+                                            case "warning":
+                                              return p.warning.main;
+                                            case "success":
+                                              return p.success.main;
+                                            default:
+                                              return p.grey?.[300] ?? p.divider;
+                                          }
+                                        },
+                                        color: (theme) => {
+                                          const p = theme.palette as any;
+                                          const bg =
+                                            token === "error"
+                                              ? p.error.main
+                                              : token === "warning"
+                                              ? p.warning.main
+                                              : token === "success"
+                                              ? p.success.main
+                                              : p.grey?.[300];
+                                          try {
+                                            return theme.palette.getContrastText(bg);
+                                          } catch {
+                                            return "#000";
+                                          }
+                                        },
+                                        fontWeight: 600,
+                                        fontSize: "0.65rem",
+                                      }}
+                                    />
+                                  );
+                                })()}
+
+                                {/* removed duplicate three-dots button (we show only the top-right control) */}
                               </Box>
                             )}
                           </Draggable>

@@ -222,8 +222,8 @@ export default function JobDetails({ jobId }: Props) {
   return (
     <>
       <Box sx={{ width: 420, p: 2 }}>
-        <Stack spacing={2}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+  <Stack spacing={2}>
+  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pr: 3 }}>
           <Typography variant="h6">Job Details</Typography>
           <Stack direction="row" spacing={1}>
             {!editMode ? (
