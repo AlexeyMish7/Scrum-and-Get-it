@@ -70,6 +70,61 @@ export async function getProfile(userId: string) {
   return data;
 }
 
+/**
+ * Fetch comprehensive user profile with all related data for AI generation
+ * Includes: education, skills, employment history, projects, certifications
+ */
+export async function getComprehensiveProfile(userId: string) {
+  // Fetch base profile
+  const profile = await getProfile(userId);
+  if (!profile) return null;
+
+  // Fetch education in parallel
+  const { data: education } = await supabaseAdmin
+    .from("education")
+    .select("*")
+    .eq("user_id", userId)
+    .order("graduation_date", { ascending: false });
+
+  // Fetch skills
+  const { data: skills } = await supabaseAdmin
+    .from("skills")
+    .select("*")
+    .eq("user_id", userId)
+    .order("proficiency_level", { ascending: false });
+
+  // Fetch employment history
+  const { data: employment } = await supabaseAdmin
+    .from("employment")
+    .select("*")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: false });
+
+  // Fetch projects
+  const { data: projects } = await supabaseAdmin
+    .from("projects")
+    .select("*")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: false });
+
+  // Fetch certifications
+  const { data: certifications } = await supabaseAdmin
+    .from("certifications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date_earned", { ascending: false });
+
+  // Combine all data into comprehensive profile
+  return {
+    ...profile,
+    education: education || [],
+    skills: skills || [],
+    employment: employment || [],
+    projects: projects || [],
+    certifications: certifications || [],
+  };
+}
+
 /** Fetch a job by id (service role). */
 export async function getJob(jobId: number) {
   const { data, error } = await supabaseAdmin

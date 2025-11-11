@@ -279,13 +279,18 @@ export async function handleGenerateCoverLetter(
   if (!req?.jobId) return { error: "missing jobId" };
 
   // Lazy import Supabase helpers (do not crash server if env missing)
-  let getProfile: (userId: string) => Promise<any>;
+  let getComprehensiveProfile: (userId: string) => Promise<any>;
   let getJob: (jobId: number) => Promise<any>;
+  let supabase: any;
   try {
     const mod = await import("./supabaseAdmin.js");
-    getProfile = (mod as any).getProfile;
+    getComprehensiveProfile = (mod as any).getComprehensiveProfile;
     getJob = (mod as any).getJob;
-    if (typeof getProfile !== "function" || typeof getJob !== "function") {
+    supabase = (mod as any).default;
+    if (
+      typeof getComprehensiveProfile !== "function" ||
+      typeof getJob !== "function"
+    ) {
       throw new Error("supabase helpers not available");
     }
   } catch (e: any) {
@@ -298,7 +303,7 @@ export async function handleGenerateCoverLetter(
   let profile: any;
   let job: any;
   try {
-    profile = await getProfile(req.userId);
+    profile = await getComprehensiveProfile(req.userId);
   } catch (e: any) {
     return { error: `profile query failed: ${e?.message ?? e}` };
   }
@@ -312,6 +317,34 @@ export async function handleGenerateCoverLetter(
   if (job.user_id && job.user_id !== req.userId)
     return { error: "job does not belong to user" };
 
+  // Fetch company research if available for this job
+  let companyResearch: any = null;
+  try {
+    const { data: researchData } = await supabase
+      .from("ai_artifacts")
+      .select("content")
+      .eq("user_id", req.userId)
+      .eq("kind", "company_research")
+      .eq("job_id", req.jobId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (researchData?.content) {
+      companyResearch = researchData.content;
+      logInfo("orc_cover_letter_company_research_found", {
+        userId: req.userId,
+        jobId: req.jobId,
+      });
+    }
+  } catch (e: any) {
+    // Company research is optional, continue without it
+    logInfo("orc_cover_letter_no_company_research", {
+      userId: req.userId,
+      jobId: req.jobId,
+    });
+  }
+
   const templateId = req.options?.templateId ?? "formal";
   const rawPrompt = buildCoverLetterPrompt({
     profile,
@@ -319,6 +352,9 @@ export async function handleGenerateCoverLetter(
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
     templateId,
+    length: req.options?.length ?? "standard",
+    culture: req.options?.culture ?? "corporate",
+    companyResearch,
   });
   const prompt = sanitizePrompt(rawPrompt);
 
@@ -326,7 +362,7 @@ export async function handleGenerateCoverLetter(
   const aiOpts = {
     model,
     temperature: envNumber("AI_TEMPERATURE", 0.2),
-    maxTokens: envNumber("AI_MAX_TOKENS", 800),
+    maxTokens: envNumber("AI_MAX_TOKENS", 1500), // Increased for longer cover letters (350-550 words ≈ 1200 tokens)
     timeoutMs: envNumber("AI_TIMEOUT_MS", 30_000),
     maxRetries: envNumber("AI_MAX_RETRIES", 2),
   } as const;

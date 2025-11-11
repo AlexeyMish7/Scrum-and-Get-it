@@ -83,10 +83,24 @@ export function AuthContextProvider({ children }: ProviderProps) {
       }
     );
 
+    // Proactive token refresh for demo stability
+    // Refresh token every 30 minutes to prevent expiry during demos
+    const refreshInterval = setInterval(async () => {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      if (currentSession) {
+        // Trigger a refresh to ensure token stays valid
+        await supabase.auth.refreshSession();
+        console.log("🔄 Token refreshed automatically");
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+
     // Clean up listener and prevent updates after unmount
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearInterval(refreshInterval);
     };
   }, []); // run once on mount
 

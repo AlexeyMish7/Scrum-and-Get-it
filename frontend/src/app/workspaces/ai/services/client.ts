@@ -18,8 +18,15 @@ const BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
  * Get Authorization header with current Supabase session token.
  * (userId parameter kept for API compatibility but not used in JWT auth)
  */
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function getAuthHeaders(
+  forceRefresh = false
+): Promise<Record<string, string>> {
   try {
+    // Force refresh if requested (retry after 401)
+    if (forceRefresh) {
+      await supabase.auth.refreshSession();
+    }
+
     // First try to get the current session
     const {
       data: { session },
@@ -56,18 +63,29 @@ async function postJson<T>(
   const url = `${BASE_URL}${path}`;
 
   try {
-    const headers = await getAuthHeaders();
+    let headers = await getAuthHeaders();
 
     console.log(`🚀 POST ${url}`, {
       body,
       headers: { ...headers, Authorization: "***" },
     });
 
-    const resp = await fetch(url, {
+    let resp = await fetch(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body ?? {}),
     });
+
+    // If we get 401, try refreshing token once and retry
+    if (resp.status === 401) {
+      console.log("🔄 Token expired, refreshing and retrying...");
+      headers = await getAuthHeaders(true); // Force refresh
+      resp = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body ?? {}),
+      });
+    }
 
     let data: unknown = null;
     try {
@@ -115,12 +133,22 @@ async function getJson<T>(
   const url = `${BASE_URL}${path}`;
 
   try {
-    const headers = await getAuthHeaders();
+    let headers = await getAuthHeaders();
 
-    const resp = await fetch(url, {
+    let resp = await fetch(url, {
       method: "GET",
       headers,
     });
+
+    // If we get 401, try refreshing token once and retry
+    if (resp.status === 401) {
+      console.log("🔄 Token expired, refreshing and retrying...");
+      headers = await getAuthHeaders(true); // Force refresh
+      resp = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+    }
 
     let data: unknown = null;
     try {
@@ -159,6 +187,126 @@ async function getJson<T>(
   }
 }
 
-export const aiClient = { postJson, getJson };
+/**
+ * PATCH /api/* endpoint with JSON payload and automatic auth header injection
+ * Includes automatic token refresh on 401 errors
+ */
+export async function patchJson<T>(url: string, payload: unknown): Promise<T> {
+  try {
+    let headers = await getAuthHeaders();
+    let resp = await fetch(url, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    // If we get 401, try refreshing token once and retry
+    if (resp.status === 401) {
+      console.log("🔄 Token expired, refreshing and retrying...");
+      headers = await getAuthHeaders(true); // Force refresh
+      resp = await fetch(url, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    }
+
+    let data: unknown = null;
+    try {
+      data = await resp.json();
+    } catch {
+      // ignore parse errors
+    }
+
+    if (!resp.ok) {
+      const anyData = data as Record<string, unknown> | null;
+      let message =
+        (anyData?.message as string) ||
+        (anyData?.error as string) ||
+        `Request failed (${resp.status})`;
+
+      if (resp.status === 401 || resp.status === 403) {
+        message = "Authentication failed. Please log in again.";
+      }
+
+      const error = new Error(message) as Error & {
+        status?: number;
+        payload?: unknown;
+      };
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data as T;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Authentication")) {
+      throw err;
+    }
+    throw err;
+  }
+}
+
+/**
+ * DELETE /api/* endpoint with automatic auth header injection
+ * Includes automatic token refresh on 401 errors
+ */
+export async function deleteJson(url: string): Promise<void> {
+  try {
+    let headers = await getAuthHeaders();
+    let resp = await fetch(url, {
+      method: "DELETE",
+      headers,
+    });
+
+    // If we get 401, try refreshing token once and retry
+    if (resp.status === 401) {
+      console.log("🔄 Token expired, refreshing and retrying...");
+      headers = await getAuthHeaders(true); // Force refresh
+      resp = await fetch(url, {
+        method: "DELETE",
+        headers,
+      });
+    }
+
+    // 204 No Content is success for DELETE
+    if (resp.status === 204) {
+      return;
+    }
+
+    let data: unknown = null;
+    try {
+      data = await resp.json();
+    } catch {
+      // ignore parse errors
+    }
+
+    if (!resp.ok) {
+      const anyData = data as Record<string, unknown> | null;
+      let message =
+        (anyData?.message as string) ||
+        (anyData?.error as string) ||
+        `Request failed (${resp.status})`;
+
+      if (resp.status === 401 || resp.status === 403) {
+        message = "Authentication failed. Please log in again.";
+      }
+
+      const error = new Error(message) as Error & {
+        status?: number;
+        payload?: unknown;
+      };
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Authentication")) {
+      throw err;
+    }
+    throw err;
+  }
+}
+
+export const aiClient = { postJson, getJson, patchJson, deleteJson };
 
 export default aiClient;

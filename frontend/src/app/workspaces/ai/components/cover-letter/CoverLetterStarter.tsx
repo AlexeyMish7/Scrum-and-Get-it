@@ -49,6 +49,7 @@ import {
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { getCoverLetterTemplateList } from "@workspaces/ai/config/coverLetterTemplates";
 import useUserJobs from "@shared/hooks/useUserJobs";
+import CoverLetterTemplateShowcase from "./CoverLetterTemplateShowcase";
 
 interface CoverLetterStarterProps {
   onStart: (draftId: string) => void;
@@ -67,6 +68,7 @@ export default function CoverLetterStarter({
 
   // Dialog states
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showTemplateShowcase, setShowTemplateShowcase] = useState(false);
   const [newDraftName, setNewDraftName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(
     templates[0]?.id || "formal"
@@ -281,6 +283,30 @@ export default function CoverLetterStarter({
         </DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
+            {/* Info Alert about Template Locking */}
+            <Alert severity="info" icon={<EmailIcon />}>
+              <Typography variant="body2" fontWeight={500} gutterBottom>
+                Template Choice is Permanent
+              </Typography>
+              <Typography variant="caption">
+                Your template selection controls how AI generates content and
+                cannot be changed later. Choose carefully based on your target
+                industry and company culture.
+              </Typography>
+            </Alert>
+
+            {/* Info Alert about Company Research */}
+            <Alert severity="success" icon={<ArrowForwardIcon />}>
+              <Typography variant="body2" fontWeight={500} gutterBottom>
+                AI-Powered Personalization
+              </Typography>
+              <Typography variant="caption">
+                If you link a job, we'll automatically fetch company research to
+                personalize your cover letter with company-specific insights,
+                recent news, and mission alignment.
+              </Typography>
+            </Alert>
+
             {/* Cover Letter Name */}
             <TextField
               label="Cover Letter Name"
@@ -297,50 +323,40 @@ export default function CoverLetterStarter({
                 Choose Template
               </Typography>
               <Stack spacing={2}>
-                {templates.map((template) => (
-                  <Card
-                    key={template.id}
-                    variant="outlined"
-                    sx={{
-                      cursor: "pointer",
-                      borderColor:
-                        selectedTemplate === template.id
-                          ? "primary.main"
-                          : "divider",
-                      borderWidth: selectedTemplate === template.id ? 2 : 1,
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        borderColor: "primary.main",
-                        boxShadow: 1,
-                      },
-                    }}
-                    onClick={() => setSelectedTemplate(template.id)}
-                  >
-                    <CardContent>
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        alignItems="flex-start"
-                      >
-                        <Typography variant="h4">
-                          {template.id === "formal"
-                            ? "💼"
-                            : template.id === "creative"
-                            ? "🎨"
-                            : "⚙️"}
+                {/* Selected template display */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Typography variant="h4">
+                        {selectedTemplate === "formal"
+                          ? "💼"
+                          : selectedTemplate === "creative"
+                          ? "🎨"
+                          : "⚙️"}
+                      </Typography>
+                      <Box flex={1}>
+                        <Typography variant="subtitle2" fontWeight={500}>
+                          {templates.find((t) => t.id === selectedTemplate)
+                            ?.name || "Formal Business"}
                         </Typography>
-                        <Box flex={1}>
-                          <Typography variant="subtitle2" fontWeight={500}>
-                            {template.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {template.description}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <Typography variant="caption" color="text.secondary">
+                          {templates.find((t) => t.id === selectedTemplate)
+                            ?.description ||
+                            "Professional template for corporate positions"}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Browse Templates button */}
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowTemplateShowcase(true)}
+                  sx={{ justifyContent: "center" }}
+                >
+                  Browse All Templates
+                </Button>
               </Stack>
             </Box>
 
@@ -378,6 +394,17 @@ export default function CoverLetterStarter({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Template Showcase Dialog */}
+      <CoverLetterTemplateShowcase
+        open={showTemplateShowcase}
+        onClose={() => setShowTemplateShowcase(false)}
+        currentTemplateId={selectedTemplate}
+        onSelectTemplate={(templateId) => {
+          setSelectedTemplate(templateId);
+          setShowTemplateShowcase(false);
+        }}
+      />
     </Container>
   );
 }

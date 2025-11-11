@@ -69,12 +69,22 @@ function randomSampleForKind(kind: string) {
       };
     case "cover_letter":
       return {
-        text: "Dear Hiring Manager, I'm excited to apply...",
+        text: "I am writing to express my strong interest in the Software Engineer position at TechCorp...",
         json: {
           sections: {
-            opening: "Dear Hiring Manager...",
-            body: "I led cloud migrations...",
-            closing: "Sincerely",
+            opening:
+              "I am writing to express my strong interest in the Software Engineer position at TechCorp, as I discovered through your careers page. With over five years of experience in full-stack development and a proven track record of delivering scalable solutions, I am excited about the opportunity to contribute to your innovative team. Your company's commitment to cutting-edge technology and user-centric design aligns perfectly with my professional values and technical expertise. I am particularly drawn to TechCorp's recent expansion into cloud-native solutions, an area where I have extensive hands-on experience developing microservices architectures that have served millions of users.",
+            body: [
+              "Throughout my career at StartupXYZ, I have consistently demonstrated the ability to tackle complex technical challenges while maintaining focus on business objectives. I led the migration of our monolithic application to a microservices architecture, reducing deployment times by 75% and improving system reliability to 99.99% uptime. This project required deep expertise in containerization technologies, which I gained through hands-on experience with Docker and Kubernetes, as well as a strong understanding of distributed systems design patterns. Additionally, I implemented comprehensive CI/CD pipelines using GitHub Actions and ArgoCD, which enabled our team to deploy multiple times per day with confidence. My technical skills extend to modern frontend frameworks including React and TypeScript, backend technologies like Node.js and Python, and cloud platforms such as AWS and Google Cloud.",
+              "Beyond my technical capabilities, I bring strong leadership and collaboration skills that have proven essential in cross-functional team environments. As a senior engineer, I mentored three junior developers, helping them grow their skills and advance their careers while maintaining high code quality standards through rigorous code reviews and pair programming sessions. I also worked closely with product managers and designers to translate business requirements into technical specifications, ensuring that our solutions not only met technical standards but also delivered exceptional user experiences. My passion for continuous learning drives me to stay current with emerging technologies and best practices, which I regularly share with my team through technical talks and documentation. I am confident that my combination of technical depth, leadership experience, and commitment to excellence would make me a valuable addition to your engineering team.",
+            ],
+            closing:
+              "Thank you for considering my application. I am genuinely excited about the possibility of contributing to TechCorp's mission of building innovative software solutions that make a difference. I would welcome the opportunity to discuss how my experience and skills align with your team's needs and to learn more about the exciting projects you're working on. I am available for an interview at your convenience and look forward to hearing from you soon.",
+          },
+          metadata: {
+            wordCount: 425,
+            tone: "professional",
+            paragraphCount: 4,
           },
         },
       };
@@ -121,7 +131,8 @@ async function sendToOpenAI(
     model: opts.model ?? "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     temperature: opts.temperature ?? 0.2,
-    max_tokens: opts.maxTokens ?? 800,
+    max_tokens: opts.maxTokens ?? 1500,
+    response_format: { type: "json_object" }, // Force JSON response
   };
 
   let attempt = 0;

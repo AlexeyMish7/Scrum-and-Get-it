@@ -39,6 +39,8 @@ export interface GenerateCoverLetterRequest {
   /**
    * See GenerateResumeRequest.options for field semantics
    * templateId: cover letter template identifier for template-aware generation
+   * length: target length (brief, standard, detailed)
+   * culture: company culture style (startup, corporate, etc.)
    */
   options?: {
     tone?: string;
@@ -47,6 +49,8 @@ export interface GenerateCoverLetterRequest {
     model?: string;
     prompt?: string;
     templateId?: string;
+    length?: string;
+    culture?: string;
   };
 }
 

@@ -25,6 +25,7 @@
  */
 
 import { create } from "zustand";
+import * as coverLetterDraftsApi from "../services/coverLetterDraftsApi";
 
 // ============================================================================
 // Types & Interfaces
@@ -177,51 +178,6 @@ interface CoverLetterDraftsStore {
 // ============================================================================
 
 /**
- * CREATE EMPTY DRAFT
- * Returns a fresh draft with default values
- */
-function createEmptyDraft(
-  name: string,
-  templateId: string = "formal",
-  jobId?: number,
-  jobTitle?: string,
-  companyName?: string
-): CoverLetterDraft {
-  return {
-    id: crypto.randomUUID(),
-    name,
-    templateId,
-    jobId,
-    companyName,
-    jobTitle,
-    content: {
-      header: {
-        name: "",
-        address: "",
-        phone: "",
-        email: "",
-        date: new Date().toLocaleDateString(),
-        companyName: companyName || "",
-        companyAddress: "",
-        hiringManager: "",
-      },
-      opening: "",
-      body: ["", ""],
-      closing: "",
-      signature: "",
-    },
-    metadata: {
-      tone: "formal",
-      length: "standard",
-      culture: "corporate",
-      lastModified: new Date(),
-      createdAt: new Date(),
-      wordCount: 0,
-    },
-  };
-}
-
-/**
  * CALCULATE WORD COUNT
  * Counts words in cover letter content
  */
@@ -243,6 +199,31 @@ function saveToCache(drafts: CoverLetterDraft[], activeDraftId: string | null) {
   } catch (error) {
     console.error("Error saving to cache:", error);
   }
+}
+
+/**
+ * DEBOUNCED DATABASE UPDATE
+ * Delays database writes to reduce server load during typing
+ */
+let debouncedUpdateTimer: NodeJS.Timeout | null = null;
+const DEBOUNCE_MS = 2000; // 2 seconds
+
+function debouncedDatabaseUpdate(
+  draftId: string,
+  updates: coverLetterDraftsApi.UpdateDraftInput
+) {
+  if (debouncedUpdateTimer) {
+    clearTimeout(debouncedUpdateTimer);
+  }
+
+  debouncedUpdateTimer = setTimeout(async () => {
+    try {
+      await coverLetterDraftsApi.updateDraft(draftId, updates);
+      console.log("✅ Cover letter auto-saved to database");
+    } catch (error) {
+      console.error("❌ Failed to auto-save cover letter:", error);
+    }
+  }, DEBOUNCE_MS);
 }
 
 /**
@@ -334,19 +315,26 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       jobTitle,
       companyName
     ) => {
+      const { userId } = get();
+      if (!userId) {
+        set({ error: "User not authenticated", isLoading: false });
+        return null;
+      }
+
       try {
         set({ isLoading: true, error: null });
 
-        const newDraft = createEmptyDraft(
-          name,
-          templateId,
-          jobId,
-          jobTitle,
-          companyName
+        // Create draft in database
+        const newDraft = await coverLetterDraftsApi.createDraft(
+          {
+            name,
+            template_id: templateId,
+            job_id: jobId,
+            company_name: companyName,
+            job_title: jobTitle,
+          },
+          userId
         );
-
-        // FUTURE: Save to database
-        // await createCoverLetterDraft(newDraft);
 
         set((state) => ({
           drafts: [...state.drafts, newDraft],
@@ -367,21 +355,37 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
     },
 
     loadDraft: async (id) => {
+      const { userId } = get();
+      if (!userId) {
+        set({ error: "User not authenticated", isLoading: false });
+        return;
+      }
+
       try {
         set({ isLoading: true, error: null });
 
         // Check if draft exists in local state
-        const draft = get().drafts.find((d) => d.id === id);
+        const existingDraft = get().drafts.find((d) => d.id === id);
 
-        if (draft) {
+        if (existingDraft) {
           set({ activeDraftId: id, isLoading: false });
 
           // Update cache
           const { drafts, activeDraftId } = get();
           saveToCache(drafts, activeDraftId);
         } else {
-          // TODO: Load from database
-          set({ error: "Draft not found", isLoading: false });
+          // Load from database
+          const draft = await coverLetterDraftsApi.getDraft(id, userId);
+
+          set((state) => ({
+            drafts: [...state.drafts, draft],
+            activeDraftId: id,
+            isLoading: false,
+          }));
+
+          // Update cache
+          const { drafts, activeDraftId } = get();
+          saveToCache(drafts, activeDraftId);
         }
       } catch (error) {
         console.error("Error loading draft:", error);
@@ -390,13 +394,23 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
     },
 
     loadAllDrafts: async () => {
+      const { userId } = get();
+      if (!userId) {
+        set({ error: "User not authenticated", isLoading: false });
+        return;
+      }
+
       try {
         set({ isLoading: true, error: null });
 
-        // TODO: Load from database
-        // const dbDrafts = await listCoverLetterDrafts(userId);
+        // Load all drafts from database
+        const drafts = await coverLetterDraftsApi.listDrafts(userId);
 
-        set({ isLoading: false });
+        set({ drafts, isLoading: false });
+
+        // Update cache
+        const { activeDraftId } = get();
+        saveToCache(drafts, activeDraftId);
       } catch (error) {
         console.error("Error loading drafts:", error);
         set({ error: "Failed to load drafts", isLoading: false });
@@ -407,8 +421,8 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       try {
         set({ isLoading: true, error: null });
 
-        // FUTURE: Delete from database
-        // await deleteCoverLetterDraft(draftId);
+        // Delete from database
+        await coverLetterDraftsApi.deleteDraft(id);
 
         set((state) => ({
           drafts: state.drafts.filter((d) => d.id !== id),
@@ -430,6 +444,9 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       try {
         set({ isLoading: true, error: null });
 
+        // Update database
+        await coverLetterDraftsApi.updateDraft(id, { name });
+
         set((state) => ({
           drafts: state.drafts.map((d) =>
             d.id === id
@@ -442,8 +459,6 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
           isLoading: false,
         }));
-
-        // TODO: Update database
 
         // Update cache
         const { drafts, activeDraftId } = get();
@@ -464,6 +479,13 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
 
       try {
         set({ isLoading: true, error: null });
+
+        // Update database
+        await coverLetterDraftsApi.updateDraft(activeDraftId, {
+          job_id: jobId,
+          job_title: jobTitle,
+          company_name: companyName,
+        });
 
         set((state) => ({
           drafts: state.drafts.map((d) =>
@@ -486,8 +508,6 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
           isLoading: false,
         }));
-
-        // TODO: Update database
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -515,6 +535,12 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       try {
         set({ isLoading: true, error: null });
 
+        const updatedContent = {
+          opening: pendingAIContent.opening,
+          body: pendingAIContent.body,
+          closing: pendingAIContent.closing,
+        };
+
         set((state) => ({
           drafts: state.drafts.map((d) =>
             d.id === activeDraftId
@@ -522,9 +548,7 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
                   ...d,
                   content: {
                     ...d.content,
-                    opening: pendingAIContent.opening,
-                    body: pendingAIContent.body,
-                    closing: pendingAIContent.closing,
+                    ...updatedContent,
                   },
                   metadata: {
                     ...d.metadata,
@@ -532,9 +556,7 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
                     lastModified: new Date(),
                     wordCount: calculateWordCount({
                       ...d.content,
-                      opening: pendingAIContent.opening,
-                      body: pendingAIContent.body,
-                      closing: pendingAIContent.closing,
+                      ...updatedContent,
                     }),
                   },
                   companyResearch:
@@ -552,7 +574,13 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           isLoading: false,
         }));
 
-        // TODO: Update database
+        // Update database with AI-generated content
+        await coverLetterDraftsApi.updateDraft(activeDraftId, {
+          content: updatedContent,
+          metadata: {
+            tone: pendingAIContent.tone,
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -586,7 +614,12 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
         }));
 
-        // TODO: Debounced database update
+        // Debounced database update
+        debouncedDatabaseUpdate(activeDraftId, {
+          content: {
+            opening,
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -618,7 +651,12 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
         }));
 
-        // TODO: Debounced database update
+        // Debounced database update
+        debouncedDatabaseUpdate(activeDraftId, {
+          content: {
+            body,
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -650,7 +688,12 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
         }));
 
-        // TODO: Debounced database update
+        // Debounced database update
+        debouncedDatabaseUpdate(activeDraftId, {
+          content: {
+            closing,
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -666,6 +709,9 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       if (!activeDraftId) return;
 
       try {
+        const currentDraft = get().drafts.find((d) => d.id === activeDraftId);
+        if (!currentDraft) return;
+
         set((state) => ({
           drafts: state.drafts.map((d) =>
             d.id === activeDraftId
@@ -681,7 +727,12 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
           ),
         }));
 
-        // TODO: Debounced database update
+        // Debounced database update
+        debouncedDatabaseUpdate(activeDraftId, {
+          content: {
+            header: { ...currentDraft.content.header, ...header },
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
@@ -878,22 +929,33 @@ export const useCoverLetterDrafts = create<CoverLetterDraftsStore>(
       if (!activeDraftId) return;
 
       try {
+        const currentDraft = get().drafts.find((d) => d.id === activeDraftId);
+        if (!currentDraft) return;
+
+        const updatedResearch = {
+          ...currentDraft.companyResearch,
+          ...research,
+        } as CompanyResearch;
+
         set((state) => ({
           drafts: state.drafts.map((d) =>
             d.id === activeDraftId
               ? {
                   ...d,
-                  companyResearch: {
-                    ...d.companyResearch,
-                    ...research,
-                  } as CompanyResearch,
+                  companyResearch: updatedResearch,
                   metadata: { ...d.metadata, lastModified: new Date() },
                 }
               : d
           ),
         }));
 
-        // TODO: Update database
+        // Update database with company research (convert dates to strings)
+        await coverLetterDraftsApi.updateDraft(activeDraftId, {
+          company_research: {
+            ...updatedResearch,
+            lastUpdated: updatedResearch.lastUpdated?.toISOString(),
+          },
+        });
 
         // Update cache
         const { drafts, activeDraftId: activeId } = get();
