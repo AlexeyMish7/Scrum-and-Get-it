@@ -117,6 +117,13 @@ export async function handleGenerateResume(
   }
   const options = body?.options ?? undefined;
 
+  // Log template-aware generation if templateId provided
+  if (options?.templateId) {
+    console.log(
+      `[Resume Gen] Template-aware: ${options.templateId} for user ${userId}, job ${jobId}`
+    );
+  }
+
   counters.generate_total++;
   const start = Date.now();
   const result = await orchestrator.handleGenerateResume({
@@ -232,6 +239,13 @@ export async function handleGenerateCoverLetter(
     );
   }
   const options = body?.options ?? undefined;
+
+  // Log template-aware generation if templateId provided
+  if (options?.templateId) {
+    console.log(
+      `[Cover Letter Gen] Template-aware: ${options.templateId} for user ${userId}, job ${jobId}`
+    );
+  }
 
   counters.generate_total++;
   const start = Date.now();
@@ -573,7 +587,11 @@ export async function handleCompanyResearch(
   const jobId = body?.jobId;
   // jobId is optional, but if provided must be valid
   if (jobId !== undefined && jobId !== null && Number.isNaN(Number(jobId))) {
-    throw new ApiError(400, "jobId must be a number if provided", "bad_request");
+    throw new ApiError(
+      400,
+      "jobId must be a number if provided",
+      "bad_request"
+    );
   }
 
   counters.generate_total++;
@@ -683,7 +701,11 @@ export async function handleSalaryResearch(
 
   const { title, location, experience, company, currentSalary } = body ?? {};
   if (!title || typeof title !== "string" || !title.trim()) {
-    throw new ApiError(400, "title is required and must be a string", "bad_request");
+    throw new ApiError(
+      400,
+      "title is required and must be a string",
+      "bad_request"
+    );
   }
 
   counters.generate_total++;

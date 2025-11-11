@@ -48,11 +48,17 @@ import {
   CULTURE_DESCRIPTIONS,
 } from "@workspaces/ai/config/coverLetterTemplates";
 
+/**
+ * Job interface matching database schema
+ */
 interface Job {
   id: number;
-  job_title: string;
-  company_name: string;
-  job_description?: string;
+  job_title: string | null;
+  company_name: string | null;
+  job_description?: string | null;
+  job_status?: string | null;
+  industry?: string | null;
+  job_link?: string | null;
 }
 
 export interface IndustryLanguageOptions {
@@ -75,6 +81,7 @@ interface GenerationPanelProps {
   onIndustryLanguageChange: (options: IndustryLanguageOptions) => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  loadingJobs?: boolean;
   companyResearch?: {
     companyName: string;
     industry?: string;
@@ -97,6 +104,7 @@ export default function CoverLetterGenerationPanel({
   onIndustryLanguageChange,
   onGenerate,
   isGenerating,
+  loadingJobs = false,
   companyResearch,
 }: GenerationPanelProps) {
   const selectedJob = jobs.find((j) => j.id === selectedJobId);
@@ -125,18 +133,19 @@ export default function CoverLetterGenerationPanel({
             onChange={(e) =>
               onJobSelect(e.target.value ? Number(e.target.value) : null)
             }
+            disabled={loadingJobs}
           >
             <MenuItem value="">
-              <em>None</em>
+              <em>{loadingJobs ? "Loading jobs..." : "None"}</em>
             </MenuItem>
             {jobs.map((job) => (
               <MenuItem key={job.id} value={job.id}>
                 <Stack>
                   <Typography variant="body2" fontWeight={500}>
-                    {job.job_title}
+                    {job.job_title || "Untitled Position"}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {job.company_name}
+                    {job.company_name || "Unknown Company"}
                   </Typography>
                 </Stack>
               </MenuItem>
@@ -144,12 +153,26 @@ export default function CoverLetterGenerationPanel({
           </Select>
         </FormControl>
 
+        {/* Loading State */}
+        {loadingJobs && (
+          <Alert severity="info" icon={<CircularProgress size={20} />}>
+            Loading your jobs...
+          </Alert>
+        )}
+
+        {/* No Jobs Alert */}
+        {!loadingJobs && jobs.length === 0 && (
+          <Alert severity="info">
+            No jobs found. Add jobs in the Jobs workspace first.
+          </Alert>
+        )}
+
         {/* Selected Job Info */}
         {selectedJob && (
           <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
             <Stack spacing={1}>
               <Typography variant="subtitle2">
-                {selectedJob.job_title}
+                {selectedJob.job_title || "Untitled Position"}
               </Typography>
               <Stack direction="row" spacing={1} alignItems="center">
                 <BusinessIcon fontSize="small" color="action" />

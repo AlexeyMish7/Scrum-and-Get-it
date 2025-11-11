@@ -20,6 +20,7 @@ export interface BuildResumePromptArgs {
   job: any;
   tone?: string;
   focus?: string;
+  templateId?: string; // Template identifier for template-aware generation
   // Optional enriched profile data
   skillsList?: Array<{ skill_name: string; skill_category?: string }>;
   employment?: Array<{
@@ -79,6 +80,35 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
 
   const toneStr = tone || "professional";
   const focusStr = focus ? `Focus on ${safe(focus, 120)}.` : "";
+
+  // Template-specific style instructions
+  const templateId = args.templateId || "classic";
+  let templateInstructions = "";
+  switch (templateId) {
+    case "classic":
+      templateInstructions =
+        "Use traditional, conservative language. Emphasize stability and proven track record. Prefer formal bullet points and conventional structure.";
+      break;
+    case "modern":
+      templateInstructions =
+        "Use contemporary, tech-forward language. Emphasize innovation and cutting-edge skills. Prioritize technical keywords and modern frameworks. Skills-first approach preferred.";
+      break;
+    case "minimal":
+      templateInstructions =
+        "Use concise, direct language. Avoid unnecessary adjectives. Focus on core achievements and measurable results. Keep bullets brief and impactful.";
+      break;
+    case "creative":
+      templateInstructions =
+        "Use engaging, dynamic language. Emphasize projects and creative problem-solving. Highlight unique contributions and innovative approaches. Projects-first approach preferred.";
+      break;
+    case "academic":
+      templateInstructions =
+        "Use formal academic language. Emphasize research, publications, and scholarly achievements. Education-first approach. Include methodologies and findings where applicable.";
+      break;
+    default:
+      templateInstructions =
+        "Use professional, balanced language suitable for the target role.";
+  }
 
   // Build compact context lines from related tables (limit tokens)
   const employmentLines = (args.employment || [])
@@ -170,6 +200,7 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
     `You are an expert resume writer. Do not fabricate information. Use only the provided profile and job content.`,
     `Write concise, ATS-friendly results tailored for the role.`,
     `Constraints: factual, action-oriented, quantified where possible, avoid fluff.`,
+    `Template Style: ${templateInstructions}`,
     // Expanded JSON contract to support richer editors while keeping backward compatibility with bullets[]
     `Output: Strict JSON only. Shape:`,
     `{

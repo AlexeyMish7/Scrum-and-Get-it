@@ -41,6 +41,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { generateResume } from "@workspaces/ai/services/aiGeneration";
+import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 
 interface GenerationPanelProps {
@@ -60,6 +61,7 @@ export default function GenerationPanel({
   const { user } = useAuth();
   const { jobs, loading: loadingJobs } = useUserJobs(50);
   const { handleError, showSuccess } = useErrorHandler();
+  const { getActiveDraft } = useResumeDraftsV2();
 
   // Form state
   const [jobId, setJobId] = useState<number | "">("");
@@ -124,11 +126,16 @@ export default function GenerationPanel({
         10000
       );
 
+      // Get current draft's template for template-aware AI generation
+      const activeDraft = getActiveDraft();
+      const templateId = activeDraft?.templateId || "classic";
+
       const result = await generateResume(user.id, jobId, {
         tone,
         focus: focus || undefined,
         model: model || undefined,
         prompt: customPrompt || undefined,
+        templateId,
       });
 
       if (!result.content) {

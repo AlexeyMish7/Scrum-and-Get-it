@@ -18,6 +18,7 @@ export interface GenerateResumeRequest {
    * variant: numeric index for multi-generation UX (select different seed)
    * model: request override for AI model (validated against allow-list)
    * prompt: user-supplied additive snippet appended to the base prompt
+   * templateId: resume template identifier for template-aware AI generation
    */
   options?: {
     tone?: string;
@@ -25,6 +26,7 @@ export interface GenerateResumeRequest {
     variant?: number;
     model?: string;
     prompt?: string;
+    templateId?: string;
   };
 }
 
@@ -34,13 +36,17 @@ export interface GenerateResumeRequest {
 export interface GenerateCoverLetterRequest {
   userId: string; // authenticated user id (validated server-side)
   jobId: number; // target job id
-  /** See GenerateResumeRequest.options for field semantics */
+  /**
+   * See GenerateResumeRequest.options for field semantics
+   * templateId: cover letter template identifier for template-aware generation
+   */
   options?: {
     tone?: string;
     focus?: string;
     variant?: number;
     model?: string;
     prompt?: string;
+    templateId?: string;
   };
 }
 

@@ -60,6 +60,7 @@ import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewP
 import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
 import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
 import { TemplateSelector } from "@workspaces/ai/components/ResumeEditorV2/TemplateSelector";
+import TemplateShowcaseDialog from "@workspaces/ai/components/resume-v2/TemplateShowcaseDialog";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
@@ -92,6 +93,7 @@ export default function ResumeEditorV2() {
     applySummary,
     applySkills,
     applyExperience,
+    applyEducation,
     applyAll,
     editSection,
     toggleSectionVisibility,
@@ -132,6 +134,7 @@ export default function ResumeEditorV2() {
   const [exportTheme, setExportTheme] = useState<string>("modern");
   const [isInitializing, setIsInitializing] = useState(true);
   const [showVersionsOpen, setShowVersionsOpen] = useState(false);
+  const [showTemplateShowcase, setShowTemplateShowcase] = useState(false);
 
   // Set userId when user changes
   useEffect(() => {
@@ -208,7 +211,7 @@ export default function ResumeEditorV2() {
   };
 
   const handleApplySection = async (
-    section: "summary" | "skills" | "experience"
+    section: "summary" | "skills" | "experience" | "education"
   ) => {
     try {
       switch (section) {
@@ -223,6 +226,10 @@ export default function ResumeEditorV2() {
         case "experience":
           await applyExperience();
           setSuccessMessage("✓ Experience applied to draft");
+          break;
+        case "education":
+          await applyEducation();
+          setSuccessMessage("✓ Education applied to draft");
           break;
       }
     } catch (error) {
@@ -775,6 +782,15 @@ export default function ResumeEditorV2() {
 
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
+            {/* Browse Templates */}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setShowTemplateShowcase(true)}
+            >
+              Browse Templates
+            </Button>
+
             {/* Show Tutorial */}
             <Button size="small" onClick={startTour}>
               Show Tutorial
@@ -801,10 +817,25 @@ export default function ResumeEditorV2() {
       </Box>
 
       {/* Main Content - Three Panel Layout */}
-      <Box sx={{ flex: 1, display: "flex", overflow: "hidden", gap: 2, p: 2 }}>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          overflow: "hidden",
+          gap: 2,
+          p: 2,
+          minHeight: 0,
+        }}
+      >
         {/* Left Panel - Generation */}
         <Box
-          sx={{ width: "35%", display: "flex", flexDirection: "column" }}
+          sx={{
+            width: { xs: "100%", md: "35%" },
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
           data-tour="generation-panel"
         >
           <GenerationPanel
@@ -816,7 +847,13 @@ export default function ResumeEditorV2() {
 
         {/* Middle Panel - AI Results */}
         <Box
-          sx={{ width: "32.5%", display: "flex", flexDirection: "column" }}
+          sx={{
+            width: { xs: "100%", md: "32.5%" },
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
           data-tour="ai-results-panel"
         >
           <AIResultsPanel
@@ -830,7 +867,13 @@ export default function ResumeEditorV2() {
 
         {/* Right Panel - Draft Preview */}
         <Box
-          sx={{ width: "32.5%", display: "flex", flexDirection: "column" }}
+          sx={{
+            width: { xs: "100%", md: "32.5%" },
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
           data-tour="draft-preview-panel"
         >
           <DraftPreviewPanel
@@ -1038,6 +1081,14 @@ export default function ResumeEditorV2() {
       <ResumeVersionsPanel
         open={showVersionsOpen}
         onClose={() => setShowVersionsOpen(false)}
+      />
+
+      {/* Template Showcase Dialog */}
+      <TemplateShowcaseDialog
+        open={showTemplateShowcase}
+        onClose={() => setShowTemplateShowcase(false)}
+        currentTemplateId={activeDraft?.templateId}
+        onSelectTemplate={handleChangeTemplate}
       />
     </Box>
   );

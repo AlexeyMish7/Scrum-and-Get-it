@@ -31,6 +31,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  LinearProgress,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -40,7 +41,9 @@ import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 interface AIResultsPanelProps {
   content: ResumeArtifactContent | null;
   appliedSections: Set<string>;
-  onApplySection: (section: "summary" | "skills" | "experience") => void;
+  onApplySection: (
+    section: "summary" | "skills" | "experience" | "education"
+  ) => void;
   onApplyAll: () => void;
   onCopyText?: (text: string) => void;
 }
@@ -96,11 +99,12 @@ export default function AIResultsPanel({
     }
   };
 
-  const canApplyAll = hasSummary || hasSkills || hasExperience;
+  const canApplyAll = hasSummary || hasSkills || hasExperience || hasEducation;
   const allApplied =
     (!hasSummary || appliedSections.has("summary")) &&
     (!hasSkills || appliedSections.has("skills")) &&
-    (!hasExperience || appliedSections.has("experience"));
+    (!hasExperience || appliedSections.has("experience")) &&
+    (!hasEducation || appliedSections.has("education"));
 
   return (
     <Card
@@ -323,22 +327,93 @@ export default function AIResultsPanel({
                     >
                       Ranked by relevance to the job posting
                     </Typography>
-                    <Stack
-                      direction="row"
-                      flexWrap="wrap"
-                      gap={1}
-                      sx={{ mt: 1.5 }}
-                    >
-                      {content.ordered_skills?.map((skill, idx) => (
-                        <Chip
-                          key={idx}
-                          label={`${idx + 1}. ${skill}`}
-                          color="primary"
-                          variant="outlined"
-                          sx={{ fontWeight: idx < 5 ? 600 : 400 }}
-                        />
-                      ))}
-                    </Stack>
+
+                    {/* Skills with Relevance Scoring */}
+                    <Box sx={{ mt: 2 }}>
+                      {content.ordered_skills?.map((skill, idx) => {
+                        // Calculate relevance score (100% for first, decreasing)
+                        const totalSkills = content.ordered_skills?.length || 1;
+                        const relevanceScore = Math.round(
+                          100 - (idx / totalSkills) * 60
+                        ); // Top skills get 100%, bottom get 40%
+                        const isTopSkill = idx < 5;
+
+                        return (
+                          <Box
+                            key={idx}
+                            sx={{
+                              mb: 1.5,
+                              p: 1.5,
+                              bgcolor: isTopSkill ? "primary.50" : "grey.50",
+                              borderRadius: 1,
+                              border: "1px solid",
+                              borderColor: isTopSkill
+                                ? "primary.200"
+                                : "grey.200",
+                              transition: "all 0.2s",
+                              "&:hover": {
+                                boxShadow: 1,
+                                borderColor: "primary.main",
+                              },
+                            }}
+                          >
+                            <Stack
+                              direction="row"
+                              spacing={2}
+                              alignItems="center"
+                            >
+                              <Chip
+                                label={idx + 1}
+                                size="small"
+                                color={isTopSkill ? "primary" : "default"}
+                                sx={{ minWidth: 32, fontWeight: 600 }}
+                              />
+                              <Typography
+                                flex={1}
+                                variant="body2"
+                                sx={{ fontWeight: isTopSkill ? 600 : 400 }}
+                              >
+                                {skill}
+                              </Typography>
+                              <Box sx={{ width: 120 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={relevanceScore}
+                                  sx={{
+                                    height: 8,
+                                    borderRadius: 1,
+                                    bgcolor: "grey.200",
+                                    "& .MuiLinearProgress-bar": {
+                                      bgcolor:
+                                        relevanceScore >= 80
+                                          ? "success.main"
+                                          : relevanceScore >= 60
+                                          ? "primary.main"
+                                          : "warning.main",
+                                    },
+                                  }}
+                                />
+                              </Box>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  minWidth: 45,
+                                  fontWeight: 600,
+                                  color:
+                                    relevanceScore >= 80
+                                      ? "success.main"
+                                      : relevanceScore >= 60
+                                      ? "primary.main"
+                                      : "text.secondary",
+                                }}
+                              >
+                                {relevanceScore}%
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        );
+                      })}
+                    </Box>
                   </Box>
 
                   {/* Skills to Emphasize */}
@@ -757,30 +832,54 @@ export default function AIResultsPanel({
             <Stack spacing={2}>
               {hasEducation ? (
                 <>
-                  <Typography variant="caption" color="text.secondary">
-                    Education is pulled directly from your profile (read-only
-                    preview)
-                  </Typography>
+                  <Box>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mb: 1 }}
+                    >
+                      <CheckCircleIcon color="success" fontSize="small" />
+                      <Typography variant="subtitle2">
+                        Education History ({content.sections?.education?.length}
+                        )
+                      </Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      Education entries from your profile - click Apply to add
+                      to draft
+                    </Typography>
+                  </Box>
+
                   <Stack spacing={2}>
                     {content.sections?.education?.map((edu, idx) => (
-                      <Box key={idx}>
+                      <Box
+                        key={idx}
+                        sx={{
+                          p: 2,
+                          bgcolor: "grey.50",
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "grey.300",
+                        }}
+                      >
                         <Typography
                           variant="subtitle2"
                           sx={{ fontWeight: 600 }}
                         >
-                          {edu.degree}
+                          🎓 {edu.degree}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {edu.institution}
                           {edu.graduation_date && ` • ${edu.graduation_date}`}
                         </Typography>
                         {edu.details && edu.details.length > 0 && (
-                          <Stack component="ul" sx={{ pl: 3, m: 0, mt: 0.5 }}>
+                          <Stack component="ul" sx={{ pl: 3, m: 0, mt: 1 }}>
                             {edu.details.map((detail, didx) => (
                               <Typography
                                 component="li"
                                 key={didx}
-                                variant="caption"
+                                variant="body2"
                               >
                                 {detail}
                               </Typography>
@@ -789,6 +888,25 @@ export default function AIResultsPanel({
                         )}
                       </Box>
                     ))}
+                  </Stack>
+
+                  <Stack direction="row" spacing={1}>
+                    {appliedSections.has("education") ? (
+                      <Chip
+                        icon={<CheckCircleIcon />}
+                        label="Applied to draft"
+                        color="primary"
+                        size="small"
+                      />
+                    ) : (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => onApplySection("education")}
+                      >
+                        ✓ Apply Education
+                      </Button>
+                    )}
                   </Stack>
                 </>
               ) : (
