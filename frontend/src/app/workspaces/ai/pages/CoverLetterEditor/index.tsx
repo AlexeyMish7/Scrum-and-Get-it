@@ -67,6 +67,8 @@ import type {
 import CoverLetterGenerationPanel from "../../components/cover-letter/CoverLetterGenerationPanel";
 import CoverLetterAIResultsPanel from "../../components/cover-letter/CoverLetterAIResultsPanel";
 import CoverLetterPreviewPanel from "../../components/cover-letter/CoverLetterPreviewPanel";
+import CoverLetterAnalyticsDialog from "../../components/cover-letter/CoverLetterAnalyticsDialog";
+import analytics from "@workspaces/ai/hooks/useCoverLetterAnalytics";
 import {
   exportAsPlainText,
   exportAsPDF,
@@ -142,6 +144,7 @@ export default function CoverLetterEditor() {
   const [showNewDraftDialog, setShowNewDraftDialog] = useState(false);
   const [newDraftName, setNewDraftName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("formal");
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // Generation state
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -428,6 +431,20 @@ export default function CoverLetterEditor() {
         },
       });
 
+      // Record that this cover letter was sent (local analytics record)
+      try {
+        analytics.recordCoverLetterOutcome({
+          draftId: activeDraft.id,
+          jobId: linkingJobId,
+          templateId: activeDraft.templateId,
+          outcome: "no_response",
+          sentAt: new Date().toISOString(),
+        });
+      } catch (e) {
+        // non-fatal
+        console.warn("Failed to record analytics event:", e);
+      }
+
       setSnackbar({
         open: true,
         message: "Cover letter linked to job successfully",
@@ -493,6 +510,13 @@ export default function CoverLetterEditor() {
           onClick={() => setShowNewDraftDialog(true)}
         >
           New Cover Letter
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => setAnalyticsOpen(true)}
+          sx={{ ml: 1 }}
+        >
+          Analytics
         </Button>
       </Stack>
 
@@ -668,6 +692,10 @@ export default function CoverLetterEditor() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <CoverLetterAnalyticsDialog
+        open={analyticsOpen}
+        onClose={() => setAnalyticsOpen(false)}
+      />
     </Container>
   );
 }
