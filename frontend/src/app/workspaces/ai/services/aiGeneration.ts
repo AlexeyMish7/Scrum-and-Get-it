@@ -7,6 +7,7 @@ import type {
   GenerateResponse,
   SkillsOptimizationContent,
   GenerateResumeResult,
+  GenerateCoverLetterResult,
   ExperienceTailoringResult,
   AIArtifactSummary,
   AIArtifact,
@@ -21,6 +22,7 @@ export async function generateResume(
     variant?: number;
     model?: string;
     prompt?: string;
+    templateId?: string;
   }
 ): Promise<GenerateResumeResult> {
   // POST /api/generate/resume (returns full content when available)
@@ -34,10 +36,10 @@ export async function generateResume(
 export async function generateCoverLetter(
   userId: string,
   jobId: number,
-  options?: { tone?: string; focus?: string }
-) {
+  options?: { tone?: string; focus?: string; templateId?: string }
+): Promise<GenerateCoverLetterResult> {
   // POST /api/generate/cover-letter
-  return aiClient.postJson<GenerateResponse>(
+  return aiClient.postJson<GenerateCoverLetterResult>(
     "/api/generate/cover-letter",
     { jobId, options },
     userId

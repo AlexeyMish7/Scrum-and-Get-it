@@ -63,6 +63,19 @@ export interface GenerateResumeResult extends GenerateResponse {
   content?: ResumeArtifactContent;
 }
 
+// Cover letter content structure
+export interface CoverLetterContent {
+  opening?: string;
+  body?: string[];
+  closing?: string;
+  tone?: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface GenerateCoverLetterResult extends GenerateResponse {
+  content?: CoverLetterContent;
+}
+
 // Experience tailoring content (subset of resume, specialized for UC-050)
 export interface ExperienceTailoringContent {
   roles: Array<{

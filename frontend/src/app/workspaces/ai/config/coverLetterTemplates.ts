@@ -514,6 +514,29 @@ export function importCustomTemplate(
 }
 
 /**
+ * SAVE CUSTOM TEMPLATE
+ * Saves a new custom template created through the template builder UI
+ * Inputs: Complete CoverLetterTemplate object
+ * Output: Saved template (added to localStorage)
+ */
+export function saveCustomTemplate(template: CoverLetterTemplate): void {
+  // Ensure isSystem is false
+  template.isSystem = false;
+
+  // Get existing custom templates
+  const existing = getUserCustomTemplates();
+
+  // Check for duplicate ID (shouldn't happen, but be safe)
+  if (existing.some((t) => t.id === template.id)) {
+    template.id = `${template.id}-${Date.now()}`;
+  }
+
+  // Save to localStorage
+  const updated = [...existing, template];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+}
+
+/**
  * TONE DESCRIPTIONS
  * Help text for tone selection
  */

@@ -55,7 +55,9 @@ import { useNavigate } from "react-router-dom";
 
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { useAuth } from "@shared/context/AuthContext";
+import { generateCoverLetter } from "@workspaces/ai/services/aiGeneration";
 import CoverLetterStarter from "@workspaces/ai/components/cover-letter/CoverLetterStarter";
+import CoverLetterTemplateShowcase from "@workspaces/ai/components/cover-letter/CoverLetterTemplateShowcase";
 import {
   COVER_LETTER_TEMPLATES,
   getCoverLetterTemplateList,
@@ -77,40 +79,21 @@ import {
   generateFilename,
 } from "../../utils/coverLetterExport";
 import { linkCoverLetterToJob } from "../../services/jobMaterialsService";
+import { listJobs } from "@shared/services/dbMappers";
 
 /**
- * Mock job data for development
- * FUTURE: Replace with actual jobs from jobs table via CRUD service
- * - Use listRows("jobs", "*", { filters: [...] })
- * - Scope with withUser(user.id)
+ * Job interface matching database schema
+ * Fetched via listJobs(user.id) from jobs table
  */
 interface Job {
   id: number;
-  job_title: string;
-  company_name: string;
-  job_description?: string;
+  job_title: string | null;
+  company_name: string | null;
+  job_description: string | null;
+  job_status?: string | null;
+  industry?: string | null;
+  job_link?: string | null;
 }
-
-const MOCK_JOBS: Job[] = [
-  {
-    id: 1,
-    job_title: "Senior Software Engineer",
-    company_name: "TechCorp",
-    job_description: "Build scalable web applications...",
-  },
-  {
-    id: 2,
-    job_title: "Frontend Developer",
-    company_name: "StartupXYZ",
-    job_description: "Create beautiful user interfaces...",
-  },
-  {
-    id: 3,
-    job_title: "Full Stack Engineer",
-    company_name: "BigTech Inc",
-    job_description: "Develop end-to-end features...",
-  },
-];
 
 export default function CoverLetterEditor() {
   const navigate = useNavigate();
@@ -134,6 +117,7 @@ export default function CoverLetterEditor() {
     changeTone,
     changeLength,
     changeCulture,
+    changeTemplate,
     pendingAIContent,
     setPendingAIContent,
     applyPendingContent,
@@ -146,6 +130,11 @@ export default function CoverLetterEditor() {
   const [newDraftName, setNewDraftName] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("formal");
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [showTemplateShowcase, setShowTemplateShowcase] = useState(false);
+
+  // Jobs state - fetched from database
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   // Generation state
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -186,6 +175,56 @@ export default function CoverLetterEditor() {
     }
   }, [user?.id, setUserId, loadFromCacheSync, syncWithDatabase]);
 
+  // Fetch real jobs from database
+  useEffect(() => {
+    let mounted = true;
+    if (!user?.id) return;
+
+    setLoadingJobs(true);
+    (async () => {
+      try {
+        const res = await listJobs(user.id, {
+          order: { column: "created_at", ascending: false },
+        });
+
+        if (!mounted) return;
+
+        if (res.error) {
+          console.error("Failed to fetch jobs:", res.error);
+          setSnackbar({
+            open: true,
+            message: "Failed to load jobs",
+            severity: "error",
+          });
+          setJobs([]);
+        } else {
+          // Map database rows to Job interface
+          const jobRows = (res.data ?? []) as Array<Record<string, unknown>>;
+          const mappedJobs: Job[] = jobRows.map((row) => ({
+            id: row.id as number,
+            job_title: row.job_title as string | null,
+            company_name: row.company_name as string | null,
+            job_description: row.job_description as string | null,
+            job_status: row.job_status as string | null,
+            industry: row.industry as string | null,
+            job_link: row.job_link as string | null,
+          }));
+          setJobs(mappedJobs);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error("Error fetching jobs:", err);
+        setJobs([]);
+      } finally {
+        if (mounted) setLoadingJobs(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
   // Error handling
   useEffect(() => {
     if (error) {
@@ -224,37 +263,32 @@ export default function CoverLetterEditor() {
   // Auto-fetch company research when job is selected
   useEffect(() => {
     const fetchResearch = async () => {
-      if (!selectedJobId || !activeDraft) return;
+      if (!selectedJobId || !activeDraft || !user?.id) return;
 
-      const selectedJob = MOCK_JOBS.find((j) => j.id === selectedJobId);
+      const selectedJob = jobs.find((j) => j.id === selectedJobId);
       if (!selectedJob?.company_name) return;
 
       try {
-        // Fetch company research from backend
-        const response = await fetch(
-          `/api/company/research?name=${encodeURIComponent(
-            selectedJob.company_name
-          )}&industry=${encodeURIComponent(selectedJob.job_description || "")}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-          }
-        );
+        // Fetch company research from correct backend endpoint
+        const response = await fetch(`/api/generate/company-research`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": user.id,
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            companyName: selectedJob.company_name,
+            industry: selectedJob.industry || "",
+            jobId: selectedJobId,
+          }),
+        });
 
         if (response.ok) {
-          const { data } = await response.json();
-          if (data) {
-            // Store company research in draft
-            await updateHeader({
-              ...activeDraft.content.header,
-              companyName: selectedJob.company_name,
-            });
-
-            // Update company research in store
-            // Note: fetchCompanyResearch method in store should handle this
-            // For now, we're just ensuring the data is available
+          const result = await response.json();
+          if (result.data?.content) {
+            // Store company research in draft metadata
+            // The research will be automatically used in generation
             setSnackbar({
               open: true,
               message: `Company research loaded for ${selectedJob.company_name}`,
@@ -270,7 +304,7 @@ export default function CoverLetterEditor() {
 
     fetchResearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedJobId, activeDraft?.id]);
+  }, [selectedJobId, activeDraft?.id, user?.id]);
 
   // Auto-regenerate when tone/length/culture changes (if enabled and content exists)
   useEffect(() => {
@@ -294,7 +328,7 @@ export default function CoverLetterEditor() {
   ]);
 
   const handleGenerate = async () => {
-    if (!selectedJobId || !activeDraft) {
+    if (!selectedJobId || !activeDraft || !user?.id) {
       setSnackbar({
         open: true,
         message: "Please select a job first",
@@ -305,31 +339,34 @@ export default function CoverLetterEditor() {
 
     setIsGenerating(true);
     try {
-      // FUTURE: Call backend AI generation endpoint (POST /api/generate/cover-letter)
-      // For now, mock the AI content with industry language preferences
-      const selectedJob = MOCK_JOBS.find((j) => j.id === selectedJobId);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Get current template for template-aware AI generation
+      const templateId = activeDraft.templateId || "formal";
 
-      // Customize content based on industry language preferences
-      const technicalEmphasis = industryLanguage.useTechnicalJargon
-        ? "utilizing modern tech stacks including React, TypeScript, and cloud-native architectures"
-        : "working with modern frameworks and technologies";
+      // Call real backend AI generation endpoint with template
+      const result = await generateCoverLetter(user.id, selectedJobId, {
+        tone: activeDraft.metadata.tone,
+        focus: industryLanguage.includeRoleSpecific
+          ? "role-specific"
+          : undefined,
+        templateId,
+      });
 
-      const keywordEmphasis = industryLanguage.emphasizeKeywords
-        ? "scalable architecture, microservices, CI/CD pipelines, and user-centric design"
-        : "scalable architecture and user-centric design";
+      if (!result.content) {
+        throw new Error("No content returned from generation");
+      }
 
-      const roleSpecificTerms = industryLanguage.includeRoleSpecific
-        ? "agile methodologies, sprint planning, and cross-functional collaboration"
-        : "collaborative development";
-
+      // Parse the AI-generated content
       const mockContent = {
-        opening: `Dear Hiring Manager,\n\nI am writing to express my strong interest in the ${selectedJob?.job_title} position at ${selectedJob?.company_name}. With my background in software development and passion for building innovative solutions, I am excited about the opportunity to contribute to your team.`,
-        body: [
-          `Throughout my career, I have developed a strong foundation in full-stack development, ${technicalEmphasis}. My experience aligns well with the requirements outlined in your job posting, particularly in areas of ${keywordEmphasis}.`,
-          `I am particularly drawn to ${selectedJob?.company_name} because of your commitment to innovation and excellence in the technology sector. I believe my skills in problem-solving and ${roleSpecificTerms} would make me a valuable addition to your team.`,
+        opening:
+          result.content.opening ||
+          `Dear Hiring Manager,\n\nI am writing to express my strong interest in this position.`,
+        body: result.content.body || [
+          "Throughout my career, I have developed relevant skills and experience.",
+          "I am particularly drawn to your organization and believe I would be a valuable addition to your team.",
         ],
-        closing: `Thank you for considering my application. I look forward to the opportunity to discuss how my experience and skills can contribute to ${selectedJob?.company_name}'s continued success. I am available for an interview at your earliest convenience.`,
+        closing:
+          result.content.closing ||
+          `Thank you for considering my application. I look forward to discussing this opportunity further.`,
         tone: activeDraft.metadata.tone,
       };
 
@@ -339,10 +376,14 @@ export default function CoverLetterEditor() {
         message: "Cover letter generated successfully",
         severity: "success",
       });
-    } catch {
+    } catch (error) {
+      console.error("Cover letter generation error:", error);
       setSnackbar({
         open: true,
-        message: "Failed to generate cover letter",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate cover letter",
         severity: "error",
       });
     } finally {
@@ -530,6 +571,13 @@ export default function CoverLetterEditor() {
         </Button>
         <Button
           variant="outlined"
+          onClick={() => setShowTemplateShowcase(true)}
+          sx={{ ml: 1 }}
+        >
+          Browse Templates
+        </Button>
+        <Button
+          variant="outlined"
           onClick={() => setAnalyticsOpen(true)}
           sx={{ ml: 1 }}
         >
@@ -565,7 +613,7 @@ export default function CoverLetterEditor() {
           {/* Left Panel: Generation Controls (35%) */}
           <Box sx={{ flex: "0 0 35%" }}>
             <CoverLetterGenerationPanel
-              jobs={MOCK_JOBS}
+              jobs={jobs}
               selectedJobId={selectedJobId}
               onJobSelect={(jobId) => setSelectedJobId(jobId)}
               tone={activeDraft.metadata.tone}
@@ -581,6 +629,7 @@ export default function CoverLetterEditor() {
               onGenerate={handleGenerate}
               isGenerating={isGenerating}
               companyResearch={activeDraft.companyResearch}
+              loadingJobs={loadingJobs}
             />
           </Box>
 
@@ -675,8 +724,10 @@ export default function CoverLetterEditor() {
             </Alert>
             <Typography variant="body2" color="text.secondary">
               Job:{" "}
-              {MOCK_JOBS.find((j) => j.id === linkingJobId)?.job_title || ""} at{" "}
-              {MOCK_JOBS.find((j) => j.id === linkingJobId)?.company_name || ""}
+              {jobs.find((j) => j.id === linkingJobId)?.job_title || "Unknown"}{" "}
+              at{" "}
+              {jobs.find((j) => j.id === linkingJobId)?.company_name ||
+                "Unknown"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               This will create a record in your job materials for reference and
@@ -709,6 +760,25 @@ export default function CoverLetterEditor() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Template Showcase Dialog */}
+      <CoverLetterTemplateShowcase
+        open={showTemplateShowcase}
+        onClose={() => setShowTemplateShowcase(false)}
+        currentTemplateId={activeDraft?.templateId}
+        onSelectTemplate={async (templateId) => {
+          if (activeDraft) {
+            await changeTemplate(templateId);
+            setSnackbar({
+              open: true,
+              message: "Template changed successfully",
+              severity: "success",
+            });
+          }
+          setShowTemplateShowcase(false);
+        }}
+      />
+
       <CoverLetterAnalyticsDialog
         open={analyticsOpen}
         onClose={() => setAnalyticsOpen(false)}

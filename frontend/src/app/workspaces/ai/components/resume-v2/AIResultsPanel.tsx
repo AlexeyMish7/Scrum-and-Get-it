@@ -327,7 +327,7 @@ export default function AIResultsPanel({
                     >
                       Ranked by relevance to the job posting
                     </Typography>
-                    
+
                     {/* Skills with Relevance Scoring */}
                     <Box sx={{ mt: 2 }}>
                       {content.ordered_skills?.map((skill, idx) => {

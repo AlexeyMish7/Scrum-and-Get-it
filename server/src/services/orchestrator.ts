@@ -33,8 +33,6 @@ import type {
   ArtifactRow,
 } from "../types/index.js";
 
-
-
 // NOTE: This file does not import a DB client to avoid coupling. Replace the pseudo-DB calls
 // with your Supabase server client or other DB access method (use service role key server-side).
 
@@ -152,11 +150,13 @@ export async function handleGenerateResume(
   } catch {}
 
   // 4) Prompt composition with enriched context
+  const templateId = req.options?.templateId ?? "classic";
   const rawPrompt = buildResumePrompt({
     profile,
     job,
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
+    templateId,
     skillsList,
     employment,
     education,
@@ -312,11 +312,13 @@ export async function handleGenerateCoverLetter(
   if (job.user_id && job.user_id !== req.userId)
     return { error: "job does not belong to user" };
 
+  const templateId = req.options?.templateId ?? "formal";
   const rawPrompt = buildCoverLetterPrompt({
     profile,
     job,
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
+    templateId,
   });
   const prompt = sanitizePrompt(rawPrompt);
 
@@ -661,20 +663,31 @@ export async function handleSalaryResearch(req: {
       timeoutMs: envNumber("AI_TIMEOUT_MS", 20000),
     } as const;
 
-    const gen: GenerateResult = await aiClient.generate("salary_research", prompt, aiOpts);
+    const gen: GenerateResult = await aiClient.generate(
+      "salary_research",
+      prompt,
+      aiOpts
+    );
 
     if (!gen?.json && !gen?.text) {
-      logError("AI returned no content for salary research", { title: req.title });
+      logError("AI returned no content for salary research", {
+        title: req.title,
+      });
       return { error: "AI returned empty response" };
     }
 
     let salaryData: any = gen?.json ?? gen?.text ?? {};
-if (typeof salaryData === "string" && salaryData.trim()) {
+    if (typeof salaryData === "string" && salaryData.trim()) {
       try {
-        const cleaned = salaryData.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        const cleaned = salaryData
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim();
         salaryData = JSON.parse(cleaned);
       } catch {
-        logError("Salary research JSON parse failed", { raw: salaryData.slice(0, 200) });
+        logError("Salary research JSON parse failed", {
+          raw: salaryData.slice(0, 200),
+        });
         return { error: "Invalid AI response format" };
       }
     }
@@ -699,12 +712,11 @@ if (typeof salaryData === "string" && salaryData.trim()) {
       created_at: new Date().toISOString(),
     };
 
-  logInfo("orc_salary_research_ok", {
-  userId: req.userId,
-  title: req.title,
-  range: (salaryData as any)?.range,
-});
-
+    logInfo("orc_salary_research_ok", {
+      userId: req.userId,
+      title: req.title,
+      range: (salaryData as any)?.range,
+    });
 
     return { artifact };
   } catch (err: any) {
@@ -717,13 +729,12 @@ if (typeof salaryData === "string" && salaryData.trim()) {
   }
 }
 
-
 export default {
   handleGenerateResume,
   handleGenerateCoverLetter,
   handleSkillsOptimization,
   handleExperienceTailoring,
-  handleSalaryResearch
+  handleSalaryResearch,
 };
 
 // -------------------------------------------------------------
@@ -1007,7 +1018,7 @@ export async function handleCompanyResearch(req: {
         companyName,
         error: aiErr?.message,
       });
-      
+
       // Fallback to mock data if AI fails
       logInfo("Falling back to mock company data", { companyName });
       const mockData = await fetchCompanyResearch(
@@ -1018,7 +1029,7 @@ export async function handleCompanyResearch(req: {
       if (!mockData) {
         return { error: "Company research data not available" };
       }
-      
+
       // Use mock data as AI result
       aiResult = { json: mockData, error: null };
     }
@@ -1060,7 +1071,10 @@ export async function handleCompanyResearch(req: {
       } catch (parseErr) {
         logError("Failed to parse AI company research response", {
           error: parseErr,
-          rawResponse: typeof researchData === "string" ? researchData.slice(0, 200) : String(researchData),
+          rawResponse:
+            typeof researchData === "string"
+              ? researchData.slice(0, 200)
+              : String(researchData),
         });
         return { error: "Invalid AI response format" };
       }
@@ -1069,12 +1083,20 @@ export async function handleCompanyResearch(req: {
     // Log parsed data structure for debugging
     logInfo("Parsed research data structure", {
       companyName,
-      hasCompanyName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+      hasCompanyName: !!(
+        researchData?.companyName ||
+        researchData?.company_name ||
+        researchData?.name
+      ),
       hasIndustry: !!researchData?.industry,
       hasDescription: !!researchData?.description,
       hasMission: !!researchData?.mission,
-      newsCount: Array.isArray(researchData?.news) ? researchData.news.length : 0,
-      productsCount: Array.isArray(researchData?.products) ? researchData.products.length : 0,
+      newsCount: Array.isArray(researchData?.news)
+        ? researchData.news.length
+        : 0,
+      productsCount: Array.isArray(researchData?.products)
+        ? researchData.products.length
+        : 0,
     });
 
     // Check if we got any data at all
@@ -1090,7 +1112,11 @@ export async function handleCompanyResearch(req: {
     if (!validateCompanyResearchResponse(researchData)) {
       logError("AI response failed validation", {
         companyName,
-        hasName: !!(researchData?.companyName || researchData?.company_name || researchData?.name),
+        hasName: !!(
+          researchData?.companyName ||
+          researchData?.company_name ||
+          researchData?.name
+        ),
         keys: Object.keys(researchData || {}),
         sample: JSON.stringify(researchData || {}).slice(0, 300),
       });
@@ -1099,28 +1125,72 @@ export async function handleCompanyResearch(req: {
 
     // Ensure required fields have defaults - handle multiple field name variations
     const finalData = {
-      companyName: researchData.companyName || researchData.company_name || researchData.name || companyName,
+      companyName:
+        researchData.companyName ||
+        researchData.company_name ||
+        researchData.name ||
+        companyName,
       industry: researchData.industry || researchData.sector || "Unknown",
-      size: researchData.size || researchData.employee_count || researchData.employeeCount || null,
-      location: researchData.location || researchData.headquarters || researchData.hq || null,
-      founded: researchData.founded || researchData.founded_year || researchData.yearFounded || null,
-      website: researchData.website || researchData.url || researchData.companyUrl || null,
-      mission: researchData.mission || researchData.mission_statement || researchData.missionStatement || null,
-      description: researchData.description || researchData.summary || researchData.overview || researchData.about || null,
-      news: Array.isArray(researchData.news) ? researchData.news : (Array.isArray(researchData.recent_news) ? researchData.recent_news : []),
-      culture: researchData.culture || researchData.company_culture || {
-        type: "corporate",
-        remotePolicy: null,
-        values: [],
-        perks: [],
-      },
+      size:
+        researchData.size ||
+        researchData.employee_count ||
+        researchData.employeeCount ||
+        null,
+      location:
+        researchData.location ||
+        researchData.headquarters ||
+        researchData.hq ||
+        null,
+      founded:
+        researchData.founded ||
+        researchData.founded_year ||
+        researchData.yearFounded ||
+        null,
+      website:
+        researchData.website ||
+        researchData.url ||
+        researchData.companyUrl ||
+        null,
+      mission:
+        researchData.mission ||
+        researchData.mission_statement ||
+        researchData.missionStatement ||
+        null,
+      description:
+        researchData.description ||
+        researchData.summary ||
+        researchData.overview ||
+        researchData.about ||
+        null,
+      news: Array.isArray(researchData.news)
+        ? researchData.news
+        : Array.isArray(researchData.recent_news)
+        ? researchData.recent_news
+        : [],
+      culture: researchData.culture ||
+        researchData.company_culture || {
+          type: "corporate",
+          remotePolicy: null,
+          values: [],
+          perks: [],
+        },
       leadership: Array.isArray(researchData.leadership)
         ? researchData.leadership
-        : (Array.isArray(researchData.executives) ? researchData.executives : []),
+        : Array.isArray(researchData.executives)
+        ? researchData.executives
+        : [],
       products: Array.isArray(researchData.products)
         ? researchData.products
-        : (Array.isArray(researchData.services) ? researchData.services : (Array.isArray(researchData.offerings) ? researchData.offerings : [])),
-      rating: researchData.rating || researchData.glassdoor || researchData.glassdoorRating || null,
+        : Array.isArray(researchData.services)
+        ? researchData.services
+        : Array.isArray(researchData.offerings)
+        ? researchData.offerings
+        : [],
+      rating:
+        researchData.rating ||
+        researchData.glassdoor ||
+        researchData.glassdoorRating ||
+        null,
     };
 
     // 6) Create artifact
@@ -1164,4 +1234,3 @@ export async function handleCompanyResearch(req: {
     return { error: `Research failed: ${err?.message ?? "unknown error"}` };
   }
 }
-

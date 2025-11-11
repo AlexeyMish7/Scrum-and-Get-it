@@ -9,15 +9,18 @@ import {
   Tab,
   Card,
   CardContent,
+  Chip,
+  Divider,
 } from "@mui/material";
 import { useState } from "react";
 import RegionAnchor from "@shared/components/common/RegionAnchor";
 import { useNavigate } from "react-router-dom";
 import PaletteIcon from "@mui/icons-material/Palette";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EmailIcon from "@mui/icons-material/Email";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import CompareIcon from "@mui/icons-material/Compare";
 import CoverLetterTemplateManager from "@workspaces/ai/components/cover-letter/CoverLetterTemplateManager";
 
 /**
@@ -25,17 +28,19 @@ import CoverLetterTemplateManager from "@workspaces/ai/components/cover-letter/C
  * Centralized page for managing resume & cover letter templates.
  *
  * PURPOSE: Template library and management (create custom, import, export)
- * NOT FOR: Choosing templates for new documents (that happens in the editors)
+ * Enhanced with visual demonstrations showing how templates affect AI generation.
  *
  * Flow:
  * - Users manage templates here (create custom, import from JSON, export)
  * - When creating a resume/cover letter, template selection happens in the editor
+ * - See visual comparisons of how different templates change AI output
  */
 export default function TemplatesHub() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"resume" | "cover-letter">(
     "resume"
   );
+  const [showComparison, setShowComparison] = useState(false);
 
   return (
     <Box>
@@ -55,26 +60,207 @@ export default function TemplatesHub() {
         </Box>
       </Stack>
 
-      {/* Info Alert */}
-      <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 3 }}>
-        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-          How Templates Work
-        </Typography>
-        <Typography variant="caption" component="div">
-          • <strong>System Templates</strong>: Pre-built professional templates
-          for both resumes and cover letters - always available and cannot be
-          edited
-        </Typography>
-        <Typography variant="caption" component="div">
-          • <strong>Custom Templates</strong>: Create your own templates with
-          custom colors, fonts, and layouts for resumes and cover letters
-        </Typography>
-        <Typography variant="caption" component="div" sx={{ mt: 1 }}>
-          💡 <strong>Tip</strong>: Custom templates you create here will appear
-          alongside system templates in the Resume Editor and Cover Letter
-          Editor.
-        </Typography>
-      </Alert>
+      {/* How Templates Work - Enhanced Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: "primary.50",
+          border: "1px solid",
+          borderColor: "primary.200",
+        }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <AutoAwesomeIcon color="primary" />
+            <Typography variant="h6" fontWeight={600}>
+              How Templates Work
+            </Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Templates control both the <strong>visual appearance</strong> and{" "}
+            <strong>AI generation behavior</strong> of your documents. Each
+            template includes:
+          </Typography>
+          <Stack direction="row" spacing={3} flexWrap="wrap">
+            <Box sx={{ flex: "1 1 200px" }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                🎨 Visual Styling
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Custom fonts, colors, spacing, and layout that match your
+                industry and personal brand.
+              </Typography>
+            </Box>
+            <Box sx={{ flex: "1 1 200px" }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                🤖 AI Behavior
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Each template tells the AI to write in a specific tone and style
+                (formal, creative, technical, etc.).
+              </Typography>
+            </Box>
+            <Box sx={{ flex: "1 1 200px" }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                📄 Content Structure
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Templates determine section order, bullet formatting, and
+                emphasis areas.
+              </Typography>
+            </Box>
+          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<CompareIcon />}
+            onClick={() => setShowComparison(!showComparison)}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            {showComparison ? "Hide" : "Show"} Template Comparison
+          </Button>
+
+          {/* Template Comparison Section */}
+          {showComparison && (
+            <Box
+              sx={{ mt: 2, p: 2, bgcolor: "background.paper", borderRadius: 1 }}
+            >
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Example: How Different Templates Affect AI Generation
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              <Stack spacing={2}>
+                {/* Classic Template Example */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      mb={1}
+                    >
+                      <Chip label="Classic" size="small" color="default" />
+                      <Typography variant="caption" color="text.secondary">
+                        Traditional & Conservative
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" fontStyle="italic">
+                      "Managed cross-functional team of 8 engineers to deliver
+                      enterprise software solutions. Consistently exceeded
+                      quarterly performance targets by 15%."
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1, display: "block" }}
+                    >
+                      → Emphasizes stability, proven results, formal language
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                {/* Modern Template Example */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      mb={1}
+                    >
+                      <Chip label="Modern" size="small" color="primary" />
+                      <Typography variant="caption" color="text.secondary">
+                        Contemporary & Tech-Forward
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" fontStyle="italic">
+                      "Led agile transformation initiative, implementing CI/CD
+                      pipelines and microservices architecture. Accelerated
+                      deployment velocity 3x while improving system
+                      reliability."
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1, display: "block" }}
+                    >
+                      → Focuses on innovation, technical skills, modern
+                      methodologies
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                {/* Creative Template Example */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      mb={1}
+                    >
+                      <Chip label="Creative" size="small" color="secondary" />
+                      <Typography variant="caption" color="text.secondary">
+                        Engaging & Dynamic
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" fontStyle="italic">
+                      "Transformed traditional software delivery into a
+                      collaborative innovation engine. Empowered team to ship
+                      user-delighting features 40% faster through design
+                      thinking workshops."
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1, display: "block" }}
+                    >
+                      → Emphasizes creativity, problem-solving, storytelling
+                      approach
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                {/* Minimal Template Example */}
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      mb={1}
+                    >
+                      <Chip label="Minimal" size="small" />
+                      <Typography variant="caption" color="text.secondary">
+                        Concise & Direct
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" fontStyle="italic">
+                      "Led 8-person engineering team. Delivered enterprise
+                      solutions. Exceeded targets by 15%."
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1, display: "block" }}
+                    >
+                      → Brief bullets, core achievements, concise language
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Stack>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Same experience, different templates!</strong> The AI
+                  automatically adjusts language, tone, and emphasis based on
+                  your selected template.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </Stack>
+      </Paper>
 
       {/* Tabs for Resume vs Cover Letter Templates */}
       <Paper variant="outlined" sx={{ mb: 3 }}>

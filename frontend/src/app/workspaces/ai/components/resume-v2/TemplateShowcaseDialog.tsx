@@ -78,14 +78,7 @@ const SAMPLE_CONTENT = {
       graduation_date: "2019",
     },
   ],
-  skills: [
-    "React",
-    "TypeScript",
-    "Node.js",
-    "AWS",
-    "PostgreSQL",
-    "Docker",
-  ],
+  skills: ["React", "TypeScript", "Node.js", "AWS", "PostgreSQL", "Docker"],
 };
 
 export default function TemplateShowcaseDialog({
@@ -359,10 +352,7 @@ export default function TemplateShowcaseDialog({
 
           {/* Full Preview Section */}
           {selectedTemplate && (
-            <Paper
-              variant="outlined"
-              sx={{ p: 3, mt: 3, bgcolor: "grey.50" }}
-            >
+            <Paper variant="outlined" sx={{ p: 3, mt: 3, bgcolor: "grey.50" }}>
               <Stack spacing={2}>
                 <Stack
                   direction="row"

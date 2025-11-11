@@ -11,12 +11,14 @@
 **File**: `frontend/src/app/workspaces/ai/components/resume-v2/TemplateShowcaseDialog.tsx`
 
 **Integration**:
+
 - Added "Browse Templates" button to ResumeEditorV2 top bar
 - Dialog opens with full template gallery
 - Features: Category filtering, live preview, sample content rendering
 - Applies template to active draft on selection
 
 **Demo Actions Covered**:
+
 - ✅ Browse available resume templates
 - ✅ Select professional template and create new resume
 - ✅ Verify template application and customization
@@ -35,7 +37,12 @@
 // Add to Skills tab display:
 <Box>
   {/* Skills Header with Match Score */}
-  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+  <Stack
+    direction="row"
+    justifyContent="space-between"
+    alignItems="center"
+    mb={2}
+  >
     <Typography variant="h6">Skills Optimization</Typography>
     <Chip
       label={`${skillsMatchScore}% Match`}
@@ -107,6 +114,7 @@
 ```
 
 **Demo Actions Covered**:
+
 - Show skills reordering based on job requirements
 - Display relevance scoring
 - Highlight gap skills
@@ -124,20 +132,20 @@
 **Implementation**:
 
 ```tsx
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Add to DraftPreviewPanel component:
 const [sections, setSections] = useState(draft.metadata.sections);
 
 const handleDragEnd = (result) => {
   if (!result.destination) return;
-  
+
   const items = Array.from(sections);
   const [reorderedItem] = items.splice(result.source.index, 1);
   items.splice(result.destination.index, 0, reorderedItem);
-  
+
   setSections(items);
-  onReorderSections(items.map(s => s.name));
+  onReorderSections(items.map((s) => s.name));
 };
 
 // In render:
@@ -167,7 +175,7 @@ const handleDragEnd = (result) => {
                   "&:hover": {
                     boxShadow: 2,
                     borderColor: "primary.main",
-                  }
+                  },
                 }}
               >
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -187,10 +195,11 @@ const handleDragEnd = (result) => {
       </Box>
     )}
   </Droppable>
-</DragDropContext>
+</DragDropContext>;
 ```
 
 **Demo Actions Covered**:
+
 - Toggle resume sections on/off
 - Reorder via drag-drop
 - Verify real-time preview updates
@@ -206,8 +215,17 @@ const handleDragEnd = (result) => {
 **Implementation**:
 
 ```tsx
-import {Dialog, DialogTitle, DialogContent, Box, Typography, Stack, Chip, Divider} from '@mui/material';
-import { useResumeVersions } from '@workspaces/ai/hooks/useResumeVersions';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Box,
+  Typography,
+  Stack,
+  Chip,
+  Divider,
+} from "@mui/material";
+import { useResumeVersions } from "@workspaces/ai/hooks/useResumeVersions";
 
 interface VersionComparisonDialogProps {
   open: boolean;
@@ -220,32 +238,30 @@ export default function VersionComparisonDialog({
   open,
   onClose,
   leftVersionId,
-  rightVersionId
+  rightVersionId,
 }: VersionComparisonDialogProps) {
   const { getVersion } = useResumeVersions();
-  
+
   const leftVersion = getVersion(leftVersionId);
   const rightVersion = getVersion(rightVersionId);
-  
+
   const sections = ["summary", "skills", "experience", "education"];
-  
+
   const getDiff = (section: string) => {
     const left = leftVersion?.content[section];
     const right = rightVersion?.content[section];
-    
+
     if (JSON.stringify(left) === JSON.stringify(right)) {
       return "identical";
     }
     return "different";
   };
-  
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle>
-        Compare Versions
-      </DialogTitle>
+      <DialogTitle>Compare Versions</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
           {/* Left Version */}
           <Box>
             <Stack direction="row" spacing={1} mb={2}>
@@ -254,9 +270,15 @@ export default function VersionComparisonDialog({
                 {new Date(leftVersion?.createdAt).toLocaleDateString()}
               </Typography>
             </Stack>
-            
-            {sections.map(section => (
-              <Box key={section} mb={2} p={2} bgcolor="grey.50" borderRadius={1}>
+
+            {sections.map((section) => (
+              <Box
+                key={section}
+                mb={2}
+                p={2}
+                bgcolor="grey.50"
+                borderRadius={1}
+              >
                 <Typography variant="subtitle2" gutterBottom>
                   {section.toUpperCase()}
                 </Typography>
@@ -266,7 +288,7 @@ export default function VersionComparisonDialog({
               </Box>
             ))}
           </Box>
-          
+
           {/* Right Version */}
           <Box>
             <Stack direction="row" spacing={1} mb={2}>
@@ -275,15 +297,17 @@ export default function VersionComparisonDialog({
                 {new Date(rightVersion?.createdAt).toLocaleDateString()}
               </Typography>
             </Stack>
-            
-            {sections.map(section => {
+
+            {sections.map((section) => {
               const diff = getDiff(section);
               return (
                 <Box
                   key={section}
                   mb={2}
                   p={2}
-                  bgcolor={diff === "identical" ? "success.light" : "warning.light"}
+                  bgcolor={
+                    diff === "identical" ? "success.light" : "warning.light"
+                  }
                   borderRadius={1}
                 >
                   <Stack direction="row" justifyContent="space-between" mb={1}>
@@ -311,13 +335,13 @@ export default function VersionComparisonDialog({
 ```
 
 **Integration**: Add button to ResumeVersionsPanel:
+
 ```tsx
-<Button onClick={() => setCompareOpen(true)}>
-  Compare Versions
-</Button>
+<Button onClick={() => setCompareOpen(true)}>Compare Versions</Button>
 ```
 
 **Demo Actions Covered**:
+
 - Create resume versions
 - Compare side-by-side
 - Verify version management features
@@ -335,15 +359,31 @@ export default function VersionComparisonDialog({
 ```typescript
 const COVER_LETTER_TEMPLATE_CATEGORIES = {
   formal: [
-    { id: "traditional", name: "Traditional", industry: "Finance, Law, Healthcare" },
+    {
+      id: "traditional",
+      name: "Traditional",
+      industry: "Finance, Law, Healthcare",
+    },
     { id: "executive", name: "Executive", industry: "Management, Consulting" },
   ],
   creative: [
-    { id: "modern", name: "Modern Creative", industry: "Marketing, Design, Media" },
-    { id: "startup", name: "Startup Style", industry: "Tech Startups, Innovation" },
+    {
+      id: "modern",
+      name: "Modern Creative",
+      industry: "Marketing, Design, Media",
+    },
+    {
+      id: "startup",
+      name: "Startup Style",
+      industry: "Tech Startups, Innovation",
+    },
   ],
   technical: [
-    { id: "engineering", name: "Engineering Focus", industry: "Software, Hardware, IT" },
+    {
+      id: "engineering",
+      name: "Engineering Focus",
+      industry: "Software, Hardware, IT",
+    },
     { id: "research", name: "Research Oriented", industry: "Academia, R&D" },
   ],
 };
@@ -356,6 +396,7 @@ const COVER_LETTER_TEMPLATE_CATEGORIES = {
 ```
 
 **Demo Actions Covered**:
+
 - Browse cover letter templates for different industries
 - Preview and select template
 - Verify customization options
@@ -371,66 +412,81 @@ const COVER_LETTER_TEMPLATE_CATEGORIES = {
 **Add Company Research Tab**:
 
 ```tsx
-<Tab label="Company Research" value="research" />
+<Tab label="Company Research" value="research" />;
 
-{/* In tab panel: */}
-{selectedTab === "research" && (
-  <Box>
-    {/* Company Overview */}
-    <Paper sx={{ p: 2, mb: 2 }}>
-      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-        <BusinessIcon color="primary" />
-        <Typography variant="h6">{companyName}</Typography>
-        <Chip label={industry} size="small" />
-        <Chip label={`${companySize} employees`} size="small" variant="outlined" />
-      </Stack>
-      
-      {/* Mission & Values */}
-      <Typography variant="subtitle2" gutterBottom>Mission Statement</Typography>
-      <Typography variant="body2" paragraph>{mission}</Typography>
-      
-      <Typography variant="subtitle2" gutterBottom>Core Values</Typography>
-      <Stack direction="row" spacing={1} mb={2}>
-        {values.map(v => <Chip key={v} label={v} size="small" />)}
-      </Stack>
-    </Paper>
-    
-    {/* Recent News */}
-    <Paper sx={{ p: 2, mb: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        Recent News & Updates
-      </Typography>
-      <List dense>
-        {news.map((item, i) => (
-          <ListItem key={i}>
-            <ListItemIcon>
-              <FiberManualRecordIcon sx={{ fontSize: 8 }} />
-            </ListItemIcon>
-            <ListItemText
-              primary={item.headline}
-              secondary={`${item.date} - ${item.source}`}
-            />
-          </ListItem>
-        ))}
-      </List>
-    </Paper>
-    
-    {/* How It's Used in Cover Letter */}
-    <Alert severity="success">
-      <AlertTitle>Integrated into Your Cover Letter</AlertTitle>
-      <Typography variant="caption">
-        ✓ Referenced recent {news[0]?.headline}
-        <br />
-        ✓ Aligned with company value: {values[0]}
-        <br />
-        ✓ Mentioned industry positioning
-      </Typography>
-    </Alert>
-  </Box>
-)}
+{
+  /* In tab panel: */
+}
+{
+  selectedTab === "research" && (
+    <Box>
+      {/* Company Overview */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+          <BusinessIcon color="primary" />
+          <Typography variant="h6">{companyName}</Typography>
+          <Chip label={industry} size="small" />
+          <Chip
+            label={`${companySize} employees`}
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
+
+        {/* Mission & Values */}
+        <Typography variant="subtitle2" gutterBottom>
+          Mission Statement
+        </Typography>
+        <Typography variant="body2" paragraph>
+          {mission}
+        </Typography>
+
+        <Typography variant="subtitle2" gutterBottom>
+          Core Values
+        </Typography>
+        <Stack direction="row" spacing={1} mb={2}>
+          {values.map((v) => (
+            <Chip key={v} label={v} size="small" />
+          ))}
+        </Stack>
+      </Paper>
+
+      {/* Recent News */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          Recent News & Updates
+        </Typography>
+        <List dense>
+          {news.map((item, i) => (
+            <ListItem key={i}>
+              <ListItemIcon>
+                <FiberManualRecordIcon sx={{ fontSize: 8 }} />
+              </ListItemIcon>
+              <ListItemText
+                primary={item.headline}
+                secondary={`${item.date} - ${item.source}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Paper>
+
+      {/* How It's Used in Cover Letter */}
+      <Alert severity="success">
+        <AlertTitle>Integrated into Your Cover Letter</AlertTitle>
+        <Typography variant="caption">
+          ✓ Referenced recent {news[0]?.headline}
+          <br />✓ Aligned with company value: {values[0]}
+          <br />✓ Mentioned industry positioning
+        </Typography>
+      </Alert>
+    </Box>
+  );
+}
 ```
 
 **Demo Actions Covered**:
+
 - Show cover letter with embedded company details
 - Point out recent news, mission alignment, and industry context
 
@@ -466,7 +522,7 @@ const [selectedTone, setSelectedTone] = useState(draft.metadata.tone);
       <MenuItem value="analytical">Analytical</MenuItem>
     </Select>
   </FormControl>
-  
+
   <Button
     size="small"
     variant="outlined"
@@ -474,38 +530,47 @@ const [selectedTone, setSelectedTone] = useState(draft.metadata.tone);
   >
     {showToneComparison ? "Hide" : "Show"} Tone Comparison
   </Button>
-</Stack>
+</Stack>;
 
-{/* Tone Comparison Panel */}
-{showToneComparison && (
-  <Paper sx={{ p: 2, mb: 2, bgcolor: "grey.50" }}>
-    <Typography variant="subtitle2" gutterBottom>
-      Before (Previous Tone):
-    </Typography>
-    <Typography variant="body2" paragraph sx={{ fontStyle: "italic", color: "text.secondary" }}>
-      {previousToneContent}
-    </Typography>
-    
-    <Divider sx={{ my: 2 }} />
-    
-    <Typography variant="subtitle2" gutterBottom>
-      After ({selectedTone} Tone):
-    </Typography>
-    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-      {currentToneContent}
-    </Typography>
-    
-    {/* Tone Indicators */}
-    <Stack direction="row" spacing={2} mt={2}>
-      <Chip label={`Formality: ${formalityScore}/10`} size="small" />
-      <Chip label={`Energy: ${energyScore}/10`} size="small" />
-      <Chip label={`Technical: ${technicalScore}/10`} size="small" />
-    </Stack>
-  </Paper>
-)}
+{
+  /* Tone Comparison Panel */
+}
+{
+  showToneComparison && (
+    <Paper sx={{ p: 2, mb: 2, bgcolor: "grey.50" }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Before (Previous Tone):
+      </Typography>
+      <Typography
+        variant="body2"
+        paragraph
+        sx={{ fontStyle: "italic", color: "text.secondary" }}
+      >
+        {previousToneContent}
+      </Typography>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle2" gutterBottom>
+        After ({selectedTone} Tone):
+      </Typography>
+      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        {currentToneContent}
+      </Typography>
+
+      {/* Tone Indicators */}
+      <Stack direction="row" spacing={2} mt={2}>
+        <Chip label={`Formality: ${formalityScore}/10`} size="small" />
+        <Chip label={`Energy: ${energyScore}/10`} size="small" />
+        <Chip label={`Technical: ${technicalScore}/10`} size="small" />
+      </Stack>
+    </Paper>
+  );
+}
 ```
 
 **Demo Actions Covered**:
+
 - Adjust from formal to creative tone
 - Show content changes in real-time
 - Use editing tools with spell check and suggestions
@@ -521,7 +586,7 @@ const [selectedTone, setSelectedTone] = useState(draft.metadata.tone);
 **Purpose**: Show which resume/cover letter versions are linked to specific job applications
 
 ```tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -536,11 +601,11 @@ import {
   CardContent,
   IconButton,
   Divider,
-} from '@mui/material';
-import DescriptionIcon from '@mui/icons-material/Description';
-import EmailIcon from '@mui/icons-material/Email';
-import DownloadIcon from '@mui/icons-material/Download';
-import LinkIcon from '@mui/icons-material/Link';
+} from "@mui/material";
+import DescriptionIcon from "@mui/icons-material/Description";
+import EmailIcon from "@mui/icons-material/Email";
+import DownloadIcon from "@mui/icons-material/Download";
+import LinkIcon from "@mui/icons-material/Link";
 
 interface JobMaterialsDialogProps {
   open: boolean;
@@ -555,10 +620,10 @@ export default function JobMaterialsDialog({
   onClose,
   jobId,
   jobTitle,
-  companyName
+  companyName,
 }: JobMaterialsDialogProps) {
   const [materials, setMaterials] = useState(null);
-  
+
   useEffect(() => {
     if (open && jobId) {
       // Fetch job materials from job_materials table
@@ -566,7 +631,7 @@ export default function JobMaterialsDialog({
       // setMaterials(data);
     }
   }, [open, jobId]);
-  
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -577,7 +642,7 @@ export default function JobMaterialsDialog({
           </Typography>
         </Stack>
       </DialogTitle>
-      
+
       <DialogContent>
         <Stack spacing={3}>
           {/* Resume Card */}
@@ -611,7 +676,7 @@ export default function JobMaterialsDialog({
               </Stack>
             </CardContent>
           </Card>
-          
+
           {/* Cover Letter Card */}
           <Card variant="outlined">
             <CardContent>
@@ -644,7 +709,7 @@ export default function JobMaterialsDialog({
               </Stack>
             </CardContent>
           </Card>
-          
+
           {/* Materials History */}
           <Box>
             <Typography variant="subtitle2" gutterBottom>
@@ -657,7 +722,7 @@ export default function JobMaterialsDialog({
           </Box>
         </Stack>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
         <Button variant="contained">Update Materials</Button>
@@ -684,6 +749,7 @@ export default function JobMaterialsDialog({
 ```
 
 **Demo Actions Covered**:
+
 - Link resume and cover letter to specific job application
 - Track which materials were used for each application
 
@@ -701,18 +767,29 @@ export default function JobMaterialsDialog({
 const [showExportPreview, setShowExportPreview] = useState(false);
 
 // In export dialog:
-<Button
-  variant="outlined"
-  onClick={() => setShowExportPreview(true)}
->
+<Button variant="outlined" onClick={() => setShowExportPreview(true)}>
   Preview Export
-</Button>
+</Button>;
 
-{/* Export Preview Dialog */}
-<Dialog open={showExportPreview} onClose={() => setShowExportPreview(false)} maxWidth="md" fullWidth>
+{
+  /* Export Preview Dialog */
+}
+<Dialog
+  open={showExportPreview}
+  onClose={() => setShowExportPreview(false)}
+  maxWidth="md"
+  fullWidth
+>
   <DialogTitle>Export Preview - {exportFormat.toUpperCase()}</DialogTitle>
   <DialogContent>
-    <Box sx={{ p: 2, bgcolor: "grey.100", border: "1px solid", borderColor: "divider" }}>
+    <Box
+      sx={{
+        p: 2,
+        bgcolor: "grey.100",
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
       {/* Render preview based on format */}
       {exportFormat === "pdf" && (
         <Typography>PDF Preview (showing page 1 of 2)</Typography>
@@ -720,15 +797,14 @@ const [showExportPreview, setShowExportPreview] = useState(false);
       {exportFormat === "docx" && (
         <Typography>Word Document Preview</Typography>
       )}
-      
+
       {/* Format-specific warnings */}
       <Alert severity="info" sx={{ mt: 2 }}>
         <AlertTitle>Format Notes</AlertTitle>
         • Page count: 2 pages
         <br />
         • Formatting: Professional
-        <br />
-        • File size: ~85KB
+        <br />• File size: ~85KB
       </Alert>
     </Box>
   </DialogContent>
@@ -738,7 +814,7 @@ const [showExportPreview, setShowExportPreview] = useState(false);
       Confirm & Export
     </Button>
   </DialogActions>
-</Dialog>
+</Dialog>;
 ```
 
 ---
@@ -746,12 +822,14 @@ const [showExportPreview, setShowExportPreview] = useState(false);
 ## Summary of Demo-Ready Features
 
 ### Act 2: AI-Powered Resume Generation ✅
+
 1. **Template Selection** ✅ - TemplateShowcaseDialog implemented
 2. **AI Content Generation** ✅ - Existing GenerationPanel working
 3. **Resume Customization** 🔨 - Needs drag-drop implementation
 4. **Export & Versioning** 🔨 - Needs comparison dialog
 
 ### Act 3: AI-Powered Cover Letter Generation 🔨
+
 1. **Cover Letter Templates** 🔨 - Needs template showcase
 2. **Company Research** 🔨 - Needs enhanced display
 3. **Tone Customization** 🔨 - Needs comparison feature
@@ -762,26 +840,23 @@ const [showExportPreview, setShowExportPreview] = useState(false);
 ## Quick Implementation Priority (for demo)
 
 **HIGH PRIORITY** (Must have for demo):
+
 1. ✅ Template Showcase Dialog (Resume) - DONE
 2. Skills optimization display with relevance scores
 3. Version comparison side-by-side
 4. Cover letter template showcase
 5. Company research visualization
 
-**MEDIUM PRIORITY** (Nice to have):
-6. Drag-drop section reordering
-7. Tone comparison feature
-8. Materials linking UI
+**MEDIUM PRIORITY** (Nice to have): 6. Drag-drop section reordering 7. Tone comparison feature 8. Materials linking UI
 
-**LOW PRIORITY** (Can demo without):
-9. Export format preview
-10. Advanced customization controls
+**LOW PRIORITY** (Can demo without): 9. Export format preview 10. Advanced customization controls
 
 ---
 
 ## Testing Checklist
 
 Before demo, verify:
+
 - [ ] Templates browse and apply correctly
 - [ ] AI generation shows all sections
 - [ ] Apply buttons work for all sections
