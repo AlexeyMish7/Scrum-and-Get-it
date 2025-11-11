@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import aiGeneration from "@workspaces/ai/services/aiGeneration";
 import aiArtifacts from "@shared/services/aiArtifacts";
+import { fetchCompanyNews } from "@shared/services/fetchCompanyNews";
 
 /**
  * Company Research Hook - UC-063, UC-064
@@ -104,6 +105,15 @@ export function useCompanyResearch() {
             summary: item.summary || item.description || "",
             link: item.link || item.url,
           }));
+        }
+
+        try {
+          const liveNews = await fetchCompanyNews(companyName);
+          if (liveNews.length > 0) {
+            parsedData.recentNews = [...(parsedData.recentNews || []), ...liveNews];
+          }
+        } catch (newsErr) {
+          console.warn("Could not fetch live news:", newsErr);
         }
 
         // Handle text-based response
