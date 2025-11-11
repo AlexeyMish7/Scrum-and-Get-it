@@ -567,11 +567,11 @@ export default function PipelinePage() {
                                   onChange={() => toggleSelect(String(job.id))}
                                   sx={{
                                     position: "absolute",
-                                    top: 8,
-                                    left: 8,
+                                    top: 7,
+                                    left: 4,
                                     zIndex: 2,
                                     p: 0,
-                                    transform: "scale(0.95)",
+                                    transform: "scale(0.9)",
                                   }}
                                 />
 
@@ -597,7 +597,7 @@ export default function PipelinePage() {
                                 </IconButton>
 
                                 {/* main content */}
-                                <Box sx={{ pl: 6, pr: 6 }}>
+                                <Box sx={{ pl: 2, pr: 6 }}>
                                   <Typography
                                     sx={{
                                       fontWeight: 600,
