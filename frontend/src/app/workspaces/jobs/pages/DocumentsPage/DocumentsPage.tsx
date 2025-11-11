@@ -1,552 +1,276 @@
 /**
- * Documents & Materials Page (UC-042)
+ * DocumentsPage2 — Job-centric Materials Browser (experimental)
  *
- * Manage resume, cover letter, and portfolio documents for job applications.
- * Track which materials were used for each application and view usage analytics.
+ * Purpose: an alternate Documents UI that lets users search/select a job and
+ * view resumes and cover letters generated for that job. This file is a
+ * non-destructive experiment; the original `DocumentsPage.tsx` is left
+ * unchanged and can be used as the canonical page.
+ *
+ * Contract:
+ * - Inputs: none (reads current authenticated user via `useAuth()`)
+ * - Outputs: UI with searchable job selector, lists of resumes and cover
+ *   letters associated with the selected job, and download actions.
+ * - Error modes: uses `useErrorHandler()`; failures show the global snackbar.
  */
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Paper,
+  
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
   List,
   ListItem,
   ListItemButton,
   ListItemText,
-  Chip,
   Button,
   Divider,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Card,
-  CardContent,
-  Stack,
   CircularProgress,
-  Alert,
 } from "@mui/material";
-import {
-  Upload as UploadIcon,
-  Download as DownloadIcon,
-  Link as LinkIcon,
-  InsertDriveFile as FileIcon,
-  Description as ResumeIcon,
-  Article as CoverLetterIcon,
-  Folder as PortfolioIcon,
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-} from "@mui/icons-material";
+import { Download as DownloadIcon } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-import {
-  listDocuments,
-  getSignedDownloadUrl,
-  type DocumentRow,
-  type DocumentKind,
-} from "@shared/services/documents";
+import { supabase } from "@shared/services/supabaseClient";
 import { withUser } from "@shared/services/crud";
-import type { JobMaterialsRow } from "@shared/services/jobMaterials";
-import LinkDocumentDialog from "../../components/LinkDocumentDialog";
+import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 
-export default function DocumentsPage() {
-  const { user } = useAuth();
-  const { notification, closeNotification, handleError, showSuccess } =
-    useErrorHandler();
+export default function DocumentsPage2() {
+  const { user } = useAuth() as any;
+  const { handleError, showSuccess } = useErrorHandler();
 
-  const [documents, setDocuments] = useState<DocumentRow[]>([]);
-  const [filteredDocs, setFilteredDocs] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentRow | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [kindFilter, setKindFilter] = useState<DocumentKind | "all">("all");
-  const [linkedJobs, setLinkedJobs] = useState<JobMaterialsRow[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<number | "">("");
 
+  const [resumes, setResumes] = useState<any[]>([]);
+  const [covers, setCovers] = useState<any[]>([]);
+
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+
+  // Load jobs for this user
   useEffect(() => {
-    if (user?.id) {
-      loadDocuments();
-    }
+    if (!user?.id) return;
+    setLoadingJobs(true);
+    (async () => {
+      try {
+        const userCrud = withUser(user.id);
+        const res = await userCrud.listRows("jobs", "*", { order: { column: "created_at", ascending: false } });
+        if (res.error) throw new Error(res.error.message);
+        setJobs(res.data || []);
+      } catch (err) {
+        handleError(err, "Failed to load jobs");
+        setJobs([]);
+      } finally {
+        setLoadingJobs(false);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Load materials whenever a job is selected
   useEffect(() => {
-    let filtered = documents;
-    if (kindFilter !== "all") {
-      filtered = filtered.filter((doc) => doc.kind === kindFilter);
-    }
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((doc) =>
-        doc.file_name.toLowerCase().includes(query)
-      );
-    }
-    setFilteredDocs(filtered);
-  }, [documents, searchQuery, kindFilter]);
+    if (!user?.id || selectedJobId === "") return;
+    setLoadingMaterials(true);
+    (async () => {
+      try {
+        // 1) Resume drafts: fetch all resumes for user and filter by metadata keys
+        const { data: resumeRows, error: resumeErr } = await supabase
+          .from("resume_drafts")
+          .select("*")
+          .eq("user_id", user.id);
+        if (resumeErr) throw resumeErr;
 
-  useEffect(() => {
-    if (selectedDoc && user?.id) {
-      loadLinkedJobs(selectedDoc.id);
-    } else {
-      setLinkedJobs([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDoc, user?.id]);
+        const resumeCandidates = (resumeRows || []).filter((r: any) => {
+          const meta = r.metadata ?? r.meta ?? r.data ?? {};
+          const jobId = meta?.jobId ?? meta?.jobid ?? meta?.job_id ?? meta?.job;
+          return String(jobId) === String(selectedJobId);
+        });
 
-  async function loadDocuments() {
-    if (!user?.id) return;
-    setLoading(true);
-    try {
-      const result = await listDocuments(user.id, {
-        order: { column: "uploaded_at", ascending: false },
-      });
-      if (result.error) throw new Error(result.error.message);
-      setDocuments(result.data || []);
-    } catch (err) {
-      handleError(err, "Failed to load documents");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadLinkedJobs(docId: string) {
-    if (!user?.id) return;
-    setDetailLoading(true);
-    try {
-      const userCrud = withUser(user.id);
-      const result = await userCrud.listRows<JobMaterialsRow>(
-        "job_materials",
-        "*",
-        {
-          order: { column: "created_at", ascending: false },
-        }
-      );
-      if (result.error) throw new Error(result.error.message);
-      const filtered = (result.data || []).filter(
-        (m) => m.resume_document_id === docId || m.cover_document_id === docId
-      );
-      setLinkedJobs(filtered);
-    } catch (err) {
-      handleError(err, "Failed to load linked jobs");
-      setLinkedJobs([]);
-    } finally {
-      setDetailLoading(false);
-    }
-  }
-
-  async function handleDownload(doc: DocumentRow) {
-    try {
-      const result = await getSignedDownloadUrl(doc.file_path, 60, "documents");
-      if (result.error || !result.data?.url) {
-        throw new Error(
-          result.error?.message || "Failed to generate download URL"
+  // 2) Cover letters: merge local cache with DB rows for this job
+  /**
+   * BACKEND NOTE:
+   * The client currently reads `cover_letter_drafts` filtered by `user_id`
+   * and `job_id` directly via Supabase. To improve performance and
+   * avoid client-side merging in high-volume accounts, provide backend
+   * support (one of the options below):
+   *
+   * - RPC / endpoint: an RPC or REST endpoint that returns cover letter
+   *   drafts for a given user and job (e.g., GET /api/users/:id/jobs/:jobId/cover-letters).
+   *   The endpoint should honor RLS and return only permitted rows and
+   *   a small projection (id, title, content, metadata, last_accessed_at).
+   *
+   * - DB view or indexed query: expose a view or indexed query that
+   *   supports fast lookup by `job_id` (and optionally by JSON metadata
+   *   keys) so the frontend doesn't need to fetch and filter large
+   *   result sets.
+   *
+   * - Pagination & projection: if large result sets are possible,
+   *   the backend should support pagination and returning only the
+   *   necessary fields used by this UI.
+   *
+   * When adding backend support, update this client call to use the
+   * new endpoint and remove the ad-hoc client-side merge logic.
+   */
+  const store = useCoverLetterDrafts.getState();
+        if (store.setUserId) store.setUserId(user.id);
+        if (store.loadFromCacheSync) store.loadFromCacheSync();
+        const cached = (store.drafts || []).filter((c: any) =>
+          String(c.job_id ?? c.jobId ?? c.metadata?.jobId ?? "") === String(selectedJobId)
         );
+
+        const { data: dbCovers, error: coverErr } = await supabase
+          .from("cover_letter_drafts")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("job_id", selectedJobId as number);
+        if (coverErr) throw coverErr;
+
+        const map = new Map<string, any>();
+        (dbCovers || []).forEach((c: any) => map.set(String(c.id), c));
+        (cached || []).forEach((c: any) => {
+          if (!map.has(String(c.id))) map.set(String(c.id), c);
+        });
+
+        setResumes(resumeCandidates || []);
+        setCovers(Array.from(map.values()));
+      } catch (err) {
+        console.error(err);
+        handleError(err, "Failed to load materials for job");
+        setResumes([]);
+        setCovers([]);
+      } finally {
+        setLoadingMaterials(false);
       }
-      window.open(result.data.url, "_blank");
-      showSuccess(`Downloading ${doc.file_name}`);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedJobId, user?.id]);
+
+  // No free-text search: the job selector is a simple dropdown of recent jobs
+
+  function downloadResume(r: any) {
+    try {
+      const content = r.content ?? r.preview ?? r;
+      const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${r.title || r.name || "resume"}_${selectedJobId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSuccess("Resume downloaded");
     } catch (err) {
-      handleError(err, "Failed to download document");
+      handleError(err, "Failed to download resume");
     }
   }
 
-  function getKindIcon(kind: DocumentKind) {
-    if (kind === "resume") return <ResumeIcon />;
-    if (kind === "cover_letter") return <CoverLetterIcon />;
-    if (kind === "portfolio") return <PortfolioIcon />;
-    return <FileIcon />;
-  }
+  function downloadCover(c: any) {
+    try {
+      const content = c.content ?? c.text ?? c;
+      let text = "";
+      if (typeof content === "string") text = content;
+      else if (content.sections) {
+        const s = content.sections;
+        text = `${s.opening || ""}\n\n${s.body || ""}\n\n${s.closing || ""}`;
+      } else text = JSON.stringify(content, null, 2);
 
-  function getKindColor(
-    kind: DocumentKind
-  ): "primary" | "secondary" | "success" | "default" {
-    if (kind === "resume") return "primary";
-    if (kind === "cover_letter") return "secondary";
-    if (kind === "portfolio") return "success";
-    return "default";
-  }
-
-  function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
-
-  function formatBytes(bytes?: number | null): string {
-    if (!bytes) return "—";
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    return `${(kb / 1024).toFixed(1)} MB`;
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${c.title || c.name || "cover_letter"}_${selectedJobId}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSuccess("Cover letter downloaded");
+    } catch (err) {
+      handleError(err, "Failed to download cover letter");
+    }
   }
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 1,
-          }}
-        >
-          <Typography variant="h4">Documents & Materials</Typography>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={loadDocuments}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-            <Button variant="contained" startIcon={<UploadIcon />} disabled>
-              Upload
-            </Button>
-          </Stack>
-        </Box>
-        <Typography color="text.secondary">
-          Manage resumes, cover letters, and portfolio documents. Track which
-          materials were used for each application.
-        </Typography>
-      </Box>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 1 }}>Documents & Materials — Experiment</Typography>
+      <Typography color="text.secondary" sx={{ mb: 3 }}>
+        Search for a job and view resumes / cover letters generated for that job.
+      </Typography>
 
-      {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          alignItems="center"
-        >
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Search documents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
-              ),
-            }}
-            sx={{ maxWidth: { md: 400 } }}
-          />
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Document Type</InputLabel>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
+          <FormControl size="small" sx={{ minWidth: 380 }}>
+            <InputLabel>Job</InputLabel>
             <Select
-              value={kindFilter}
-              label="Document Type"
-              onChange={(e) =>
-                setKindFilter(e.target.value as DocumentKind | "all")
-              }
+              value={selectedJobId}
+              label="Job"
+              onChange={(e) => {
+                const v = (e.target.value as any);
+                setSelectedJobId(v === "" ? "" : Number(v));
+              }}
             >
-              <MenuItem value="all">All Types</MenuItem>
-              <MenuItem value="resume">Resumes</MenuItem>
-              <MenuItem value="cover_letter">Cover Letters</MenuItem>
-              <MenuItem value="portfolio">Portfolio</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
+              <MenuItem value="">-- Select a job --</MenuItem>
+              {jobs.map((j) => (
+                <MenuItem key={j.id} value={j.id}>{j.job_title} — {j.company_name}</MenuItem>
+              ))}
             </Select>
           </FormControl>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ ml: "auto" }}
-          >
-            {filteredDocs.length} document{filteredDocs.length !== 1 ? "s" : ""}
-          </Typography>
+
+          <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>{loadingJobs && <CircularProgress size={20} />}</Box>
         </Stack>
       </Paper>
 
-      {/* Main Content */}
-      <Box sx={{ flex: 1, display: "flex", gap: 2, overflow: "hidden" }}>
-        {/* Documents List */}
-        <Paper sx={{ width: "33%", display: "flex", flexDirection: "column" }}>
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="h6">Documents</Typography>
-          </Box>
-          <Box sx={{ flex: 1, overflow: "auto" }}>
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : filteredDocs.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: "center" }}>
-                <Typography color="text.secondary">
-                  {documents.length === 0
-                    ? "No documents yet."
-                    : "No documents match your filters."}
-                </Typography>
-              </Box>
-            ) : (
-              <List sx={{ py: 0 }}>
-                {filteredDocs.map((doc, idx) => (
-                  <Box key={doc.id}>
-                    {idx > 0 && <Divider />}
-                    <ListItem disablePadding>
-                      <ListItemButton
-                        selected={selectedDoc?.id === doc.id}
-                        onClick={() => setSelectedDoc(doc)}
-                      >
-                        <Box sx={{ mr: 2 }}>{getKindIcon(doc.kind)}</Box>
-                        <ListItemText
-                          primary={doc.file_name}
-                          secondary={
-                            <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                              <Chip
-                                label={doc.kind}
-                                size="small"
-                                color={getKindColor(doc.kind)}
-                                sx={{ height: 20, fontSize: "0.7rem" }}
-                              />
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {formatDate(doc.uploaded_at)}
-                              </Typography>
-                            </Stack>
-                          }
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                  </Box>
-                ))}
-              </List>
-            )}
-          </Box>
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <Paper sx={{ width: "50%", p: 2 }}>
+          <Typography variant="h6">Resumes</Typography>
+          <Divider sx={{ my: 1 }} />
+          {loadingMaterials ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress /></Box>
+          ) : resumes.length === 0 ? (
+            <Typography color="text.secondary">No resumes found for this job.</Typography>
+          ) : (
+            <List>
+              {resumes.map((r) => (
+                <ListItem key={r.id} disablePadding>
+                  <ListItemButton>
+                    <ListItemText primary={r.title || r.name || `Resume ${r.id}`} secondary={r.created_at ? new Date(r.created_at).toLocaleString() : ""} />
+                    <Button size="small" startIcon={<DownloadIcon />} onClick={() => downloadResume(r)}>Download</Button>
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
         </Paper>
 
-        {/* Detail Pane */}
-        <Paper sx={{ width: "42%", display: "flex", flexDirection: "column" }}>
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="h6">
-              {selectedDoc ? "Document Details" : "Select a Document"}
-            </Typography>
-          </Box>
-          <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-            {!selectedDoc ? (
-              <Box sx={{ textAlign: "center", py: 6 }}>
-                <FileIcon
-                  sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
-                />
-                <Typography color="text.secondary">
-                  Select a document from the list to view details.
-                </Typography>
-              </Box>
-            ) : (
-              <Stack spacing={2}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      File Information
-                    </Typography>
-                    <Stack spacing={1}>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Filename
-                        </Typography>
-                        <Typography variant="body2">
-                          {selectedDoc.file_name}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Type
-                        </Typography>
-                        <Box sx={{ mt: 0.5 }}>
-                          <Chip
-                            label={selectedDoc.kind}
-                            size="small"
-                            color={getKindColor(selectedDoc.kind)}
-                          />
-                        </Box>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Uploaded
-                        </Typography>
-                        <Typography variant="body2">
-                          {formatDate(selectedDoc.uploaded_at)}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          Size
-                        </Typography>
-                        <Typography variant="body2">
-                          {formatBytes(selectedDoc.bytes)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        mb: 1,
-                      }}
-                    >
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Linked Jobs
-                      </Typography>
-                      {detailLoading && <CircularProgress size={16} />}
-                    </Box>
-                    {linkedJobs.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        Not yet linked to any jobs.
-                      </Typography>
-                    ) : (
-                      <Stack spacing={1} sx={{ mt: 1 }}>
-                        {linkedJobs.map((material) => (
-                          <Box
-                            key={material.id}
-                            sx={{
-                              p: 1,
-                              border: 1,
-                              borderColor: "divider",
-                              borderRadius: 1,
-                            }}
-                          >
-                            <Typography variant="body2" fontWeight={500}>
-                              Job ID: {material.job_id}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              Linked on {formatDate(material.created_at)}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Stack>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="contained"
-                    startIcon={<DownloadIcon />}
-                    onClick={() => handleDownload(selectedDoc)}
-                  >
-                    Download
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<LinkIcon />}
-                    onClick={() => setLinkDialogOpen(true)}
-                  >
-                    Link to Job
-                  </Button>
-                </Stack>
-              </Stack>
-            )}
-          </Box>
-        </Paper>
-
-        {/* Analytics */}
-        <Paper sx={{ width: "25%", display: "flex", flexDirection: "column" }}>
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="h6">Analytics</Typography>
-          </Box>
-          <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-            <Stack spacing={2}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    Summary
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Box
-                      sx={{ display: "flex", justifyContent: "space-between" }}
-                    >
-                      <Typography variant="body2">Total:</Typography>
-                      <Typography variant="body2" fontWeight={500}>
-                        {documents.length}
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{ display: "flex", justifyContent: "space-between" }}
-                    >
-                      <Typography variant="body2">Resumes:</Typography>
-                      <Typography variant="body2" fontWeight={500}>
-                        {documents.filter((d) => d.kind === "resume").length}
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{ display: "flex", justifyContent: "space-between" }}
-                    >
-                      <Typography variant="body2">Cover Letters:</Typography>
-                      <Typography variant="body2" fontWeight={500}>
-                        {
-                          documents.filter((d) => d.kind === "cover_letter")
-                            .length
-                        }
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-
-              <Alert severity="info">
-                Track document performance by monitoring response rates.
-              </Alert>
-
-              {selectedDoc && linkedJobs.length > 0 && (
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Usage
-                    </Typography>
-                    <Typography variant="body2">
-                      Used in <strong>{linkedJobs.length}</strong> application
-                      {linkedJobs.length !== 1 ? "s" : ""}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
-            </Stack>
-          </Box>
+        <Paper sx={{ width: "50%", p: 2 }}>
+          <Typography variant="h6">Cover Letters</Typography>
+          <Divider sx={{ my: 1 }} />
+          {loadingMaterials ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress /></Box>
+          ) : covers.length === 0 ? (
+            <Typography color="text.secondary">No cover letters found for this job.</Typography>
+          ) : (
+            <List>
+              {covers.map((c) => (
+                <ListItem key={c.id} disablePadding>
+                  <ListItemButton>
+                    <ListItemText primary={c.title || c.name || `Cover ${c.id}`} secondary={c.last_accessed_at ? new Date(c.last_accessed_at).toLocaleString() : ""} />
+                    <Button size="small" startIcon={<DownloadIcon />} onClick={() => downloadCover(c)}>Download</Button>
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
         </Paper>
       </Box>
 
-      {selectedDoc && (
-        <LinkDocumentDialog
-          open={linkDialogOpen}
-          onClose={() => setLinkDialogOpen(false)}
-          documentId={selectedDoc.id}
-          documentKind={selectedDoc.kind}
-          onSuccess={() => {
-            showSuccess("Document linked successfully");
-            loadLinkedJobs(selectedDoc.id);
-          }}
-          onError={(err) => handleError(err, "Failed to link document")}
-        />
-      )}
-
-      <ErrorSnackbar notification={notification} onClose={closeNotification} />
+      {/* global error/snackbar is rendered by SystemLayer; keep local notification hook wired */}
     </Box>
   );
 }
+
