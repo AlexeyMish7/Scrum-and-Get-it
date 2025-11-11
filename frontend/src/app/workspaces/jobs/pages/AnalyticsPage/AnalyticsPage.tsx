@@ -18,6 +18,7 @@ import DeadlineCalendar from "@workspaces/jobs/components/DeadlineCalendar/Deadl
 import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "./BenchmarkCard";
+import SalaryResearchCard from "@workspaces/jobs/components/SalaryResearchCard/SalaryResearchCard";
 //import SalaryResearchCard from "@workspaces/jobs/components/SalaryResearchCard/SalaryResearchCard";
 import {
   computeSuccessRates,
@@ -386,10 +387,11 @@ export default function AnalyticsPage() {
 
       {/* NEW: Salary research (your user story) */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        {/* <Grid size={12}>
+        { <Grid size={{ xs: 12, md: 6 }}>
           <SalaryResearchCard />
-        </Grid> */}
+        </Grid> }
       </Grid>
+      
 
       <Typography color="text.secondary">
         Data is computed from your jobs list (scoped to your account). Benchmarks are basic static
