@@ -67,6 +67,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import useUserJobs from "@shared/hooks/useUserJobs";
+import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
 
 export default function ResumeEditorV2() {
   const navigate = useNavigate();
@@ -121,6 +122,7 @@ export default function ResumeEditorV2() {
   const [exportWatermark, setExportWatermark] = useState<boolean>(false);
   const [exportTheme, setExportTheme] = useState<string>("modern");
   const [isInitializing, setIsInitializing] = useState(true);
+  const [showVersionsOpen, setShowVersionsOpen] = useState(false);
 
   // Set userId when user changes
   useEffect(() => {
@@ -638,6 +640,9 @@ export default function ResumeEditorV2() {
             >
               New Draft
             </Button>
+            <Button size="small" onClick={() => setShowVersionsOpen(true)}>
+              Versions
+            </Button>
           </Stack>
         </Stack>
       </Box>
@@ -873,6 +878,9 @@ export default function ResumeEditorV2() {
 
       {/* Product Tour */}
       <ProductTour run={showTour} onComplete={endTour} onSkip={endTour} />
+
+      {/* Versions Panel */}
+      <ResumeVersionsPanel open={showVersionsOpen} onClose={() => setShowVersionsOpen(false)} />
     </Box>
   );
 }
