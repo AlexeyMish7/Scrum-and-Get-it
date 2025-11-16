@@ -25,6 +25,10 @@ import * as crud from "@shared/services/crud";
 import type { Result } from "@shared/services/types";
 import type { JobRow } from "@shared/types/database";
 import type { JobFormData, JobFilters, PaginatedJobs } from "@jobs/types";
+import { dataCache, getCacheKey } from "@shared/services/cache";
+
+// Cache TTL for job data (5 minutes)
+const JOBS_CACHE_TTL = 5 * 60 * 1000;
 
 /**
  * LIST JOBS: Retrieve jobs for a user with optional filters and pagination.
@@ -44,6 +48,16 @@ const listJobs = async (
   userId: string,
   filters?: JobFilters
 ): Promise<Result<JobRow[]>> => {
+  // Check cache first (only for simple queries without complex filters)
+  const useCache = !filters?.search && !filters?.stage && !filters?.industry;
+  if (useCache) {
+    const cacheKey = getCacheKey("jobs", userId, "list");
+    const cached = dataCache.get<JobRow[]>(cacheKey);
+    if (cached) {
+      return { data: cached, error: null, status: null };
+    }
+  }
+
   const userCrud = crud.withUser(userId);
 
   // Build query options from filters
@@ -90,7 +104,15 @@ const listJobs = async (
   // Future enhancement: add gte/lte support to crud layer
   // For now, we'll fetch all and filter client-side for complex queries
 
-  return await userCrud.listRows("jobs", "*", options);
+  const result = await userCrud.listRows<JobRow>("jobs", "*", options);
+
+  // Cache successful results (only for simple queries)
+  if (useCache && result.data && !result.error) {
+    const cacheKey = getCacheKey("jobs", userId, "list");
+    dataCache.set(cacheKey, result.data, JOBS_CACHE_TTL);
+  }
+
+  return result;
 };
 
 /**
@@ -174,7 +196,14 @@ const createJob = async (
     status_changed_at: new Date().toISOString(),
   };
 
-  return await userCrud.insertRow("jobs", payload, "*");
+  const result = await userCrud.insertRow<JobRow>("jobs", payload, "*");
+
+  // Invalidate cache on successful insert
+  if (result.data && !result.error) {
+    dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
+  }
+
+  return result;
 };
 
 /**
@@ -232,7 +261,19 @@ const updateJob = async (
     payload.status_changed_at = new Date().toISOString();
   }
 
-  return await userCrud.updateRow("jobs", payload, { eq: { id: jobId } }, "*");
+  const result = await userCrud.updateRow<JobRow>(
+    "jobs",
+    payload,
+    { eq: { id: jobId } },
+    "*"
+  );
+
+  // Invalidate cache on successful update
+  if (result.data && !result.error) {
+    dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
+  }
+
+  return result;
 };
 
 /**
@@ -255,7 +296,14 @@ const deleteJob = async (
   jobId: number
 ): Promise<Result<null>> => {
   const userCrud = crud.withUser(userId);
-  return await userCrud.deleteRow("jobs", { eq: { id: jobId } });
+  const result = await userCrud.deleteRow("jobs", { eq: { id: jobId } });
+
+  // Invalidate cache on successful delete
+  if (!result.error) {
+    dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
+  }
+
+  return result;
 };
 
 /**

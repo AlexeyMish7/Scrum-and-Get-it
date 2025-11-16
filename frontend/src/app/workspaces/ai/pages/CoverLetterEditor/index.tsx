@@ -51,10 +51,12 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { useAuth } from "@shared/context/AuthContext";
+import { Breadcrumbs } from "@shared/components/navigation";
+import type { BreadcrumbItem } from "@shared/components/navigation";
 import { generateCoverLetter } from "@workspaces/ai/services/aiGeneration";
 import CoverLetterStarter from "@workspaces/ai/components/cover-letter/CoverLetterStarter";
 import {
@@ -96,6 +98,7 @@ interface Job {
 
 export default function CoverLetterEditor() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   // Zustand store
@@ -522,6 +525,12 @@ export default function CoverLetterEditor() {
     }
   };
 
+  // Breadcrumb navigation
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: "AI", path: "/ai" },
+    { label: "Cover Letter Editor" },
+  ];
+
   // Show starter screen if no drafts exist
   if (drafts.length === 0 && !activeDraft) {
     return (
@@ -536,6 +545,9 @@ export default function CoverLetterEditor() {
 
   return (
     <Container maxWidth={false} sx={{ py: 3 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs items={breadcrumbItems} />
+
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
         <IconButton onClick={() => navigate("/ai")} size="small">

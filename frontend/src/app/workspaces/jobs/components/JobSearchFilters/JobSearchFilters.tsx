@@ -1,6 +1,14 @@
-import { useState } from "react";
-import { Box, Stack, TextField, MenuItem, Button, InputAdornment } from "@mui/material";
+import { useState, useEffect } from "react";
+import {
+  Box,
+  Stack,
+  TextField,
+  MenuItem,
+  Button,
+  InputAdornment,
+} from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import { useDebounce } from "@shared/hooks/useDebounce";
 
 /**
  * JobSearchFilters
@@ -37,7 +45,11 @@ const SORT_OPTIONS = [
   { value: "company", label: "Company name" },
 ];
 
-export default function JobSearchFilters({ onApply, onChange, initial }: Props) {
+export default function JobSearchFilters({
+  onApply,
+  onChange,
+  initial,
+}: Props) {
   const [filters, setFilters] = useState<JobFilters>({
     query: "",
     industry: "",
@@ -50,6 +62,16 @@ export default function JobSearchFilters({ onApply, onChange, initial }: Props) 
     sortDir: "desc",
     ...initial,
   });
+
+  // Debounce search query to avoid excessive filtering (300ms delay)
+  const debouncedQuery = useDebounce(filters.query, 300);
+
+  // Auto-apply filters when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery !== initial?.query) {
+      onApply(filters);
+    }
+  }, [debouncedQuery]);
 
   function update(partial: Partial<JobFilters>, apply = false) {
     const next = { ...filters, ...partial };
@@ -77,7 +99,11 @@ export default function JobSearchFilters({ onApply, onChange, initial }: Props) 
 
   return (
     <Box sx={{ mb: 2 }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        alignItems="center"
+      >
         <TextField
           placeholder="Search title, company, keywords..."
           size="small"
@@ -127,7 +153,11 @@ export default function JobSearchFilters({ onApply, onChange, initial }: Props) 
           label="Salary Min"
           type="number"
           value={filters.salaryMin as any}
-          onChange={(e) => update({ salaryMin: e.target.value === "" ? "" : Number(e.target.value) })}
+          onChange={(e) =>
+            update({
+              salaryMin: e.target.value === "" ? "" : Number(e.target.value),
+            })
+          }
           sx={{ width: 120 }}
         />
 
@@ -136,12 +166,21 @@ export default function JobSearchFilters({ onApply, onChange, initial }: Props) 
           label="Salary Max"
           type="number"
           value={filters.salaryMax as any}
-          onChange={(e) => update({ salaryMax: e.target.value === "" ? "" : Number(e.target.value) })}
+          onChange={(e) =>
+            update({
+              salaryMax: e.target.value === "" ? "" : Number(e.target.value),
+            })
+          }
           sx={{ width: 120 }}
         />
       </Stack>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center" sx={{ mt: 2 }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        alignItems="center"
+        sx={{ mt: 2 }}
+      >
         <TextField
           size="small"
           label="Deadline from"
@@ -193,7 +232,11 @@ export default function JobSearchFilters({ onApply, onChange, initial }: Props) 
           <Button onClick={clear} size="small">
             Clear
           </Button>
-          <Button variant="contained" onClick={() => onApply(filters)} size="small">
+          <Button
+            variant="contained"
+            onClick={() => onApply(filters)}
+            size="small"
+          >
             Apply
           </Button>
         </Box>

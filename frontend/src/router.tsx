@@ -45,6 +45,7 @@ import EditCoverLetter from "@workspaces/ai/components/cover-letter/EditCoverLet
 import JobsLayout from "@workspaces/jobs/JobsLayout";
 import PipelinePage from "./app/workspaces/jobs/pages/PipelinePage/PipelinePage";
 import NewJobPage from "./app/workspaces/jobs/pages/NewJobPage";
+import JobDetailsPage from "./app/workspaces/jobs/pages/JobDetailsPage";
 import DocumentsPage from "./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage";
 import SavedSearchesPage from "./app/workspaces/jobs/pages/SavedSearchesPage";
 import AnalyticsPage from "./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage";
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
       { index: true, element: <PipelinePage /> },
       { path: "pipeline", element: <PipelinePage /> },
       { path: "new", element: <NewJobPage /> },
+      { path: ":id", element: <JobDetailsPage /> },
       { path: "documents", element: <DocumentsPage /> },
       { path: "saved-searches", element: <SavedSearchesPage /> },
       { path: "analytics", element: <AnalyticsPage /> },

@@ -29,6 +29,8 @@ import useCompanyResearch from "@workspaces/ai/hooks/useCompanyResearch";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { Breadcrumbs } from "@shared/components/navigation";
+import type { BreadcrumbItem } from "@shared/components/navigation";
 
 export default function CompanyResearch() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,8 +85,16 @@ export default function CompanyResearch() {
     URL.revokeObjectURL(url);
   };
 
+  // Breadcrumb navigation
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: "AI", path: "/ai" },
+    { label: "Company Research" },
+  ];
+
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Breadcrumbs items={breadcrumbItems} />
+
       <Typography variant="h4" sx={{ mb: 2 }}>
         Company Research
       </Typography>

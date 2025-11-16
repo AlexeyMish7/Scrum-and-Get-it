@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Stack,
@@ -21,6 +22,7 @@ import { alpha } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { EmptyState } from "@shared/components/feedback";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
@@ -44,6 +46,7 @@ type Stage = (typeof STAGES)[number];
 
 export default function PipelinePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
   const { confirm } = useConfirmDialog();
@@ -273,7 +276,11 @@ export default function PipelinePage() {
     const dstIdx = destination.index;
     if (from === to && srcIdx === dstIdx) return;
 
-    // optimistic move
+    // OPTIMISTIC UPDATE PATTERN: Save state for rollback before making changes
+    const previousStages = JSON.parse(JSON.stringify(jobsByStage));
+    const previousAllJobs = [...allJobs];
+
+    // 1) Optimistic move: update UI immediately for instant feedback
     const copy = STAGES.reduce<Record<Stage, JobRow[]>>((acc, s) => {
       acc[s] = [...jobsByStage[s]];
       return acc;
@@ -282,7 +289,20 @@ export default function PipelinePage() {
     copy[to].splice(dstIdx, 0, moved);
     setJobsByStage(copy);
 
-    // persist change: update job_status and status_changed_at
+    // Update allJobs optimistically as well
+    setAllJobs((prev) =>
+      prev.map((j) =>
+        j.id === moved?.id
+          ? {
+              ...j,
+              job_status: to,
+              status_changed_at: new Date().toISOString(),
+            }
+          : j
+      )
+    );
+
+    // 2) Persist change to backend (fire and forget with error handling)
     (async () => {
       try {
         if (!user) throw new Error("Not signed in");
@@ -293,9 +313,10 @@ export default function PipelinePage() {
         }
         showSuccess("Status updated");
       } catch (err) {
-        // rollback
+        // ROLLBACK on error: restore previous state
         handleError(err);
-        if (preDragRef.current) setJobsByStage(preDragRef.current);
+        setJobsByStage(previousStages);
+        setAllJobs(previousAllJobs);
       } finally {
         preDragRef.current = undefined;
       }
@@ -389,6 +410,42 @@ export default function PipelinePage() {
   // stages to render based on filter: when a specific stage is selected, only show that column
   const stagesToRender: readonly Stage[] =
     filter === "All" || filter === "Selected" ? STAGES : [filter as Stage];
+
+  // Show empty state if no jobs exist at all
+  if (allJobs.length === 0) {
+    return (
+      <Box sx={{ width: "100%", p: 3 }}>
+        <Box sx={{ maxWidth: 1400, mx: "auto" }}>
+          <Typography variant="h4" sx={{ mb: 3 }}>
+            Jobs Pipeline
+          </Typography>
+          <EmptyState
+            icon={
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"
+                  fill="currentColor"
+                />
+              </svg>
+            }
+            title="No Jobs Yet"
+            description="Start tracking your job search by adding your first opportunity. You can manually enter job details or import from a URL."
+            primaryAction={{
+              label: "Add First Job",
+              onClick: () => navigate("/jobs/new"),
+            }}
+            size="large"
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
@@ -638,8 +695,21 @@ export default function PipelinePage() {
                                   </svg>
                                 </IconButton>
 
-                                {/* main content */}
-                                <Box sx={{ pl: 2, pr: 6 }}>
+                                {/* main content - clickable area */}
+                                <Box
+                                  sx={{
+                                    pl: 2,
+                                    pr: 6,
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      opacity: 0.8,
+                                    },
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/jobs/${job.id}`);
+                                  }}
+                                >
                                   <Typography
                                     sx={{
                                       fontWeight: 600,
