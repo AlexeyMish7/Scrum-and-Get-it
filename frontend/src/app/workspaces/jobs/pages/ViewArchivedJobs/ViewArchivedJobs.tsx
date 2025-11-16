@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Paper } from "@mui/material";
-import JobSearchFilters, { type JobFilters } from "../../components/JobSearchFilters/JobSearchFilters";
+import JobSearchFilters, {
+  type JobFilters,
+} from "../../components/JobSearchFilters/JobSearchFilters";
 import JobCard from "../../components/JobCard/JobCard";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../../components/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { listJobs } from "@shared/services/dbMappers";
+import { jobsService } from "@jobs/services";
 
 /**
  * ViewArchivedJobs
@@ -21,19 +23,23 @@ export default function ViewArchivedJobs() {
   const [visible, setVisible] = useState<Record<string, unknown>[]>([]);
 
   const [open, setOpen] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
+    null
+  );
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       if (!user) return;
       try {
-        const res = await listJobs(user.id);
+        const res = await jobsService.listJobs(user.id);
         if (res.error) return handleError(res.error);
         const rows = (res.data ?? []) as Record<string, unknown>[];
         if (!mounted) return;
         // keep only archived jobs
-        const archived = rows.filter((r) => String(r.job_status ?? "").toLowerCase() === "archive");
+        const archived = rows.filter(
+          (r) => String(r.job_status ?? "").toLowerCase() === "archive"
+        );
         setAllJobs(archived);
         setVisible(archived);
       } catch (err) {
@@ -52,19 +58,30 @@ export default function ViewArchivedJobs() {
       if (f.query) {
         const q = String(f.query).toLowerCase();
         const hay = (
-          String(r.job_title ?? r.title ?? "") + " " +
-          String(r.company_name ?? r.company ?? "") + " " +
+          String(r.job_title ?? r.title ?? "") +
+          " " +
+          String(r.company_name ?? r.company ?? "") +
+          " " +
           String(r.job_description ?? "")
         ).toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (f.industry) {
-        if (!String(r.industry ?? "").toLowerCase().includes(String(f.industry).toLowerCase())) return false;
+        if (
+          !String(r.industry ?? "")
+            .toLowerCase()
+            .includes(String(f.industry).toLowerCase())
+        )
+          return false;
       }
       if (f.location) {
         const loc = String(f.location).toLowerCase();
         const combined = (
-          String(r.city_name ?? r.city ?? "") + " " + String(r.state_code ?? r.state ?? "") + " " + String(r.zipcode ?? "")
+          String(r.city_name ?? r.city ?? "") +
+          " " +
+          String(r.state_code ?? r.state ?? "") +
+          " " +
+          String(r.zipcode ?? "")
         ).toLowerCase();
         if (!combined.includes(loc)) return false;
       }
@@ -91,11 +108,15 @@ export default function ViewArchivedJobs() {
 
     // basic sort handling
     const sorted = filtered.sort((a, b) => {
-      const dir = (f.sortDir === "asc" ? 1 : -1);
+      const dir = f.sortDir === "asc" ? 1 : -1;
       switch (f.sortBy) {
         case "deadline": {
-          const da = a.application_deadline ? new Date(String(a.application_deadline)).getTime() : 0;
-          const db = b.application_deadline ? new Date(String(b.application_deadline)).getTime() : 0;
+          const da = a.application_deadline
+            ? new Date(String(a.application_deadline)).getTime()
+            : 0;
+          const db = b.application_deadline
+            ? new Date(String(b.application_deadline)).getTime()
+            : 0;
           return (da - db) * dir;
         }
         case "salary": {
@@ -104,13 +125,19 @@ export default function ViewArchivedJobs() {
           return (sa - sb) * dir;
         }
         case "company": {
-          const ca = String(a.company_name ?? "").localeCompare(String(b.company_name ?? ""));
+          const ca = String(a.company_name ?? "").localeCompare(
+            String(b.company_name ?? "")
+          );
           return ca * dir;
         }
         case "date_added":
         default: {
-          const ta = a.created_at ? new Date(String(a.created_at)).getTime() : 0;
-          const tb = b.created_at ? new Date(String(b.created_at)).getTime() : 0;
+          const ta = a.created_at
+            ? new Date(String(a.created_at)).getTime()
+            : 0;
+          const tb = b.created_at
+            ? new Date(String(b.created_at)).getTime()
+            : 0;
           return (ta - tb) * dir;
         }
       }
@@ -135,7 +162,9 @@ export default function ViewArchivedJobs() {
 
       <Box sx={{ mb: 2 }}>
         {visible.length === 0 ? (
-          <Typography color="text.secondary">No archived jobs found.</Typography>
+          <Typography color="text.secondary">
+            No archived jobs found.
+          </Typography>
         ) : (
           visible.map((j) => (
             <JobCard

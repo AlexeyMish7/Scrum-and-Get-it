@@ -3,7 +3,8 @@ import { Button } from "@mui/material";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { listJobNotes, updateJob } from "@shared/services/dbMappers";
+import { listJobNotes } from "@shared/services/dbMappers";
+import { jobsService } from "@jobs/services";
 
 type Props = {
   jobId: string | number;
@@ -32,9 +33,8 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
     setLoading(true);
     let succeeded = false;
     try {
-      const res = await updateJob(user.id, jobId, {
+      const res = await jobsService.updateJob(user.id, Number(jobId), {
         job_status: "archive",
-        status_changed_at: new Date().toISOString(),
       });
       if (res.error) throw res.error;
       showSuccess("Job archived");
@@ -89,9 +89,8 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
         }
       }
 
-      const res = await updateJob(user.id, jobId, {
+      const res = await jobsService.updateJob(user.id, Number(jobId), {
         job_status: target,
-        status_changed_at: new Date().toISOString(),
       });
       if (res.error) throw res.error;
       showSuccess(`Restored job to ${target}`);

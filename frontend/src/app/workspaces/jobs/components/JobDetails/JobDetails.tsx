@@ -12,13 +12,11 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { jobsService } from "@jobs/services";
 import {
-  getJob,
-  updateJob,
   listJobNotes,
   createJobNote,
   updateJobNote,
-  deleteJob,
   deleteJobNote,
 } from "@shared/services/dbMappers";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -58,7 +56,7 @@ export default function JobDetails({ jobId }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const res = await getJob(user.id, jobId);
+        const res = await jobsService.getJob(user.id, Number(jobId));
         if (res.error) return handleError(res.error);
         if (!mounted) return;
         setJob(res.data as Record<string, unknown>);
@@ -147,7 +145,11 @@ export default function JobDetails({ jobId }: Props) {
       });
 
       if (Object.keys(jobPayload).length > 0) {
-        const res = await updateJob(user.id, jobId, jobPayload);
+        const res = await jobsService.updateJob(
+          user.id,
+          Number(jobId),
+          jobPayload
+        );
         if (res.error) throw res.error;
       }
 
@@ -167,7 +169,7 @@ export default function JobDetails({ jobId }: Props) {
       showSuccess("Saved");
       setEditMode(false);
       // refresh
-      const fresh = await getJob(user.id, jobId);
+      const fresh = await jobsService.getJob(user.id, Number(jobId));
       if (!fresh.error) setJob(fresh.data as Record<string, unknown>);
       const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
       if (!notesRes.error) {
@@ -205,7 +207,7 @@ export default function JobDetails({ jobId }: Props) {
       );
 
       // delete the job row
-      const delJob = await deleteJob(user.id, jobId);
+      const delJob = await jobsService.deleteJob(user.id, Number(jobId));
       if (delJob.error) throw delJob.error;
 
       showSuccess("Job deleted");

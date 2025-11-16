@@ -24,8 +24,8 @@ import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
-import type { ListOptions } from "@shared/services/types";
-import { listJobs, updateJob } from "@shared/services/dbMappers";
+import { jobsService, pipelineService } from "@jobs/services";
+import type { JobRow } from "@shared/types/database";
 import JobDetails from "../../components/JobDetails/JobDetails";
 import JobSearchFilters, {
   type JobFilters,
@@ -41,8 +41,6 @@ const STAGES = [
 ] as const;
 
 type Stage = (typeof STAGES)[number];
-
-type JobRow = Record<string, unknown>;
 
 export default function PipelinePage() {
   const { user } = useAuth();
@@ -131,12 +129,12 @@ export default function PipelinePage() {
   useEffect(() => {
     let mounted = true;
     if (!user) return;
-    const opts: ListOptions = {
-      order: { column: "created_at", ascending: false },
-    };
     (async () => {
       try {
-        const res = await listJobs(user.id, opts);
+        const res = await jobsService.listJobs(user.id, {
+          sortBy: "created_at",
+          sortOrder: "desc",
+        });
         if (res.error) return handleError(res.error);
         const rows = (res.data ?? []) as JobRow[];
         if (!mounted) return;
@@ -288,14 +286,8 @@ export default function PipelinePage() {
     (async () => {
       try {
         if (!user) throw new Error("Not signed in");
-        const payload: Record<string, unknown> = {
-          job_status: to,
-          status_changed_at: new Date().toISOString(),
-        };
-        const jobId = String(
-          (moved && (moved.id as string | number)) ?? draggableId
-        );
-        const res = await updateJob(user.id, jobId, payload);
+        const jobId = Number((moved && moved.id) ?? draggableId);
+        const res = await pipelineService.moveJob(user.id, jobId, to);
         if (res.error) {
           throw res.error;
         }
@@ -342,14 +334,11 @@ export default function PipelinePage() {
 
     try {
       if (!user) throw new Error("Not signed in");
-      // update each selected job (could be batched server-side later)
+      // update each selected job using pipelineService
       await Promise.all(
         ids.map(async (id) => {
-          const changed_at = new Date().toISOString();
-          const r = await updateJob(user.id, id, {
-            job_status: to,
-            status_changed_at: changed_at,
-          });
+          const jobId = Number(id);
+          const r = await pipelineService.moveJob(user.id, jobId, to as Stage);
           if (r.error) throw r.error;
         })
       );
@@ -363,7 +352,7 @@ export default function PipelinePage() {
       handleError(err);
       // simple rollback by refetching
       if (user) {
-        const res = await listJobs(user.id);
+        const res = await jobsService.listJobs(user.id);
         if (!res.error) {
           const rows = (res.data ?? []) as JobRow[];
           setAllJobs(rows);

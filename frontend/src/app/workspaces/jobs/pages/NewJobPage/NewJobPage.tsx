@@ -4,7 +4,8 @@ import { useTheme } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAuth } from "@shared/context/AuthContext";
-import { createJob } from "@shared/services/dbMappers";
+import { jobsService } from "@jobs/services";
+import type { JobFormData } from "@jobs/types";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -64,10 +65,28 @@ export default function NewJobPage() {
 
     setSaving(true);
     try {
-      const res = await createJob(
-        user.id,
-        form as unknown as Record<string, unknown>
-      );
+      // Build JobFormData payload
+      const payload: JobFormData = {
+        job_title: form.job_title,
+        company_name: form.company_name,
+        street_address: form.street_address || undefined,
+        city_name: form.city_name || undefined,
+        state_code: form.state_code || undefined,
+        zipcode: form.zipcode || undefined,
+        start_salary_range: form.start_salary
+          ? Number(form.start_salary)
+          : undefined,
+        end_salary_range: form.end_salary ? Number(form.end_salary) : undefined,
+        job_link: form.job_link || undefined,
+        application_deadline: form.application_deadline
+          ? form.application_deadline.toISOString().split("T")[0]
+          : undefined,
+        job_description: form.job_description || undefined,
+        industry: form.industry || undefined,
+        job_type: form.job_type || undefined,
+      };
+
+      const res = await jobsService.createJob(user.id, payload);
       if (res.error) {
         handleError(res.error);
       } else {
