@@ -49,7 +49,7 @@ import {
 } from "@mui/icons-material";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import useUserJobs from "@shared/hooks/useUserJobs";
-import { TemplateSelector } from "../ResumeEditorV2/TemplateSelector";
+import { TemplateSelector } from "./TemplateSelector";
 
 interface ResumeStarterProps {
   onStart: (draftId: string) => void;

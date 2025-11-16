@@ -67,7 +67,7 @@ import AIResultsPanel from "@workspaces/ai/components/resume-v2/AIResultsPanel";
 import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewPanel";
 import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
 import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
-import { TemplateSelector } from "@workspaces/ai/components/ResumeEditorV2/TemplateSelector";
+import { TemplateSelector } from "@workspaces/ai/components/resume-v2/TemplateSelector";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
