@@ -26,6 +26,7 @@ import type { Result } from "@shared/services/types";
 import type { JobRow } from "@shared/types/database";
 import type { JobFormData, JobFilters, PaginatedJobs } from "@jobs/types";
 import { dataCache, getCacheKey } from "@shared/services/cache";
+import { deduplicateRequest } from "@shared/utils/requestDeduplication";
 
 // Cache TTL for job data (5 minutes)
 const JOBS_CACHE_TTL = 5 * 60 * 1000;
@@ -48,71 +49,82 @@ const listJobs = async (
   userId: string,
   filters?: JobFilters
 ): Promise<Result<JobRow[]>> => {
-  // Check cache first (only for simple queries without complex filters)
-  const useCache = !filters?.search && !filters?.stage && !filters?.industry;
-  if (useCache) {
-    const cacheKey = getCacheKey("jobs", userId, "list");
-    const cached = dataCache.get<JobRow[]>(cacheKey);
-    if (cached) {
-      return { data: cached, error: null, status: null };
+  // Generate deduplication key based on user and filters
+  const filterKey = filters
+    ? `-${filters.stage || "all"}-${filters.search || ""}-${
+        filters.sortBy || "created_at"
+      }`
+    : "";
+  const dedupKey = `jobs-list-${userId}${filterKey}`;
+
+  // Deduplicate the request to prevent parallel fetches of same data
+  return deduplicateRequest(dedupKey, async () => {
+    // Check cache first (only for simple queries without complex filters)
+    const useCache = !filters?.search && !filters?.stage && !filters?.industry;
+    if (useCache) {
+      const cacheKey = getCacheKey("jobs", userId, "list");
+      const cached = dataCache.get<JobRow[]>(cacheKey);
+      if (cached) {
+        return { data: cached, error: null, status: null };
+      }
     }
-  }
 
-  const userCrud = crud.withUser(userId);
+    const userCrud = crud.withUser(userId);
 
-  // Build query options from filters
-  const options: Record<string, unknown> = {};
+    // Build query options from filters
+    const options: Record<string, unknown> = {};
 
-  // Sorting
-  if (filters?.sortBy) {
-    options.order = {
-      column: filters.sortBy,
-      ascending: filters.sortOrder === "asc",
-    };
-  } else {
-    // Default sort: most recent first
-    options.order = { column: "created_at", ascending: false };
-  }
+    // Sorting
+    if (filters?.sortBy) {
+      options.order = {
+        column: filters.sortBy,
+        ascending: filters.sortOrder === "asc",
+      };
+    } else {
+      // Default sort: most recent first
+      options.order = { column: "created_at", ascending: false };
+    }
 
-  // Pagination
-  if (filters?.limit) {
-    options.limit = filters.limit;
-  }
-  if (filters?.offset) {
-    options.offset = filters.offset;
-  }
+    // Pagination
+    if (filters?.limit) {
+      options.limit = filters.limit;
+    }
+    if (filters?.offset) {
+      options.offset = filters.offset;
+    }
 
-  // Filtering (stage, industry, job_type)
-  // Note: Search filtering requires more complex query building (ILIKE)
-  // For now, we'll do basic equality filters and handle search client-side
-  // Future: Move to RPC function for full-text search
-  const eqFilters: Record<string, unknown> = {};
-  if (filters?.stage && filters.stage !== "All") {
-    eqFilters.job_status = filters.stage;
-  }
-  if (filters?.industry) {
-    eqFilters.industry = filters.industry;
-  }
-  if (filters?.jobType) {
-    eqFilters.job_type = filters.jobType;
-  }
-  if (Object.keys(eqFilters).length > 0) {
-    options.eq = eqFilters;
-  }
+    // Filtering (stage, industry, job_type)
+    // Note: Search filtering requires more complex query building (ILIKE)
+    // For now, we'll do basic equality filters and handle search client-side
+    // Future: Move to RPC function for full-text search
+    const eqFilters: Record<string, unknown> = {};
+    if (filters?.stage && filters.stage !== "All") {
+      eqFilters.job_status = filters.stage;
+    }
+    if (filters?.industry) {
+      eqFilters.industry = filters.industry;
+    }
+    if (filters?.jobType) {
+      eqFilters.job_type = filters.jobType;
+    }
+    if (Object.keys(eqFilters).length > 0) {
+      options.eq = eqFilters;
+    }
 
-  // Range filters for salary and dates
-  // Future enhancement: add gte/lte support to crud layer
-  // For now, we'll fetch all and filter client-side for complex queries
+    // Range filters for salary and dates
+    // Future enhancement: add gte/lte support to crud layer
+    // For now, we'll fetch all and filter client-side for complex queries
 
-  const result = await userCrud.listRows<JobRow>("jobs", "*", options);
+    const result = await userCrud.listRows<JobRow>("jobs", "*", options);
 
-  // Cache successful results (only for simple queries)
-  if (useCache && result.data && !result.error) {
-    const cacheKey = getCacheKey("jobs", userId, "list");
-    dataCache.set(cacheKey, result.data, JOBS_CACHE_TTL);
-  }
+    // Cache successful results (only for simple queries)
+    if (useCache && result.data && !result.error) {
+      const cacheKey = getCacheKey("jobs", userId, "list");
+      dataCache.set(cacheKey, result.data, JOBS_CACHE_TTL);
+    }
 
-  return result;
+    return result;
+  });
 };
 
 /**
@@ -133,10 +145,14 @@ const getJob = async (
   userId: string,
   jobId: number
 ): Promise<Result<JobRow | null>> => {
-  const userCrud = crud.withUser(userId);
-  return await userCrud.getRow("jobs", "*", {
-    eq: { id: jobId },
-    single: true,
+  const dedupKey = `job-${jobId}-${userId}`;
+
+  return deduplicateRequest(dedupKey, async () => {
+    const userCrud = crud.withUser(userId);
+    return await userCrud.getRow("jobs", "*", {
+      eq: { id: jobId },
+      single: true,
+    });
   });
 };
 

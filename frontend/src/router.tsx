@@ -3,17 +3,18 @@
 // 2) auth pages (public)
 // 3) profile pages and workspace routes
 // 4) layout & shared components
-// 5) AI and Jobs workspaces
+// 5) AI and Jobs workspaces (lazy loaded for performance)
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 
-// Auth / public pages
+// Auth / public pages (eager loaded - needed immediately)
 import Login from "@profile/pages/auth/Login";
 import Register from "@profile/pages/auth/Register";
 import AuthCallback from "@profile/pages/auth/AuthCallback";
 import ForgotPassword from "@profile/pages/auth/ForgetPassword";
 import ResetPassword from "@profile/pages/auth/ResetPassword";
 
-// Profile workspace pages
+// Profile workspace pages (eager loaded - frequently accessed)
 import HomePage from "@profile/pages/home/HomePage";
 import Dashboard from "@profile/pages/dashboard/Dashboard";
 import EducationOverview from "@profile/pages/education/EducationOverview";
@@ -32,29 +33,73 @@ import Settings from "@profile/pages/profile/Settings";
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
-
-// AI & Jobs workspaces
 import AiLayout from "@workspaces/ai/AiLayout";
-import DashboardAI from "@workspaces/ai/pages/DashboardAI/index";
-import JobMatchPage from "@workspaces/ai/pages/JobMatch/index";
-import CompanyResearch from "@workspaces/ai/pages/CompanyResearch/index";
-import TemplatesHub from "@workspaces/ai/pages/TemplatesHub/index";
-import GenerateCoverLetter from "@workspaces/ai/pages/GenerateCoverLetter/index";
-import ResumeEditorV2 from "@workspaces/ai/pages/ResumeEditorV2/index";
-import EditCoverLetter from "@workspaces/ai/components/cover-letter/EditCoverLetter";
 import JobsLayout from "@workspaces/jobs/JobsLayout";
-import PipelinePage from "./app/workspaces/jobs/pages/PipelinePage/PipelinePage";
-import NewJobPage from "./app/workspaces/jobs/pages/NewJobPage";
-import JobDetailsPage from "./app/workspaces/jobs/pages/JobDetailsPage";
-import DocumentsPage from "./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage";
-import SavedSearchesPage from "./app/workspaces/jobs/pages/SavedSearchesPage";
-import AnalyticsPage from "./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage";
-import AutomationsPage from "./app/workspaces/jobs/pages/AutomationsPage";
-import ViewArchivedJobs from "./app/workspaces/jobs/pages/ViewArchivedJobs";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
+
+// AI workspace pages (lazy loaded - heavy components with AI logic)
+const DashboardAI = lazy(
+  () => import("@workspaces/ai/pages/DashboardAI/index")
+);
+const JobMatchPage = lazy(() => import("@workspaces/ai/pages/JobMatch/index"));
+const CompanyResearch = lazy(
+  () => import("@workspaces/ai/pages/CompanyResearch/index")
+);
+const TemplatesHub = lazy(
+  () => import("@workspaces/ai/pages/TemplatesHub/index")
+);
+const GenerateCoverLetter = lazy(
+  () => import("@workspaces/ai/pages/GenerateCoverLetter/index")
+);
+const ResumeEditorV2 = lazy(
+  () => import("@workspaces/ai/pages/ResumeEditorV2/index")
+);
+const EditCoverLetter = lazy(
+  () => import("@workspaces/ai/components/cover-letter/EditCoverLetter")
+);
+
+// Jobs workspace pages (lazy loaded - data-heavy components)
+const PipelinePage = lazy(
+  () => import("./app/workspaces/jobs/pages/PipelinePage/PipelinePage")
+);
+const NewJobPage = lazy(() => import("./app/workspaces/jobs/pages/NewJobPage"));
+const JobDetailsPage = lazy(
+  () => import("./app/workspaces/jobs/pages/JobDetailsPage")
+);
+const DocumentsPage = lazy(
+  () => import("./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage")
+);
+const SavedSearchesPage = lazy(
+  () => import("./app/workspaces/jobs/pages/SavedSearchesPage")
+);
+const AnalyticsPage = lazy(
+  () => import("./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage")
+);
+const AutomationsPage = lazy(
+  () => import("./app/workspaces/jobs/pages/AutomationsPage")
+);
+const ViewArchivedJobs = lazy(
+  () => import("./app/workspaces/jobs/pages/ViewArchivedJobs")
+);
+
+// Loading fallback component for lazy-loaded routes
+const LazyLoadFallback = () => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "400px",
+    }}
+  >
+    <LoadingSpinner size="large" message="Loading..." />
+  </div>
+);
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
   // AI workspace (scoped theme). Index route shows a simple AI landing.
+  // Lazy loaded for performance - reduces initial bundle size
   {
     path: "/ai",
     element: (
@@ -63,16 +108,65 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardAI /> },
-      { path: "resume", element: <ResumeEditorV2 /> },
-      { path: "cover-letter", element: <GenerateCoverLetter /> },
-      { path: "cover-letter-edit", element: <EditCoverLetter /> },
-      { path: "job-match", element: <JobMatchPage /> },
-      { path: "company-research", element: <CompanyResearch /> },
-      { path: "templates", element: <TemplatesHub /> },
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DashboardAI />
+          </Suspense>
+        ),
+      },
+      {
+        path: "resume",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ResumeEditorV2 />
+          </Suspense>
+        ),
+      },
+      {
+        path: "cover-letter",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <GenerateCoverLetter />
+          </Suspense>
+        ),
+      },
+      {
+        path: "cover-letter-edit",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <EditCoverLetter />
+          </Suspense>
+        ),
+      },
+      {
+        path: "job-match",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <JobMatchPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "company-research",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <CompanyResearch />
+          </Suspense>
+        ),
+      },
+      {
+        path: "templates",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TemplatesHub />
+          </Suspense>
+        ),
+      },
     ],
   },
-  // Jobs workspace (placeholder pages)
+  // Jobs workspace - lazy loaded to reduce initial bundle size
   {
     path: "/jobs",
     element: (
@@ -81,15 +175,78 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <PipelinePage /> },
-      { path: "pipeline", element: <PipelinePage /> },
-      { path: "new", element: <NewJobPage /> },
-      { path: ":id", element: <JobDetailsPage /> },
-      { path: "documents", element: <DocumentsPage /> },
-      { path: "saved-searches", element: <SavedSearchesPage /> },
-      { path: "analytics", element: <AnalyticsPage /> },
-      { path: "automations", element: <AutomationsPage /> },
-      { path: "archived-jobs", element: <ViewArchivedJobs /> },
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PipelinePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "pipeline",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PipelinePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "new",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <NewJobPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: ":id",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <JobDetailsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "documents",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DocumentsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "saved-searches",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <SavedSearchesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <AnalyticsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "automations",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <AutomationsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "archived-jobs",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ViewArchivedJobs />
+          </Suspense>
+        ),
+      },
     ],
   },
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.

@@ -1,10 +1,47 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Bundle analyzer - generates stats.html after build
+    visualizer({
+      filename: "./dist/stats.html",
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+    }),
+  ],
+  build: {
+    // Enable code splitting and chunk optimization
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-mui": [
+            "@mui/material",
+            "@mui/icons-material",
+            "@emotion/react",
+            "@emotion/styled",
+          ],
+          "vendor-dnd": ["@hello-pangea/dnd"],
+          // Workspace-specific chunks for lazy loading
+          "workspace-ai": [
+            "./src/app/workspaces/ai/pages/ResumeEditorV2/index.tsx",
+            "./src/app/workspaces/ai/pages/CoverLetterEditor/index.tsx",
+          ],
+        },
+      },
+    },
+    // Increase chunk size warning limit (default is 500kb)
+    chunkSizeWarningLimit: 600,
+    // Enable terser minification (console removal happens automatically in production)
+    minify: "terser",
+  },
   resolve: {
     alias: [
       { find: "@", replacement: resolve(__dirname, "src") + "/" },
