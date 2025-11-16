@@ -4,7 +4,7 @@ import type {
   EducationEntry,
   EducationFormData,
 } from "@profile/types/education";
-import { dbDateToYYYYMM, formatToSqlDate } from "@shared/utils/date";
+import { dbDateToYYYYMM, formatToSqlDate } from "@shared/utils/dateUtils";
 
 // Central place for education table access and mapping. This keeps SELECT strings,
 // mapping logic and CRUD calls in one file so components remain simple.

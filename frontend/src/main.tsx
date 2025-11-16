@@ -7,7 +7,7 @@ import { AuthContextProvider } from "@shared/context/AuthContext.tsx";
 import { ThemeContextProvider } from "@shared/context/ThemeContext";
 import { ErrorBoundary } from "@shared/components/feedback/ErrorBoundary";
 import { ConfirmDialogProvider } from "@shared/components/dialogs";
-import { initAccessibilityAudit } from "@shared/utils/a11yAudit";
+import { initAccessibilityAudit } from "@shared/utils";
 
 // Initialize accessibility auditing in development mode
 if (import.meta.env.DEV) {

@@ -35,19 +35,19 @@ import {
   updateResumeDraft,
   deleteResumeDraft,
   type ResumeDraftRow,
-} from "@shared/services/resumeDraftsService";
+} from "@ai/services/resumeDraftsService";
 import {
   loadFromCache,
   saveToCache,
   clearCache,
-} from "@shared/services/resumeDraftsCache";
+} from "@ai/services/resumeDraftsCache";
 
 // TODO: Add these imports back when implementing initialization logic:
 // import { useAuth } from "@shared/context/AuthContext";
 // import {
 //   migrateLocalStorageDraftsToDatabase,
 //   isMigrationComplete,
-// } from "@shared/services/resumeDraftsMigration";
+// } from "@ai/services/resumeDraftsMigration";
 
 // ============================================================================
 // Types & Interfaces

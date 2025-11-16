@@ -1,7 +1,13 @@
-import profileTheme from "@/app/shared/theme/lightTheme";
-import aiTheme from "@/app/shared/theme/darkTheme";
+/**
+ * Theme Barrel Export
+ *
+ * Re-exports light and dark theme instances created from design tokens.
+ * These are global themes used across all workspaces.
+ */
 
-export type ThemeMode = "light" | "dark";
+export { default as lightTheme } from "./lightTheme";
+export { default as darkTheme } from "./darkTheme";
+export type { ThemeMode } from "./types";
 
-export const lightTheme = profileTheme;
-export const darkTheme = aiTheme;
+// Theme presets
+export * from "./presets";

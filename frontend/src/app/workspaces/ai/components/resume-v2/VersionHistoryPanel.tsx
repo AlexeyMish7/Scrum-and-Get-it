@@ -32,7 +32,7 @@ import { useState, useEffect } from "react";
 import {
   getVersionHistory,
   type ResumeDraftVersion,
-} from "@shared/services/resumeVersionService";
+} from "@ai/services/resumeVersionService";
 import { VersionComparisonDialog } from "./VersionComparisonDialog";
 import { useAuth } from "@shared/context/AuthContext";
 

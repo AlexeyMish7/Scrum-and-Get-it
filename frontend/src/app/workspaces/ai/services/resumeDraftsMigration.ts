@@ -19,7 +19,7 @@
 import {
   createResumeDraft,
   type ResumeDraftRow,
-} from "@shared/services/resumeDraftsService";
+} from "@ai/services/resumeDraftsService";
 
 const MIGRATION_FLAG_KEY = "resume_drafts_migrated_to_db";
 const STORAGE_KEY = "resume_drafts_v2";

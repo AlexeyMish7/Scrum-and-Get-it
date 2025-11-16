@@ -31,10 +31,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import { useThemeContext } from "@shared/context/ThemeContext";
+import { useAvatar } from "@shared/hooks/useAvatar";
 import QuickActionButton from "@shared/components/common/QuickActionButton";
-import { getUserProfile } from "@shared/services/crud";
-import type { ProfileRow } from "@shared/services/types";
-import { supabase } from "@shared/services/supabaseClient";
 import logo from "@shared/assets/logos/logo-icon.png";
 
 type NavItem = {
@@ -90,113 +88,6 @@ const MENU_ITEMS: NavItem[] = [
   { label: "Profile", path: "/profile/details" },
   { label: "Settings", path: "/profile/settings" },
 ];
-
-// Avatar caching utilities
-type AvatarCacheEntry = {
-  url: string;
-  expiresAt: number;
-};
-
-const AVATAR_CACHE_PREFIX = "avatar:";
-const AVATAR_TTL_SECONDS = 60 * 60;
-
-const getCacheKey = (bucket: string, path: string) =>
-  `${AVATAR_CACHE_PREFIX}${bucket}:${path}`;
-
-const readCachedAvatar = (bucket: string, path: string) => {
-  try {
-    const raw = window.localStorage.getItem(getCacheKey(bucket, path));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AvatarCacheEntry;
-    if (Date.now() < parsed.expiresAt - 10_000) {
-      return parsed.url;
-    }
-    window.localStorage.removeItem(getCacheKey(bucket, path));
-  } catch {
-    /* ignore */
-  }
-  return null;
-};
-
-const writeCachedAvatar = (bucket: string, path: string, url: string) => {
-  try {
-    const entry: AvatarCacheEntry = {
-      url,
-      expiresAt: Date.now() + AVATAR_TTL_SECONDS * 1000,
-    };
-    window.localStorage.setItem(
-      getCacheKey(bucket, path),
-      JSON.stringify(entry)
-    );
-  } catch {
-    /* ignore */
-  }
-};
-
-// Hook to load avatar with caching
-const useAvatar = (userId: string | undefined) => {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!userId) {
-      setAvatarUrl(null);
-      return;
-    }
-
-    let active = true;
-
-    const load = async () => {
-      const res = await getUserProfile<ProfileRow>(userId);
-      if (res.error) return;
-      const meta =
-        (res.data?.meta as
-          | { avatar_path?: string | null; avatar_bucket?: string | null }
-          | undefined) ?? {};
-      const avatarPath = meta?.avatar_path ?? null;
-      const avatarBucket = meta?.avatar_bucket ?? "avatars";
-      if (!avatarPath) {
-        if (active) setAvatarUrl(null);
-        return;
-      }
-
-      const cached = readCachedAvatar(avatarBucket, avatarPath);
-      if (cached) {
-        if (active) setAvatarUrl(cached);
-      } else {
-        const { data, error } = await supabase.storage
-          .from(avatarBucket)
-          .createSignedUrl(avatarPath, AVATAR_TTL_SECONDS);
-        if (!error && data?.signedUrl && active) {
-          setAvatarUrl(data.signedUrl);
-          writeCachedAvatar(avatarBucket, avatarPath, data.signedUrl);
-        }
-      }
-    };
-
-    load();
-
-    const channel = supabase
-      .channel("public:profiles")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "profiles",
-          filter: `id=eq.${userId}`,
-        },
-        () => load()
-      )
-      .subscribe();
-
-    return () => {
-      active = false;
-      channel.unsubscribe();
-    };
-  }, [userId]);
-
-  return avatarUrl;
-};
 
 const getNavVariantStyles = (
   theme: ReturnType<typeof useTheme>,

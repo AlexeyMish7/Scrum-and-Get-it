@@ -26,7 +26,7 @@ import type { Result } from "@shared/services/types";
 import type { JobRow } from "@shared/types/database";
 import type { JobFormData, JobFilters, PaginatedJobs } from "@jobs/types";
 import { dataCache, getCacheKey } from "@shared/services/cache";
-import { deduplicateRequest } from "@shared/utils/requestDeduplication";
+import { deduplicateRequest } from "@shared/utils";
 
 // Cache TTL for job data (5 minutes)
 const JOBS_CACHE_TTL = 5 * 60 * 1000;

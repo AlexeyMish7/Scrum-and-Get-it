@@ -9,7 +9,8 @@
  *
  * Usage:
  * - Import constants for dropdowns: `SKILL_LEVEL_OPTIONS`, `SKILL_CATEGORY_OPTIONS`
- * - Use helpers for display: `formatProficiencyLevel()`, `parseProficiencyLevel()`
+ * - Use helpers for display: `formatNumericLevel()` (actively used)
+ * - Parsers available for future use: `formatProficiencyLevel()`, `parseProficiencyLevel()`, `parseNumericLevel()`
  */
 
 import type { Skill } from "@shared/types/domain";

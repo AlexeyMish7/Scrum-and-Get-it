@@ -37,7 +37,7 @@ AppShell renders the global top bar, a sidebar slot (workspace-specific), and a 
 ## Themes
 
 - Global theme: the app is wrapped at the top level with a `ThemeContextProvider` in `src/main.tsx` which applies the shared `lightTheme` / `darkTheme` from `src/app/shared/theme` (via MUI `ThemeProvider`). Theme selection (light/dark) and a small "radius mode" toggle are persisted in localStorage.
-- AI theme: an optional AI-only theme lives at `src/app/workspaces/ai/theme/aiTheme.tsx`. For pages that should showcase an AI look, wrap the page locally with MUI's `ThemeProvider` using that theme.
+- Both themes (`lightTheme` and `darkTheme`) are global and workspace-agnostic. They use a design token system with specialized tokens for palette, effects, motion, and interactions.
 
 Tip: Keep theme usage lightweight. Prefer MUI `sx` props for one-off spacing and small layout tweaks.
 

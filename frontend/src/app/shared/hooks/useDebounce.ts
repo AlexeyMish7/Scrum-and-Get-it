@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /**
  * USE DEBOUNCE HOOK
@@ -25,7 +25,7 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   // Update debounced value after delay
-  useState(() => {
+  useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
@@ -34,7 +34,7 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
     return () => {
       clearTimeout(handler);
     };
-  });
+  }, [value, delay]);
 
   return debouncedValue;
 }
