@@ -30,7 +30,7 @@ import type {
 } from "../../types/certification";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";

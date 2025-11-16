@@ -47,10 +47,23 @@ type AuthContextValue = {
 // Type for provider props; ensures children passed are valid React elements
 type ProviderProps = { children: ReactNode };
 
-// ******************** Component *******************
+// ******************** Context & Hook *******************
 
 // Create the authentication context (undefined by default until provided)
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// Hook that lets components access authentication state and functions
+// Exported before the provider component for Fast Refresh compatibility
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext); // get the current auth context value
+
+  // Throw error if used outside <AuthContextProvider>
+  if (!ctx) throw new Error("useAuth must be used within AuthContextProvider");
+
+  return ctx; // return global auth data and helper functions
+}
+
+// ******************** Provider Component *******************
 
 // The AuthContextProvider wraps the app and supplies auth state + functions
 export function AuthContextProvider({ children }: ProviderProps) {
@@ -153,7 +166,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     try {
       // Attempt to sign in with Supabase (cleans email before sending)
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
@@ -171,11 +184,9 @@ export function AuthContextProvider({ children }: ProviderProps) {
 
       // Login successful — update session immediately when available to avoid
       // brief UI races before the onAuthStateChange listener fires.
-      try {
-        const s = await supabase.auth.getSession();
-        if (s?.data?.session) setSession(s.data.session);
-      } catch {
-        /* non-fatal */
+      if (data?.session) {
+        setSession(data.session);
+        setLoading(false);
       }
 
       return { ok: true };
@@ -252,17 +263,4 @@ export function AuthContextProvider({ children }: ProviderProps) {
       {/* all nested components can access this context via useAuth() */}
     </AuthContext.Provider>
   );
-}
-
-// ******************** Custom Hook *******************
-
-// Hook that lets components access authentication state and functions
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext); // get the current auth context value
-
-  // Throw error if used outside <AuthContextProvider>
-  if (!ctx) throw new Error("useAuth must be used within AuthContextProvider");
-
-  return ctx; // return global auth data and helper functions
 }

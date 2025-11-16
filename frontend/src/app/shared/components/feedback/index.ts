@@ -7,6 +7,18 @@
 
 export { ErrorBoundary } from "./ErrorBoundary";
 export { default as LoadingSpinner } from "./LoadingSpinner";
-export { default as SkeletonLoader } from "./SkeletonLoader";
 export { default as EmptyState } from "./EmptyState";
 export { default as ErrorSnackbar } from "./ErrorSnackbar";
+
+// Skeleton components for loading states
+export {
+  JobCardSkeleton,
+  EmploymentCardSkeleton,
+  ProjectCardSkeleton,
+  ChartSkeleton,
+  DocumentCardSkeleton,
+  TableRowSkeleton,
+  PipelinePageSkeleton,
+  AnalyticsPageSkeleton,
+  DetailViewSkeleton,
+} from "./Skeletons";

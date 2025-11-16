@@ -25,7 +25,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 /*

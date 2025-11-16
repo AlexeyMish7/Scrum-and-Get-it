@@ -35,7 +35,7 @@ import {
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 // Removed CSS overrides to respect global theme; rely on MUI defaults
 import { parseMonthToMs } from "@shared/utils/dateUtils";
 

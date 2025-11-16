@@ -5,23 +5,24 @@
  * These components are used across multiple workspaces.
  *
  * Organization:
- * - UI Primitives: Icon, LoadingSpinner, QuickActionButton
+ * - UI Primitives: Icon, QuickActionButton
  * - Layouts: RightDrawer
  * - Auth: ProtectedRoute
  * - Domain-specific: ProfilePicture, SprintTaskSnackbar
  * - Development: RegionAnchor (page markers for testing)
  *
- * Note: ConfirmDialog and ErrorSnackbar are exported from their
+ * Note: ConfirmDialog, ErrorSnackbar, and LoadingSpinner are exported from their
  * respective specialized folders (dialogs/, feedback/) for better organization.
+ * Import them from @shared/components/dialogs or @shared/components/feedback instead.
  */
 
-// Re-export components from specialized folders
+// Re-export components from specialized folders for convenience
+// (dialogs and feedback folders have their own barrel exports)
 export { default as ConfirmDialog } from "../dialogs/ConfirmDialog";
 export { default as ErrorSnackbar } from "../feedback/ErrorSnackbar";
 
 // UI primitives and utilities
 export { default as Icon } from "./Icon";
-export { default as LoadingSpinner } from "./LoadingSpinner";
 export { default as QuickActionButton } from "./QuickActionButton";
 
 // Layout components

@@ -16,7 +16,7 @@ import {
   mapEducation,
   mapProject,
 } from "@shared/services/dbMappers";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 // Use shared Project type from services; other small view types are kept inline
 type CareerEventType = {
   id: string;

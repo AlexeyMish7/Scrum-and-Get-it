@@ -47,7 +47,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import { SkeletonLoader } from "@shared/components/feedback";
+import { DetailViewSkeleton } from "@shared/components/feedback/Skeletons";
 import { Breadcrumbs } from "@shared/components/navigation";
 import type { BreadcrumbItem } from "@shared/components/navigation";
 import { jobsService } from "@jobs/services";
@@ -164,7 +164,7 @@ export default function JobDetailsPage() {
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <SkeletonLoader variant="detail-view" />
+        <DetailViewSkeleton />
       </Container>
     );
   }

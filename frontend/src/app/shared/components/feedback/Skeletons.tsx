@@ -228,6 +228,36 @@ export function TableRowSkeleton({ columns = 4 }: { columns?: number }) {
 }
 
 /**
+ * Detail view skeleton - for job details page
+ */
+export function DetailViewSkeleton() {
+  return (
+    <Box>
+      {/* Header */}
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Skeleton variant="circular" width={40} height={40} />
+        <Box sx={{ flex: 1 }}>
+          <Skeleton variant="text" width="50%" height={32} sx={{ mb: 1 }} />
+          <Skeleton variant="text" width="30%" height={24} />
+        </Box>
+      </Stack>
+
+      {/* Content sections */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Skeleton variant="text" width="30%" height={24} sx={{ mb: 2 }} />
+          <Skeleton variant="rectangular" height={120} sx={{ mb: 2 }} />
+          <Stack direction="row" spacing={2}>
+            <Skeleton variant="rectangular" width={100} height={36} />
+            <Skeleton variant="rectangular" width={100} height={36} />
+          </Stack>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+}
+
+/**
  * Skeleton for full pipeline page
  * Shows skeleton for all pipeline stages
  */

@@ -12,7 +12,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
