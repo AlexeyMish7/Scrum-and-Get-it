@@ -1,11 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import {
-  levelLabels,
-  skillCategoryOptions,
-} from "../../../../constants/skills";
+import { formatNumericLevel, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
+import { Breadcrumbs } from "@shared/components/navigation";
 import type {
   SkillItem,
   DropResult,
@@ -296,7 +294,7 @@ const SkillsOverview: React.FC = () => {
           if (updatedRows.length > 0) {
             // Build a map of category buckets using the shared category list
             const byCategory: Record<string, Skill[]> = {};
-            skillCategoryOptions.forEach((c) => (byCategory[c] = []));
+            SKILL_CATEGORY_OPTIONS.forEach((c) => (byCategory[c] = []));
 
             const enumToNum: Record<string, number> = {
               beginner: 1,
@@ -417,7 +415,7 @@ const SkillsOverview: React.FC = () => {
         const byCategory: Record<string, Skill[]> = {};
         // Ensure common categories exist even when empty so users can drop into them.
         // Use shared category options so the overview and add pages stay consistent.
-        skillCategoryOptions.forEach(
+        SKILL_CATEGORY_OPTIONS.forEach(
           (c) => (byCategory[c] = byCategory[c] || [])
         );
         const enumToNum: Record<string, number> = {
@@ -654,7 +652,7 @@ const SkillsOverview: React.FC = () => {
                                   variant="caption"
                                   color="text.secondary"
                                 >
-                                  Level: {levelLabels[skill.level] || "Unknown"}
+                                  Level: {formatNumericLevel(skill.level)}
                                 </Typography>
                               </Box>
                             )}

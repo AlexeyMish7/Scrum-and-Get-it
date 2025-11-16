@@ -74,6 +74,7 @@ import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useAuth } from "@shared/context/AuthContext";
 import { Breadcrumbs } from "@shared/components/navigation";
 import type { BreadcrumbItem } from "@shared/components/navigation";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
@@ -85,6 +86,7 @@ export default function ResumeEditorV2() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { jobs } = useUserJobs(50); // Load user jobs for linking
+  const { confirm } = useConfirmDialog();
 
   // Zustand store
   const {
@@ -621,12 +623,15 @@ export default function ResumeEditorV2() {
     }
   };
 
-  const handleClearDraft = () => {
-    if (
-      window.confirm(
-        "Clear all content from this draft? This cannot be undone."
-      )
-    ) {
+  const handleClearDraft = async () => {
+    const confirmed = await confirm({
+      title: "Clear Draft",
+      description: "Clear all content from this draft? This cannot be undone.",
+      confirmText: "Clear",
+      confirmColor: "error",
+    });
+
+    if (confirmed) {
       clearDraft();
       setSuccessMessage("✓ Draft cleared");
     }

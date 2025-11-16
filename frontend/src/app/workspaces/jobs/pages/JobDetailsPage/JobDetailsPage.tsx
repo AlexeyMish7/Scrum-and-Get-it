@@ -45,6 +45,7 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { SkeletonLoader } from "@shared/components/feedback";
 import { Breadcrumbs } from "@shared/components/navigation";
@@ -67,6 +68,7 @@ export default function JobDetailsPage() {
   const { user } = useAuth();
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
 
   const [job, setJob] = useState<JobRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,15 @@ export default function JobDetailsPage() {
 
   const handleDelete = async () => {
     if (!user?.id || !id) return;
-    if (!window.confirm("Delete this job? This cannot be undone.")) return;
+
+    const confirmed = await confirm({
+      title: "Delete Job",
+      description: "Delete this job? This cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
 
     const result = await jobsService.deleteJob(user.id, Number(id));
     if (result.error) {

@@ -10,7 +10,7 @@ import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
 import { useThemeContext } from "@shared/context/ThemeContext";
 import { useNavigate } from "react-router-dom";
-import logo from "../../../../assets/logo/logo-flow-ats.png";
+import logo from "@shared/assets/logos/logo-full.png";
 
 const HomePage = () => {
   const navigate = useNavigate();

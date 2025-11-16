@@ -18,7 +18,9 @@ import {
  * Provides a reusable confirmation dialog that can be triggered from anywhere in the app.
  * Uses React Context to avoid prop drilling and allow any component to show confirmations.
  *
- * Setup (in App.tsx or root):
+ * Setup (in main.tsx or App root):
+ *   import { ConfirmDialogProvider } from '@shared/components/dialogs';
+ *
  *   <ConfirmDialogProvider>
  *     <App />
  *   </ConfirmDialogProvider>
@@ -26,30 +28,38 @@ import {
  * Usage in components:
  *   import { useConfirmDialog } from '@shared/hooks/useConfirmDialog';
  *
- *   const { confirm } = useConfirmDialog();
+ *   function MyComponent() {
+ *     const { confirm } = useConfirmDialog();
  *
- *   const handleDelete = async () => {
- *     const confirmed = await confirm({
- *       title: 'Delete Job?',
- *       message: 'This action cannot be undone.',
- *       confirmText: 'Delete',
- *       confirmColor: 'error'
- *     });
+ *     const handleDelete = async () => {
+ *       const confirmed = await confirm({
+ *         title: 'Delete Job?',
+ *         message: 'This action cannot be undone.',
+ *         confirmText: 'Delete',
+ *         confirmColor: 'error'
+ *       });
  *
- *     if (confirmed) {
- *       // Proceed with deletion
- *     }
- *   };
+ *       if (confirmed) {
+ *         // User clicked "Delete" - proceed with deletion
+ *       } else {
+ *         // User clicked "Cancel" or closed dialog - do nothing
+ *       }
+ *     };
+ *   }
  *
  * Features:
  * - Promise-based API (async/await friendly)
  * - Customizable title, message, and button text
  * - Customizable button colors (primary, error, warning, etc.)
  * - Keyboard accessible (Enter = confirm, Esc = cancel)
+ * - Single dialog instance for entire app (memory efficient)
+ * - Automatically manages focus restoration
+ *
+ * Performance:
+ * - Only one dialog component rendered globally
+ * - No need for useState + Dialog in every component
+ * - Reduces component complexity and bundle size
  */
-
-// Create context with undefined default (will throw if used outside provider)
-//const ConfirmDialogContext = createContext<ConfirmDialogContextValue | undefined>(undefined);
 
 /**
  * Provider component that wraps the app and provides confirm dialog functionality

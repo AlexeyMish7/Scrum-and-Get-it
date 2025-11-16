@@ -5,6 +5,7 @@ import skillsService from "../../services/skills";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { Breadcrumbs } from "@shared/components/navigation";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 
 import {
   Box,
@@ -27,10 +28,10 @@ import {
 } from "@mui/material";
 import type { SkillItem, DbSkillRow } from "../../types/skill.ts";
 import {
-  skillLevelOptions,
-  skillCategoryOptions,
-  levelLabels,
-} from "../../../../constants/skills";
+  SKILL_LEVEL_OPTIONS,
+  SKILL_CATEGORY_OPTIONS,
+  formatNumericLevel,
+} from "@shared/constants";
 
 /*
   AddSkills page — high level overview (non-technical)
@@ -243,11 +244,7 @@ const AddSkills = () => {
   // Loading flags to prevent double-submits and show busy state in UI.
   const [isAdding, setIsAdding] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  // When the user clicks Remove we open a confirmation dialog. This
-  // holds the index of the skill pending deletion (or null).
-  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(
-    null
-  );
+  const { confirm } = useConfirmDialog();
 
   const handleAddSkill = () => {
     (async () => {
@@ -383,9 +380,7 @@ const AddSkills = () => {
     const lvl = userSkills[index].level;
     // Normalize to a label string for the edit dialog select
     const label =
-      typeof lvl === "number"
-        ? levelLabels[lvl] ?? String(lvl)
-        : String(lvl || "");
+      typeof lvl === "number" ? formatNumericLevel(lvl) : String(lvl || "");
     setTempEditLevel(label);
   };
 
@@ -445,9 +440,21 @@ const AddSkills = () => {
       // accidentally remove the wrong item if the local array changes
       // while awaiting the network operation.
       const indexToDelete = selectedSkillIndex;
+      const skill = userSkills[indexToDelete];
+      if (!skill) return;
 
-      // Open a confirmation dialog instead of using window.confirm
-      setConfirmDeleteIndex(indexToDelete);
+      // Show confirmation dialog using shared hook
+      const confirmed = await confirm({
+        title: "Confirm delete",
+        message: `Are you sure you want to delete "${skill.name}"? This action cannot be undone.`,
+        confirmText: "Delete",
+        confirmColor: "error",
+      });
+
+      if (!confirmed) return;
+
+      // Proceed with deletion
+      await performDelete(indexToDelete);
       return;
     })();
   };
@@ -469,7 +476,6 @@ const AddSkills = () => {
         if (res.error) {
           handleError(res.error);
           setIsUpdating(false);
-          setConfirmDeleteIndex(null);
           return;
         }
       }
@@ -496,7 +502,6 @@ const AddSkills = () => {
       handleError(err || "Failed to delete skill");
     } finally {
       setIsUpdating(false);
-      setConfirmDeleteIndex(null);
       closeEditDialog();
     }
   };
@@ -591,7 +596,7 @@ const AddSkills = () => {
               size="small"
               sx={{ minWidth: 180 }}
             >
-              {skillCategoryOptions.map((cat: string) => (
+              {SKILL_CATEGORY_OPTIONS.map((cat: string) => (
                 <MenuItem key={cat} value={cat}>
                   {cat}
                 </MenuItem>
@@ -606,7 +611,7 @@ const AddSkills = () => {
               size="small"
               sx={{ minWidth: 160 }}
             >
-              {skillLevelOptions.map((lvl: string) => (
+              {SKILL_LEVEL_OPTIONS.map((lvl: string) => (
                 <MenuItem key={lvl} value={lvl}>
                   {lvl}
                 </MenuItem>
@@ -663,7 +668,7 @@ const AddSkills = () => {
                   label="Proficiency"
                   onChange={(e) => setTempEditLevel(e.target.value as string)}
                 >
-                  {skillLevelOptions.map((lvl: string) => (
+                  {SKILL_LEVEL_OPTIONS.map((lvl: string) => (
                     <MenuItem key={lvl} value={lvl}>
                       {lvl}
                     </MenuItem>
@@ -697,42 +702,6 @@ const AddSkills = () => {
             notification={notification}
             onClose={closeNotification}
           />
-
-          {/* Confirm delete dialog to avoid window.confirm */}
-          <Dialog
-            open={confirmDeleteIndex !== null}
-            onClose={() => setConfirmDeleteIndex(null)}
-            aria-labelledby="confirm-delete-skill"
-          >
-            <DialogTitle id="confirm-delete-skill">Confirm delete</DialogTitle>
-            <DialogContent>
-              <Typography>
-                {`Are you sure you want to delete "${
-                  confirmDeleteIndex !== null
-                    ? userSkills[confirmDeleteIndex]?.name
-                    : ""
-                }"? This action cannot be undone.`}
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button
-                onClick={() => setConfirmDeleteIndex(null)}
-                variant="outlined"
-              >
-                Cancel
-              </Button>
-              <Button
-                color="error"
-                onClick={() => {
-                  if (confirmDeleteIndex !== null)
-                    performDelete(confirmDeleteIndex);
-                }}
-                disabled={isUpdating}
-              >
-                Delete
-              </Button>
-            </DialogActions>
-          </Dialog>
         </Paper>
       </Box>
     </Box>

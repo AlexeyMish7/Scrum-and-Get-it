@@ -4,6 +4,7 @@ import {
   useErrorHandler,
   validateRequired,
 } from "@shared/hooks/useErrorHandler";
+import { SKILL_LEVEL_OPTIONS, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import {
   Card,
   CardContent,
@@ -71,8 +72,6 @@ const degreeOptions = [
   "PhD",
   "Certificate",
 ];
-const skillLevelOptions = ["Beginner", "Intermediate", "Advanced", "Expert"];
-const skillCategoryOptions = ["Technical", "Soft Skills", "Language", "Other"];
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({
   counts,
@@ -464,7 +463,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                       value={skillCategory}
                       onChange={(e) => setSkillCategory(e.target.value)}
                     >
-                      {skillCategoryOptions.map((opt) => (
+                      {SKILL_CATEGORY_OPTIONS.map((opt) => (
                         <MenuItem key={opt} value={opt}>
                           {opt}
                         </MenuItem>
@@ -480,7 +479,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                       value={skillLevel}
                       onChange={(e) => setSkillLevel(e.target.value)}
                     >
-                      {skillLevelOptions.map((lvl) => (
+                      {SKILL_LEVEL_OPTIONS.map((lvl) => (
                         <MenuItem key={lvl} value={lvl}>
                           {lvl}
                         </MenuItem>

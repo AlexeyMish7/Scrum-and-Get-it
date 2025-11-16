@@ -49,6 +49,7 @@ import {
 } from "@mui/icons-material";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import useUserJobs from "@shared/hooks/useUserJobs";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { TemplateSelector } from "./TemplateSelector";
 
 interface ResumeStarterProps {
@@ -63,6 +64,7 @@ export default function ResumeStarter({
   const { drafts, createDraft, loadDraft, deleteDraft, isLoading } =
     useResumeDraftsV2();
   const { jobs } = useUserJobs(10);
+  const { confirm } = useConfirmDialog();
 
   // Dialog states
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -90,9 +92,12 @@ export default function ResumeStarter({
     // Prevent card click from triggering
     event.stopPropagation();
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${draftName}"? This action cannot be undone.`
-    );
+    const confirmed = await confirm({
+      title: "Delete Draft",
+      description: `Are you sure you want to delete "${draftName}"? This action cannot be undone.`,
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
 
     if (!confirmed) return;
 

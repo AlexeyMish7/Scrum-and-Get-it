@@ -1,18 +1,38 @@
 /**
- * Shared Common Components
- * Barrel export for simplified imports
+ * SHARED COMMON COMPONENTS - Barrel Export
+ *
+ * Centralized exports for reusable UI components.
+ * These components are used across multiple workspaces.
+ *
+ * Organization:
+ * - UI Primitives: Icon, LoadingSpinner, QuickActionButton
+ * - Layouts: RightDrawer
+ * - Auth: ProtectedRoute
+ * - Domain-specific: ProfilePicture, SprintTaskSnackbar
+ * - Development: RegionAnchor (page markers for testing)
+ *
+ * Note: ConfirmDialog and ErrorSnackbar are exported from their
+ * respective specialized folders (dialogs/, feedback/) for better organization.
  */
 
-// Re-export components from their new locations
+// Re-export components from specialized folders
 export { default as ConfirmDialog } from "../dialogs/ConfirmDialog";
 export { default as ErrorSnackbar } from "../feedback/ErrorSnackbar";
+
+// UI primitives and utilities
 export { default as Icon } from "./Icon";
 export { default as LoadingSpinner } from "./LoadingSpinner";
-export { default as NavItem } from "./NavItem";
-export { default as ProfilePicture } from "./ProfilePicture";
-export { default as ProtectedRoute } from "./ProtectedRoute";
 export { default as QuickActionButton } from "./QuickActionButton";
-export { default as RegionAnchor } from "./RegionAnchor";
+
+// Layout components
 export { default as RightDrawer } from "./RightDrawer";
-export { default as SidebarSection } from "./SidebarSection";
+
+// Auth and routing
+export { default as ProtectedRoute } from "./ProtectedRoute";
+
+// Domain-specific components
+export { default as ProfilePicture } from "./ProfilePicture";
 export { default as SprintTaskSnackbar } from "./SprintTaskSnackbar";
+
+// Development/debugging tools
+export { default as RegionAnchor } from "./RegionAnchor";

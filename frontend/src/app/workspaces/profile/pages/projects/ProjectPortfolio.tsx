@@ -25,6 +25,7 @@ import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import { Breadcrumbs } from "@shared/components/navigation";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { FolderOpen as ProjectIcon } from "@mui/icons-material";
 import type { Project } from "../../types/project.ts";
@@ -44,10 +45,8 @@ const ProjectPortfolio: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   // Dialog for viewing project details
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  // Dialog for confirming deletion
-  const [confirmDeleteProject, setConfirmDeleteProject] =
-    useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { confirm } = useConfirmDialog();
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -192,7 +191,6 @@ const ProjectPortfolio: React.FC = () => {
       );
       window.dispatchEvent(new Event("projects:changed"));
       setSelectedProject(null);
-      setConfirmDeleteProject(null);
     } catch (err) {
       handleError(err as Error);
     } finally {
@@ -587,44 +585,22 @@ const ProjectPortfolio: React.FC = () => {
               Edit
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!selectedProject) return;
-                setConfirmDeleteProject(selectedProject);
+                const confirmed = await confirm({
+                  title: "Confirm delete",
+                  message: `Are you sure you want to delete "${
+                    selectedProject.projectName ?? "this project"
+                  }"? This action cannot be undone.`,
+                  confirmText: "Delete",
+                  confirmColor: "error",
+                });
+                if (confirmed) {
+                  await performDelete(selectedProject.id);
+                }
               }}
               color="error"
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Confirm delete dialog */}
-        <Dialog
-          open={!!confirmDeleteProject}
-          onClose={() => setConfirmDeleteProject(null)}
-        >
-          <DialogTitle>Confirm delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              {`Are you sure you want to delete "${
-                confirmDeleteProject?.projectName ?? "this project"
-              }"? This action cannot be undone.`}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => setConfirmDeleteProject(null)}
-              variant="outlined"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!confirmDeleteProject) return;
-                performDelete(confirmDeleteProject.id);
-              }}
               disabled={deleting}
-              color="error"
             >
               {deleting ? "Deleting..." : "Delete"}
             </Button>

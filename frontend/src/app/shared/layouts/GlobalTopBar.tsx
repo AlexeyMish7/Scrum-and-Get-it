@@ -35,7 +35,7 @@ import QuickActionButton from "@shared/components/common/QuickActionButton";
 import { getUserProfile } from "@shared/services/crud";
 import type { ProfileRow } from "@shared/services/types";
 import { supabase } from "@shared/services/supabaseClient";
-import logo from "@/app/assets/logo/graphics_only.png";
+import logo from "@shared/assets/logos/logo-icon.png";
 
 type NavItem = {
   label: string;

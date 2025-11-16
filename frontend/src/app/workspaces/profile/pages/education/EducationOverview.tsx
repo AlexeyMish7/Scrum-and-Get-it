@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { School as SchoolIcon } from "@mui/icons-material";
@@ -65,11 +66,8 @@ const EducationOverview: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dialog state
-  // - `editingEntry` controls the edit dialog when not null
-  // - `confirmDeleteId` controls the delete confirmation dialog when not null
-  const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Dialog state: editingEntry controls the edit dialog when not null
+  const [editingEntry, setEditingEntry] = useState<Education | null>(null);
 
   // Use shared date utility to convert YYYY-MM strings to milliseconds.
   // Returns 0 for invalid/missing input so sorting is stable.
@@ -179,10 +177,19 @@ const EducationOverview: React.FC = () => {
   const handleDeleteEntry = async (id: string) => {
     if (!user?.id) return;
 
+    const confirmed = await confirm({
+      title: "Confirm Delete",
+      description:
+        "Are you sure you want to delete this education entry? This action cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
+
     try {
       await educationService.deleteEducation(user.id, id);
       showSuccess("Education deleted successfully");
-      setConfirmDeleteId(null);
       await loadEducation();
     } catch (err) {
       handleError(err);
@@ -335,7 +342,7 @@ const EducationOverview: React.FC = () => {
                             size="small"
                             variant="contained"
                             color="error"
-                            onClick={() => setConfirmDeleteId(edu.id)}
+                            onClick={() => handleDeleteEntry(edu.id)}
                           >
                             Delete
                           </Button>
@@ -360,17 +367,9 @@ const EducationOverview: React.FC = () => {
           onClose={() => setEditingEntry(null)}
           onSave={handleSaveEntry}
           onDelete={(id) => {
-            setConfirmDeleteId(id);
+            handleDeleteEntry(id);
             setEditingEntry(null);
           }}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      {confirmDeleteId && (
-        <DeleteConfirmationDialog
-          onConfirm={() => handleDeleteEntry(confirmDeleteId)}
-          onCancel={() => setConfirmDeleteId(null)}
         />
       )}
     </Box>
@@ -517,39 +516,6 @@ const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
         </Button>
         <Button onClick={handleSave} variant="contained" color="primary">
           Save Changes
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-// Delete Confirmation Dialog Component
-// Simple confirmation modal shown when the user tries to remove an entry.
-// Keeps the UI flow explicit and prevents accidental deletes.
-interface DeleteConfirmationDialogProps {
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
-  onConfirm,
-  onCancel,
-}) => {
-  return (
-    <Dialog open={true} onClose={onCancel}>
-      <DialogTitle>Confirm Delete</DialogTitle>
-      <DialogContent>
-        <Typography>
-          Are you sure you want to delete this education entry? This action
-          cannot be undone.
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel} variant="text" color="inherit">
-          Cancel
-        </Button>
-        <Button onClick={onConfirm} variant="contained" color="error">
-          Delete
         </Button>
       </DialogActions>
     </Dialog>
