@@ -15,6 +15,7 @@ import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { Button, Typography, Paper, Box, Stack } from "@mui/material";
 // Removed CSS overrides to respect global theme
 import { useNavigate } from "react-router-dom";
+import { Breadcrumbs } from "@shared/components/navigation";
 
 const AddEmploymentForm: React.FC = () => {
   const [formData, setFormData] = useState<EmploymentFormData>({
@@ -124,7 +125,7 @@ const AddEmploymentForm: React.FC = () => {
       // On success: navigate back to the list and pass a success message via
       // navigation state. The list page will show a centralized snackbar so
       // notifications are consistent across add/edit/delete flows.
-      navigate("/employment-history", {
+      navigate("/profile/employment", {
         state: { success: "Employment entry added successfully!" },
       });
 
@@ -153,6 +154,13 @@ const AddEmploymentForm: React.FC = () => {
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Breadcrumbs
+        items={[
+          { label: "Profile", path: "/profile" },
+          { label: "Employment", path: "/profile/employment" },
+          { label: "Add" },
+        ]}
+      />
       <Paper
         variant="outlined"
         component="form"

@@ -24,6 +24,9 @@ import projectsService from "../../services/projects";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { FolderOpen as ProjectIcon } from "@mui/icons-material";
 import type { Project } from "../../types/project.ts";
 // Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx
 
@@ -208,11 +211,17 @@ const ProjectPortfolio: React.FC = () => {
       handleError(err as Error);
     }
   };
-  const handleAddProject = () => navigate("/projects/new");
+  const handleAddProject = () => navigate("/profile/projects/new");
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Projects" },
+          ]}
+        />
         <Box sx={{ textAlign: "center", mb: 3 }}>
           <Typography variant="h3">My Projects Portfolio</Typography>
           <Typography variant="subtitle1" color="text.secondary">
@@ -317,25 +326,26 @@ const ProjectPortfolio: React.FC = () => {
 
         {/* Empty State */}
         {!loading && !isLoading && filteredProjects.length === 0 && (
-          <Box sx={{ textAlign: "center", py: 6 }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>
-              No Projects Found
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              {projects.length === 0
+          <EmptyState
+            icon={<ProjectIcon />}
+            title="No Projects Found"
+            description={
+              projects.length === 0
                 ? "Start building your portfolio by adding your first project!"
-                : "Try adjusting your search or filter criteria."}
-            </Typography>
-            {projects.length === 0 && (
-              <Button
-                variant="contained"
-                size="large"
-                onClick={handleAddProject}
-              >
-                Add Your First Project
-              </Button>
-            )}
-          </Box>
+                : "Try adjusting your search or filter criteria."
+            }
+            action={
+              projects.length === 0 ? (
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleAddProject}
+                >
+                  Add Your First Project
+                </Button>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Project Cards */}

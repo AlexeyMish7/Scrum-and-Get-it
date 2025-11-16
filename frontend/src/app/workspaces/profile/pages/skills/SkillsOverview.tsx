@@ -531,6 +531,9 @@ const SkillsOverview: React.FC = () => {
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[{ label: "Profile", path: "/profile" }, { label: "Skills" }]}
+        />
         <Stack
           direction="row"
           justifyContent="space-between"
@@ -539,7 +542,7 @@ const SkillsOverview: React.FC = () => {
         >
           <Button
             variant="contained"
-            onClick={() => navigate("/skills/manage")}
+            onClick={() => navigate("/profile/skills/manage")}
           >
             Manage skills
           </Button>
@@ -615,9 +618,12 @@ const SkillsOverview: React.FC = () => {
                         }}
                       >
                         {category.skills.length === 0 && (
-                          <Typography color="text.secondary" fontStyle="italic">
-                            No skills found.
-                          </Typography>
+                          <EmptyState
+                            icon={<SkillsIcon />}
+                            title="No skills found"
+                            description="Add skills in this category to get started"
+                            sx={{ py: 4 }}
+                          />
                         )}
                         {category.skills.map((skill, index) => (
                           <Draggable

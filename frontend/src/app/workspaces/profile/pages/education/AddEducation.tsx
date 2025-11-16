@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isMonthAfter } from "@shared/utils/dateUtils";
 import { useAuth } from "@shared/context/AuthContext";
+import { Breadcrumbs } from "@shared/components/navigation";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
@@ -198,7 +199,7 @@ const AddEducation: React.FC = () => {
       window.dispatchEvent(new Event("education:changed"));
       showSuccess("Education saved");
       // Go back to education overview page
-      navigate("/education");
+      navigate("/profile/education");
     } catch (err) {
       console.error("Error adding education", err);
       handleError(err);
@@ -272,6 +273,13 @@ const AddEducation: React.FC = () => {
     // Layout-only styling: center content and add spacing; rely on theme for colors/visuals
     <Box sx={{ width: "100%", minHeight: "100vh" }}>
       <Box sx={{ maxWidth: 800, mx: "auto", p: 3 }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Education", path: "/profile/education" },
+            { label: "Add" },
+          ]}
+        />
         {/* Page title */}
         <Typography variant="h4" mb={2}>
           Education Manager

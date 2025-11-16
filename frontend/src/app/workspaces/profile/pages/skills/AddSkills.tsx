@@ -4,6 +4,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { Breadcrumbs } from "@shared/components/navigation";
 
 import {
   Box,
@@ -340,7 +341,7 @@ const AddSkills = () => {
       setInputValue("");
       setIsAdding(false);
 
-      navigate("/skillsOverview");
+      navigate("/profile/skills");
     })();
   };
 
@@ -512,6 +513,13 @@ const AddSkills = () => {
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 960, mx: "auto" }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Skills", path: "/profile/skills" },
+            { label: "Manage" },
+          ]}
+        />
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -531,7 +539,7 @@ const AddSkills = () => {
             </Box>
             <Button
               variant="outlined"
-              onClick={() => navigate("/skillsOverview")}
+              onClick={() => navigate("/profile/skills")}
               aria-label="Back to skills overview"
             >
               Back

@@ -93,162 +93,91 @@ export const router = createBrowserRouter([
   // NOTE: Removed temporary /add-job-form test route; use the Jobs workspace 'new' page instead.
   // NOTE: Removed old /cover-letters and /edit-cover-letters routes; replaced by AI workspace /ai/cover-letter
   // NOTE: Removed old /edit-resume and /ai/resume-old routes; replaced by AI workspace /ai/resume (ResumeEditorV2)
+
+  // Public auth routes
   { path: "/register", element: <Register /> },
-  {
-    path: "/profile",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <Dashboard />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/education",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <EducationOverview />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/education/manage",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <AddEducation />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/skillsOverview",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <SkillsOverview />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
   { path: "/login", element: <Login /> },
   { path: "/auth/callback", element: <AuthCallback /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
+
+  // Profile workspace - All routes nested under /profile
   {
-    path: "/add-employment",
+    path: "/profile",
     element: (
       <ProtectedRoute>
-        <ProfileLayout>
-          <AddEmployment />
-        </ProfileLayout>
+        <ProfileLayout />
       </ProtectedRoute>
     ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: "education", element: <EducationOverview /> },
+      { path: "education/add", element: <AddEducation /> },
+      { path: "education/:id/edit", element: <AddEducation /> },
+      { path: "skills", element: <SkillsOverview /> },
+      { path: "skills/manage", element: <AddSkills /> },
+      { path: "employment", element: <EmploymentHistoryList /> },
+      { path: "employment/add", element: <AddEmployment /> },
+      { path: "employment/:id/edit", element: <AddEmployment /> },
+      { path: "projects", element: <ProjectPortfolio /> },
+      { path: "projects/new", element: <AddProjectForm /> },
+      { path: "projects/:id", element: <ProjectDetails /> },
+      { path: "projects/:id/edit", element: <AddProjectForm /> },
+      { path: "certifications", element: <Certifications /> },
+      { path: "details", element: <ProfileDetails /> },
+      { path: "settings", element: <Settings /> },
+    ],
+  },
+
+  // Legacy route redirects for backward compatibility
+  { path: "/education", element: <Navigate to="/profile/education" replace /> },
+  {
+    path: "/education/manage",
+    element: <Navigate to="/profile/education/add" replace />,
+  },
+  {
+    path: "/skillsOverview",
+    element: <Navigate to="/profile/skills" replace />,
   },
   {
     path: "/add-skills",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <AddSkills />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/skills/manage" replace />,
   },
   {
     path: "/skills/manage",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <AddSkills />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/skills/manage" replace />,
   },
-
+  {
+    path: "/add-employment",
+    element: <Navigate to="/profile/employment/add" replace />,
+  },
   {
     path: "/employment-history",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <EmploymentHistoryList />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/employment" replace />,
   },
-  {
-    path: "/portfolio",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <ProjectPortfolio />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
+  { path: "/portfolio", element: <Navigate to="/profile/projects" replace /> },
   {
     path: "/certifications",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <Certifications />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/certifications" replace />,
   },
   {
     path: "/profile-details",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <ProfileDetails />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/details" replace />,
   },
-  {
-    path: "/settings",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <Settings />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
-  },
+  { path: "/settings", element: <Navigate to="/profile/settings" replace /> },
   {
     path: "/projects/new",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <AddProjectForm />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/projects/new" replace />,
   },
   {
     path: "/projects/:id",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <ProjectDetails />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/projects/:id" replace />,
   },
   {
     path: "/projects/:id/edit",
-    element: (
-      <ProtectedRoute>
-        <ProfileLayout>
-          <AddProjectForm />
-        </ProfileLayout>
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/profile/projects/:id/edit" replace />,
   },
+
   // Catch-all: redirect unknown routes to home
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

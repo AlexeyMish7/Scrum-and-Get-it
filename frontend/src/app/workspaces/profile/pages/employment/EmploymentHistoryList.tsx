@@ -16,6 +16,9 @@ import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { Work as WorkIcon } from "@mui/icons-material";
 import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {
@@ -153,6 +156,12 @@ export default function EmploymentHistoryList() {
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Breadcrumbs
+        items={[
+          { label: "Profile", path: "/profile" },
+          { label: "Employment" },
+        ]}
+      />
       <Box
         sx={{
           display: "flex",
@@ -165,14 +174,26 @@ export default function EmploymentHistoryList() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate("/add-employment")}
+          onClick={() => navigate("/profile/employment/add")}
         >
           Add Employment
         </Button>
       </Box>
 
       {entries !== null && entries.length === 0 && (
-        <Typography variant="body1">No employment entries yet.</Typography>
+        <EmptyState
+          icon={<WorkIcon />}
+          title="No employment entries yet"
+          description="Click 'Add Employment' to start building your work history"
+          action={
+            <Button
+              variant="contained"
+              onClick={() => navigate("/profile/employment/add")}
+            >
+              Add Employment
+            </Button>
+          }
+        />
       )}
 
       <Stack spacing={2} mt={2}>

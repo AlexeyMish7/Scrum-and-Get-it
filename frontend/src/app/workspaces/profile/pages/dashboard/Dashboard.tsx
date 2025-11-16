@@ -6,6 +6,7 @@ import { Box, Typography, Avatar, Button, Divider } from "@mui/material";
 import Icon from "@shared/components/common/Icon";
 import { useAuth } from "@shared/context/AuthContext";
 import * as crud from "@shared/services/crud";
+import { Breadcrumbs } from "@shared/components/navigation";
 import type { EmploymentRow } from "../../types/employment.ts";
 import type { DbSkillRow } from "../../types/skill.ts";
 import type { DocumentRow } from "../../types/document.ts";
@@ -546,6 +547,9 @@ const Dashboard: FC = () => {
         minHeight: "100vh",
       }}
     >
+      <Box sx={{ p: 3, pb: 0 }}>
+        <Breadcrumbs items={[{ label: "Profile" }]} />
+      </Box>
       {/* --- DASHBOARD HEADER --- */}
       <Box
         sx={{

@@ -28,20 +28,26 @@ export default function ProfileSidebar() {
         <ListItemButton component={NavLink} to="/profile" end>
           <ListItemText primary="Dashboard" />
         </ListItemButton>
-        <ListItemButton component={NavLink} to="/employment-history">
+        <ListItemButton component={NavLink} to="/profile/employment">
           <ListItemText primary="Employment" />
         </ListItemButton>
-        <ListItemButton component={NavLink} to="/education">
+        <ListItemButton component={NavLink} to="/profile/education">
           <ListItemText primary="Education" />
         </ListItemButton>
-        <ListItemButton component={NavLink} to="/skillsOverview">
+        <ListItemButton component={NavLink} to="/profile/skills">
           <ListItemText primary="Skills" />
         </ListItemButton>
-        <ListItemButton component={NavLink} to="/portfolio">
+        <ListItemButton component={NavLink} to="/profile/projects">
           <ListItemText primary="Projects" />
         </ListItemButton>
-        <ListItemButton component={NavLink} to="/certifications">
+        <ListItemButton component={NavLink} to="/profile/certifications">
           <ListItemText primary="Certifications" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/profile/details">
+          <ListItemText primary="Profile Details" />
+        </ListItemButton>
+        <ListItemButton component={NavLink} to="/profile/settings">
+          <ListItemText primary="Settings" />
         </ListItemButton>
       </List>
     </Box>

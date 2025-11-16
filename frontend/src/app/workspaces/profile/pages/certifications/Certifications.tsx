@@ -32,6 +32,9 @@ import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { CardMembership as CertIcon } from "@mui/icons-material";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -395,6 +398,12 @@ const Certifications: React.FC = () => {
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Certifications" },
+          ]}
+        />
         <Typography variant="h4" sx={{ mb: 2 }}>
           Manage Your Certifications
         </Typography>

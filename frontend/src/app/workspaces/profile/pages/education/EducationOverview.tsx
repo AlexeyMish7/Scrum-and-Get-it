@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { School as SchoolIcon } from "@mui/icons-material";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import {
@@ -192,6 +195,9 @@ const EducationOverview: React.FC = () => {
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Breadcrumbs
+        items={[{ label: "Profile", path: "/profile" }, { label: "Education" }]}
+      />
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
@@ -218,7 +224,7 @@ const EducationOverview: React.FC = () => {
             variant="contained"
             color="primary"
             startIcon={<Add />}
-            onClick={() => navigate("/education/manage")}
+            onClick={() => navigate("/profile/education/add")}
             size="medium"
           >
             Add Education
@@ -237,16 +243,14 @@ const EducationOverview: React.FC = () => {
               <TimelineItem>
                 <TimelineOppositeContent />
                 <TimelineSeparator>
-                  {/* Empty-state dot */}
                   <TimelineDot color="grey" />
                 </TimelineSeparator>
                 <TimelineContent>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="body1">
-                      No education entries yet. Click "+ Add Education" to get
-                      started building your academic profile.
-                    </Typography>
-                  </Paper>
+                  <EmptyState
+                    icon={<SchoolIcon />}
+                    title="No education entries yet"
+                    description="Click 'Add Education' to get started building your academic profile"
+                  />
                 </TimelineContent>
               </TimelineItem>
             ) : (

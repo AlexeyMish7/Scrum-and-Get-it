@@ -427,7 +427,7 @@ const AddProjectForm: React.FC = () => {
         })
       );
       window.dispatchEvent(new Event("projects:changed"));
-      navigate("/portfolio");
+      navigate("/profile/projects");
     } catch (err) {
       console.error(err);
       handleError(err as Error);
