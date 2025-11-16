@@ -91,6 +91,7 @@ export async function deduplicateRequest<T>(
  * Useful when data changes and pending requests should be cancelled
  *
  * @param pattern - Regex or string to match request keys
+ * @returns Number of requests invalidated
  *
  * @example
  * // Invalidate all job-related requests
@@ -100,14 +101,18 @@ export async function deduplicateRequest<T>(
  * // Invalidate specific user's requests
  * invalidatePendingRequests(`user-${userId}`);
  */
-export function invalidatePendingRequests(pattern: RegExp | string): void {
+export function invalidatePendingRequests(pattern: RegExp | string): number {
   const regex = typeof pattern === "string" ? new RegExp(pattern) : pattern;
+  let count = 0;
 
   for (const key of pendingRequests.keys()) {
     if (regex.test(key)) {
       pendingRequests.delete(key);
+      count++;
     }
   }
+
+  return count;
 }
 
 /**

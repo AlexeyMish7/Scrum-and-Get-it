@@ -13,6 +13,22 @@ vi.mock("@shared/services/crud", () => ({
   withUser: vi.fn(),
 }));
 
+// Mock request deduplication (pass through the fetcher function)
+vi.mock("@shared/utils/requestDeduplication", () => ({
+  deduplicateRequest: vi.fn((_, fetcher) => fetcher()),
+}));
+
+// Mock cache (return null for all gets to test actual logic)
+vi.mock("@shared/services/cache", () => ({
+  dataCache: {
+    get: vi.fn(() => null),
+    set: vi.fn(),
+    invalidate: vi.fn(),
+    invalidatePattern: vi.fn(),
+  },
+  getCacheKey: vi.fn((table, userId, operation) => `${table}-${userId}-${operation}`),
+}));
+
 describe("jobsService", () => {
   const mockUserId = "test-user-123";
   const mockJobId = 42;
