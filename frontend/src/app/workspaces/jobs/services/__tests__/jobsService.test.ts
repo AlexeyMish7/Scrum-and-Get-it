@@ -26,7 +26,9 @@ vi.mock("@shared/services/cache", () => ({
     invalidate: vi.fn(),
     invalidatePattern: vi.fn(),
   },
-  getCacheKey: vi.fn((table, userId, operation) => `${table}-${userId}-${operation}`),
+  getCacheKey: vi.fn(
+    (table, userId, operation) => `${table}-${userId}-${operation}`
+  ),
 }));
 
 describe("jobsService", () => {

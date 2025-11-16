@@ -27,71 +27,6 @@
  * - Level AAA: Enhanced (exceeds typical requirements)
  */
 
-interface AxeResults {
-  violations: AxeViolation[];
-  passes: AxePass[];
-  incomplete: AxeIncomplete[];
-  inapplicable: AxeInapplicable[];
-}
-
-interface AxeViolation {
-  id: string;
-  impact: "critical" | "serious" | "moderate" | "minor" | null;
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: AxeNode[];
-  tags: string[];
-}
-
-interface AxePass {
-  id: string;
-  impact: null;
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: AxeNode[];
-  tags: string[];
-}
-
-interface AxeIncomplete {
-  id: string;
-  impact: string | null;
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: AxeNode[];
-  tags: string[];
-}
-
-interface AxeInapplicable {
-  id: string;
-  impact: null;
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: AxeNode[];
-  tags: string[];
-}
-
-interface AxeNode {
-  html: string;
-  impact: string | null;
-  target: string[];
-  failureSummary?: string;
-  any: AxeCheck[];
-  all: AxeCheck[];
-  none: AxeCheck[];
-}
-
-interface AxeCheck {
-  id: string;
-  data: unknown;
-  relatedNodes: unknown[];
-  impact: string | null;
-  message: string;
-}
-
 /**
  * Initialize accessibility auditing with axe-core
  * Only runs in development mode
@@ -99,14 +34,16 @@ interface AxeCheck {
  * @param options Configuration options
  * @returns Cleanup function to stop auditing
  */
-export async function initAccessibilityAudit(options: {
-  /** Minimum impact level to report (default: all violations) */
-  minImpact?: "critical" | "serious" | "moderate" | "minor";
-  /** WCAG level to test against (default: AA) */
-  wcagLevel?: "A" | "AA" | "AAA";
-  /** Delay before running audit (ms, default: 1000) */
-  auditDelay?: number;
-} = {}): Promise<() => void> {
+export async function initAccessibilityAudit(
+  options: {
+    /** Minimum impact level to report (default: all violations) */
+    minImpact?: "critical" | "serious" | "moderate" | "minor";
+    /** WCAG level to test against (default: AA) */
+    wcagLevel?: "A" | "AA" | "AAA";
+    /** Delay before running audit (ms, default: 1000) */
+    auditDelay?: number;
+  } = {}
+): Promise<() => void> {
   // Only run in development
   if (!import.meta.env.DEV) {
     return () => {};
@@ -120,14 +57,6 @@ export async function initAccessibilityAudit(options: {
     const React = await import("react");
     const ReactDOM = await import("react-dom/client");
 
-    // Configure axe-core
-    const config = {
-      runOnly: {
-        type: "tag",
-        values: [`wcag${wcagLevel.toLowerCase()}`, `wcag2${wcagLevel.toLowerCase()}`],
-      },
-    };
-
     // Run axe on the document
     let timeoutId: number;
 
@@ -135,7 +64,8 @@ export async function initAccessibilityAudit(options: {
       clearTimeout(timeoutId);
       timeoutId = window.setTimeout(async () => {
         try {
-          axe.default(React.default, ReactDOM.default, auditDelay, config);
+          // @axe-core/react takes (React, ReactDOM, delay) parameters
+          axe.default(React.default, ReactDOM.default, auditDelay);
         } catch (error) {
           console.error("Accessibility audit failed:", error);
         }
@@ -183,23 +113,28 @@ export async function auditElement(
     wcagLevel?: "A" | "AA" | "AAA";
     rules?: string[];
   } = {}
-): Promise<AxeResults | null> {
+): Promise<import("axe-core").AxeResults | null> {
   if (!import.meta.env.DEV) {
     return null;
   }
 
   try {
     const axeCore = await import("axe-core");
+    type RunOptions = import("axe-core").RunOptions;
+    type AxeResults = import("axe-core").AxeResults;
+    type Result = import("axe-core").Result;
+    type NodeResult = import("axe-core").NodeResult;
 
     const { wcagLevel = "AA", rules } = options;
 
-    const config: {
-      runOnly?: { type: string; values: string[] };
-      rules?: Record<string, { enabled: boolean }>;
-    } = {
+    // Configure axe-core run options
+    const config: RunOptions = {
       runOnly: {
         type: "tag",
-        values: [`wcag${wcagLevel.toLowerCase()}`, `wcag2${wcagLevel.toLowerCase()}`],
+        values: [
+          `wcag${wcagLevel.toLowerCase()}`,
+          `wcag2${wcagLevel.toLowerCase()}`,
+        ],
       },
     };
 
@@ -212,12 +147,15 @@ export async function auditElement(
       });
     }
 
-    const results = await axeCore.default.run(element, config);
+    const results: AxeResults = await axeCore.default.run(element, config);
 
     // Log results to console
     if (results.violations.length > 0) {
-      console.group(`%c♿ Accessibility Violations (${results.violations.length})`, "color: red; font-weight: bold;");
-      results.violations.forEach((violation) => {
+      console.group(
+        `%c♿ Accessibility Violations (${results.violations.length})`,
+        "color: red; font-weight: bold;"
+      );
+      results.violations.forEach((violation: Result) => {
         const impactColor =
           violation.impact === "critical"
             ? "red"
@@ -227,11 +165,14 @@ export async function auditElement(
             ? "gold"
             : "yellow";
 
-        console.group(`%c${violation.impact?.toUpperCase()} - ${violation.help}`, `color: ${impactColor}; font-weight: bold;`);
+        console.group(
+          `%c${violation.impact?.toUpperCase()} - ${violation.help}`,
+          `color: ${impactColor}; font-weight: bold;`
+        );
         console.log("Description:", violation.description);
         console.log("Help:", violation.helpUrl);
         console.log("Affected elements:", violation.nodes.length);
-        violation.nodes.forEach((node, i) => {
+        violation.nodes.forEach((node: NodeResult, i: number) => {
           console.log(`  ${i + 1}. ${node.target.join(" > ")}`);
           console.log(`     HTML: ${node.html}`);
           if (node.failureSummary) {
@@ -242,7 +183,10 @@ export async function auditElement(
       });
       console.groupEnd();
     } else {
-      console.log("%c♿ No accessibility violations found!", "color: green; font-weight: bold;");
+      console.log(
+        "%c♿ No accessibility violations found!",
+        "color: green; font-weight: bold;"
+      );
     }
 
     return results;
@@ -258,7 +202,7 @@ export async function auditElement(
  * @param results Axe audit results
  * @returns Summary object with counts by impact level
  */
-export function getViolationSummary(results: AxeResults): {
+export function getViolationSummary(results: import("axe-core").AxeResults): {
   total: number;
   critical: number;
   serious: number;
@@ -290,7 +234,7 @@ export function getViolationSummary(results: AxeResults): {
  * @param results Axe audit results
  * @returns Formatted report string
  */
-export function generateReport(results: AxeResults): string {
+export function generateReport(results: import("axe-core").AxeResults): string {
   const summary = getViolationSummary(results);
 
   let report = "=".repeat(60) + "\n";
@@ -313,7 +257,9 @@ export function generateReport(results: AxeResults): string {
     report += "=".repeat(60) + "\n\n";
 
     results.violations.forEach((violation, i) => {
-      report += `${i + 1}. [${violation.impact?.toUpperCase()}] ${violation.help}\n`;
+      report += `${i + 1}. [${violation.impact?.toUpperCase()}] ${
+        violation.help
+      }\n`;
       report += `   ${violation.description}\n`;
       report += `   Help: ${violation.helpUrl}\n`;
       report += `   Tags: ${violation.tags.join(", ")}\n`;

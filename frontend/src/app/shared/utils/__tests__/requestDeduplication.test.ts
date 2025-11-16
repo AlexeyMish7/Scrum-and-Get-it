@@ -97,9 +97,9 @@ describe("requestDeduplication", () => {
       const fetcher2 = vi.fn().mockResolvedValue({ success: true });
 
       // First attempt fails
-      await expect(
-        deduplicateRequest("retry-key", fetcher1)
-      ).rejects.toThrow("First attempt failed");
+      await expect(deduplicateRequest("retry-key", fetcher1)).rejects.toThrow(
+        "First attempt failed"
+      );
 
       // Second attempt succeeds
       const result = await deduplicateRequest("retry-key", fetcher2);
@@ -139,9 +139,7 @@ describe("requestDeduplication", () => {
   describe("invalidatePendingRequests", () => {
     it("should invalidate requests matching pattern", () => {
       // Create several pending requests (don't await)
-      const fetcher = vi
-        .fn()
-        .mockImplementation(() => new Promise(() => {})); // Never resolves
+      const fetcher = vi.fn().mockImplementation(() => new Promise(() => {})); // Never resolves
 
       deduplicateRequest("jobs-list-user1", fetcher);
       deduplicateRequest("jobs-list-user2", fetcher);
@@ -158,9 +156,7 @@ describe("requestDeduplication", () => {
     });
 
     it("should return 0 when no requests match pattern", () => {
-      const fetcher = vi
-        .fn()
-        .mockImplementation(() => new Promise(() => {}));
+      const fetcher = vi.fn().mockImplementation(() => new Promise(() => {}));
 
       deduplicateRequest("test-key-1", fetcher);
 
@@ -181,9 +177,7 @@ describe("requestDeduplication", () => {
 
   describe("clearAllPendingRequests", () => {
     it("should clear all pending requests", () => {
-      const fetcher = vi
-        .fn()
-        .mockImplementation(() => new Promise(() => {}));
+      const fetcher = vi.fn().mockImplementation(() => new Promise(() => {}));
 
       deduplicateRequest("key1", fetcher);
       deduplicateRequest("key2", fetcher);
@@ -208,9 +202,7 @@ describe("requestDeduplication", () => {
 
   describe("getPendingRequestCount", () => {
     it("should return correct count of pending requests", () => {
-      const fetcher = vi
-        .fn()
-        .mockImplementation(() => new Promise(() => {}));
+      const fetcher = vi.fn().mockImplementation(() => new Promise(() => {}));
 
       expect(getPendingRequestCount()).toBe(0);
 
@@ -227,9 +219,7 @@ describe("requestDeduplication", () => {
 
   describe("getPendingRequestKeys", () => {
     it("should return all pending request keys", () => {
-      const fetcher = vi
-        .fn()
-        .mockImplementation(() => new Promise(() => {}));
+      const fetcher = vi.fn().mockImplementation(() => new Promise(() => {}));
 
       expect(getPendingRequestKeys()).toEqual([]);
 
