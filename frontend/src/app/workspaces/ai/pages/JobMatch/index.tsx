@@ -39,7 +39,7 @@ import { useNavigate } from "react-router-dom";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import useJobMatching from "@workspaces/ai/hooks/useJobMatching";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 
 export default function JobMatchPage() {
   const navigate = useNavigate();

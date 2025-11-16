@@ -28,7 +28,7 @@ import Interview from "./Interview";
 import useCompanyResearch from "@workspaces/ai/hooks/useCompanyResearch";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 
 export default function CompanyResearch() {
   const [searchTerm, setSearchTerm] = useState("");

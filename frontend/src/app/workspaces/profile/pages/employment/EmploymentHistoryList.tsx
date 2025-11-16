@@ -14,8 +14,8 @@ import EditEmploymentModal from "./EditEmploymentModal";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {
@@ -25,10 +25,9 @@ export default function EmploymentHistoryList() {
   // if loading lasts longer than spinnerDelayMs.
   const [isLoading, setIsLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<EmploymentRow | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,24 +115,23 @@ export default function EmploymentHistoryList() {
   if (isLoading || loading) return <LoadingSpinner />;
 
   const handleDelete = async (entryId: string) => {
-    // Open confirmation dialog to confirm a destructive delete action.
-    // We don't delete immediately; user must confirm in the dialog.
-    setPendingDeleteId(entryId);
-    setConfirmOpen(true);
-  };
+    // Confirm deletion with user using hook-based dialog
+    const confirmed = await confirm({
+      title: "Delete employment entry?",
+      message: "This will permanently delete the selected employment entry.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
 
-  const handleConfirmDelete = async () => {
-    const id = pendingDeleteId;
-    setConfirmOpen(false);
-    setPendingDeleteId(null);
-    if (!id) return;
+    if (!confirmed) return;
+
     if (!user) {
       handleError("Please sign in to delete entries.");
       return;
     }
 
     try {
-      const res = await employmentService.deleteEmployment(user.id, id);
+      const res = await employmentService.deleteEmployment(user.id, entryId);
       if (res.error) {
         console.error(res.error);
         handleError(res.error);
@@ -237,15 +235,6 @@ export default function EmploymentHistoryList() {
           }}
         />
       )}
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete employment entry?"
-        description="This will permanently delete the selected employment entry."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmDelete}
-      />
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
     </Box>
   );

@@ -27,7 +27,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import { useAuth } from "@shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";

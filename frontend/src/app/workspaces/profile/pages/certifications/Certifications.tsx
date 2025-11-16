@@ -29,9 +29,9 @@ import type {
   NewCert,
 } from "../../types/certification";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -75,13 +75,13 @@ const Certifications: React.FC = () => {
 
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<NewCert>>({});
   const [addOpen, setAddOpen] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Filtered by organization search
   const filteredCerts = useMemo(() => {
@@ -337,6 +337,16 @@ const Certifications: React.FC = () => {
       return handleError(new Error("Please sign in to delete a certification"));
     if (!editingCertId) return;
 
+    const confirmed = await confirm({
+      title: "Delete certification",
+      message:
+        "Delete this certification and its files? This cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
+
     try {
       const res = await certificationsService.deleteCertification(
         user.id,
@@ -346,7 +356,6 @@ const Certifications: React.FC = () => {
       // remove from local state so the list updates immediately
       setCertifications((prev) => prev.filter((c) => c.id !== editingCertId));
       closeEdit();
-      setConfirmDeleteOpen(false);
       window.dispatchEvent(new Event("certifications:changed"));
       showSuccess("Certification deleted");
     } catch (err) {
@@ -656,7 +665,9 @@ const Certifications: React.FC = () => {
             <Button
               color="error"
               variant="outlined"
-              onClick={() => setConfirmDeleteOpen(true)}
+              onClick={async () => {
+                await handleDeleteCertification();
+              }}
             >
               Delete
             </Button>
@@ -675,16 +686,6 @@ const Certifications: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-        <ConfirmDialog
-          open={confirmDeleteOpen}
-          title="Delete certification"
-          description="Delete this certification and its files? This cannot be undone."
-          confirmText="Delete"
-          cancelText="Cancel"
-          onClose={() => setConfirmDeleteOpen(false)}
-          onConfirm={() => void handleDeleteCertification()}
-        />
 
         {/* Search bar */}
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>

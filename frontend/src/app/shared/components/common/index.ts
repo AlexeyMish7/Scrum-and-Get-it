@@ -3,8 +3,9 @@
  * Barrel export for simplified imports
  */
 
-export { default as ConfirmDialog } from "./ConfirmDialog";
-export { default as ErrorSnackbar } from "./ErrorSnackbar";
+// Re-export components from their new locations
+export { default as ConfirmDialog } from "../dialogs/ConfirmDialog";
+export { default as ErrorSnackbar } from "../feedback/ErrorSnackbar";
 export { default as Icon } from "./Icon";
 export { default as LoadingSpinner } from "./LoadingSpinner";
 export { default as NavItem } from "./NavItem";

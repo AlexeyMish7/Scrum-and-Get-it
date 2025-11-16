@@ -10,7 +10,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData } from "../../types/employment";
 import EmploymentForm from "./EmploymentForm";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { Button, Typography, Paper, Box, Stack } from "@mui/material";
 // Removed CSS overrides to respect global theme

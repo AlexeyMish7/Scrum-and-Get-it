@@ -20,14 +20,16 @@ import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import ErrorSnackbar from "@shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import type { ListOptions } from "@shared/services/types";
 import { listJobs, updateJob } from "@shared/services/dbMappers";
 import JobDetails from "../../components/JobDetails/JobDetails";
-import JobSearchFilters, { type JobFilters } from "../../components/JobSearchFilters/JobSearchFilters";
+import JobSearchFilters, {
+  type JobFilters,
+} from "../../components/JobSearchFilters/JobSearchFilters";
 
 const STAGES = [
   "Interested",
@@ -46,6 +48,7 @@ export default function PipelinePage() {
   const { user } = useAuth();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
 
   const [open, setOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
@@ -108,7 +111,9 @@ export default function PipelinePage() {
     if (!d) return null;
     try {
       const then = new Date(String(d));
-      const diff = Math.ceil((then.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const diff = Math.ceil(
+        (then.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
       return Number.isFinite(diff) ? diff : null;
     } catch {
       return null;
@@ -154,24 +159,36 @@ export default function PipelinePage() {
 
     const filtered = source.filter((r) => {
       // Exclude archived jobs from the active pipeline view
-      if (String(r.job_status ?? r.jobStatus ?? "").toLowerCase() === "archive") return false;
+      if (String(r.job_status ?? r.jobStatus ?? "").toLowerCase() === "archive")
+        return false;
       // query search across title, company, description
       if (f.query) {
         const q = String(f.query).toLowerCase();
         const hay = (
-          String(r.job_title ?? r.title ?? "") + " " +
-          String(r.company_name ?? r.company ?? "") + " " +
+          String(r.job_title ?? r.title ?? "") +
+          " " +
+          String(r.company_name ?? r.company ?? "") +
+          " " +
           String(r.job_description ?? "")
         ).toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (f.industry) {
-        if (!String(r.industry ?? "").toLowerCase().includes(String(f.industry).toLowerCase())) return false;
+        if (
+          !String(r.industry ?? "")
+            .toLowerCase()
+            .includes(String(f.industry).toLowerCase())
+        )
+          return false;
       }
       if (f.location) {
         const loc = String(f.location).toLowerCase();
         const combined = (
-          String(r.city_name ?? r.city ?? "") + " " + String(r.state_code ?? r.state ?? "") + " " + String(r.zipcode ?? "")
+          String(r.city_name ?? r.city ?? "") +
+          " " +
+          String(r.state_code ?? r.state ?? "") +
+          " " +
+          String(r.zipcode ?? "")
         ).toLowerCase();
         if (!combined.includes(loc)) return false;
       }
@@ -198,11 +215,15 @@ export default function PipelinePage() {
 
     // sorting
     const sorted = filtered.sort((a, b) => {
-      const dir = (f.sortDir === "asc" ? 1 : -1);
+      const dir = f.sortDir === "asc" ? 1 : -1;
       switch (f.sortBy) {
         case "deadline": {
-          const da = a.application_deadline ? new Date(String(a.application_deadline)).getTime() : 0;
-          const db = b.application_deadline ? new Date(String(b.application_deadline)).getTime() : 0;
+          const da = a.application_deadline
+            ? new Date(String(a.application_deadline)).getTime()
+            : 0;
+          const db = b.application_deadline
+            ? new Date(String(b.application_deadline)).getTime()
+            : 0;
           return (da - db) * dir;
         }
         case "salary": {
@@ -211,13 +232,19 @@ export default function PipelinePage() {
           return (sa - sb) * dir;
         }
         case "company": {
-          const ca = String(a.company_name ?? "").localeCompare(String(b.company_name ?? ""));
+          const ca = String(a.company_name ?? "").localeCompare(
+            String(b.company_name ?? "")
+          );
           return ca * dir;
         }
         case "date_added":
         default: {
-          const ta = a.created_at ? new Date(String(a.created_at)).getTime() : 0;
-          const tb = b.created_at ? new Date(String(b.created_at)).getTime() : 0;
+          const ta = a.created_at
+            ? new Date(String(a.created_at)).getTime()
+            : 0;
+          const tb = b.created_at
+            ? new Date(String(b.created_at)).getTime()
+            : 0;
           return (ta - tb) * dir;
         }
       }
@@ -287,9 +314,6 @@ export default function PipelinePage() {
     setSelectedIds((s) => ({ ...s, [id]: !s[id] }));
   };
 
-  const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
-  const [bulkTarget, setBulkTarget] = useState<string | null>(null);
-
   const bulkMove = async (to: string) => {
     const ids = Object.keys(selectedIds).filter((k) => selectedIds[k]);
     if (ids.length === 0) return handleError("No jobs selected");
@@ -329,27 +353,38 @@ export default function PipelinePage() {
           if (r.error) throw r.error;
         })
       );
-      showSuccess(`${to === "archive" ? "Archived" : `Moved ${ids.length} job(s) to ${to}`}`);
+      showSuccess(
+        `${
+          to === "archive" ? "Archived" : `Moved ${ids.length} job(s) to ${to}`
+        }`
+      );
       setSelectedIds({});
     } catch (err) {
       handleError(err);
       // simple rollback by refetching
       if (user) {
-          const res = await listJobs(user.id);
-          if (!res.error) {
-            const rows = (res.data ?? []) as JobRow[];
-            setAllJobs(rows);
-            applyFilters(rows, activeFilters ?? undefined);
-          }
+        const res = await listJobs(user.id);
+        if (!res.error) {
+          const rows = (res.data ?? []) as JobRow[];
+          setAllJobs(rows);
+          applyFilters(rows, activeFilters ?? undefined);
+        }
       }
     }
   };
 
-  function handleBulkSelect(value: string) {
+  async function handleBulkSelect(value: string) {
     if (value === "archive") {
       // open confirmation before archiving selected jobs
-      setBulkTarget("archive");
-      setConfirmBulkOpen(true);
+      const confirmed = await confirm({
+        title: "Archive selected jobs?",
+        message:
+          "This will move the selected jobs to the archive. You can unarchive them later. Continue?",
+        confirmText: "Archive",
+      });
+      if (confirmed) {
+        bulkMove("archive");
+      }
       return;
     }
     // normal stage move
@@ -458,7 +493,10 @@ export default function PipelinePage() {
           select jobs for bulk actions.
         </Typography>
 
-        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DragDropContext
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
           <Box
             sx={{
               display: "grid",
@@ -524,7 +562,11 @@ export default function PipelinePage() {
                         }}
                       >
                         {visible.map((job, idx) => (
-                          <Draggable key={String(job.id)} draggableId={String(job.id)} index={idx}>
+                          <Draggable
+                            key={String(job.id)}
+                            draggableId={String(job.id)}
+                            index={idx}
+                          >
                             {(prov) => (
                               <Box
                                 ref={prov.innerRef}
@@ -556,7 +598,9 @@ export default function PipelinePage() {
                                           return undefined;
                                       }
                                     })();
-                                    return token?.main ? alpha(token.main, 0.4) : "transparent";
+                                    return token?.main
+                                      ? alpha(token.main, 0.4)
+                                      : "transparent";
                                   },
                                 }}
                               >
@@ -591,8 +635,17 @@ export default function PipelinePage() {
                                     transform: "scale(0.95)",
                                   }}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z" fill="currentColor" />
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <path
+                                      d="M12 7a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4zm0 4a2 2 0 100-4 2 2 0 000 4z"
+                                      fill="currentColor"
+                                    />
                                   </svg>
                                 </IconButton>
 
@@ -615,7 +668,9 @@ export default function PipelinePage() {
                                       wordBreak: "break-word",
                                     }}
                                   >
-                                    {String(job.job_title ?? job.title ?? "Untitled")}
+                                    {String(
+                                      job.job_title ?? job.title ?? "Untitled"
+                                    )}
                                   </Typography>
                                   <Typography
                                     variant="caption"
@@ -628,7 +683,11 @@ export default function PipelinePage() {
                                       whiteSpace: "nowrap",
                                     }}
                                   >
-                                    {String(job.company_name ?? job.company ?? "Unknown")}
+                                    {String(
+                                      job.company_name ??
+                                        job.company ??
+                                        "Unknown"
+                                    )}
                                   </Typography>
                                   <Typography
                                     variant="caption"
@@ -640,55 +699,65 @@ export default function PipelinePage() {
                                 </Box>
 
                                 {/* top-left deadline indicator for Interested stage */}
-                                {stage === "Interested" && (() => {
-                                  const d = daysUntilDeadline(job);
-                                  if (d === null) return null;
-                                  const token = deadlineColor(d);
-                                  const display = Math.max(0, d);
-                                  const label = d < 0 ? `Overdue` : display === 0 ? `Due: Today` : `Due: ${display}d`;
-                                  return (
-                                    <Chip
-                                      label={label}
-                                      size="small"
-                                      sx={{
-                                        position: "absolute",
-                                        right: 4,
-                                        bottom: 8,
-                                        bgcolor: (theme) => {
-                                          const p = theme.palette as any;
-                                          switch (token) {
-                                            case "error":
-                                              return p.error.main;
-                                            case "warning":
-                                              return p.warning.main;
-                                            case "success":
-                                              return p.success.main;
-                                            default:
-                                              return p.grey?.[300] ?? p.divider;
-                                          }
-                                        },
-                                        color: (theme) => {
-                                          const p = theme.palette as any;
-                                          const bg =
-                                            token === "error"
-                                              ? p.error.main
-                                              : token === "warning"
-                                              ? p.warning.main
-                                              : token === "success"
-                                              ? p.success.main
-                                              : p.grey?.[300];
-                                          try {
-                                            return theme.palette.getContrastText(bg);
-                                          } catch {
-                                            return "#000";
-                                          }
-                                        },
-                                        fontWeight: 600,
-                                        fontSize: "0.65rem",
-                                      }}
-                                    />
-                                  );
-                                })()}
+                                {stage === "Interested" &&
+                                  (() => {
+                                    const d = daysUntilDeadline(job);
+                                    if (d === null) return null;
+                                    const token = deadlineColor(d);
+                                    const display = Math.max(0, d);
+                                    const label =
+                                      d < 0
+                                        ? `Overdue`
+                                        : display === 0
+                                        ? `Due: Today`
+                                        : `Due: ${display}d`;
+                                    return (
+                                      <Chip
+                                        label={label}
+                                        size="small"
+                                        sx={{
+                                          position: "absolute",
+                                          right: 4,
+                                          bottom: 8,
+                                          bgcolor: (theme) => {
+                                            const p = theme.palette as any;
+                                            switch (token) {
+                                              case "error":
+                                                return p.error.main;
+                                              case "warning":
+                                                return p.warning.main;
+                                              case "success":
+                                                return p.success.main;
+                                              default:
+                                                return (
+                                                  p.grey?.[300] ?? p.divider
+                                                );
+                                            }
+                                          },
+                                          color: (theme) => {
+                                            const p = theme.palette as any;
+                                            const bg =
+                                              token === "error"
+                                                ? p.error.main
+                                                : token === "warning"
+                                                ? p.warning.main
+                                                : token === "success"
+                                                ? p.success.main
+                                                : p.grey?.[300];
+                                            try {
+                                              return theme.palette.getContrastText(
+                                                bg
+                                              );
+                                            } catch {
+                                              return "#000";
+                                            }
+                                          },
+                                          fontWeight: 600,
+                                          fontSize: "0.65rem",
+                                        }}
+                                      />
+                                    );
+                                  })()}
 
                                 {/* removed duplicate three-dots button (we show only the top-right control) */}
                               </Box>
@@ -704,21 +773,6 @@ export default function PipelinePage() {
             })}
           </Box>
         </DragDropContext>
-
-        <ConfirmDialog
-          open={confirmBulkOpen}
-          title="Archive selected jobs?"
-          description="This will move the selected jobs to the archive. You can unarchive them later. Continue?"
-          confirmText="Archive"
-          cancelText="Cancel"
-          onClose={() => setConfirmBulkOpen(false)}
-          onConfirm={() => {
-            // perform the bulk archive
-            bulkMove(bulkTarget ?? "archive");
-            setConfirmBulkOpen(false);
-            setBulkTarget(null);
-          }}
-        />
 
         <RightDrawer
           title="Details"

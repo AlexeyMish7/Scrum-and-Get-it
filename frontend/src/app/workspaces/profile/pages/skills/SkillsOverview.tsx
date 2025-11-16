@@ -15,7 +15,7 @@ import type {
   Category,
 } from "../../types/skill.ts";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import {
   Box,
   Card,

@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 // Disabled for demo - Sprint task tracking
 // import SprintTaskSnackbar from "@shared/components/common/SprintTaskSnackbar";
 // import useSprintTasks from "@shared/hooks/useSprintTasks";

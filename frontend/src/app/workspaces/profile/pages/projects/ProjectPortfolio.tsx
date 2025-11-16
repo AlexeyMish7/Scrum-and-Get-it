@@ -22,7 +22,7 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import projectsService from "../../services/projects";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/common/LoadingSpinner";
 import type { Project } from "../../types/project.ts";
 // Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx

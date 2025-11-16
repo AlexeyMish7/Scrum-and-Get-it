@@ -54,7 +54,7 @@ import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import ChecklistRtlIcon from "@mui/icons-material/ChecklistRtl";
 import InsightsIcon from "@mui/icons-material/Insights";
 import type { AiArtifactKind } from "@shared/services/types/aiArtifacts";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import useAIDashboardData from "@workspaces/ai/hooks/useAIDashboardData";
 
@@ -199,14 +199,27 @@ export default function DashboardAI() {
   };
 
   const statsCards = [
-    { label: "Resumes Created", value: quickStats.resumes, color: "primary.main" },
-    { label: "Cover Letters", value: quickStats.coverLetters, color: "success.main" },
+    {
+      label: "Resumes Created",
+      value: quickStats.resumes,
+      color: "primary.main",
+    },
+    {
+      label: "Cover Letters",
+      value: quickStats.coverLetters,
+      color: "success.main",
+    },
     {
       label: "Avg Match Score",
-      value: quickStats.avgMatchScore != null ? `${quickStats.avgMatchScore}%` : "—",
+      value:
+        quickStats.avgMatchScore != null ? `${quickStats.avgMatchScore}%` : "—",
       color: "warning.main",
     },
-    { label: "Jobs Analyzed", value: quickStats.jobsAnalyzed, color: "info.main" },
+    {
+      label: "Jobs Analyzed",
+      value: quickStats.jobsAnalyzed,
+      color: "info.main",
+    },
   ];
 
   const recentArtifacts = data?.recentArtifacts ?? [];
@@ -232,7 +245,8 @@ export default function DashboardAI() {
                 AI-Powered Career Studio
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Create professional application materials with intelligent assistance
+                Create professional application materials with intelligent
+                assistance
               </Typography>
             </Box>
           </Stack>
@@ -282,11 +296,7 @@ export default function DashboardAI() {
               fontWeight={600}
               sx={{ color: card.color, minHeight: 48 }}
             >
-              {loading && !data ? (
-                <Skeleton width={60} />
-              ) : (
-                card.value
-              )}
+              {loading && !data ? <Skeleton width={60} /> : card.value}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {card.label}
@@ -359,7 +369,9 @@ export default function DashboardAI() {
                           <Chip
                             label={card.badge}
                             size="small"
-                            color={card.badge === "Popular" ? "primary" : "success"}
+                            color={
+                              card.badge === "Popular" ? "primary" : "success"
+                            }
                           />
                         )}
                       </Box>
@@ -374,7 +386,10 @@ export default function DashboardAI() {
                     </Stack>
                   </CardContent>
                   <CardActions sx={{ px: 2, pb: 2 }}>
-                    <Button endIcon={<ArrowForwardIcon />} sx={{ color: card.color }}>
+                    <Button
+                      endIcon={<ArrowForwardIcon />}
+                      sx={{ color: card.color }}
+                    >
                       Get Started
                     </Button>
                   </CardActions>
@@ -391,9 +406,10 @@ export default function DashboardAI() {
                     Pro Tip
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Start by generating a tailored resume for each job application, then create
-                    a matching cover letter. Run Job Matching to identify the best opportunities
-                    based on your skills.
+                    Start by generating a tailored resume for each job
+                    application, then create a matching cover letter. Run Job
+                    Matching to identify the best opportunities based on your
+                    skills.
                   </Typography>
                 </Box>
               </Stack>
@@ -402,7 +418,12 @@ export default function DashboardAI() {
 
           {/* Skill Gap Spotlight */}
           <Paper sx={{ p: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
               <WarningAmberIcon color="warning" />
               <Typography variant="h6">Skill Gap Spotlight</Typography>
             </Stack>
@@ -412,7 +433,10 @@ export default function DashboardAI() {
               <Alert
                 severity="info"
                 action={
-                  <Button size="small" onClick={() => navigate("/ai/job-match")}>
+                  <Button
+                    size="small"
+                    onClick={() => navigate("/ai/job-match")}
+                  >
                     Run match
                   </Button>
                 }
@@ -441,7 +465,8 @@ export default function DashboardAI() {
                     )}
                     {!gap.suggestion && (
                       <Typography variant="body2" color="text.secondary">
-                        Highlight recent wins or add a portfolio project to cover this area.
+                        Highlight recent wins or add a portfolio project to
+                        cover this area.
                       </Typography>
                     )}
                   </Box>
@@ -469,7 +494,10 @@ export default function DashboardAI() {
                 <Paper
                   key={task.id}
                   variant="outlined"
-                  sx={{ p: 2, borderColor: task.completed ? "success.light" : "divider" }}
+                  sx={{
+                    p: 2,
+                    borderColor: task.completed ? "success.light" : "divider",
+                  }}
                 >
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -507,7 +535,12 @@ export default function DashboardAI() {
         <Stack spacing={3}>
           {/* Recent Activity */}
           <Paper sx={{ p: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
               <AutoAwesomeIcon color="primary" />
               <Typography variant="h6">Recent Activity</Typography>
             </Stack>
@@ -515,7 +548,8 @@ export default function DashboardAI() {
               <Typography color="text.secondary">Loading activity…</Typography>
             ) : recentArtifacts.length === 0 ? (
               <Alert severity="info">
-                No AI artifacts yet. Generate a resume or cover letter to see it here.
+                No AI artifacts yet. Generate a resume or cover letter to see it
+                here.
               </Alert>
             ) : (
               <Stack spacing={2}>
@@ -546,13 +580,21 @@ export default function DashboardAI() {
                             sx={{ mb: 0.5 }}
                           >
                             <Chip label={meta.label} size="small" />
-                            <AccessTimeIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                            <Typography variant="caption" color="text.secondary">
+                            <AccessTimeIcon
+                              sx={{ fontSize: 14, color: "text.secondary" }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
                               {formatRelativeTime(item.createdAt)}
                             </Typography>
                           </Stack>
                           {item.summary && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
                               {item.summary}
                             </Typography>
                           )}
@@ -575,25 +617,44 @@ export default function DashboardAI() {
 
           {/* Deadline Radar */}
           <Paper sx={{ p: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
               <AccessTimeIcon color="action" />
               <Typography variant="h6">Deadline Radar</Typography>
             </Stack>
             {loading && !data ? (
               <Typography color="text.secondary">Loading deadlines…</Typography>
             ) : deadlines.length === 0 ? (
-              <Typography color="text.secondary">No upcoming deadlines tracked.</Typography>
+              <Typography color="text.secondary">
+                No upcoming deadlines tracked.
+              </Typography>
             ) : (
               <Stack spacing={2}>
                 {deadlines.map((deadline) => (
-                  <Box key={deadline.jobId} sx={{ borderBottom: "1px solid", borderColor: "divider", pb: 1 }}>
+                  <Box
+                    key={deadline.jobId}
+                    sx={{
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      pb: 1,
+                    }}
+                  >
                     <Typography variant="subtitle2" fontWeight={600}>
                       {deadline.title}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {deadline.company}
                     </Typography>
-                    <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} alignItems="center">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ mt: 0.5 }}
+                      alignItems="center"
+                    >
                       <Chip
                         label={
                           deadline.daysRemaining < 0
@@ -615,12 +676,19 @@ export default function DashboardAI() {
 
           {/* Insights Feed */}
           <Paper sx={{ p: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
               <InsightsIcon color="secondary" />
               <Typography variant="h6">Insights Feed</Typography>
             </Stack>
             {loading && !data ? (
-              <Typography color="text.secondary">Gathering insights…</Typography>
+              <Typography color="text.secondary">
+                Gathering insights…
+              </Typography>
             ) : insights.length === 0 ? (
               <Typography color="text.secondary">
                 Run company research to see curated news and talking points.
@@ -628,7 +696,14 @@ export default function DashboardAI() {
             ) : (
               <Stack spacing={2}>
                 {insights.map((insight, idx) => (
-                  <Box key={`${insight.title}-${idx}`} sx={{ borderBottom: "1px solid", borderColor: "divider", pb: 1 }}>
+                  <Box
+                    key={`${insight.title}-${idx}`}
+                    sx={{
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      pb: 1,
+                    }}
+                  >
                     <Typography variant="subtitle2" fontWeight={600}>
                       {insight.title}
                     </Typography>
@@ -641,7 +716,10 @@ export default function DashboardAI() {
                       </Typography>
                     )}
                     <Typography variant="caption" color="text.secondary">
-                      {insight.source || "Source"} • {insight.date ? new Date(insight.date).toLocaleDateString() : "Recently"}
+                      {insight.source || "Source"} •{" "}
+                      {insight.date
+                        ? new Date(insight.date).toLocaleDateString()
+                        : "Recently"}
                     </Typography>
                   </Box>
                 ))}
@@ -657,7 +735,11 @@ export default function DashboardAI() {
             <List dense>
               <ListItem disablePadding>
                 <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Typography variant="body2" fontWeight={600} color="primary.main">
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    color="primary.main"
+                  >
                     1.
                   </Typography>
                 </ListItemIcon>
@@ -670,7 +752,11 @@ export default function DashboardAI() {
               </ListItem>
               <ListItem disablePadding>
                 <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Typography variant="body2" fontWeight={600} color="primary.main">
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    color="primary.main"
+                  >
                     2.
                   </Typography>
                 </ListItemIcon>
@@ -683,7 +769,11 @@ export default function DashboardAI() {
               </ListItem>
               <ListItem disablePadding>
                 <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Typography variant="body2" fontWeight={600} color="primary.main">
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    color="primary.main"
+                  >
                     3.
                   </Typography>
                 </ListItemIcon>

@@ -20,8 +20,8 @@ import { supabase } from "../../services/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 import crud from "../../services/crud";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
-import { ErrorSnackbar } from "./ErrorSnackbar";
-import ConfirmDialog from "./ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 
 // ProfilePicture
 // Handles user avatar display, interactive cropping, upload to Supabase Storage,
@@ -131,12 +131,12 @@ const ProfilePicture: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [metaPath, setMetaPath] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   // local error state removed in favor of centralized ErrorSnackbar via useErrorHandler
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [pendingFile, setPendingFile] = useState<{
     file: File;
@@ -607,7 +607,19 @@ const ProfilePicture: React.FC = () => {
                 <>
                   <Tooltip title="Remove avatar">
                     <IconButton
-                      onClick={() => setShowDeleteConfirm(true)}
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: "Delete avatar",
+                          message:
+                            "Are you sure you want to delete your avatar? This will remove the image from storage and your profile.",
+                          confirmText: "Delete",
+                          confirmColor: "error",
+                        });
+                        if (confirmed) {
+                          await handleRemove();
+                          showSuccess("Avatar removed");
+                        }
+                      }}
                       disabled={processing}
                     >
                       <DeleteIcon />
@@ -729,20 +741,6 @@ const ProfilePicture: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Confirm delete dialog */}
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        title="Delete avatar"
-        description="Are you sure you want to delete your avatar? This will remove the image from storage and your profile."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={async () => {
-          setShowDeleteConfirm(false);
-          await handleRemove();
-          showSuccess("Avatar removed");
-        }}
-      />
     </Box>
   );
 };

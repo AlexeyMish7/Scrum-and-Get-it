@@ -1,19 +1,13 @@
 import React, { useState } from "react";
-import {
-  TextField,
-  Button,
-  MenuItem,
-  Box,
-  Typography,
-} from "@mui/material";
+import { TextField, Button, MenuItem, Box, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAuth } from "@shared/context/AuthContext";
 import { createJob } from "@shared/services/dbMappers";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import ErrorSnackbar from "@shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import JobImportURL from "../../components/JobImportURL/JobImportURL";
 
 const industries = [
@@ -44,12 +38,12 @@ export default function NewJobPage() {
     job_type: "",
   });
   const [saving, setSaving] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
 
   const { user } = useAuth();
   const { handleError, showSuccess, notification, closeNotification } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -70,7 +64,10 @@ export default function NewJobPage() {
 
     setSaving(true);
     try {
-      const res = await createJob(user.id, form as unknown as Record<string, unknown>);
+      const res = await createJob(
+        user.id,
+        form as unknown as Record<string, unknown>
+      );
       if (res.error) {
         handleError(res.error);
       } else {
@@ -134,16 +131,33 @@ export default function NewJobPage() {
               setForm((prev) => ({
                 ...prev,
                 job_title: data.job_title || data.title || prev.job_title || "",
-                company_name: data.company_name || data.company || prev.company_name || "",
+                company_name:
+                  data.company_name || data.company || prev.company_name || "",
                 job_description:
-                  data.job_description || data.description || prev.job_description || "",
+                  data.job_description ||
+                  data.description ||
+                  prev.job_description ||
+                  "",
                 start_salary:
-                  data.salary_start || data.salary?.min || prev.start_salary || "",
+                  data.salary_start ||
+                  data.salary?.min ||
+                  prev.start_salary ||
+                  "",
                 end_salary:
                   data.salary_end || data.salary?.max || prev.end_salary || "",
-                city_name: data.location_city || data.location?.city || prev.city_name || "",
-                state_code: data.location_state || data.location?.state || prev.state_code || "",
-                application_deadline: data.deadline ? new Date(data.deadline) : prev.application_deadline,
+                city_name:
+                  data.location_city ||
+                  data.location?.city ||
+                  prev.city_name ||
+                  "",
+                state_code:
+                  data.location_state ||
+                  data.location?.state ||
+                  prev.state_code ||
+                  "",
+                application_deadline: data.deadline
+                  ? new Date(data.deadline)
+                  : prev.application_deadline,
                 // prefer the canonical job_link key produced by the importer
                 job_link: data.job_link || data.url || prev.job_link || "",
               }));
@@ -151,7 +165,11 @@ export default function NewJobPage() {
               setShowImporter(false);
             }}
           />
-          <Button size="small" onClick={() => setShowImporter(false)} sx={{ mt: 1 }}>
+          <Button
+            size="small"
+            onClick={() => setShowImporter(false)}
+            sx={{ mt: 1 }}
+          >
             Close
           </Button>
         </Box>
@@ -237,7 +255,9 @@ export default function NewJobPage() {
           multiline
           minRows={3}
           inputProps={{ maxLength: 2000 }}
-          helperText={`${String(form.job_description ?? "").length}/2000 characters`}
+          helperText={`${
+            String(form.job_description ?? "").length
+          }/2000 characters`}
         />
 
         <TextField
@@ -280,7 +300,18 @@ export default function NewJobPage() {
           <Button
             variant="outlined"
             color="secondary"
-            onClick={() => setConfirmOpen(true)}
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: "Discard changes?",
+                message:
+                  "Are you sure you want to discard your changes? This will clear the form.",
+                confirmText: "Discard",
+                cancelText: "Keep editing",
+              });
+              if (confirmed) {
+                handleCancel();
+              }
+            }}
           >
             Cancel
           </Button>
@@ -288,19 +319,6 @@ export default function NewJobPage() {
       </Box>
 
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Discard changes?"
-        description="Are you sure you want to discard your changes? This will clear the form."
-        confirmText="Discard"
-        cancelText="Keep editing"
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={() => {
-          setConfirmOpen(false);
-          handleCancel();
-        }}
-      />
     </Box>
   );
 }

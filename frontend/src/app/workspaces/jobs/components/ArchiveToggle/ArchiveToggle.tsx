@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@mui/material";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { listJobNotes, updateJob } from "@shared/services/dbMappers";
@@ -21,10 +21,9 @@ type Props = {
 export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
+  const { confirm } = useConfirmDialog();
 
   const [loading, setLoading] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [actionType, setActionType] = useState<"archive" | "unarchive">("archive");
 
   const isArchived = String(currentStatus ?? "").toLowerCase() === "archive";
 
@@ -45,7 +44,6 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       handleError(err);
     } finally {
       setLoading(false);
-      setConfirmOpen(false);
       // If archive succeeded, reload the page so the archived job is removed from current view
       if (succeeded) {
         // full reload to ensure lists/pipeline reflect the archive
@@ -72,7 +70,9 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
         // This is resilient to different shapes (to/new_status/status) and ordering.
         for (let i = hist.length - 1; i >= 0; i--) {
           const entry = hist[i];
-          const v = String(entry?.to ?? entry?.new_status ?? entry?.status ?? "").trim();
+          const v = String(
+            entry?.to ?? entry?.new_status ?? entry?.status ?? ""
+          ).trim();
           if (!v) continue;
           if (v.toLowerCase() !== "archive") {
             target = v;
@@ -83,7 +83,9 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
         // As a defensive fallback, if we still ended up with 'archive', try the second-to-last entry
         if (String(target).toLowerCase() === "archive" && hist.length >= 2) {
           const prev = hist[hist.length - 2];
-          target = String(prev?.to ?? prev?.new_status ?? prev?.status ?? "Interested");
+          target = String(
+            prev?.to ?? prev?.new_status ?? prev?.status ?? "Interested"
+          );
         }
       }
 
@@ -99,7 +101,6 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       handleError(err);
     } finally {
       setLoading(false);
-      setConfirmOpen(false);
       // Reload the page so the job lists / pipeline reflect the unarchive change immediately.
       if (succeeded) {
         window.location.reload();
@@ -114,9 +115,16 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
           color="warning"
           variant="outlined"
           disabled={loading}
-          onClick={() => {
-            setActionType("archive");
-            setConfirmOpen(true);
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: "Archive job?",
+              message:
+                "This will move the job to the archive. You can restore it later by unarchiving. Continue?",
+              confirmText: "Archive",
+            });
+            if (confirmed) {
+              doArchive();
+            }
           }}
         >
           Archive
@@ -126,28 +134,21 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
           color="primary"
           variant="contained"
           disabled={loading}
-          onClick={() => {
-            setActionType("unarchive");
-            setConfirmOpen(true);
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: "Unarchive job?",
+              message:
+                "This will restore the job to its previous status. Continue?",
+              confirmText: "Unarchive",
+            });
+            if (confirmed) {
+              doUnarchive();
+            }
           }}
         >
           Unarchive
         </Button>
       )}
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title={actionType === "archive" ? "Archive job?" : "Unarchive job?"}
-        description={
-          actionType === "archive"
-            ? "This will move the job to the archive. You can restore it later by unarchiving. Continue?"
-            : "This will restore the job to its previous status. Continue?"
-        }
-        confirmText={actionType === "archive" ? "Archive" : "Unarchive"}
-        cancelText="Cancel"
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={actionType === "archive" ? doArchive : doUnarchive}
-      />
     </>
   );
 }
