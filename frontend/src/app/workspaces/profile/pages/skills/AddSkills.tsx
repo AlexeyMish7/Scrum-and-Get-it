@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import skillsService from "../../services/skills";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
@@ -245,6 +246,7 @@ const AddSkills = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const { confirm } = useConfirmDialog();
+  const { markProfileChanged } = useProfileChange();
 
   const handleAddSkill = () => {
     (async () => {
@@ -289,6 +291,7 @@ const AddSkills = () => {
           } catch {
             /* noop */
           }
+          markProfileChanged(); // Invalidate analytics cache
           showSuccess("Skill added");
         } catch (err) {
           console.error(err);
@@ -417,6 +420,7 @@ const AddSkills = () => {
           };
           setUserSkills(updatedSkills);
           window.dispatchEvent(new CustomEvent("skills:changed"));
+          markProfileChanged(); // Invalidate analytics cache
         } catch (err) {
           console.error(err);
           handleError(err || "Failed to update skill");
@@ -494,6 +498,7 @@ const AddSkills = () => {
 
       try {
         window.dispatchEvent(new CustomEvent("skills:changed"));
+        markProfileChanged(); // Invalidate analytics cache
       } catch {
         /* noop */
       }

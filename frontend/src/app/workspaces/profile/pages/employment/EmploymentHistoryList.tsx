@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import employmentService from "../../services/employment";
 import EditEmploymentModal from "./EditEmploymentModal";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
@@ -30,6 +31,7 @@ export default function EmploymentHistoryList() {
   const [editingEntry, setEditingEntry] = useState<EmploymentRow | null>(null);
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
   const { confirm } = useConfirmDialog();
   const navigate = useNavigate();
   const location = useLocation();
@@ -143,6 +145,7 @@ export default function EmploymentHistoryList() {
         // the backend state. Then set navigation state so the list page shows
         // a centralized success snackbar (consistent notification UX).
         await fetchEntries();
+        markProfileChanged(); // Invalidate analytics cache
         navigate(location.pathname, {
           replace: true,
           state: { success: "Employment entry deleted successfully!" },

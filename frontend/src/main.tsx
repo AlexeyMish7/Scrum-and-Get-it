@@ -5,6 +5,7 @@ import { router } from "@/router.tsx";
 import { RouterProvider } from "react-router-dom";
 import { AuthContextProvider } from "@shared/context/AuthContext.tsx";
 import { ThemeContextProvider } from "@shared/context/ThemeContext";
+import { ProfileChangeProvider } from "@shared/context/ProfileChangeContext";
 import { ErrorBoundary } from "@shared/components/feedback/ErrorBoundary";
 import { ConfirmDialogProvider } from "@shared/components/dialogs";
 import { initAccessibilityAudit } from "@shared/utils";
@@ -23,9 +24,11 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <ThemeContextProvider>
         <AuthContextProvider>
-          <ConfirmDialogProvider>
-            <RouterProvider router={router} />
-          </ConfirmDialogProvider>
+          <ProfileChangeProvider>
+            <ConfirmDialogProvider>
+              <RouterProvider router={router} />
+            </ConfirmDialogProvider>
+          </ProfileChangeProvider>
         </AuthContextProvider>
       </ThemeContextProvider>
     </ErrorBoundary>

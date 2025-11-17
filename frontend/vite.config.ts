@@ -67,6 +67,11 @@ export default defineConfig({
         replacement: resolve(__dirname, "src/app/workspaces/jobs") + "/",
       },
       {
+        find: "@job_pipeline",
+        replacement:
+          resolve(__dirname, "src/app/workspaces/job_pipeline") + "/",
+      },
+      {
         find: "@components",
         replacement: resolve(__dirname, "src/app/shared/components") + "/",
       },
@@ -98,6 +103,11 @@ export default defineConfig({
       {
         find: "@jobsTypes",
         replacement: resolve(__dirname, "src/app/workspaces/jobs/types") + "/",
+      },
+      {
+        find: "@jobPipelineTypes",
+        replacement:
+          resolve(__dirname, "src/app/workspaces/job_pipeline/types") + "/",
       },
       {
         find: "@componentsShared",

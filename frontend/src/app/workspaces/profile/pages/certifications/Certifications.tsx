@@ -22,6 +22,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SearchIcon from "@mui/icons-material/Search";
 import dayjs from "dayjs";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
@@ -78,6 +79,7 @@ const Certifications: React.FC = () => {
 
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
   const { confirm } = useConfirmDialog();
 
   // Edit dialog state
@@ -205,6 +207,7 @@ const Certifications: React.FC = () => {
         file: null,
       });
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       const typedRes = res as {
         data: CertificationRow | null;
         error: unknown | null;
@@ -326,6 +329,7 @@ const Certifications: React.FC = () => {
       // Close dialog and notify other parts of the app if needed
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification updated");
     } catch (err) {
       handleError(err, "Failed to update certification");
@@ -360,6 +364,7 @@ const Certifications: React.FC = () => {
       setCertifications((prev) => prev.filter((c) => c.id !== editingCertId));
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification deleted");
     } catch (err) {
       handleError(err, "Failed to delete certification");

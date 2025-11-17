@@ -25,6 +25,7 @@ import ReactCrop, {
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
@@ -71,6 +72,7 @@ const AddProjectForm: React.FC = () => {
 
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -421,6 +423,7 @@ const AddProjectForm: React.FC = () => {
         ? "Project updated successfully"
         : "Project added successfully";
       showSuccess(msg);
+      markProfileChanged(); // Invalidate analytics cache
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: msg, severity: "success" },

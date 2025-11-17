@@ -11,6 +11,7 @@ config(); // Loads .env from server/.env
 
 import { createServer } from "./server.js";
 import { logSystemEvent } from "../utils/logger.js";
+import { closeBrowser } from "./services/scraper.js";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
 const server = createServer();
@@ -30,12 +31,14 @@ server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   logSystemEvent("shutdown", { signal: "SIGTERM" });
+  await closeBrowser(); // Gracefully close Puppeteer browser
   server.close(() => process.exit(0));
 });
 
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   logSystemEvent("shutdown", { signal: "SIGINT" });
+  await closeBrowser(); // Gracefully close Puppeteer browser
   server.close(() => process.exit(0));
 });

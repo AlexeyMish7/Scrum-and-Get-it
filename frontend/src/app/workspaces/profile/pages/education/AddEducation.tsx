@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isMonthAfter } from "@shared/utils/dateUtils";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import { Breadcrumbs } from "@shared/components/navigation";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
@@ -55,6 +56,9 @@ const AddEducation: React.FC = () => {
     showSuccess,
     showWarning,
   } = useErrorHandler();
+
+  // Profile change tracking for analytics cache invalidation
+  const { markProfileChanged } = useProfileChange();
 
   // Keep track of all education entries the user has added
   const [schoolList, setSchoolList] = useState<EducationEntry[]>([]);
@@ -197,6 +201,7 @@ const AddEducation: React.FC = () => {
       });
       // Tell other parts of app that education data changed
       window.dispatchEvent(new Event("education:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Education saved");
       // Go back to education overview page
       navigate("/profile/education");
@@ -230,6 +235,7 @@ const AddEducation: React.FC = () => {
       // Remove from local list so user sees change immediately
       setSchoolList((s) => s.filter((x) => x.id !== removeId));
       setRemoveId(null); // Close delete dialog
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Entry removed");
     } catch (err) {
       console.error("Error deleting education", err);

@@ -41,6 +41,8 @@ import {
   handleSkillsOptimization,
   handleExperienceTailoring,
   handleCompanyResearch,
+  handleJobImport,
+  handleJobMatch,
   handleSalaryResearch,
   handleListArtifacts,
   handleGetArtifact,
@@ -250,6 +252,9 @@ function sendError(res: http.ServerResponse, err: any) {
  * - POST /api/generate/cover-letter
  * - POST /api/generate/skills-optimization
  * - POST /api/generate/experience-tailoring
+ * - POST /api/generate/company-research
+ * - POST /api/generate/job-import
+ * - POST /api/generate/job-match
  * - GET  /api/artifacts
  * - GET  /api/artifacts/:id
  * - POST /api/job-materials
@@ -356,6 +361,21 @@ async function handleRequest(
       ctx.logComplete(method, pathname, 201);
       return;
     }
+
+    if (method === "POST" && pathname === "/api/generate/job-import") {
+      const userId = await requireAuth(req);
+      await handleJobImport(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/job-match") {
+      const userId = await requireAuth(req);
+      await handleJobMatch(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     // ------------------------------------------------------------------
     // SALARY RESEARCH ENDPOINT (protected)
     // ------------------------------------------------------------------

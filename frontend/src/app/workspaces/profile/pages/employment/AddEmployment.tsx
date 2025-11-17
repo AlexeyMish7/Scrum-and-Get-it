@@ -7,6 +7,7 @@ import React, { useState } from "react";
 // Student notes: the component demonstrates form validation, controlled
 // components, and preparing a backend payload using snake_case keys.
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import employmentService from "../../services/employment";
 import type { EmploymentFormData } from "../../types/employment";
 import EmploymentForm from "./EmploymentForm";
@@ -30,6 +31,7 @@ const AddEmploymentForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { handleError, notification, closeNotification } = useErrorHandler();
   const { user } = useAuth();
+  const { markProfileChanged } = useProfileChange();
   const navigate = useNavigate();
   const [errors, setErrors] = useState<
     Partial<Record<keyof EmploymentFormData, string>>
@@ -125,6 +127,7 @@ const AddEmploymentForm: React.FC = () => {
       // On success: navigate back to the list and pass a success message via
       // navigation state. The list page will show a centralized snackbar so
       // notifications are consistent across add/edit/delete flows.
+      markProfileChanged(); // Invalidate analytics cache
       navigate("/profile/employment", {
         state: { success: "Employment entry added successfully!" },
       });

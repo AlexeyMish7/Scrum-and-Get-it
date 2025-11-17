@@ -21,4 +21,5 @@ export {
   PipelinePageSkeleton,
   AnalyticsPageSkeleton,
   DetailViewSkeleton,
+  MatchAnalysisSkeleton,
 } from "./Skeletons";

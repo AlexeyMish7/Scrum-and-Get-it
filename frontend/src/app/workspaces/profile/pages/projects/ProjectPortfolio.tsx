@@ -20,6 +20,7 @@ import {
   Stack,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import projectsService from "../../services/projects";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
@@ -50,6 +51,7 @@ const ProjectPortfolio: React.FC = () => {
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { markProfileChanged } = useProfileChange();
   const { notification, closeNotification, showSuccess, handleError } =
     useErrorHandler();
 
@@ -183,6 +185,7 @@ const ProjectPortfolio: React.FC = () => {
         return;
       }
       showSuccess("Project deleted");
+      markProfileChanged(); // Invalidate analytics cache
       // Notify other components and reload the list
       window.dispatchEvent(
         new CustomEvent("projects:notification", {

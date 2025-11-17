@@ -83,14 +83,6 @@ const QUICK_START_CARDS: QuickStartCard[] = [
     color: "#4CAF50",
   },
   {
-    title: "Job Matching",
-    description: "Find jobs that match your skills and experience",
-    icon: <TrendingUpIcon fontSize="large" />,
-    route: "/ai/job-match",
-    color: "#FF9800",
-    badge: "New",
-  },
-  {
     title: "Company Research",
     description: "Get insights about companies you're applying to",
     icon: <BusinessIcon fontSize="large" />,
@@ -434,15 +426,13 @@ export default function DashboardAI() {
               <Alert
                 severity="info"
                 action={
-                  <Button
-                    size="small"
-                    onClick={() => navigate("/ai/job-match")}
-                  >
-                    Run match
+                  <Button size="small" onClick={() => navigate("/jobs")}>
+                    View Jobs
                   </Button>
                 }
               >
-                Run a job match analysis to see recommended skills to highlight.
+                Add jobs to your pipeline to see personalized skills gap
+                analysis.
               </Alert>
             ) : (
               <Stack spacing={2}>

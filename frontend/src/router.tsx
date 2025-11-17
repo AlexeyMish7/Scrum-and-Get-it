@@ -34,14 +34,14 @@ import Settings from "@profile/pages/profile/Settings";
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
 import AiLayout from "@workspaces/ai/AiLayout";
-import JobsLayout from "@workspaces/jobs/JobsLayout";
+import JobsLayout from "@workspaces/job_pipeline/layouts/JobPipelineLayout";
+import UnifiedJobsLayout from "@workspaces/job_pipeline/layouts/UnifiedJobsLayout";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 
 // AI workspace pages (lazy loaded - heavy components with AI logic)
 const DashboardAI = lazy(
   () => import("@workspaces/ai/pages/DashboardAI/index")
 );
-const JobMatchPage = lazy(() => import("@workspaces/ai/pages/JobMatch/index"));
 const CompanyResearch = lazy(
   () => import("@workspaces/ai/pages/CompanyResearch/index")
 );
@@ -60,26 +60,44 @@ const EditCoverLetter = lazy(
 
 // Jobs workspace pages (lazy loaded - data-heavy components)
 const PipelinePage = lazy(
-  () => import("./app/workspaces/jobs/pages/PipelinePage/PipelinePage")
+  () => import("./app/workspaces/job_pipeline/pages/PipelinePage/PipelinePage")
 );
-const NewJobPage = lazy(() => import("./app/workspaces/jobs/pages/NewJobPage"));
+const NewJobPage = lazy(
+  () => import("./app/workspaces/job_pipeline/pages/NewJobPage")
+);
 const JobDetailsPage = lazy(
-  () => import("./app/workspaces/jobs/pages/JobDetailsPage")
+  () => import("./app/workspaces/job_pipeline/pages/JobDetailsPage")
 );
 const DocumentsPage = lazy(
-  () => import("./app/workspaces/jobs/pages/DocumentsPage/DocumentsPage")
+  () =>
+    import("./app/workspaces/job_pipeline/pages/DocumentsPage/DocumentsPage")
 );
 const SavedSearchesPage = lazy(
-  () => import("./app/workspaces/jobs/pages/SavedSearchesPage")
+  () => import("./app/workspaces/job_pipeline/pages/SavedSearchesPage")
 );
 const AnalyticsPage = lazy(
-  () => import("./app/workspaces/jobs/pages/AnalyticsPage/AnalyticsPage")
+  () =>
+    import("./app/workspaces/job_pipeline/pages/AnalyticsPage/AnalyticsPage")
 );
 const AutomationsPage = lazy(
-  () => import("./app/workspaces/jobs/pages/AutomationsPage")
+  () => import("./app/workspaces/job_pipeline/pages/AutomationsPage")
 );
 const ViewArchivedJobs = lazy(
-  () => import("./app/workspaces/jobs/pages/ViewArchivedJobs")
+  () => import("./app/workspaces/job_pipeline/pages/ArchivedJobsPage")
+);
+
+// Jobs workspace views (new unified architecture - lazy loaded)
+const PipelineView = lazy(
+  () => import("@workspaces/job_pipeline/views/PipelineView/PipelineView")
+);
+const AnalyticsView = lazy(
+  () => import("@workspaces/job_pipeline/views/AnalyticsView/AnalyticsView")
+);
+const DocumentsView = lazy(
+  () => import("@workspaces/job_pipeline/views/DocumentsView/DocumentsView")
+);
+const ProfileView = lazy(
+  () => import("@workspaces/job_pipeline/views/ProfileView/ProfileView")
 );
 
 // Loading fallback component for lazy-loaded routes
@@ -141,14 +159,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "job-match",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <JobMatchPage />
-          </Suspense>
-        ),
-      },
-      {
         path: "company-research",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
@@ -166,12 +176,12 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // Jobs workspace - lazy loaded to reduce initial bundle size
+  // Jobs workspace - SIMPLIFIED: Single pipeline view with integrated analytics & calendar
   {
     path: "/jobs",
     element: (
       <ProtectedRoute>
-        <JobsLayout />
+        <UnifiedJobsLayout />
       </ProtectedRoute>
     ),
     children: [
@@ -179,18 +189,22 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
-            <PipelinePage />
+            <PipelineView />
           </Suspense>
         ),
       },
-      {
-        path: "pipeline",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <PipelinePage />
-          </Suspense>
-        ),
-      },
+    ],
+  },
+  // Jobs workspace - LEGACY: Old routes maintained for backward compatibility
+  // TODO: Remove after Day 7 migration complete
+  {
+    path: "/jobs-legacy",
+    element: (
+      <ProtectedRoute>
+        <JobsLayout />
+      </ProtectedRoute>
+    ),
+    children: [
       {
         path: "new",
         element: (
@@ -208,26 +222,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "documents",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <DocumentsPage />
-          </Suspense>
-        ),
-      },
-      {
         path: "saved-searches",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <SavedSearchesPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: "analytics",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <AnalyticsPage />
           </Suspense>
         ),
       },

@@ -342,3 +342,129 @@ export function AnalyticsPageSkeleton() {
     </Box>
   );
 }
+
+/**
+ * Skeleton for AI Match Analysis Panel
+ * Mimics the structure of MatchAnalysisPanel during loading
+ */
+export function MatchAnalysisSkeleton() {
+  return (
+    <Box sx={{ py: 2 }}>
+      <Stack spacing={2}>
+        {/* Header with score badge */}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Skeleton variant="text" width={120} height={24} />
+          <Skeleton
+            variant="rectangular"
+            width={120}
+            height={32}
+            sx={{ borderRadius: 1 }}
+          />
+        </Stack>
+
+        {/* Divider placeholder */}
+        <Box sx={{ height: 1, bgcolor: "divider" }} />
+
+        {/* Category breakdown section */}
+        <Box>
+          <Skeleton variant="text" width={150} height={20} sx={{ mb: 1 }} />
+          <Stack spacing={1.5}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Box key={i}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  sx={{ mb: 0.5 }}
+                >
+                  <Skeleton variant="text" width={100} height={16} />
+                  <Skeleton variant="text" width={40} height={16} />
+                </Stack>
+                <Skeleton
+                  variant="rectangular"
+                  width="100%"
+                  height={6}
+                  sx={{ borderRadius: 1 }}
+                />
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+
+        {/* Divider placeholder */}
+        <Box sx={{ height: 1, bgcolor: "divider" }} />
+
+        {/* Skills gaps section */}
+        <Box>
+          <Skeleton variant="text" width={130} height={20} sx={{ mb: 1 }} />
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                width={80}
+                height={24}
+                sx={{ borderRadius: 2 }}
+              />
+            ))}
+          </Stack>
+        </Box>
+
+        {/* Strengths section */}
+        <Box>
+          <Skeleton variant="text" width={110} height={20} sx={{ mb: 1 }} />
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                width={90}
+                height={24}
+                sx={{ borderRadius: 2 }}
+              />
+            ))}
+          </Stack>
+        </Box>
+
+        {/* Recommendations section */}
+        <Box>
+          <Skeleton variant="text" width={140} height={20} sx={{ mb: 1 }} />
+          <Stack spacing={0.5}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} variant="text" width="95%" height={16} />
+            ))}
+          </Stack>
+        </Box>
+
+        {/* Divider placeholder */}
+        <Box sx={{ height: 1, bgcolor: "divider" }} />
+
+        {/* AI reasoning button */}
+        <Skeleton
+          variant="rectangular"
+          width={150}
+          height={32}
+          sx={{ borderRadius: 1 }}
+        />
+
+        {/* Footer with metadata */}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Skeleton variant="text" width={120} height={16} />
+          <Skeleton
+            variant="rectangular"
+            width={110}
+            height={28}
+            sx={{ borderRadius: 1 }}
+          />
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}

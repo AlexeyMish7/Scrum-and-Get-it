@@ -27,6 +27,8 @@ export { post as postGenerateCoverLetter } from "./generate/cover-letter.js";
 export { post as postSkillsOptimization } from "./generate/skills-optimization.js";
 export { post as postExperienceTailoring } from "./generate/experience-tailoring.js";
 export { post as postCompanyResearch } from "./generate/company-research.js";
+export { post as postJobImport } from "./generate/job-import.js";
+export { post as postJobMatch } from "./generate/job-match.js";
 export type { GenerationCounters } from "./generate/types.js";
 
 // ===== ARTIFACTS =====
@@ -63,6 +65,8 @@ export { post as handleGenerateCoverLetter } from "./generate/cover-letter.js";
 export { post as handleSkillsOptimization } from "./generate/skills-optimization.js";
 export { post as handleExperienceTailoring } from "./generate/experience-tailoring.js";
 export { post as handleCompanyResearch } from "./generate/company-research.js";
+export { post as handleJobImport } from "./generate/job-import.js";
+export { post as handleJobMatch } from "./generate/job-match.js";
 export { get as handleListArtifacts } from "./artifacts/index.js";
 export { getById as handleGetArtifact } from "./artifacts/index.js";
 export { post as handleCreateJobMaterials } from "./artifacts/job-materials.js";
