@@ -1,58 +1,29 @@
 /**
- * Cover Letter Drafts Routes
+ * COVER LETTER DRAFTS ROUTES
  *
- * GET    /api/cover-letter/drafts       - List all user's drafts
- * GET    /api/cover-letter/drafts/:id   - Get specific draft
- * POST   /api/cover-letter/drafts       - Create new draft
- * PATCH  /api/cover-letter/drafts/:id   - Update draft
- * DELETE /api/cover-letter/drafts/:id   - Delete draft (soft delete)
+ * Endpoints:
+ * - GET    /api/cover-letter/drafts       - list()
+ * - GET    /api/cover-letter/drafts/:id   - get()
+ * - POST   /api/cover-letter/drafts       - post()
+ * - PATCH  /api/cover-letter/drafts/:id   - patch()
+ * - DELETE /api/cover-letter/drafts/:id   - del()
  *
  * All routes require authentication and perform RLS checks
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { URL } from "node:url";
-import { ApiError } from "../../utils/errors.js";
-import { legacyLogError as logError } from "../../utils/logger.js";
-import { getCorsHeaders } from "../middleware/cors.js";
-import * as coverLetterDraftsService from "../services/coverLetterDraftsService.js";
+import { ApiError } from "../../../utils/errors.js";
+import { legacyLogError as logError } from "../../../utils/logger.js";
+import { readJson, sendJson } from "../../../utils/http.js";
+import * as coverLetterDraftsService from "../../services/coverLetterDraftsService.js";
 
 /**
- * Read and parse JSON body safely
+ * GET /api/cover-letter/drafts
+ *
+ * List all cover letter drafts for the authenticated user
  */
-async function readJson(req: IncomingMessage): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => (data += chunk));
-    req.on("end", () => {
-      if (!data) return resolve({});
-      try {
-        resolve(JSON.parse(data));
-      } catch (err) {
-        reject(err);
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-/**
- * Send JSON response
- */
-function sendJson(res: ServerResponse, statusCode: number, payload: any) {
-  const bodyStr = JSON.stringify(payload);
-  res.writeHead(statusCode, {
-    "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(bodyStr).toString(),
-    ...getCorsHeaders(),
-  });
-  res.end(bodyStr);
-}
-
-/**
- * LIST DRAFTS: GET /api/cover-letter/drafts
- */
-export async function handleListDrafts(
+export async function list(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
@@ -64,9 +35,11 @@ export async function handleListDrafts(
 }
 
 /**
- * GET DRAFT: GET /api/cover-letter/drafts/:id
+ * GET /api/cover-letter/drafts/:id
+ *
+ * Get a specific cover letter draft by ID
  */
-export async function handleGetDraft(
+export async function get(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
@@ -86,9 +59,11 @@ export async function handleGetDraft(
 }
 
 /**
- * CREATE DRAFT: POST /api/cover-letter/drafts
+ * POST /api/cover-letter/drafts
+ *
+ * Create a new cover letter draft
  */
-export async function handleCreateDraft(
+export async function post(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
@@ -122,9 +97,11 @@ export async function handleCreateDraft(
 }
 
 /**
- * UPDATE DRAFT: PATCH /api/cover-letter/drafts/:id
+ * PATCH /api/cover-letter/drafts/:id
+ *
+ * Update an existing cover letter draft
  */
-export async function handleUpdateDraft(
+export async function patch(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
@@ -148,14 +125,15 @@ export async function handleUpdateDraft(
     userId,
     body
   );
-
   sendJson(res, 200, { draft });
 }
 
 /**
- * DELETE DRAFT: DELETE /api/cover-letter/drafts/:id
+ * DELETE /api/cover-letter/drafts/:id
+ *
+ * Delete (soft delete) a cover letter draft
  */
-export async function handleDeleteDraft(
+export async function del(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,

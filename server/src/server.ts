@@ -352,31 +352,21 @@ async function handleRequest(
 
     if (method === "POST" && pathname === "/api/generate/company-research") {
       const userId = await requireAuth(req);
-      await handleCompanyResearch(
-        req,
-        res,
-        url,
-        ctx.reqId,
-        userId,
-        counters
-      );
+      await handleCompanyResearch(req, res, url, ctx.reqId, userId, counters);
       ctx.logComplete(method, pathname, 201);
       return;
     }
-// ------------------------------------------------------------------
-// SALARY RESEARCH ENDPOINT (protected)
-// ------------------------------------------------------------------
-// SALARY RESEARCH ENDPOINT (protected)
-// ------------------------------------------------------------------
-if (method === "POST" && pathname === "/api/salary-research") {
-  const userId = await requireAuth(req);
-  await handleSalaryResearch(req, res, url, ctx.reqId, userId, counters);
-  ctx.logComplete(method, pathname, 201);
-  return;
-}
-
-
-
+    // ------------------------------------------------------------------
+    // SALARY RESEARCH ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    // SALARY RESEARCH ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/salary-research") {
+      const userId = await requireAuth(req);
+      await handleSalaryResearch(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
 
     // ------------------------------------------------------------------
     // ARTIFACT ENDPOINTS (protected)
@@ -476,9 +466,7 @@ if (method === "POST" && pathname === "/api/salary-research") {
     // GET /api/company/research
     if (method === "GET" && pathname === "/api/company/research") {
       const userId = await requireAuth(req);
-      const { handleGetCompanyResearch } = await import(
-        "./routes/companyResearch.js"
-      );
+      const { handleGetCompanyResearch } = await import("./routes/index.js");
       await handleGetCompanyResearch(req, res, url, ctx.reqId, userId);
       ctx.logComplete(method, pathname, 200);
       return;

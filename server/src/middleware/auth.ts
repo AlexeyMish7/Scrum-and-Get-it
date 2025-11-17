@@ -48,10 +48,11 @@ export async function requireAuth(req: IncomingMessage): Promise<string> {
       req.headers["x-user-id"] as string | undefined
     );
     return userId;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     throw new ApiError(
       401,
-      err.message || "Authentication failed",
+      error.message || "Authentication failed",
       "auth_failed"
     );
   }

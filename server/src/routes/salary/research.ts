@@ -1,36 +1,33 @@
 /**
- * =============================================================
- * Salary Research & Comparison Route (AI-powered)
- * =============================================================
+ * SALARY RESEARCH ROUTES
+ *
+ * Endpoints:
+ * - POST /api/salary-research  - post()
+ *
+ * AI-powered salary research and compensation analysis
  */
-
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { URL } from "node:url";
-import { aiClient } from "../services/index.js";
-import { ApiError } from "../../utils/errors.js"; // ✅ fixed path
-import { getCorsHeaders } from "../middleware/cors.js";
+import { aiClient } from "../../services/index.js";
+import { ApiError } from "../../../utils/errors.js";
+import { readJson } from "../../../utils/http.js";
+import { getCorsHeaders } from "../../middleware/cors.js";
 
-
-// Helper: safely read JSON body
-async function readJson(req: IncomingMessage): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => (data += chunk));
-    req.on("end", () => {
-      if (!data) return resolve({});
-      try {
-        resolve(JSON.parse(data));
-      } catch (err) {
-        reject(err);
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-
-export async function handleSalaryResearch(
+/**
+ * POST /api/salary-research
+ *
+ * Body: {
+ *   title: string (required),
+ *   location?: string,
+ *   experience?: string,
+ *   company?: string,
+ *   currentSalary?: number
+ * }
+ *
+ * Response: 201 with { artifact: { content: { range, totalComp, trend, recommendation } } }
+ */
+export async function post(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
@@ -39,25 +36,27 @@ export async function handleSalaryResearch(
   counters: any
 ): Promise<void> {
   try {
-    const body = await readJson(req);
+    const body = (await readJson(req)) as {
+      title?: string;
+      location?: string;
+      experience?: string;
+      company?: string;
+      currentSalary?: number;
+    };
     const { title, location, experience, company, currentSalary } = body;
-
 
     if (!title) throw new ApiError(400, "Job title is required", "bad_request");
 
-
-    // 🧠 AI prompt for salary analysis
+    // AI prompt for salary analysis
     const prompt = `
 You are an experienced HR compensation analyst.
 Estimate a realistic salary range and insights for:
-
 
 - Job Title: ${title}
 - Company: ${company || "N/A"}
 - Location: ${location || "N/A"}
 - Experience Level: ${experience || "N/A"}
 - Current Salary: ${currentSalary || "N/A"}
-
 
 Return ONLY valid JSON in this format:
 {
@@ -67,16 +66,12 @@ Return ONLY valid JSON in this format:
   "recommendation": string
 }`;
 
-
-    // ✅ Simplified AI call (two arguments only)
     const result = await aiClient.generate("gpt-4o-mini", prompt);
-
 
     let outputText: string | undefined =
       (result as any).output?.[0]?.content?.[0]?.text ??
       (result as any).output_text ??
       "";
-
 
     let parsed: any = {};
     try {
@@ -90,10 +85,8 @@ Return ONLY valid JSON in this format:
       };
     }
 
-
     const payload = { artifact: { content: parsed } };
     const bodyStr = JSON.stringify(payload);
-
 
     res.writeHead(201, {
       "Content-Type": "application/json",
@@ -101,7 +94,6 @@ Return ONLY valid JSON in this format:
       ...getCorsHeaders(),
     });
     res.end(bodyStr);
-
 
     counters.generate_success++;
   } catch (err: any) {
@@ -118,6 +110,3 @@ Return ONLY valid JSON in this format:
     res.end(body);
   }
 }
-
-
-

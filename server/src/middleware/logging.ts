@@ -60,15 +60,3 @@ export function createRequestContext(req: IncomingMessage): RequestContext {
     },
   };
 }
-
-/**
- * Measure request duration from a start timestamp
- *
- * Usage:
- *   const startTime = Date.now();
- *   // ... process request ...
- *   const duration = getDuration(startTime);
- */
-export function getDuration(startTime: number): number {
-  return Date.now() - startTime;
-}
