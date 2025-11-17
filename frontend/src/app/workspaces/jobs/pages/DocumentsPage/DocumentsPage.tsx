@@ -18,7 +18,6 @@ import {
   Box,
   Typography,
   Paper,
-  
   FormControl,
   InputLabel,
   Select,
@@ -59,7 +58,9 @@ export default function DocumentsPage2() {
     (async () => {
       try {
         const userCrud = withUser(user.id);
-        const res = await userCrud.listRows("jobs", "*", { order: { column: "created_at", ascending: false } });
+        const res = await userCrud.listRows("jobs", "*", {
+          order: { column: "created_at", ascending: false },
+        });
         if (res.error) throw new Error(res.error.message);
         setJobs(res.data || []);
       } catch (err) {
@@ -91,36 +92,38 @@ export default function DocumentsPage2() {
           return String(jobId) === String(selectedJobId);
         });
 
-  // 2) Cover letters: merge local cache with DB rows for this job
-  /**
-   * BACKEND NOTE:
-   * The client currently reads `cover_letter_drafts` filtered by `user_id`
-   * and `job_id` directly via Supabase. To improve performance and
-   * avoid client-side merging in high-volume accounts, provide backend
-   * support (one of the options below):
-   *
-   * - RPC / endpoint: an RPC or REST endpoint that returns cover letter
-   *   drafts for a given user and job (e.g., GET /api/users/:id/jobs/:jobId/cover-letters).
-   *   The endpoint should honor RLS and return only permitted rows and
-   *   a small projection (id, title, content, metadata, last_accessed_at).
-   *
-   * - DB view or indexed query: expose a view or indexed query that
-   *   supports fast lookup by `job_id` (and optionally by JSON metadata
-   *   keys) so the frontend doesn't need to fetch and filter large
-   *   result sets.
-   *
-   * - Pagination & projection: if large result sets are possible,
-   *   the backend should support pagination and returning only the
-   *   necessary fields used by this UI.
-   *
-   * When adding backend support, update this client call to use the
-   * new endpoint and remove the ad-hoc client-side merge logic.
-   */
-  const store = useCoverLetterDrafts.getState();
+        // 2) Cover letters: merge local cache with DB rows for this job
+        /**
+         * BACKEND NOTE:
+         * The client currently reads `cover_letter_drafts` filtered by `user_id`
+         * and `job_id` directly via Supabase. To improve performance and
+         * avoid client-side merging in high-volume accounts, provide backend
+         * support (one of the options below):
+         *
+         * - RPC / endpoint: an RPC or REST endpoint that returns cover letter
+         *   drafts for a given user and job (e.g., GET /api/users/:id/jobs/:jobId/cover-letters).
+         *   The endpoint should honor RLS and return only permitted rows and
+         *   a small projection (id, title, content, metadata, last_accessed_at).
+         *
+         * - DB view or indexed query: expose a view or indexed query that
+         *   supports fast lookup by `job_id` (and optionally by JSON metadata
+         *   keys) so the frontend doesn't need to fetch and filter large
+         *   result sets.
+         *
+         * - Pagination & projection: if large result sets are possible,
+         *   the backend should support pagination and returning only the
+         *   necessary fields used by this UI.
+         *
+         * When adding backend support, update this client call to use the
+         * new endpoint and remove the ad-hoc client-side merge logic.
+         */
+        const store = useCoverLetterDrafts.getState();
         if (store.setUserId) store.setUserId(user.id);
         if (store.loadFromCacheSync) store.loadFromCacheSync();
-        const cached = (store.drafts || []).filter((c: any) =>
-          String(c.job_id ?? c.jobId ?? c.metadata?.jobId ?? "") === String(selectedJobId)
+        const cached = (store.drafts || []).filter(
+          (c: any) =>
+            String(c.job_id ?? c.jobId ?? c.metadata?.jobId ?? "") ===
+            String(selectedJobId)
         );
 
         const { data: dbCovers, error: coverErr } = await supabase
@@ -155,7 +158,9 @@ export default function DocumentsPage2() {
   function downloadResume(r: any) {
     try {
       const content = r.content ?? r.preview ?? r;
-      const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(content, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -184,7 +189,9 @@ export default function DocumentsPage2() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${c.title || c.name || "cover_letter"}_${selectedJobId}.txt`;
+      a.download = `${
+        c.title || c.name || "cover_letter"
+      }_${selectedJobId}.txt`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -197,31 +204,42 @@ export default function DocumentsPage2() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 1 }}>Documents & Materials — Experiment</Typography>
+      <Typography variant="h4" sx={{ mb: 1 }}>
+        Documents & Materials — Experiment
+      </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Search for a job and view resumes / cover letters generated for that job.
+        Search for a job and view resumes / cover letters generated for that
+        job.
       </Typography>
 
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems="center"
+        >
           <FormControl size="small" sx={{ minWidth: 380 }}>
             <InputLabel>Job</InputLabel>
             <Select
               value={selectedJobId}
               label="Job"
               onChange={(e) => {
-                const v = (e.target.value as any);
+                const v = e.target.value as any;
                 setSelectedJobId(v === "" ? "" : Number(v));
               }}
             >
               <MenuItem value="">-- Select a job --</MenuItem>
               {jobs.map((j) => (
-                <MenuItem key={j.id} value={j.id}>{j.job_title} — {j.company_name}</MenuItem>
+                <MenuItem key={j.id} value={j.id}>
+                  {j.job_title} — {j.company_name}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>{loadingJobs && <CircularProgress size={20} />}</Box>
+          <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>
+            {loadingJobs && <CircularProgress size={20} />}
+          </Box>
         </Stack>
       </Paper>
 
@@ -230,16 +248,33 @@ export default function DocumentsPage2() {
           <Typography variant="h6">Resumes</Typography>
           <Divider sx={{ my: 1 }} />
           {loadingMaterials ? (
-            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress /></Box>
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress />
+            </Box>
           ) : resumes.length === 0 ? (
-            <Typography color="text.secondary">No resumes found for this job.</Typography>
+            <Typography color="text.secondary">
+              No resumes found for this job.
+            </Typography>
           ) : (
             <List>
               {resumes.map((r) => (
                 <ListItem key={r.id} disablePadding>
                   <ListItemButton>
-                    <ListItemText primary={r.title || r.name || `Resume ${r.id}`} secondary={r.created_at ? new Date(r.created_at).toLocaleString() : ""} />
-                    <Button size="small" startIcon={<DownloadIcon />} onClick={() => downloadResume(r)}>Download</Button>
+                    <ListItemText
+                      primary={r.title || r.name || `Resume ${r.id}`}
+                      secondary={
+                        r.created_at
+                          ? new Date(r.created_at).toLocaleString()
+                          : ""
+                      }
+                    />
+                    <Button
+                      size="small"
+                      startIcon={<DownloadIcon />}
+                      onClick={() => downloadResume(r)}
+                    >
+                      Download
+                    </Button>
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -251,16 +286,33 @@ export default function DocumentsPage2() {
           <Typography variant="h6">Cover Letters</Typography>
           <Divider sx={{ my: 1 }} />
           {loadingMaterials ? (
-            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress /></Box>
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress />
+            </Box>
           ) : covers.length === 0 ? (
-            <Typography color="text.secondary">No cover letters found for this job.</Typography>
+            <Typography color="text.secondary">
+              No cover letters found for this job.
+            </Typography>
           ) : (
             <List>
               {covers.map((c) => (
                 <ListItem key={c.id} disablePadding>
                   <ListItemButton>
-                    <ListItemText primary={c.title || c.name || `Cover ${c.id}`} secondary={c.last_accessed_at ? new Date(c.last_accessed_at).toLocaleString() : ""} />
-                    <Button size="small" startIcon={<DownloadIcon />} onClick={() => downloadCover(c)}>Download</Button>
+                    <ListItemText
+                      primary={c.title || c.name || `Cover ${c.id}`}
+                      secondary={
+                        c.last_accessed_at
+                          ? new Date(c.last_accessed_at).toLocaleString()
+                          : ""
+                      }
+                    />
+                    <Button
+                      size="small"
+                      startIcon={<DownloadIcon />}
+                      onClick={() => downloadCover(c)}
+                    >
+                      Download
+                    </Button>
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -268,9 +320,6 @@ export default function DocumentsPage2() {
           )}
         </Paper>
       </Box>
-
-      {/* global error/snackbar is rendered by SystemLayer; keep local notification hook wired */}
     </Box>
   );
 }
-

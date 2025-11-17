@@ -60,7 +60,9 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       // fetch notes/history and pick the most-recent previous non-archive status
       const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
       if (notesRes.error) throw notesRes.error;
-      const notes = (notesRes.data ?? []) as any[];
+      const notes = (notesRes.data ?? []) as Array<{
+        application_history?: unknown[];
+      }>;
       const first = notes[0] ?? null;
       let target = "Interested";
       const hist = first?.application_history;

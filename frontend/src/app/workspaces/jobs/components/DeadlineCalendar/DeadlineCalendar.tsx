@@ -1,20 +1,29 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Chip, IconButton, Stack } from "@mui/material";
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../JobDetails/JobDetails";
 
-type JobRow = { id: number | string; job_title?: string; application_deadline?: string; job_status?: string };
+type JobRow = {
+  id: number | string;
+  job_title?: string;
+  application_deadline?: string;
+  job_status?: string;
+};
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
 
 function isSameDate(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function daysUntil(date: Date) {
@@ -38,7 +47,9 @@ export default function DeadlineCalendar() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [open, setOpen] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
+    null
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -46,12 +57,19 @@ export default function DeadlineCalendar() {
       if (!user?.id) return;
       try {
         const userCrud = withUser(user.id);
-  const res = await userCrud.listRows<JobRow>("jobs", "id, job_title, application_deadline, job_status");
-  if (!mounted) return;
-  // Only care about deadlines for jobs we're still "Interested" in (not applied/archived)
-  const rows = (res.data ?? []).filter((r) => r.application_deadline && String(r.job_status ?? "").toLowerCase() === "interested");
+        const res = await userCrud.listRows<JobRow>(
+          "jobs",
+          "id, job_title, application_deadline, job_status"
+        );
+        if (!mounted) return;
+        // Only care about deadlines for jobs we're still "Interested" in (not applied/archived)
+        const rows = (res.data ?? []).filter(
+          (r) =>
+            r.application_deadline &&
+            String(r.job_status ?? "").toLowerCase() === "interested"
+        );
         setJobs(rows);
-      } catch (e) {
+      } catch (_e) {
         setJobs([]);
       }
     }
@@ -84,8 +102,22 @@ export default function DeadlineCalendar() {
   }
 
   return (
-    <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        p: 1,
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 1,
+        }}
+      >
         <Typography variant="h6">Deadlines Calendar</Typography>
         <Box>
           <IconButton size="small" onClick={() => setMonthOffset((m) => m - 1)}>
@@ -97,14 +129,26 @@ export default function DeadlineCalendar() {
         </Box>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, textAlign: 'left' }}>
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
-          <Box key={d} sx={{ fontSize: 12, color: 'text.secondary', p: 0.5 }}>{d}</Box>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 0.5,
+          textAlign: "left",
+        }}
+      >
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <Box key={d} sx={{ fontSize: 12, color: "text.secondary", p: 0.5 }}>
+            {d}
+          </Box>
         ))}
 
         {/* blank slots for days before month starts */}
         {Array.from({ length: firstDayWeekday }).map((_, i) => (
-          <Box key={`blank-${i}`} sx={{ minHeight: 64, p: 0.5, border: '1px dashed transparent' }} />
+          <Box
+            key={`blank-${i}`}
+            sx={{ minHeight: 64, p: 0.5, border: "1px dashed transparent" }}
+          />
         ))}
 
         {Array.from({ length: days }).map((_, idx) => {
@@ -120,31 +164,41 @@ export default function DeadlineCalendar() {
               sx={{
                 minHeight: 64,
                 p: 0.5,
-                border: '1px solid',
-                borderColor: isToday ? 'primary.main' : 'divider',
+                border: "1px solid",
+                borderColor: isToday ? "primary.main" : "divider",
                 borderRadius: 0.5,
-                position: 'relative',
-                bgcolor: list.length ? 'action.hover' : 'transparent'
+                position: "relative",
+                bgcolor: list.length ? "action.hover" : "transparent",
               }}
             >
-              <Typography sx={{ fontSize: 12, fontWeight: 600 }}>{dayNum}</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
+                {dayNum}
+              </Typography>
 
               {list.length > 0 && (
                 <Stack spacing={0.5} sx={{ mt: 0.5 }}>
                   {list.map((j) => {
-                    const dl = j.application_deadline ? new Date(String(j.application_deadline)) : null;
+                    const dl = j.application_deadline
+                      ? new Date(String(j.application_deadline))
+                      : null;
                     const days = dl ? daysUntil(dl) : null;
                     return (
                       <Chip
                         key={String(j.id)}
-                        label={String(j.job_title ?? 'Untitled')}
+                        label={String(j.job_title ?? "Untitled")}
                         size="small"
                         onClick={() => {
                           setSelectedJobId(j.id);
                           setOpen(true);
                         }}
-                        color={deadlineColor(days) as any}
-                        sx={{ cursor: 'pointer' }}
+                        color={
+                          deadlineColor(days) as
+                            | "success"
+                            | "warning"
+                            | "error"
+                            | "default"
+                        }
+                        sx={{ cursor: "pointer" }}
                       />
                     );
                   })}

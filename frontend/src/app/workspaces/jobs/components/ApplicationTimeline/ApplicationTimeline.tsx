@@ -5,7 +5,7 @@ type HistoryEntry = {
   to?: string | null;
   changed_at?: string | number | null;
   timestamp?: string | number | null;
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 type Props = {
@@ -25,7 +25,7 @@ type Props = {
  * Output: visual timeline (read-only)
  */
 export default function ApplicationTimeline({ history, createdAt }: Props) {
-  const normalizeWhen = (raw: any) => {
+  const normalizeWhen = (raw: unknown) => {
     if (!raw) return null;
     try {
       const d = raw instanceof Date ? raw : new Date(String(raw));
@@ -42,7 +42,19 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
    * Map a status label to a color string from the theme palette so the
    * timeline colors align with the pipeline column colors.
    */
-  const statusColor = (status: string | undefined | null, theme: any) => {
+  const statusColor = (
+    status: string | undefined | null,
+    theme: {
+      palette: {
+        grey?: Record<number, string>;
+        info?: { main: string };
+        primary: { main: string };
+        success?: { main: string };
+        warning?: { main: string };
+        error?: { main: string };
+      };
+    }
+  ) => {
     if (!status) return theme.palette.grey?.[700] ?? "#666";
     const s = String(status).toLowerCase().trim();
     switch (s) {
@@ -69,7 +81,9 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
 
   if (Array.isArray(history)) {
     for (const h of history) {
-      const when = normalizeWhen(h.changed_at ?? h.timestamp ?? h.date ?? h.when ?? null);
+      const when = normalizeWhen(
+        h.changed_at ?? h.timestamp ?? h.date ?? h.when ?? null
+      );
       let toRaw = String(h.to ?? h.status ?? "").trim();
       // Normalize archive label to a user-friendly form
       if (toRaw.toLowerCase() === "archive") toRaw = "Archived";
@@ -87,7 +101,9 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
   if (createdIso) {
     const last = entries[entries.length - 1];
     const needSeed =
-      !last || last.to.toLowerCase() !== "interested" || last.when !== createdIso;
+      !last ||
+      last.to.toLowerCase() !== "interested" ||
+      last.when !== createdIso;
     if (needSeed) {
       // Append the Interested event as the oldest
       entries.push({ to: "Interested", when: createdIso });
@@ -98,7 +114,11 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
   }
 
   if (entries.length === 0) {
-    return <Typography variant="caption" color="text.secondary">No history</Typography>;
+    return (
+      <Typography variant="caption" color="text.secondary">
+        No history
+      </Typography>
+    );
   }
 
   return (
@@ -115,7 +135,14 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
 
         return (
           <Box key={`${i}-${e.when}-${e.to}`} sx={{ display: "flex", mb: 1 }}>
-            <Box sx={{ width: 36, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Box
+              sx={{
+                width: 36,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
               <Box
                 sx={{
                   width: 12,
@@ -143,7 +170,9 @@ export default function ApplicationTimeline({ history, createdAt }: Props) {
               )}
             </Box>
             <Box sx={{ ml: 1, flex: 1 }}>
-              <Typography variant="caption" color="text.secondary">{whenLabel}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {whenLabel}
+              </Typography>
               <Typography variant="body2">{String(e.to ?? "-")}</Typography>
             </Box>
           </Box>
