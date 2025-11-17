@@ -13,7 +13,9 @@ import {
   TextField,
   Divider,
 } from "@mui/material";
-import useResumeFeedback from "@workspaces/ai/hooks/useResumeFeedback";
+import useResumeFeedback, {
+  type ResumeShare,
+} from "@workspaces/ai/hooks/useResumeFeedback";
 import FeedbackPanel from "@workspaces/ai/components/resume-v2/FeedbackPanel";
 
 interface Props {
@@ -24,7 +26,7 @@ interface Props {
 
 export default function FeedbackDialog({ open, onClose, draftId }: Props) {
   const fb = useResumeFeedback();
-  const [shares, setShares] = useState<any[]>([]);
+  const [shares, setShares] = useState<ResumeShare[]>([]);
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const [manualToken, setManualToken] = useState("");
 
@@ -41,7 +43,10 @@ export default function FeedbackDialog({ open, onClose, draftId }: Props) {
   }, [open, draftId]);
 
   const handleCreate = () => {
-    const s = fb.createShare(draftId, { permissions: "comment", privacy: "link" });
+    const s = fb.createShare(draftId, {
+      permissions: "comment",
+      privacy: "link",
+    });
     reload();
     setSelectedToken(s.token);
   };
@@ -56,19 +61,43 @@ export default function FeedbackDialog({ open, onClose, draftId }: Props) {
       <DialogContent>
         <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
           <Stack sx={{ width: 320 }} spacing={1}>
-            <Button variant="contained" onClick={handleCreate}>Create new share</Button>
+            <Button variant="contained" onClick={handleCreate}>
+              Create new share
+            </Button>
             <Divider />
-            <Typography variant="caption">Existing shares for this draft</Typography>
+            <Typography variant="caption">
+              Existing shares for this draft
+            </Typography>
             <List dense sx={{ maxHeight: 260, overflow: "auto" }}>
-              {shares.map((s:any) => (
-                <ListItem key={s.token} button selected={selectedToken === s.token} onClick={() => handleSelect(s.token)}>
-                  <ListItemText primary={s.token} secondary={`${s.permissions} • ${s.privacy} • created ${new Date(s.createdAt).toLocaleString()}`} />
+              {shares.map((s) => (
+                <ListItem
+                  key={s.token}
+                  button
+                  selected={selectedToken === s.token}
+                  onClick={() => handleSelect(s.token)}
+                >
+                  <ListItemText
+                    primary={s.token}
+                    secondary={`${s.permissions} • ${
+                      s.privacy
+                    } • created ${new Date(s.createdAt).toLocaleString()}`}
+                  />
                 </ListItem>
               ))}
             </List>
 
-            <TextField label="Open by token" size="small" value={manualToken} onChange={(e)=>setManualToken(e.target.value)} />
-            <Button onClick={() => setSelectedToken(manualToken)} disabled={!manualToken}>Open Token</Button>
+            <TextField
+              label="Open by token"
+              size="small"
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+            />
+            <Button
+              onClick={() => setSelectedToken(manualToken)}
+              disabled={!manualToken}
+            >
+              Open Token
+            </Button>
           </Stack>
 
           <Divider orientation="vertical" flexItem />
@@ -77,7 +106,10 @@ export default function FeedbackDialog({ open, onClose, draftId }: Props) {
             {selectedToken ? (
               <FeedbackPanel token={selectedToken} />
             ) : (
-              <Typography variant="body2" color="text.secondary">Select a share on the left or create a new share to view comments and manage feedback.</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Select a share on the left or create a new share to view
+                comments and manage feedback.
+              </Typography>
             )}
           </div>
         </Stack>

@@ -62,12 +62,15 @@ import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import GenerationPanel from "@workspaces/ai/components/resume-v2/GenerationPanel";
-import AIResultsPanel from "@workspaces/ai/components/resume-v2/AIResultsPanel";
-import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewPanel";
-import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
-import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
-import { TemplateSelector } from "@workspaces/ai/components/resume-v2/TemplateSelector";
+import {
+  GenerationPanel,
+  AIResultsPanel,
+  DraftPreviewPanel,
+  ProductTour,
+  ResumeStarter,
+  TemplateSelector,
+  ResumeVersionsPanel,
+} from "@workspaces/ai/components/resume-v2";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
@@ -79,7 +82,6 @@ import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
 import useUserJobs from "@shared/hooks/useUserJobs";
-import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
 
 export default function ResumeEditorV2() {
   const navigate = useNavigate();

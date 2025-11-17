@@ -58,7 +58,8 @@ async function getAuthHeaders(
 async function postJson<T>(
   path: string,
   body: unknown,
-  _userId: string // Kept for API compatibility, auth via JWT
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _userId?: string // Kept for API compatibility, auth via JWT
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
 
@@ -128,7 +129,8 @@ async function postJson<T>(
 
 async function getJson<T>(
   path: string,
-  _userId: string // Kept for API compatibility, auth via JWT
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _userId?: string // Kept for API compatibility, auth via JWT
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
 

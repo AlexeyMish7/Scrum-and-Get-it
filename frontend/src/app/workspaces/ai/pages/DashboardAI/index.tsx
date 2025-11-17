@@ -29,7 +29,6 @@ import {
   Checkbox,
   Chip,
   Container,
-  Divider,
   List,
   ListItem,
   ListItemIcon,
@@ -160,7 +159,9 @@ function getArtifactMeta(kind: AiArtifactKind | string) {
   return meta ?? ARTIFACT_META.default;
 }
 
-function deadlineColor(days: number) {
+function deadlineColor(
+  days: number
+): "error" | "warning" | "success" | "default" {
   if (days < 0) return DEADLINE_COLORS.overdue;
   if (days <= 7) return DEADLINE_COLORS.urgent;
   if (days <= 14) return DEADLINE_COLORS.soon;
@@ -661,7 +662,7 @@ export default function DashboardAI() {
                             ? `Overdue ${Math.abs(deadline.daysRemaining)}d`
                             : `${deadline.daysRemaining}d left`
                         }
-                        color={deadlineColor(deadline.daysRemaining) as any}
+                        color={deadlineColor(deadline.daysRemaining)}
                         size="small"
                       />
                       <Typography variant="caption" color="text.secondary">

@@ -48,14 +48,14 @@ const CompanyResearch = lazy(
 const TemplatesHub = lazy(
   () => import("@workspaces/ai/pages/TemplatesHub/index")
 );
-const GenerateCoverLetter = lazy(
-  () => import("@workspaces/ai/pages/GenerateCoverLetter/index")
+const CoverLetterEditor = lazy(
+  () => import("@workspaces/ai/pages/CoverLetterEditor/index")
 );
 const ResumeEditorV2 = lazy(
   () => import("@workspaces/ai/pages/ResumeEditorV2/index")
 );
 const EditCoverLetter = lazy(
-  () => import("@workspaces/ai/components/cover-letter/EditCoverLetter")
+  () => import("@workspaces/ai/pages/EditCoverLetter/index")
 );
 
 // Jobs workspace pages (lazy loaded - data-heavy components)
@@ -128,7 +128,7 @@ export const router = createBrowserRouter([
         path: "cover-letter",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
-            <GenerateCoverLetter />
+            <CoverLetterEditor />
           </Suspense>
         ),
       },

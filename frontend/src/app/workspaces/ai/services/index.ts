@@ -13,3 +13,12 @@ export * from "./resumeDraftsService";
 export * from "./resumeDraftsCache";
 export * from "./resumeVersionService";
 export * from "./resumeDraftsMigration";
+
+// Cover letter draft services
+export * as coverLetterDraftsApi from "./coverLetterDraftsApi";
+
+// Job materials linking
+export * from "./jobMaterialsService";
+
+// Dashboard data aggregation
+export * from "./dashboardService";

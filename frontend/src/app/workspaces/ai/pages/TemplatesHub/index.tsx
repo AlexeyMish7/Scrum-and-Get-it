@@ -20,7 +20,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CompareIcon from "@mui/icons-material/Compare";
-import CoverLetterTemplateManager from "@workspaces/ai/components/cover-letter/CoverLetterTemplateManager";
+import { CoverLetterTemplateManager } from "@workspaces/ai/components/cover-letter";
 
 /**
  * TemplatesHub
