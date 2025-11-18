@@ -41,6 +41,8 @@ import {
   handleSkillsOptimization,
   handleExperienceTailoring,
   handleCompanyResearch,
+  handleJobImport,
+  handleJobMatch,
   handleSalaryResearch,
   handleListArtifacts,
   handleGetArtifact,
@@ -250,6 +252,9 @@ function sendError(res: http.ServerResponse, err: any) {
  * - POST /api/generate/cover-letter
  * - POST /api/generate/skills-optimization
  * - POST /api/generate/experience-tailoring
+ * - POST /api/generate/company-research
+ * - POST /api/generate/job-import
+ * - POST /api/generate/job-match
  * - GET  /api/artifacts
  * - GET  /api/artifacts/:id
  * - POST /api/job-materials
@@ -352,31 +357,36 @@ async function handleRequest(
 
     if (method === "POST" && pathname === "/api/generate/company-research") {
       const userId = await requireAuth(req);
-      await handleCompanyResearch(
-        req,
-        res,
-        url,
-        ctx.reqId,
-        userId,
-        counters
-      );
+      await handleCompanyResearch(req, res, url, ctx.reqId, userId, counters);
       ctx.logComplete(method, pathname, 201);
       return;
     }
-// ------------------------------------------------------------------
-// SALARY RESEARCH ENDPOINT (protected)
-// ------------------------------------------------------------------
-// SALARY RESEARCH ENDPOINT (protected)
-// ------------------------------------------------------------------
-if (method === "POST" && pathname === "/api/salary-research") {
-  const userId = await requireAuth(req);
-  await handleSalaryResearch(req, res, url, ctx.reqId, userId, counters);
-  ctx.logComplete(method, pathname, 201);
-  return;
-}
 
+    if (method === "POST" && pathname === "/api/generate/job-import") {
+      const userId = await requireAuth(req);
+      await handleJobImport(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
 
+    if (method === "POST" && pathname === "/api/generate/job-match") {
+      const userId = await requireAuth(req);
+      await handleJobMatch(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
 
+    // ------------------------------------------------------------------
+    // SALARY RESEARCH ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    // SALARY RESEARCH ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/salary-research") {
+      const userId = await requireAuth(req);
+      await handleSalaryResearch(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
 
     // ------------------------------------------------------------------
     // ARTIFACT ENDPOINTS (protected)
@@ -476,9 +486,7 @@ if (method === "POST" && pathname === "/api/salary-research") {
     // GET /api/company/research
     if (method === "GET" && pathname === "/api/company/research") {
       const userId = await requireAuth(req);
-      const { handleGetCompanyResearch } = await import(
-        "./routes/companyResearch.js"
-      );
+      const { handleGetCompanyResearch } = await import("./routes/index.js");
       await handleGetCompanyResearch(req, res, url, ctx.reqId, userId);
       ctx.logComplete(method, pathname, 200);
       return;

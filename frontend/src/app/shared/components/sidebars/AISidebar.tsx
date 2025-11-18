@@ -1,49 +1,19 @@
-import {
-  Box,
-  List,
-  ListItemButton,
-  ListItemText,
-  Typography,
-} from "@mui/material";
-import { NavLink } from "react-router-dom";
+import WorkspaceSidebar, { type NavItem } from "./WorkspaceSidebar";
+
+const aiNavItems: NavItem[] = [
+  { to: "/ai-new", label: "AI Hub" },
+  { to: "/ai-new/generate/resume", label: "Generate Resume" },
+  { to: "/ai-new/generate/cover-letter", label: "Generate Cover Letter" },
+  { to: "/ai-new/library", label: "Document Library" },
+  { to: "/ai-new/templates", label: "Templates & Themes" },
+];
 
 export default function AISidebar() {
   return (
-    <Box
-      component="nav"
-      aria-label="AI workspace navigation"
-      sx={{
-        p: 2,
-        borderRight: "1px solid",
-        borderColor: "divider",
-        height: "100%",
-        boxSizing: "border-box",
-        overflow: "auto",
-      }}
-    >
-      <Typography variant="subtitle1" sx={{ mb: 1 }}>
-        AI Workspace
-      </Typography>
-      <List disablePadding>
-        <ListItemButton component={NavLink} to="/ai">
-          <ListItemText primary="Dashboard" />
-        </ListItemButton>
-        <ListItemButton component={NavLink} to="/ai/job-match">
-          <ListItemText primary="Job Match" />
-        </ListItemButton>
-        <ListItemButton component={NavLink} to="/ai/company-research">
-          <ListItemText primary="Company Research" />
-        </ListItemButton>
-        <ListItemButton component={NavLink} to="/ai/resume">
-          <ListItemText primary="Resume Studio" />
-        </ListItemButton>
-        <ListItemButton component={NavLink} to="/ai/cover-letter">
-          <ListItemText primary="Cover Letters" />
-        </ListItemButton>
-        <ListItemButton component={NavLink} to="/ai/templates">
-          <ListItemText primary="Templates" />
-        </ListItemButton>
-      </List>
-    </Box>
+    <WorkspaceSidebar
+      title="AI Workspace"
+      ariaLabel="AI workspace navigation"
+      navItems={aiNavItems}
+    />
   );
 }

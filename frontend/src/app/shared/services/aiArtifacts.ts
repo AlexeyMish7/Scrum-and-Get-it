@@ -1,3 +1,35 @@
+/**
+ * AI ARTIFACTS SERVICE (⚠️ LEGACY - Use documents.ts instead)
+ *
+ * Status: DEPRECATED - Kept for historical data access only
+ *
+ * Purpose (Historical):
+ * - Original AI-generated content storage (resumes, cover letters)
+ * - Single-table approach with unstructured content JSONB field
+ * - No versioning, branching, or structured schemas
+ *
+ * Migration Path:
+ * - New code → Use documents.ts service (documents + document_versions tables)
+ * - This service → Read-only access to legacy ai_artifacts table
+ * - Do NOT create new artifacts via this service
+ *
+ * Why Deprecated:
+ * - No version history tracking
+ * - No structured content schema (just generic JSONB)
+ * - No document-job linking support
+ * - No export history
+ * - No file storage integration
+ *
+ * Replacement Pattern:
+ *   Old: await insertAiArtifact(userId, { kind: 'resume', content: {...} })
+ *   New: const doc = await createDocument(userId, { type: 'resume', file_name: '...' })
+ *        await saveDocumentVersion(userId, doc.id, { content: {...} })
+ *
+ * Backend Connection:
+ * - Database: ai_artifacts table (via crud.ts + RLS)
+ * - RLS-enforced user_id scoping
+ * - Table still exists for historical data, but not actively used
+ */
 import { withUser } from "./crud";
 import type { Result, ListOptions } from "./types";
 import type {
@@ -115,7 +147,11 @@ export async function linkArtifactToJob(
   jobId: number
 ): Promise<Result<AiArtifactRow>> {
   const userCrud = withUser(userId);
-  return userCrud.updateRow<AiArtifactRow>(TABLE, { job_id: jobId }, { eq: { id: artifactId } });
+  return userCrud.updateRow<AiArtifactRow>(
+    TABLE,
+    { job_id: jobId },
+    { eq: { id: artifactId } }
+  );
 }
 
 // Unlink an artifact from any job (sets job_id to null)
@@ -124,7 +160,11 @@ export async function unlinkArtifactFromJob(
   artifactId: string
 ): Promise<Result<AiArtifactRow>> {
   const userCrud = withUser(userId);
-  return userCrud.updateRow<AiArtifactRow>(TABLE, { job_id: null }, { eq: { id: artifactId } });
+  return userCrud.updateRow<AiArtifactRow>(
+    TABLE,
+    { job_id: null },
+    { eq: { id: artifactId } }
+  );
 }
 
 // Convenience: get latest resume/cover letter artifact for a job (by updated_at desc)

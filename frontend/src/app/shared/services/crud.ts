@@ -1,3 +1,38 @@
+/**
+ * CRUD SERVICE (Core Database Operations)
+ *
+ * Purpose:
+ * - Unified interface for all Supabase table operations (CRUD)
+ * - Automatic user scoping via withUser(userId) pattern
+ * - Consistent error handling across all database queries
+ * - Type-safe Result<T> wrapper for success/error states
+ *
+ * Backend Connection:
+ * - Direct to Supabase Postgres via supabaseClient.ts
+ * - Uses VITE_SUPABASE_ANON_KEY (public key)
+ * - Row-Level Security (RLS) policies enforce user_id scoping
+ * - All user-owned tables require withUser() for proper access control
+ *
+ * Security Model:
+ * - RLS policies automatically filter results by authenticated user
+ * - withUser(userId) creates scoped client that adds user_id to all queries
+ * - Never bypass RLS on frontend (use backend service role for admin operations)
+ *
+ * Usage Pattern:
+ *   import { withUser } from '@shared/services/crud';
+ *
+ *   const userCrud = withUser(user.id);
+ *   const result = await userCrud.listRows('jobs', '*', {
+ *     eq: { status: 'active' },
+ *     order: { column: 'created_at', ascending: false }
+ *   });
+ *
+ *   if (result.error) {
+ *     console.error(result.error.message);
+ *   } else {
+ *     console.log(result.data);
+ *   }
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "./supabaseClient";
 import type { Result, ListOptions, FilterOptions } from "./types";

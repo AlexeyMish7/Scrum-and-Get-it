@@ -20,11 +20,18 @@ import {
   Stack,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import projectsService from "../../services/projects";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
+import { Breadcrumbs } from "@shared/components/navigation";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { FolderOpen as ProjectIcon } from "@mui/icons-material";
 import type { Project } from "../../types/project.ts";
+import type { ProjectRow } from "../../types/project";
+import { AddProjectDialog } from "../../components/dialogs/AddProjectDialog";
 // Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx
 
 // Main portfolio page showing all user's projects in a grid layout
@@ -41,13 +48,21 @@ const ProjectPortfolio: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   // Dialog for viewing project details
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  // Dialog for confirming deletion
-  const [confirmDeleteProject, setConfirmDeleteProject] =
-    useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { confirm } = useConfirmDialog();
+
+  // Add/Edit Project Dialog state
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [projectDialogMode, setProjectDialogMode] = useState<"add" | "edit">(
+    "add"
+  );
+  const [selectedProjectRow, setSelectedProjectRow] = useState<
+    ProjectRow | undefined
+  >();
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { markProfileChanged } = useProfileChange();
   const { notification, closeNotification, showSuccess, handleError } =
     useErrorHandler();
 
@@ -181,6 +196,7 @@ const ProjectPortfolio: React.FC = () => {
         return;
       }
       showSuccess("Project deleted");
+      markProfileChanged(); // Invalidate analytics cache
       // Notify other components and reload the list
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
@@ -189,7 +205,6 @@ const ProjectPortfolio: React.FC = () => {
       );
       window.dispatchEvent(new Event("projects:changed"));
       setSelectedProject(null);
-      setConfirmDeleteProject(null);
     } catch (err) {
       handleError(err as Error);
     } finally {
@@ -208,11 +223,42 @@ const ProjectPortfolio: React.FC = () => {
       handleError(err as Error);
     }
   };
-  const handleAddProject = () => navigate("/projects/new");
+  const handleAddProject = () => {
+    setProjectDialogMode("add");
+    setSelectedProjectRow(undefined);
+    setProjectDialogOpen(true);
+  };
+
+  const handleEditProject = async (projectId: string) => {
+    if (!user) return;
+    const res = await projectsService.getProject(user.id, projectId);
+    if (res.error || !res.data) {
+      handleError(res.error || "Failed to load project");
+      return;
+    }
+    setProjectDialogMode("edit");
+    setSelectedProjectRow(res.data as ProjectRow);
+    setProjectDialogOpen(true);
+  };
+
+  const handleCloseProjectDialog = () => {
+    setProjectDialogOpen(false);
+    setSelectedProjectRow(undefined);
+  };
+
+  const handleProjectDialogSuccess = () => {
+    fetchProjects();
+  };
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Projects" },
+          ]}
+        />
         <Box sx={{ textAlign: "center", mb: 3 }}>
           <Typography variant="h3">My Projects Portfolio</Typography>
           <Typography variant="subtitle1" color="text.secondary">
@@ -317,25 +363,26 @@ const ProjectPortfolio: React.FC = () => {
 
         {/* Empty State */}
         {!loading && !isLoading && filteredProjects.length === 0 && (
-          <Box sx={{ textAlign: "center", py: 6 }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>
-              No Projects Found
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              {projects.length === 0
+          <EmptyState
+            icon={<ProjectIcon />}
+            title="No Projects Found"
+            description={
+              projects.length === 0
                 ? "Start building your portfolio by adding your first project!"
-                : "Try adjusting your search or filter criteria."}
-            </Typography>
-            {projects.length === 0 && (
-              <Button
-                variant="contained"
-                size="large"
-                onClick={handleAddProject}
-              >
-                Add Your First Project
-              </Button>
-            )}
-          </Box>
+                : "Try adjusting your search or filter criteria."
+            }
+            action={
+              projects.length === 0 ? (
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleAddProject}
+                >
+                  Add Your First Project
+                </Button>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Project Cards */}
@@ -570,56 +617,44 @@ const ProjectPortfolio: React.FC = () => {
             <Button
               onClick={() => {
                 if (!selectedProject) return;
-                navigate(`/projects/${selectedProject.id}/edit`);
+                setSelectedProject(null);
+                handleEditProject(selectedProject.id);
               }}
               variant="contained"
             >
               Edit
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!selectedProject) return;
-                setConfirmDeleteProject(selectedProject);
+                const confirmed = await confirm({
+                  title: "Confirm delete",
+                  message: `Are you sure you want to delete "${
+                    selectedProject.projectName ?? "this project"
+                  }"? This action cannot be undone.`,
+                  confirmText: "Delete",
+                  confirmColor: "error",
+                });
+                if (confirmed) {
+                  await performDelete(selectedProject.id);
+                }
               }}
               color="error"
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Confirm delete dialog */}
-        <Dialog
-          open={!!confirmDeleteProject}
-          onClose={() => setConfirmDeleteProject(null)}
-        >
-          <DialogTitle>Confirm delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              {`Are you sure you want to delete "${
-                confirmDeleteProject?.projectName ?? "this project"
-              }"? This action cannot be undone.`}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => setConfirmDeleteProject(null)}
-              variant="outlined"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!confirmDeleteProject) return;
-                performDelete(confirmDeleteProject.id);
-              }}
               disabled={deleting}
-              color="error"
             >
               {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Add/Edit Project Dialog */}
+        <AddProjectDialog
+          open={projectDialogOpen}
+          onClose={handleCloseProjectDialog}
+          onSuccess={handleProjectDialogSuccess}
+          mode={projectDialogMode}
+          existingEntry={selectedProjectRow}
+        />
 
         <ErrorSnackbar
           notification={notification}

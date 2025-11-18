@@ -1,36 +1,446 @@
-import { Box, Stack } from "@mui/material";
-import TopNav from "@shared/components/TopNav/TopNav";
-import QuickActionButton from "@shared/components/common/QuickActionButton";
-import { Add as AddIcon } from "@mui/icons-material";
+import {
+  AppBar,
+  Avatar,
+  Box,
+  Button,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemText,
+  ListSubheader,
+  Menu,
+  MenuItem,
+  Stack,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import MenuIcon from "@mui/icons-material/Menu";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import LogoutIcon from "@mui/icons-material/Logout";
+import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@shared/context/AuthContext";
+import { useThemeContext } from "@shared/context/ThemeContext";
+import { useAvatar } from "@shared/hooks/useAvatar";
+import logo from "@shared/assets/logos/logo-icon.png";
+
+type NavItem = {
+  label: string;
+  path: string;
+  description?: string;
+};
+
+const WORKSPACE_ITEMS: NavItem[] = [
+  {
+    label: "Profile Workspace",
+    path: "/profile",
+    description: "Manage profile, skills, projects, certifications",
+  },
+  {
+    label: "Jobs Workspace",
+    path: "/jobs",
+    description: "Track jobs, documents, searches, analytics",
+  },
+  {
+    label: "AI Workspace",
+    path: "/ai-new",
+    description: "Generate resumes, cover letters, manage templates & themes",
+  },
+  {
+    label: "Interview Hub",
+    path: "/interviews",
+    description: "Schedule interviews, prep tasks, Google Calendar integration",
+  },
+];
+
+const PROFILE_TOOL_ITEMS: NavItem[] = [
+  { label: "Dashboard", path: "/profile" },
+  { label: "Education", path: "/profile/education" },
+  { label: "Employment", path: "/profile/employment" },
+  { label: "Projects", path: "/profile/projects" },
+  { label: "Skills", path: "/profile/skills" },
+  { label: "Certifications", path: "/profile/certifications" },
+];
+
+const JOBS_TOOL_ITEMS: NavItem[] = [
+  { label: "Pipeline", path: "/jobs/pipeline" },
+  { label: "New Job", path: "/jobs/new" },
+  { label: "Documents", path: "/jobs/documents" },
+  { label: "Saved Searches", path: "/jobs/saved-searches" },
+  { label: "Analytics", path: "/jobs/analytics" },
+];
+
+const AI_TOOL_ITEMS: NavItem[] = [
+  { label: "AI Hub", path: "/ai-new" },
+  { label: "Generate Resume", path: "/ai-new/generate/resume" },
+  { label: "Generate Cover Letter", path: "/ai-new/generate/cover-letter" },
+  { label: "Document Library", path: "/ai-new/library" },
+  { label: "Templates", path: "/ai-new/templates" },
+];
+
+const MENU_ITEMS: NavItem[] = [
+  { label: "Profile", path: "/profile/details" },
+  { label: "Settings", path: "/profile/settings" },
+];
+
+const getNavVariantStyles = (
+  theme: ReturnType<typeof useTheme>,
+  highlight: boolean
+) => ({
+  color: highlight
+    ? theme.palette.primary.contrastText
+    : theme.palette.text.primary,
+  backgroundColor: highlight
+    ? alpha(theme.palette.primary.main, 0.28)
+    : alpha(theme.palette.text.primary, 0.04),
+  "&:hover": {
+    color: theme.palette.primary.contrastText,
+    backgroundColor: alpha(theme.palette.primary.main, 0.36),
+  },
+});
 
 export default function GlobalTopBar() {
-  const quickActions = (
-    <Stack
-      direction="row"
-      spacing={1}
-      alignItems="center"
-      role="toolbar"
-      aria-label="Quick actions"
-    >
-      <QuickActionButton
-        label="New Job"
-        to="/jobs/new"
-        startIcon={<AddIcon />}
-        size="small"
-      />
-      <QuickActionButton label="Resume" to="/ai/resume" size="small" />
-      <QuickActionButton
-        label="Cover Letter"
-        to="/ai/cover-letter"
-        size="small"
-      />
-    </Stack>
+  const theme = useTheme();
+  const { mode, toggleMode } = useThemeContext();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const appBarCfg = (theme as any).designTokens?.palette.appBar;
+  const appBarBgBase = appBarCfg?.bg ?? theme.palette.background.default;
+  const appBarOpacity = appBarCfg?.glassOpacity ?? 0.85;
+  const appBarBlur = appBarCfg?.blur ?? 16;
+  const appBarColor = appBarCfg?.color ?? theme.palette.text.primary;
+  const appBarBorder = appBarCfg?.border ?? theme.palette.divider;
+
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
+
+  const avatarUrl = useAvatar(user?.id);
+
+  const currentWorkspace = useMemo(() => {
+    if (
+      location.pathname.startsWith("/ai-new") ||
+      location.pathname.startsWith("/ai")
+    )
+      return "AI";
+    if (location.pathname.startsWith("/jobs")) return "JOBS";
+    return "PROFILE";
+  }, [location.pathname]);
+
+  const toolItems = useMemo(() => {
+    switch (currentWorkspace) {
+      case "AI":
+        return AI_TOOL_ITEMS;
+      case "JOBS":
+        return JOBS_TOOL_ITEMS;
+      default:
+        return PROFILE_TOOL_ITEMS;
+    }
+  }, [currentWorkspace]);
+
+  const handleDrawerToggle = useCallback(
+    (open: boolean) => () => {
+      setDrawerOpen(open);
+    },
+    []
   );
 
+  const handleLogout = useCallback(async () => {
+    await signOut();
+    navigate("/", { replace: true });
+  }, [navigate, signOut]);
+
+  const themeToggleIcon =
+    mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />;
+  const themeToggleLabel =
+    mode === "dark" ? "Switch to light mode" : "Switch to dark mode";
+
+  const highlightAi = currentWorkspace === "AI";
+  const highlightJobs = currentWorkspace === "JOBS";
+  const highlightProfile = currentWorkspace === "PROFILE";
+
   return (
-    <Box sx={{ width: "100%", boxShadow: 1 }}>
-      {/* Render TopNav and inject quick actions */}
-      <TopNav quickActions={quickActions} />
-    </Box>
+    <AppBar
+      position="sticky"
+      color="transparent"
+      elevation={0}
+      sx={{
+        backdropFilter: `blur(${appBarBlur}px)`,
+        WebkitBackdropFilter: `blur(${appBarBlur}px)`,
+        backgroundColor: alpha(
+          appBarBgBase,
+          Math.min(1, appBarOpacity + (scrolled ? 0.05 : 0))
+        ),
+        borderBottom: `1px solid ${alpha(appBarBorder, 0.6)}`,
+        color: appBarColor,
+      }}
+    >
+      <Toolbar sx={{ px: { xs: 2, md: 3 }, py: { xs: 1, md: 1.25 }, gap: 2 }}>
+        <Box
+          component={NavLink}
+          to="/profile"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+            color: "inherit",
+            gap: 1.5,
+          }}
+        >
+          <Box
+            component="img"
+            src={logo}
+            alt="Flow ATS logo"
+            sx={{
+              height: 52,
+              width: "auto",
+              filter: highlightAi
+                ? "drop-shadow(0 0 12px rgba(63,123,255,0.45))"
+                : "drop-shadow(0 4px 12px rgba(15,23,42,0.2))",
+            }}
+          />
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{ letterSpacing: "0.18em", fontSize: 12 }}
+            >
+              Flow ATS
+            </Typography>
+            <Typography variant="h6" fontWeight={800}>
+              {highlightAi ? "AI Workspace" : "Job Search Hub"}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        {!isMobile ? (
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/ai-new"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightAi),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Generation Hub
+            </Button>
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/jobs"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightJobs),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Jobs Pipeline
+            </Button>
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/interviews"
+              size="large"
+              sx={{
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: alpha(theme.palette.text.primary, 0.04),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.text.primary, 0.12),
+                },
+              }}
+            >
+              Interviews
+            </Button>
+
+            <Box sx={{ flexGrow: 1 }} />
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/profile"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightProfile),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Profile Hub
+            </Button>
+
+            <Tooltip title={themeToggleLabel}>
+              <IconButton
+                color="inherit"
+                onClick={toggleMode}
+                sx={{
+                  borderRadius: theme.shape.borderRadius,
+                  backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.text.primary, 0.16),
+                  },
+                }}
+                size="large"
+              >
+                {themeToggleIcon}
+              </IconButton>
+            </Tooltip>
+
+            <IconButton
+              onClick={(event) => setProfileAnchor(event.currentTarget)}
+              sx={{ p: 0, ml: theme.spacing(0.5) }}
+              aria-haspopup="true"
+              aria-controls={profileAnchor ? "profile-menu" : undefined}
+            >
+              <Avatar src={avatarUrl ?? undefined} alt="User avatar">
+                {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+              </Avatar>
+            </IconButton>
+            <Menu
+              id="profile-menu"
+              anchorEl={profileAnchor}
+              open={Boolean(profileAnchor)}
+              onClose={() => setProfileAnchor(null)}
+            >
+              {MENU_ITEMS.map((item) => (
+                <MenuItem
+                  key={item.path}
+                  component={NavLink}
+                  to={item.path}
+                  onClick={() => setProfileAnchor(null)}
+                  sx={{ gap: theme.spacing(1) }}
+                >
+                  {item.path === "/profile/settings" ? (
+                    <SettingsIcon fontSize="small" />
+                  ) : (
+                    <AccountCircleIcon fontSize="small" />
+                  )}
+                  {item.label}
+                </MenuItem>
+              ))}
+              <Divider sx={{ my: theme.spacing(0.5) }} />
+              <MenuItem onClick={handleLogout} sx={{ gap: theme.spacing(1) }}>
+                <LogoutIcon fontSize="small" />
+                Logout
+              </MenuItem>
+            </Menu>
+          </Stack>
+        ) : (
+          <IconButton
+            color="inherit"
+            onClick={handleDrawerToggle(true)}
+            size="large"
+            sx={{ borderRadius: theme.shape.borderRadius }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
+      </Toolbar>
+
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerToggle(false)}
+      >
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: theme.spacing(45) },
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            backgroundColor: alpha(theme.palette.background.default, 0.96),
+          }}
+        >
+          <Box sx={{ px: theme.spacing(3), py: theme.spacing(2.5) }}>
+            <Stack
+              direction="row"
+              spacing={theme.spacing(2)}
+              alignItems="center"
+            >
+              <Avatar
+                src={avatarUrl ?? undefined}
+                alt="User avatar"
+                sx={{ width: theme.spacing(6), height: theme.spacing(6) }}
+              >
+                {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+              </Avatar>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  {user?.email ?? "Signed in"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {highlightAi ? "AI Workspace" : "Profile Workspace"}
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
+          <Divider />
+          <List>
+            <ListSubheader>Workspaces</ListSubheader>
+            {WORKSPACE_ITEMS.map((item) => (
+              <ListItemButton
+                key={item.path}
+                component={NavLink}
+                to={item.path}
+                onClick={handleDrawerToggle(false)}
+              >
+                <ListItemText
+                  primary={item.label}
+                  secondary={item.description}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+          <Divider />
+          <List>
+            <ListSubheader>Tools</ListSubheader>
+            {toolItems.map((item) => (
+              <ListItemButton
+                key={item.path}
+                component={NavLink}
+                to={item.path}
+                onClick={handleDrawerToggle(false)}
+              >
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
+    </AppBar>
   );
 }

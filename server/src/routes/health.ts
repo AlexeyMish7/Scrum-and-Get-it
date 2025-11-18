@@ -80,7 +80,8 @@ export async function handleHealth(
   if (supaEnv && url.searchParams.get("deep") === "1") {
     try {
       const mod = await import("../services/supabaseAdmin.js");
-      const supabase = (mod as any).default;
+      // Type assertion: dynamic import returns module with default export (SupabaseClient)
+      const supabase: any = mod.default;
       const test = await supabase
         .from("ai_artifacts")
         .select("id", { count: "exact", head: true })

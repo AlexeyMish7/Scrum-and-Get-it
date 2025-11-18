@@ -60,28 +60,35 @@ import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import GenerationPanel from "@workspaces/ai/components/resume-v2/GenerationPanel";
-import AIResultsPanel from "@workspaces/ai/components/resume-v2/AIResultsPanel";
-import DraftPreviewPanel from "@workspaces/ai/components/resume-v2/DraftPreviewPanel";
-import ProductTour from "@workspaces/ai/components/resume-v2/ProductTour";
-import ResumeStarter from "@workspaces/ai/components/resume-v2/ResumeStarter";
-import { TemplateSelector } from "@workspaces/ai/components/ResumeEditorV2/TemplateSelector";
+import {
+  GenerationPanel,
+  AIResultsPanel,
+  DraftPreviewPanel,
+  ProductTour,
+  ResumeStarter,
+  TemplateSelector,
+  ResumeVersionsPanel,
+} from "@workspaces/ai/components/resume-v2";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import { useShouldShowTour } from "@workspaces/ai/hooks/useShouldShowTour";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 import { useAuth } from "@shared/context/AuthContext";
+import { Breadcrumbs } from "@shared/components/navigation";
+import type { BreadcrumbItem } from "@shared/components/navigation";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { exportResumeToPDF } from "@workspaces/ai/utils/exportResumePDF";
 import { exportResumeToDOCX } from "@workspaces/ai/utils/exportResumeDOCX";
 import { getTemplate } from "@workspaces/ai/config/resumeTemplates";
 import useUserJobs from "@shared/hooks/useUserJobs";
-import ResumeVersionsPanel from "@workspaces/ai/components/resume-v2/ResumeVersionsPanel";
 
 export default function ResumeEditorV2() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { jobs } = useUserJobs(50); // Load user jobs for linking
+  const { confirm } = useConfirmDialog();
 
   // Zustand store
   const {
@@ -618,12 +625,15 @@ export default function ResumeEditorV2() {
     }
   };
 
-  const handleClearDraft = () => {
-    if (
-      window.confirm(
-        "Clear all content from this draft? This cannot be undone."
-      )
-    ) {
+  const handleClearDraft = async () => {
+    const confirmed = await confirm({
+      title: "Clear Draft",
+      description: "Clear all content from this draft? This cannot be undone.",
+      confirmText: "Clear",
+      confirmColor: "error",
+    });
+
+    if (confirmed) {
       clearDraft();
       setSuccessMessage("✓ Draft cleared");
     }
@@ -678,6 +688,16 @@ export default function ResumeEditorV2() {
 
   console.log("📝 Showing full editor for draft:", activeDraft.name);
 
+  // Parse jobId from URL parameter
+  const initialJobId = searchParams.get("jobId");
+  const jobIdNumber = initialJobId ? parseInt(initialJobId, 10) : undefined;
+
+  // Breadcrumb navigation
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: "AI", path: "/ai" },
+    { label: "Resume Editor" },
+  ];
+
   return (
     <Box
       sx={{
@@ -697,6 +717,11 @@ export default function ResumeEditorV2() {
           py: 1.5,
         }}
       >
+        {/* Breadcrumbs */}
+        <Box sx={{ mb: 1 }}>
+          <Breadcrumbs items={breadcrumbItems} />
+        </Box>
+
         <Stack
           direction="row"
           spacing={{ xs: 1, sm: 2 }}
@@ -839,6 +864,7 @@ export default function ResumeEditorV2() {
           }}
         >
           <GenerationPanel
+            initialJobId={jobIdNumber}
             onGenerationStart={() => console.log("🚀 Generation started")}
             onGenerationComplete={handleGenerationComplete}
             onGenerationError={handleGenerationError}

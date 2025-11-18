@@ -1,221 +1,250 @@
-# Copilot Guide — Scrum-and-Get-it (Sprint 2)
+# GitHub Copilot Instructions for FlowATS
 
-This guide keeps AI assistants aligned with the current app structure, tech choices, and Sprint 2 scope. Favor simple TypeScript, shared helpers, and consistent UI patterns.
+## Primary Instructions Location
 
-## Project overview
+Your main context and coding guidelines are located in:
 
-- Stack: React 19 + TypeScript ~5.9 + Vite 7
-- UI: MUI v7
-- Backend: Supabase (Postgres + Auth)
-- Root: `frontend/`
-- Node: 20.19.5; npm: >= 10.8.2
-- Required env (do NOT commit): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- Dev commands (PowerShell):
-  - Start: `cd frontend; npm run dev`
-  - Typecheck: `cd frontend; npm run typecheck`
-  - Lint: `cd frontend; npm run lint`
-
-## App architecture: three workspaces + shared layer
-
-Top-level split under `src/app/workspaces/`:
-
-- Profile workspace: `workspaces/profile/*`
-- AI workspace: `workspaces/ai/*`
-- Jobs workspace: `workspaces/jobs/*`
-
-Shared foundation (cross-workspace): `src/app/shared/*`
-
-- Layouts: `shared/layouts/AppShell.tsx`, `shared/layouts/SystemLayer.tsx`, `shared/layouts/GlobalTopBar.tsx`
-- Sidebars: `shared/components/sidebars/AISidebar`, `.../JobsSidebar`
-- Auth: `shared/context/AuthContext.tsx` provides `useAuth()`
-- Data: `shared/services/supabaseClient.ts` and `shared/services/crud.ts` (with `withUser(userId)`)
-- Feedback: `shared/hooks/useErrorHandler.ts`, `shared/components/common/ErrorSnackbar.tsx`
-- Sprint overlay: `shared/components/common/SprintTaskSnackbar.tsx` + `shared/hooks/useSprintTasks.ts` + `shared/utils/pageTaskMap.ts` + `shared/utils/taskOwners.ts`
-
-AppShell renders the global top bar, a sidebar slot (workspace-specific), and a main outlet. SystemLayer is appended once (at the bottom) to host global snackbars, confirmations, and the Sprint task overlay.
-
-## Themes
-
-- Global theme: the app is wrapped at the top level with a `ThemeContextProvider` in `src/main.tsx` which applies the shared `lightTheme` / `darkTheme` from `src/app/shared/theme` (via MUI `ThemeProvider`). Theme selection (light/dark) and a small "radius mode" toggle are persisted in localStorage.
-- AI theme: an optional AI-only theme lives at `src/app/workspaces/ai/theme/aiTheme.tsx`. For pages that should showcase an AI look, wrap the page locally with MUI's `ThemeProvider` using that theme.
-
-Tip: Keep theme usage lightweight. Prefer MUI `sx` props for one-off spacing and small layout tweaks.
-
-## Routing (React Router v7)
-
-- Router lives in `src/router.tsx` and uses `createBrowserRouter`.
-- Workspaces are nested routes with dedicated layouts:
-  - `/ai` → `AiLayout` (wraps with AppShell + AISidebar)
-  - `/jobs` → `JobsLayout` (AppShell + JobsSidebar)
-  - Profile pages render inside `ProfileLayout` where applicable
-- Protected pages use `ProtectedRoute` to enforce auth.
-
-Current AI routes:
-
-- `/ai` (DashboardAI index)
-- `/ai/resume` (GenerateResume)
-- `/ai/cover-letter` (GenerateCoverLetter)
-- `/ai/job-match` (JobMatching)
-- `/ai/company-research` (CompanyResearch)
-- `/ai/templates` (TemplatesHub)
-
-Current Jobs routes (children under `/jobs`):
-
-- index + `/jobs/pipeline` (Pipeline)
-- `/jobs/new` (New Job)
-- `/jobs/documents` (Documents & Materials)
-- `/jobs/saved-searches`
-- `/jobs/analytics`
-- `/jobs/automations`
-
-## Sprint 2 focus
-
-Sprint 2 concentrates on AI and Jobs workspaces:
-
-- AI: resume generation, cover letters, job match, company research, templates hub
-- Jobs: pipeline (kanban), new job entry/import, documents linking, saved searches, analytics, automations
-
-When building features:
-
-- Use CRUD helpers and scope with `withUser(user.id)` for user-owned tables
-- Use `useErrorHandler` + `ErrorSnackbar` for feedback
-- Follow the page structure and route keys already present in the router
-
-## Sprint Task Snackbar (use cases + owners)
-
-- Component: `src/app/shared/components/common/SprintTaskSnackbar.tsx`
-- Hook: `src/app/shared/hooks/useSprintTasks.ts` (infers a page key from the URL or accepts an explicit `PageTaskKey` when you call the hook from a page)
-- Mapping: `src/app/shared/utils/pageTaskMap.ts` (page key → list of UC items)
-- Ownership: `src/app/shared/utils/taskOwners.ts` (UC → owner)
-- Global placement: `src/app/shared/layouts/SystemLayer.tsx` renders the snackbar for the current page when tasks exist.
-
-Each task item shows: UC code, optional short title, owner (from `taskOwners`), a short description, and an implementation scope label (`[Frontend|Backend|Both]`) for planning. To add or adjust tasks:
-
-1. Add/verify the UC → owner entry in `src/app/shared/utils/taskOwners.ts`
-2. Update the page’s task list in `src/app/shared/utils/pageTaskMap.ts` (order items by business priority)
-3. If a new route is introduced, add its route → page key inference to `src/app/shared/hooks/useSprintTasks.ts` or pass an explicit key from the page component (e.g., `useSprintTasks("ai:cover-letter")`).
-
-## Auth & data patterns
-
-- `useAuth()` exposes `{ session, user, loading, signIn, signUpNewUser, signInWithOAuth, signOut }`
-- Use `withUser(user?.id)` to scope queries/mutations: respects RLS; never trust client-owned IDs without scoping
-- Import the single Supabase client from `@shared/services/supabaseClient`
-- Prefer `crud.ts` helpers for `listRows`, `getRow`, `insertRow`, `updateRow`, `deleteRow`, etc.
-
-## Error handling
-
-- Use `useErrorHandler()` and render `ErrorSnackbar` once per page tree (already handled by SystemLayer)
-- Don’t use `alert()` or custom toast systems
-
-## Path aliases
-
-Configured in `frontend/tsconfig.app.json` (baseUrl `src`) and wired in `vite.config.ts`. Useful aliases include:
-
-- `@/*` → `src/*`
-- `@app/*` → `src/app/*`
-- `@shared/*` → `src/app/shared/*`
-- `@components/*` → `src/app/shared/components/*`
-- `@services/*` → `src/app/shared/services/*`
-- `@context/*` → `src/app/shared/context/*`
-- `@hooks/*` → `src/app/shared/hooks/*`
-- `@utils/*` → `src/app/shared/utils/*`
-- `@workspaces/*` → `src/app/workspaces/*`
-- `@profile/*` → `src/app/workspaces/profile/*`
-- `@ai/*` → `src/app/workspaces/ai/*`
-- `@jobs/*` → `src/app/workspaces/jobs/*`
-- `@theme` → `src/app/shared/theme/index.ts`
-
-## Coding style
-
-- Keep TS simple; avoid heavy generics and type gymnastics
-- Favor small, readable functions; lift helpers into `shared/utils` when reused
-- Explain intent with short comments for non-obvious blocks
-- Use MUI `sx` for minor layout; extract larger style blocks into theme overrides or CSS
-- Let ESLint/Prettier formatting guide style
-
-### Commenting & function contracts (required when creating or editing code)
-
-When you add or change code, include concise comments that explain the “what” and the “why,” and briefly document inputs/outputs for non-trivial functions. Prefer lightweight JSDoc-style or inline block comments:
-
-- File/module header: 1–3 lines stating the purpose and main responsibilities.
-- Section headers: visually group related logic (e.g., “Environment Loading”, “Endpoint Handlers”).
-- Function contract (for non-trivial functions):
-  - Inputs: parameter names and expected shapes/types (especially for objects)
-  - Outputs: return type and meaning
-  - Error modes: thrown errors or special cases (if applicable)
-- Endpoint handlers: clearly label the HTTP method and path (e.g., “GET /api/health”) and outline the flow in 3–6 bullets.
-- Data transformations: add a one-liner explaining why the transformation exists (e.g., security, normalization, UI preview).
-
-Examples:
-
-```ts
-/**
- * RESUME GENERATION: POST /api/generate/resume
- * Flow: validate → rate-limit → parse body → orchestrate → persist → preview
- * Inputs: headers { 'X-User-Id': uuid }, body { jobId: number, options? }
- * Output: 201 with { id, kind, created_at, preview } or 200 (mock mode)
- */
-async function handleGenerateResume(...) { /* ... */ }
-
-/** Generate a short preview for UI (first bullets or truncated JSON) */
-function makePreview(content: unknown): string | null { /* ... */ }
+```
+.github/instructions/
+├── frontend.instructions.md    # React/TypeScript frontend patterns
+├── server.instructions.md      # Node.js/Express backend patterns
+└── database.instructions.md    # PostgreSQL/Supabase schema and queries
 ```
 
-Keep comments short and specific. If logic is obvious, avoid redundant narration.
+**Always read these files first** when working on code to understand:
 
-## Common snippets
-
-Auth + user scoping:
-
-```tsx
-import { useAuth } from "@shared/context/AuthContext";
-import { withUser } from "@shared/services/crud";
-
-const { user } = useAuth();
-const userCrud = withUser(user?.id);
-```
-
-Error notifications:
-
-```tsx
-import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-
-const { notification, closeNotification, handleError, showSuccess } =
-  useErrorHandler();
-
-return (
-  <>
-    {/* ... */}
-    <ErrorSnackbar notification={notification} onClose={closeNotification} />
-  </>
-);
-```
-
-CRUD helpers:
-
-```ts
-import { listRows } from "@shared/services/crud";
-
-const res = await listRows("applications", "*", {
-  order: { column: "created_at", ascending: false },
-});
-```
-
-Scoped insert:
-
-```ts
-const res = await userCrud.insertRow("documents", { file_name: "resume.pdf" });
-```
-
-## Guardrails
-
-- Never commit or hardcode secrets; only use `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-- Always scope user-owned data with `withUser(user.id)`
-- Keep routes in sync with `src/router.tsx`
-- Reuse shared client and CRUD helpers; don’t hand-roll Supabase logic in pages
-- Protect all data-reading/writing pages with `ProtectedRoute`
+- Project structure and architecture
+- Coding patterns and conventions
+- Service layer usage
+- Database schema and relationships
+- API endpoints and request/response formats
 
 ---
 
-If anything is unclear, inspect nearby files under `src/app/shared/*` or the matching workspace folder to mirror existing patterns. Keep implementations straightforward and commented with intent.
+## Additional Context
+
+For broader understanding of the application:
+
+```
+docs/
+├── ARCHITECTURE.md              # How the entire system works
+├── GIT_COLLABORATION.md         # Git workflow and branching strategy
+├── frontend/                    # Frontend deep-dive docs
+├── server/                      # Server deep-dive docs
+└── database/                    # Database schema reference
+```
+
+Use these when you need to understand:
+
+- How different parts of the app connect
+- User flows and data flows
+- Feature locations in the codebase
+- System design decisions
+
+---
+
+## Code Quality Guidelines
+
+### 1. Add Meaningful Comments
+
+**Always add comments that explain WHY, not WHAT:**
+
+```typescript
+// ❌ BAD - States the obvious
+// Loop through jobs
+jobs.forEach(job => { ... });
+
+// ✅ GOOD - Explains the reason
+// Fetch fresh match scores for jobs that don't have cached analytics
+jobs.forEach(job => { ... });
+```
+
+**Comment complex logic:**
+
+```typescript
+// ✅ GOOD
+// We rebase the feature branch on main to resolve conflicts locally
+// before pushing, which keeps the remote history clean
+git rebase origin/main
+```
+
+**Add context to business logic:**
+
+```typescript
+// ✅ GOOD
+// Cache match scores for 7 days to reduce OpenAI API costs
+// and improve response time for repeated job views
+const CACHE_EXPIRY_DAYS = 7;
+```
+
+### 2. Avoid Overly Complex Syntax
+
+**Keep code simple and readable:**
+
+```typescript
+// ❌ AVOID - Too clever, hard to read
+const active = jobs
+  .filter((j) => j.status !== "archived")
+  .map((j) => ({ ...j, isActive: true }));
+
+// ✅ PREFER - Clear steps
+const nonArchivedJobs = jobs.filter((job) => job.status !== "archived");
+const activeJobs = nonArchivedJobs.map((job) => ({
+  ...job,
+  isActive: true,
+}));
+```
+
+**Use descriptive variable names:**
+
+```typescript
+// ❌ AVOID
+const d = new Date();
+const ms = d.getTime();
+
+// ✅ PREFER
+const currentDate = new Date();
+const timestamp = currentDate.getTime();
+```
+
+### 3. High-Level, Non-Technical Explanations
+
+When explaining code or writing comments, make them understandable:
+
+```typescript
+// ❌ AVOID - Too technical
+// Memoize the filtered dataset to prevent unnecessary re-renders
+// when parent component re-renders due to unrelated state changes
+
+// ✅ PREFER - Clear and simple
+// Remember the filtered jobs so we don't recalculate them
+// every time the page updates
+const filteredJobs = useMemo(() => { ... }, [jobs, filter]);
+```
+
+### 4. NO Markdown Summary Files
+
+**❌ DO NOT create files like:**
+
+- `CHANGES.md`
+- `UPDATES.md`
+- `SUMMARY.md`
+- `MODIFICATIONS.md`
+
+**✅ INSTEAD:**
+
+- Make the changes directly
+- Add comments in the code itself
+- Provide a brief verbal summary when done
+
+---
+
+## Repository Sync Command
+
+When the user says any of these phrases, perform a full codebase scan and update:
+
+### Trigger Phrases:
+
+- "update instructions"
+- "sync docs"
+- "refresh context"
+- "scan codebase"
+- "update everything"
+
+### What to Do:
+
+1. **Scan the codebase:**
+
+   - Read all files in `frontend/src/`
+   - Read all files in `server/src/`
+   - Read all files in `db/migrations/`
+   - Note patterns, new files, changed structures
+
+2. **Update instruction files:**
+
+   - `.github/instructions/frontend.instructions.md`
+     - Update workspace structure
+     - Add new components/services/hooks
+     - Update patterns and conventions
+   - `.github/instructions/server.instructions.md`
+     - Add new API endpoints
+     - Update service patterns
+     - Add new prompt templates
+   - `.github/instructions/database.instructions.md`
+     - Add new tables from migrations
+     - Update schema relationships
+     - Add new JSONB patterns
+
+3. **Update documentation:**
+
+   - `docs/ARCHITECTURE.md` - Update system flows if architecture changed
+   - `docs/frontend/` - Update if major frontend changes
+   - `docs/server/` - Update if new endpoints or services
+   - `docs/database/` - Update schema if tables changed
+
+4. **Provide summary:**
+   ```
+   Updated Instructions:
+   ✓ Frontend: Added [new workspace/component/pattern]
+   ✓ Server: Added [new endpoint/service]
+   ✓ Database: Added [new tables/columns]
+   ✓ Docs: Updated [which docs changed]
+   ```
+
+### Example Usage:
+
+```
+User: "update instructions"
+
+You:
+[Scan entire codebase]
+[Update all instruction files]
+[Update relevant docs]
+
+Response:
+✓ Scanned 247 files
+✓ Updated frontend instructions (added interview_hub workspace patterns)
+✓ Updated server instructions (added salary research endpoint)
+✓ Updated database instructions (added ai_artifacts table)
+✓ Updated ARCHITECTURE.md with new data flows
+```
+
+---
+
+## General Coding Principles
+
+### Write Code That:
+
+1. **Is easy to read** - Another developer should understand it quickly
+2. **Has clear names** - Functions and variables describe what they do
+3. **Is well-commented** - Complex logic explained in plain language
+4. **Follows patterns** - Match existing code style in the project
+5. **Is simple** - Don't over-engineer, keep it straightforward
+
+### When Writing Code:
+
+- Add comments for business logic and complex operations
+- Use simple, clear variable names
+- Break complex functions into smaller, named functions
+- Prefer readability over clever one-liners
+- Explain WHY in comments, not WHAT (code shows what)
+
+### When Making Changes:
+
+- Update the actual code files
+- Add inline comments if logic is complex
+- Provide a brief summary when done
+- Don't create separate markdown documentation files
+
+---
+
+## Quick Reference
+
+**Before coding:** Read `.github/instructions/[relevant].instructions.md`
+**Need context:** Check `docs/ARCHITECTURE.md` and specific docs
+**Making changes:** Add comments, keep it simple, no summary files
+**User says "update instructions":** Full scan + update instructions + update docs
+
+---
+
+Remember: Your job is to write clear, maintainable code that the team can easily understand and work with. When in doubt, choose simplicity and clarity over complexity.

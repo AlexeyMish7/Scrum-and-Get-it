@@ -1,3 +1,39 @@
+/**
+ * DOCUMENTS SERVICE (Resume & Cover Letter Management)
+ *
+ * Purpose:
+ * - Unified interface for resume and cover letter file management
+ * - Links to Supabase Storage for file uploads
+ * - Tracks document metadata in documents table
+ * - Replaces legacy file_path approach with structured storage
+ *
+ * Backend Connection:
+ * - Database: documents table (via crud.ts + RLS)
+ * - Storage: Supabase Storage buckets (resumes, cover-letters)
+ * - Auth: User-scoped via userId parameter
+ *
+ * Document Lifecycle:
+ * 1. Upload file → Supabase Storage bucket
+ * 2. Create document record → documents table (with storage path)
+ * 3. Link to jobs → document_jobs table (many-to-many)
+ * 4. Track exports → export_history table
+ *
+ * Storage Pattern:
+ * - file_path format: "<bucket>/<key>" or "key" (with configured bucket)
+ * - Buckets: "resumes", "cover-letters", "portfolios"
+ * - User scoping: All buckets use RLS for user_id access control
+ *
+ * Usage:
+ *   import { listDocuments, uploadDocument } from '@shared/services/documents';
+ *
+ *   const docs = await listDocuments(userId, { eq: { kind: 'resume' } });
+ *
+ *   const uploaded = await uploadDocument(userId, {
+ *     kind: 'resume',
+ *     file: fileBlob,
+ *     file_name: 'John_Doe_Resume.pdf'
+ *   });
+ */
 import { withUser } from "./crud";
 import type { Result, ListOptions } from "./types";
 import { supabase } from "./supabaseClient";

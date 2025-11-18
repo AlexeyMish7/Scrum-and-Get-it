@@ -49,6 +49,7 @@ const Login = () => {
       return;
     }
 
+    // Navigate to profile - session is already set in AuthContext
     navigate("/profile");
   };
 

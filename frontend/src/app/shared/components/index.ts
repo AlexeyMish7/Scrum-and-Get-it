@@ -8,6 +8,3 @@ export * from "./common";
 
 // Sidebars
 export * from "./sidebars";
-
-// Top Navigation
-export * from "./TopNav";

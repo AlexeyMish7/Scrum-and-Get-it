@@ -25,9 +25,10 @@ import ReactCrop, {
 } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
@@ -71,6 +72,7 @@ const AddProjectForm: React.FC = () => {
 
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -421,13 +423,14 @@ const AddProjectForm: React.FC = () => {
         ? "Project updated successfully"
         : "Project added successfully";
       showSuccess(msg);
+      markProfileChanged(); // Invalidate analytics cache
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: msg, severity: "success" },
         })
       );
       window.dispatchEvent(new Event("projects:changed"));
-      navigate("/portfolio");
+      navigate("/profile/projects");
     } catch (err) {
       console.error(err);
       handleError(err as Error);

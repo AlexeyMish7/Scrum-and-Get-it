@@ -1,11 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import {
-  levelLabels,
-  skillCategoryOptions,
-} from "../../../../constants/skills";
-import { useNavigate } from "react-router-dom";
+import { formatNumericLevel, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
+import { Breadcrumbs } from "@shared/components/navigation";
 import type {
   SkillItem,
   DropResult,
@@ -15,7 +12,7 @@ import type {
   Category,
 } from "../../types/skill.ts";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import {
   Box,
   Card,
@@ -26,9 +23,12 @@ import {
   Button,
   Stack,
   Divider,
+  IconButton,
 } from "@mui/material";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import Icon from "@shared/components/common/Icon";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { AddSkillDialog } from "../../components/dialogs/AddSkillDialog";
 
 /*
   SkillsOverview — plain-language notes
@@ -59,7 +59,20 @@ const SkillsOverview: React.FC = () => {
   const { user, loading } = useAuth();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
-  const navigate = useNavigate();
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [selectedSkillForEdit, setSelectedSkillForEdit] = useState<
+    | {
+        id: string;
+        name: string;
+        category: string;
+        level: string;
+      }
+    | undefined
+  >(undefined);
+
   // Local UI state (simple and user-facing):
   // - `categories` holds the visible columns and their skills
   // - `isLoading`/`search` control small bits of UI
@@ -296,7 +309,7 @@ const SkillsOverview: React.FC = () => {
           if (updatedRows.length > 0) {
             // Build a map of category buckets using the shared category list
             const byCategory: Record<string, Skill[]> = {};
-            skillCategoryOptions.forEach((c) => (byCategory[c] = []));
+            SKILL_CATEGORY_OPTIONS.forEach((c) => (byCategory[c] = []));
 
             const enumToNum: Record<string, number> = {
               beginner: 1,
@@ -417,7 +430,7 @@ const SkillsOverview: React.FC = () => {
         const byCategory: Record<string, Skill[]> = {};
         // Ensure common categories exist even when empty so users can drop into them.
         // Use shared category options so the overview and add pages stay consistent.
-        skillCategoryOptions.forEach(
+        SKILL_CATEGORY_OPTIONS.forEach(
           (c) => (byCategory[c] = byCategory[c] || [])
         );
         const enumToNum: Record<string, number> = {
@@ -504,8 +517,18 @@ const SkillsOverview: React.FC = () => {
 
     fetchSkills();
 
+    // Listen for skills:changed event to refetch when skills are added/edited/deleted
+    const handleSkillsChanged = () => {
+      if (mounted) {
+        fetchSkills();
+      }
+    };
+
+    window.addEventListener("skills:changed", handleSkillsChanged);
+
     return () => {
       mounted = false;
+      window.removeEventListener("skills:changed", handleSkillsChanged);
     };
   }, [user, loading]);
 
@@ -526,22 +549,143 @@ const SkillsOverview: React.FC = () => {
     link.click();
   };
 
+  const handleOpenAddDialog = () => {
+    setDialogMode("add");
+    setSelectedSkillForEdit(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (skill: Skill, categoryName: string) => {
+    setDialogMode("edit");
+    setSelectedSkillForEdit({
+      id: skill.id,
+      name: skill.name,
+      category: categoryName,
+      level: formatNumericLevel(skill.level),
+    });
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedSkillForEdit(undefined);
+  };
+
+  const handleDialogSuccess = () => {
+    // Refetch skills after add/edit/delete
+    if (!user) return;
+
+    const fetchSkills = async () => {
+      setIsLoading(true);
+      try {
+        const res = await skillsService.listSkills(user.id);
+        if (res.error) {
+          console.error("Failed to load skills for overview", res.error);
+          handleErrorRef.current?.(res.error);
+          setCategories([]);
+          return;
+        }
+        const rows = (res.data ?? []) as SkillItem[];
+        const byCategory: Record<string, Skill[]> = {};
+        SKILL_CATEGORY_OPTIONS.forEach(
+          (c) => (byCategory[c] = byCategory[c] || [])
+        );
+        const enumToNum: Record<string, number> = {
+          beginner: 1,
+          intermediate: 2,
+          advanced: 3,
+          expert: 4,
+        };
+        rows.forEach((r) => {
+          const alt = r as unknown as Record<string, unknown>;
+          const cat =
+            r.category ??
+            (typeof alt.skill_category === "string"
+              ? (alt.skill_category as string)
+              : undefined) ??
+            "Technical";
+          const name =
+            r.name ??
+            (typeof alt.skill_name === "string"
+              ? (alt.skill_name as string)
+              : undefined) ??
+            "Unnamed";
+          const rawLevel = r.level ?? "beginner";
+          const lvlStr =
+            typeof rawLevel === "string" ? rawLevel : String(rawLevel);
+          const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
+
+          const skill: Skill = {
+            id:
+              r.id ??
+              ((): string => {
+                const maybeRand = (
+                  globalThis.crypto as unknown as {
+                    randomUUID?: () => string;
+                  }
+                ).randomUUID;
+                return typeof maybeRand === "function"
+                  ? maybeRand()
+                  : `${name}-${Math.random().toString(36).slice(2, 8)}`;
+              })(),
+            name,
+            level: levelNum,
+            position: r.position,
+          };
+          byCategory[cat] = byCategory[cat] || [];
+          byCategory[cat].push(skill);
+        });
+        Object.keys(byCategory).forEach((k) => {
+          byCategory[k].sort((a, b) => {
+            const pa =
+              typeof a.position === "number"
+                ? a.position
+                : Number.POSITIVE_INFINITY;
+            const pb =
+              typeof b.position === "number"
+                ? b.position
+                : Number.POSITIVE_INFINITY;
+            if (pa !== pb) return pa - pb;
+            return a.name.localeCompare(b.name);
+          });
+        });
+
+        const mappedCats: Category[] = Object.entries(byCategory).map(
+          ([k, v]) => ({
+            id: k.toLowerCase().replace(/\s+/g, "-"),
+            name: k,
+            skills: v,
+          })
+        );
+        setCategories(mappedCats);
+      } catch (err) {
+        console.error("Error fetching skills overview", err);
+        handleErrorRef.current?.(err);
+        setCategories([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSkills();
+  };
+
   if (isLoading || loading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[{ label: "Profile", path: "/profile" }, { label: "Skills" }]}
+        />
         <Stack
           direction="row"
           justifyContent="space-between"
           alignItems="center"
           sx={{ mb: 2 }}
         >
-          <Button
-            variant="contained"
-            onClick={() => navigate("/skills/manage")}
-          >
-            Manage skills
+          <Button variant="contained" onClick={handleOpenAddDialog}>
+            Add skill
           </Button>
           <Stack direction="row" spacing={2}>
             <TextField
@@ -615,9 +759,11 @@ const SkillsOverview: React.FC = () => {
                         }}
                       >
                         {category.skills.length === 0 && (
-                          <Typography color="text.secondary" fontStyle="italic">
-                            No skills found.
-                          </Typography>
+                          <Box sx={{ py: 4, textAlign: "center" }}>
+                            <Typography color="text.secondary">
+                              No skills in this category
+                            </Typography>
+                          </Box>
                         )}
                         {category.skills.map((skill, index) => (
                           <Draggable
@@ -643,13 +789,31 @@ const SkillsOverview: React.FC = () => {
                                   gap: 1,
                                 }}
                               >
-                                <Typography>{skill.name}</Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    flex: 1,
+                                  }}
                                 >
-                                  Level: {levelLabels[skill.level] || "Unknown"}
-                                </Typography>
+                                  <Typography>{skill.name}</Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    Level: {formatNumericLevel(skill.level)}
+                                  </Typography>
+                                </Box>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditDialog(skill, category.name);
+                                  }}
+                                  aria-label={`Edit ${skill.name}`}
+                                >
+                                  <Icon name="Edit" size={16} />
+                                </IconButton>
                               </Box>
                             )}
                           </Draggable>
@@ -663,6 +827,19 @@ const SkillsOverview: React.FC = () => {
             })}
           </Box>
         </DragDropContext>
+
+        {/* Add/Edit Skill Dialog */}
+        <AddSkillDialog
+          open={dialogOpen}
+          onClose={handleCloseDialog}
+          onSuccess={handleDialogSuccess}
+          mode={dialogMode}
+          existingSkill={selectedSkillForEdit}
+          existingSkills={categories.flatMap((cat) =>
+            cat.skills.map((s) => ({ name: s.name }))
+          )}
+        />
+
         {/* Global error/success snackbar (centralized) */}
         <ErrorSnackbar
           notification={notification}

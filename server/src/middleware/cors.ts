@@ -80,23 +80,3 @@ export function handleCorsPreflight(
   res.end();
   return true;
 }
-
-/**
- * Apply CORS headers to an existing response
- *
- * Mutates the response object to add CORS headers.
- * Call before writeHead() to ensure headers are set.
- *
- * Usage:
- *   applyCorsHeaders(res);
- *   res.writeHead(200, { 'Content-Type': 'application/json' });
- */
-export function applyCorsHeaders(
-  res: ServerResponse,
-  options?: CorsOptions
-): void {
-  const headers = getCorsHeaders(options);
-  for (const [key, value] of Object.entries(headers)) {
-    res.setHeader(key, value);
-  }
-}

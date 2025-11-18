@@ -45,6 +45,7 @@ import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import type { ResumeArtifactContent } from "@workspaces/ai/types/ai";
 
 interface GenerationPanelProps {
+  initialJobId?: number; // Pre-select job from URL parameter
   onGenerationStart?: () => void;
   onGenerationComplete?: (
     content: ResumeArtifactContent,
@@ -54,6 +55,7 @@ interface GenerationPanelProps {
 }
 
 export default function GenerationPanel({
+  initialJobId,
   onGenerationStart,
   onGenerationComplete,
   onGenerationError,
@@ -77,13 +79,15 @@ export default function GenerationPanel({
   const [lastGenerated, setLastGenerated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-select first job if none selected
+  // Auto-select initial job or first job if none selected
   useEffect(() => {
-    if (jobs.length && jobId === "") {
+    if (initialJobId && jobs.some((j) => j.id === initialJobId)) {
+      setJobId(initialJobId);
+    } else if (jobs.length && jobId === "") {
       setJobId(jobs[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs.length, jobId]);
+  }, [jobs.length, jobId, initialJobId]);
 
   const allowedModels = (
     import.meta.env.VITE_ALLOWED_AI_MODELS as string | undefined

@@ -55,8 +55,16 @@ import { useNavigate } from "react-router-dom";
 
 import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
 import { useAuth } from "@shared/context/AuthContext";
+import { Breadcrumbs } from "@shared/components/navigation";
+import type { BreadcrumbItem } from "@shared/components/navigation";
 import { generateCoverLetter } from "@workspaces/ai/services/aiGeneration";
-import CoverLetterStarter from "@workspaces/ai/components/cover-letter/CoverLetterStarter";
+import {
+  CoverLetterStarter,
+  CoverLetterGenerationPanel,
+  CoverLetterAIResultsPanel,
+  CoverLetterPreviewPanel,
+  CoverLetterAnalyticsDialog,
+} from "@workspaces/ai/components/cover-letter";
 import {
   COVER_LETTER_TEMPLATES,
   getCoverLetterTemplateList,
@@ -66,10 +74,6 @@ import type {
   Length,
   CompanyCulture,
 } from "../../config/coverLetterTemplates";
-import CoverLetterGenerationPanel from "../../components/cover-letter/CoverLetterGenerationPanel";
-import CoverLetterAIResultsPanel from "../../components/cover-letter/CoverLetterAIResultsPanel";
-import CoverLetterPreviewPanel from "../../components/cover-letter/CoverLetterPreviewPanel";
-import CoverLetterAnalyticsDialog from "../../components/cover-letter/CoverLetterAnalyticsDialog";
 import analytics from "@workspaces/ai/hooks/useCoverLetterAnalytics";
 import {
   exportAsPlainText,
@@ -522,6 +526,12 @@ export default function CoverLetterEditor() {
     }
   };
 
+  // Breadcrumb navigation
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: "AI", path: "/ai" },
+    { label: "Cover Letter Editor" },
+  ];
+
   // Show starter screen if no drafts exist
   if (drafts.length === 0 && !activeDraft) {
     return (
@@ -536,6 +546,9 @@ export default function CoverLetterEditor() {
 
   return (
     <Container maxWidth={false} sx={{ py: 3 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs items={breadcrumbItems} />
+
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
         <IconButton onClick={() => navigate("/ai")} size="small">

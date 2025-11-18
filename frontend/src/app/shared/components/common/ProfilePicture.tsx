@@ -20,8 +20,8 @@ import { supabase } from "../../services/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 import crud from "../../services/crud";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
-import { ErrorSnackbar } from "./ErrorSnackbar";
-import ConfirmDialog from "./ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 
 // ProfilePicture
 // Handles user avatar display, interactive cropping, upload to Supabase Storage,
@@ -131,12 +131,12 @@ const ProfilePicture: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { confirm } = useConfirmDialog();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [metaPath, setMetaPath] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   // local error state removed in favor of centralized ErrorSnackbar via useErrorHandler
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [pendingFile, setPendingFile] = useState<{
     file: File;
@@ -177,9 +177,9 @@ const ProfilePicture: React.FC = () => {
         avatar_path?: string | null;
         avatar_bucket?: string | null;
       } & Record<string, unknown>;
-      const meta = (p?.meta as ProfileMeta | undefined) ?? null;
-      const avatar_path = meta?.avatar_path ?? null;
-      const avatar_bucket = meta?.avatar_bucket ?? BUCKET;
+      const metadata = (p?.metadata as ProfileMeta | undefined) ?? null;
+      const avatar_path = metadata?.avatar_path ?? null;
+      const avatar_bucket = metadata?.avatar_bucket ?? BUCKET;
       if (!mounted) return;
       setMetaPath(avatar_path);
 
@@ -316,20 +316,43 @@ const ProfilePicture: React.FC = () => {
       if (upErr) throw upErr;
       setProgress(85);
 
-      // persist meta in profiles.meta
+      // Ensure a profiles row exists BEFORE updating metadata
+      try {
+        const existingProfile = await crud.getUserProfile(user.id);
+        if (!existingProfile.data) {
+          // Create a minimal profile with required fields
+          const emailPrefix = user.email?.split("@")[0] ?? "User";
+          await crud.upsertRow(
+            "profiles",
+            {
+              id: user.id,
+              first_name: emailPrefix,
+              last_name: "",
+              email: user.email?.toLowerCase() ?? null,
+            },
+            "id"
+          );
+        }
+      } catch (e) {
+        console.warn("Failed to ensure profile exists", e);
+        throw new Error("Could not create profile. Please try again.");
+      }
+
+      // persist metadata in profiles.metadata
       try {
         const profileRes = await crud.getUserProfile(user.id);
-        const existingMeta =
-          (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
+        const existingMetadata =
+          (profileRes.data as Record<string, unknown> | null)?.metadata ?? {};
         await crud.updateUserProfile(user.id, {
-          meta: {
-            ...(existingMeta as Record<string, unknown>),
+          metadata: {
+            ...(existingMetadata as Record<string, unknown>),
             avatar_path: fileName,
             avatar_bucket: BUCKET,
           },
         });
       } catch (e) {
-        console.warn("Failed to persist avatar meta", e);
+        console.warn("Failed to persist avatar metadata", e);
+        throw new Error("Could not save avatar metadata. Please try again.");
       }
 
       // create signed URL for display
@@ -356,73 +379,7 @@ const ProfilePicture: React.FC = () => {
           /* ignore */
         }
       }
-      // Create a documents row linking this avatar file for later cleanup/management
-      try {
-        const userCrud = crud.withUser(user.id);
-        // Ensure a profiles row exists for this user (FK required by documents.user_id)
-        try {
-          const existingProfile = await crud.getUserProfile(user.id);
-          if (!existingProfile.data) {
-            // create a minimal profile so documents FK and RLS checks succeed
-            await crud.upsertRow(
-              "profiles",
-              {
-                id: user.id,
-                full_name: user.email?.split("@")[0] ?? null,
-                email: user.email?.toLowerCase() ?? null,
-              },
-              "id"
-            );
-          }
-        } catch (e) {
-          // non-fatal; proceed and let insert report if something else is wrong
-          console.warn(
-            "Failed to ensure profile exists before inserting document",
-            e
-          );
-        }
 
-        const docRes = await userCrud.insertRow(
-          "documents",
-          {
-            // documents.kind is restricted by a CHECK in the schema; use 'other' for avatars
-            kind: "other",
-            file_name: file.name,
-            file_path: fileName,
-            mime_type: file.type,
-            bytes: file.size ?? null,
-            meta: { source: "avatar" },
-          },
-          "*"
-        );
-        if (docRes.error) {
-          console.error("Failed to create documents row:", docRes.error);
-          // surface friendly message via centralized handler
-          handleError(docRes.error);
-        }
-
-        if (!docRes.error && docRes.data) {
-          const docId = (docRes.data as unknown as { id?: string }).id ?? null;
-          if (docId) {
-            try {
-              const profileRes2 = await crud.getUserProfile(user.id);
-              const existingMeta2 =
-                (profileRes2.data as Record<string, unknown> | null)?.meta ??
-                {};
-              await crud.updateUserProfile(user.id, {
-                meta: {
-                  ...(existingMeta2 as Record<string, unknown>),
-                  avatar_document_id: docId,
-                },
-              });
-            } catch {
-              /* ignore profile meta update failure */
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to create documents row for avatar", e);
-      }
       // clear pending preview and revoke any created blob URL
       try {
         if (
@@ -488,31 +445,6 @@ const ProfilePicture: React.FC = () => {
     if (!metaPath) return;
     setProcessing(true);
     try {
-      // Delete documents row by avatar_document_id if present, otherwise by file_path
-      const profileRes = await crud.getUserProfile(user.id);
-      const existingMeta =
-        (profileRes.data as Record<string, unknown> | null)?.meta ?? {};
-      const avatarDoc = (existingMeta as Record<string, unknown> | null)
-        ?.avatar_document_id;
-      const docId = typeof avatarDoc === "string" ? avatarDoc : null;
-
-      const userCrud = crud.withUser(user.id);
-      if (docId) {
-        try {
-          await userCrud.deleteRow("documents", { eq: { id: docId } });
-        } catch (e) {
-          console.warn("Failed to delete avatar document row by id", e);
-        }
-      } else {
-        try {
-          await userCrud.deleteRow("documents", {
-            eq: { file_path: metaPath },
-          });
-        } catch (e) {
-          console.warn("Failed to delete avatar document row by file_path", e);
-        }
-      }
-
       // remove storage object
       try {
         await supabase.storage.from(BUCKET).remove([metaPath]);
@@ -520,20 +452,20 @@ const ProfilePicture: React.FC = () => {
         console.warn("Failed to remove avatar from storage", err);
       }
 
-      // clear profile meta
+      // clear profile metadata
       try {
-        const profileRes2 = await crud.getUserProfile(user.id);
-        const existingMeta2 =
-          (profileRes2.data as Record<string, unknown> | null)?.meta ?? {};
+        const profileRes = await crud.getUserProfile(user.id);
+        const existingMetadata =
+          (profileRes.data as Record<string, unknown> | null)?.metadata ?? {};
         await crud.updateUserProfile(user.id, {
-          meta: {
-            ...(existingMeta2 as Record<string, unknown>),
+          metadata: {
+            ...(existingMetadata as Record<string, unknown>),
             avatar_path: null,
-            avatar_document_id: null,
+            avatar_bucket: null,
           },
         });
       } catch (err) {
-        console.warn("Failed to remove avatar meta", err);
+        console.warn("Failed to remove avatar metadata", err);
       }
     } catch (err) {
       console.warn("Unexpected error removing avatar", err);
@@ -541,6 +473,10 @@ const ProfilePicture: React.FC = () => {
     setAvatarUrl(null);
     setMetaPath(null);
     setProcessing(false);
+    showSuccess("Avatar removed successfully!");
+
+    // Dispatch event to notify other components to reload
+    window.dispatchEvent(new Event("avatar:updated"));
   };
 
   // Apply crop from dialog -> replace pendingFile with cropped File and preview
@@ -607,7 +543,19 @@ const ProfilePicture: React.FC = () => {
                 <>
                   <Tooltip title="Remove avatar">
                     <IconButton
-                      onClick={() => setShowDeleteConfirm(true)}
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: "Delete avatar",
+                          message:
+                            "Are you sure you want to delete your avatar? This will remove the image from storage and your profile.",
+                          confirmText: "Delete",
+                          confirmColor: "error",
+                        });
+                        if (confirmed) {
+                          await handleRemove();
+                          showSuccess("Avatar removed");
+                        }
+                      }}
                       disabled={processing}
                     >
                       <DeleteIcon />
@@ -729,20 +677,6 @@ const ProfilePicture: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Confirm delete dialog */}
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        title="Delete avatar"
-        description="Are you sure you want to delete your avatar? This will remove the image from storage and your profile."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={async () => {
-          setShowDeleteConfirm(false);
-          await handleRemove();
-          showSuccess("Avatar removed");
-        }}
-      />
     </Box>
   );
 };

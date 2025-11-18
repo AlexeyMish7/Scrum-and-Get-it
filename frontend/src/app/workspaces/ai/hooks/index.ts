@@ -1,27 +1,49 @@
 /**
  * AI Workspace Hooks
  * Barrel export for simplified imports
+ *
+ * Usage:
+ * ```ts
+ * import {
+ *   useResumeDraftsV2,
+ *   useCoverLetterDrafts,
+ *   useJobMatching
+ * } from "@workspaces/ai/hooks";
+ * ```
  */
 
-export { default as useResumeDrafts } from "./useResumeDrafts";
-export { default as useResumeGenerationFlowV2 } from "./useResumeGenerationFlowV2";
+// ========== DASHBOARD & ANALYTICS ==========
 export { default as useAIDashboardData } from "./useAIDashboardData";
+export { default as useCoverLetterAnalytics } from "./useCoverLetterAnalytics";
 
-// Re-export types from useResumeDrafts
-export type {
-  ResumeDraftRecord,
-  ResumeDraftContentExperienceItem,
-  UseResumeDraftsApi,
-  ResumeDraftDiff,
-  MergeOptions,
-  DraftStats,
-} from "./useResumeDrafts";
+// ========== DRAFTS MANAGEMENT ==========
+export { useResumeDraftsV2 } from "./useResumeDraftsV2";
+export { default as useCoverLetterDrafts } from "./useCoverLetterDrafts";
 
-// Re-export types from useResumeGenerationFlowV2
+// ========== RESUME FEATURES ==========
+export { default as useResumeFeedback } from "./useResumeFeedback";
+export { default as useResumeVersions } from "./useResumeVersions";
+export { default as useShouldShowTour } from "./useShouldShowTour";
+
+// ========== AI FEATURES ==========
+export { default as useJobMatching } from "./useJobMatching";
+export { default as useCompanyResearch } from "./useCompanyResearch";
+
+// ========== TYPE EXPORTS ==========
+
+// useResumeDraftsV2 types
 export type {
-  SegmentKey,
-  SegmentStatus,
-  FlowOptionsV2,
-  FlowStateMap,
-  UnifiedResultV2,
-} from "./useResumeGenerationFlowV2";
+  ResumeDraft,
+  ResumeDraftsStore,
+  ResumeContent,
+  ExperienceItem,
+  EducationItem,
+  ProjectItem,
+  SectionKey,
+} from "./useResumeDraftsV2";
+
+// useResumeFeedback types
+export type { FeedbackComment, ResumeShare } from "./useResumeFeedback";
+
+// useResumeVersions types
+export type { ResumeVersion } from "./useResumeVersions";

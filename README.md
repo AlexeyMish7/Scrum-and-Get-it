@@ -1,207 +1,260 @@
-# 🧠 flow ATS
+# FlowATS
 
-_CS 490 Capstone Project – Fall 2025_
+> **Built by:** Scrum and Get It Team
+> A comprehensive job search management platform that helps job seekers organize their applications, optimize their resumes, and track their progress through the interview process.
 
-> **Empowering job seekers with the same tools employers use.**
-> flow ATS provides job applicants with intelligent application tracking, AI-powered content generation, and organized career management—all in one place.
+## Overview
 
----
+FlowATS is a full-stack web application designed to streamline the job search process by providing intelligent tools for managing job applications, generating tailored resumes and cover letters, and analyzing job matches using AI-powered insights.
 
-## Quick start panel
+## Key Features
 
-<div>
-<table border="1" cellpadding="8" cellspacing="0" width="100%">
-	<tr>
-		<td width="50%"><strong>🔀 Git workflow</strong>
-			<small><small><pre><code class="language-bash">
-git checkout main             # start from main
-git pull                      # get latest code
+### 📋 Jobs Pipeline
 
-git checkout -b feat/name # create new branch
+- **Kanban-style board** to track applications through stages (Interested, Applied, Phone Screen, Interview, Offer)
+- **Drag-and-drop** interface for easy status updates
+- **Bulk operations** for managing multiple applications
+- **Calendar integration** showing upcoming deadlines and important dates
+- **Application timeline** tracking all interactions and status changes
 
-git add .
-git commit -m "feat:descr" # commit
+### 🤖 AI-Powered Tools
 
-git pull --rebase origin main # update branch before push
-git push -u origin feat/name # push branch
+- **Smart Resume Generation** - Create tailored resumes for specific job postings
+- **Cover Letter Drafting** - Generate customized cover letters based on job requirements
+- **Job Match Analysis** - AI-driven compatibility scoring between your profile and job listings
+- **Skills Gap Identification** - Discover missing skills and get recommendations
+- **Analytics Caching** - Efficient performance with intelligent cache management
 
-git rebase --continue # if conflicts during rebase:
-</code></pre></small></small>
+### 📄 Document Management
 
-<p><small>Open a PR targeting <code>main</code> or the active integration branch. Attach screenshots and link related PRD items. Full guide: <a href="docs/development/workflow/branching.md">Branching workflow</a></small></p>
-</td>
+- **Template System** - Multiple professional resume and cover letter templates
+- **Version Control** - Track changes and manage multiple versions of documents
+- **Theme Customization** - Personalize colors, typography, and layout
+- **Export Options** - Download in PDF, DOCX, and other formats
 
-<td width="50%"><strong>🎨 Theme & frontend rules</strong>
-			<p><strong>Where:</strong> <code>frontend/src/app/shared/theme/</code> — edit palettes or <code>factory.ts</code>.</p>
-			<ul>
-				<li>Change visuals via tokens — edit <code>theme/palettes/*</code> or <code>factory.ts</code>. Don’t hardcode colors/radii/shadows/elevation.</li>
-				<li>Use MUI components and theme variants; use <code>sx</code> for layout only (spacing/sizing/display/positioning).</li>
-				<li>Prefer props (<code>variant</code>, <code>color</code>, <code>size</code>) over inline CSS; glow/depth/focus are palette-driven.</li>
-				<li>For DB code, use <code>useAuth()</code> + <code>withUser(user?.id)</code> to scope user-owned tables.</li>
-				<li>Guides: <a href="frontend/src/app/shared/theme/THEMING_GUIDE.md">Theming guide</a> • <a href="frontend/src/app/shared/theme/PALETTE_BLUEPRINT.md">Palette blueprint</a></li>
-			</ul>
-</td>
+### 📊 Profile Management
 
-</tr>
-<tr>
-	<td><strong>💼 Jobs workspace</strong>
-		<ul>
-			<li><strong>Path:</strong> <code>frontend/src/app/workspaces/jobs/</code></li>
-			<li>Focus: job entry, pipeline (Interested → Offer), deadlines, job details, URL import</li>
-			<li>Tip: match DB <code>public.jobs</code>; use <code>withUser(user.id)</code></li>
-			<li>More: <a href="docs/project-structure.md">Project structure</a></li>
-		</ul>
-	</td>
-	<td><strong>🤖 AI workspace</strong>
-		<ul>
-			<li><strong>Path:</strong> <code>frontend/src/app/workspaces/ai/</code></li>
-			<li>Focus: GenerateResume, GenerateCoverLetter, CompanyResearch, prompts, local AI theme</li>
-			<li>Tip: stub model calls; mock prompts in tests</li>
-			<li>More: <a href="docs/project-structure.md">Project structure</a></li>
-		</ul>
-	</td>
-</tr>
+- **Comprehensive Profile** - Manage skills, experience, education, and certifications
+- **Project Portfolio** - Showcase your work and accomplishments
+- **Dynamic Updates** - Changes automatically reflected in generated documents
 
-</table>
-</div>
+### 📅 Interview Hub
 
----
+- **Schedule Management** - Track upcoming interviews with conflict detection
+- **Google Calendar Integration** - Export interviews to your calendar
+- **Prep Tasks** - Auto-generated preparation checklists based on interview type
+- **Outcome Tracking** - Record feedback and results
 
-Links to full docs (also visible in the quadrants above):
+## Tech Stack
 
-- Project structure (detailed): `docs/project-structure.md`
-- Theming guide: `frontend/src/app/shared/theme/THEMING_GUIDE.md`
-- Palette blueprint: `frontend/src/app/shared/theme/PALETTE_BLUEPRINT.md`
+### Frontend
 
-## 📚 **Documentation**
+- **React 18** - Modern UI library with hooks and concurrent features
+- **TypeScript** - Type safety and better developer experience
+- **Material-UI (MUI)** - Enterprise-grade component library and theming
+- **Vite** - Lightning-fast build tool and dev server
+- **React Router** - Client-side routing and navigation
+- **@dnd-kit** - Drag-and-drop for Kanban board
+- **Supabase Client** - Real-time database and authentication
 
-> **🎯 [Complete Documentation Hub →](docs/README.md)**
+### Backend
 
----
+- **Node.js** - JavaScript runtime
+- **Express** - Web application framework
+- **TypeScript** - Type-safe server code
+- **OpenAI SDK** - GPT-4 integration for AI features
+- **Cheerio** - Web scraping for company research
+- **Winston** - Logging and monitoring
 
-## Current status (mid Sprint 2 — Migration & AI scaffolding)
+### Database & Authentication
 
-We completed Sprint 1 foundations (auth, DB schema, profile flows) and are actively working through Sprint 2 work: job management and AI-powered content.
+- **Supabase** - Backend-as-a-Service platform
+- **PostgreSQL** - Relational database with JSONB support
+- **Row Level Security (RLS)** - User data isolation
+- **JWT Authentication** - Secure token-based auth
 
-Recent progress (high level):
+### Development Tools
 
-- Frontend reorganization: `frontend/src` was restructured into `app/shared` and `app/workspaces/*` (profile + ai). Many imports were updated and a small codemod tool was added at `frontend/tools/convert-imports.cjs` to help migrate remaining imports to aliases.
-- Path aliases: `frontend/tsconfig.app.json` and `frontend/vite.config.ts` now expose helpful aliases (for example `@shared/*`, `@profile/*`, `@assets/*`) to make the codebase resilient to future moves.
-- AI workspace scaffold: `frontend/src/app/workspaces/ai/` now exists with a README and folders for components, pages, services, hooks, types, utils, tests and docs.
-- Type safety & linting: `npm run typecheck` and `npm run lint` have been run after the migration and the core repo is free of blocking TypeScript and lint errors (local verification).
+- **TypeScript** - Throughout the stack
+- **ESLint** - Code quality and consistency
+- **Vitest** - Unit and integration testing
+- **PowerShell** - Development automation scripts
 
-Next priorities for Sprint 2:
+## Quick Start
 
-- Implement the job management UI and CRUD flows (jobs, pipeline stages, deadlines).
-- Add the first AI features behind a feature flag: GenerateResume preview (client + serverless stub), prompt templates, and token accounting.
-- Harden CI: add unit tests for prompt templates and a lightweight integration test that uses an Edge Function stub for model calls.
+**Easiest way to run both frontend and server:**
 
-Sprint 2 target: Job Management & AI Content (demo target: Nov 11)
-
----
-
-## 👥 Team Members
-
-- **Alexey Mishin**
-- **Aliya Laliwala**
-- **Jane Kalla**
-- **Nafisa Ahmed**
-- **Nihaal Warraich**
-
----
-
-## 🧩 Tech Stack
-
-### **Frontend**
-
-- **React + TypeScript (via Vite)** – Modern component-based development
-- **Styling Framework (TBD)** – Options include Material UI, Chakra, or Tailwind CSS
-
-### **Backend / Infrastructure**
-
-- **Supabase (PostgreSQL + Auth + Storage)** – Backend-as-a-Service
-- **Supabase Auth** – Secure login with email/password and Google OAuth
-- **Supabase Storage** – Resume and document management
-- **Row-Level Security (RLS)** – Protects user-specific data access
-
-### **DevOps & Testing**
-
-- **GitHub Actions** – CI/CD pipeline for build and deployment
-- **Jest / Cypress (TBD)** – Unit and end-to-end testing
-- **ESLint + Prettier** – Code linting and formatting standards
-
----
-
-## 🧱 Project structure (focused view)
-
-This repo contains several parts; during the migration we reorganized the frontend into a small app surface located under `frontend/src/app`. The structure below shows the current, recommended layout to focus on when developing features.
-
-```
-frontend/src/app/
-├── shared/                      # shared components, services, hooks, context, theme
-│   ├── components/              # reusable UI components (common, forms, layout)
-│   ├── context/                 # AuthContext, ThemeProvider, Error handling
-│   ├── services/                # supabase client wrapper, crud, dbMappers
-│   └── theme/                   # design tokens and theme provider
-├── workspaces/                  # feature workspaces (isolated feature areas)
-│   ├── profile/                 # profile workspace: pages, components, services, types
-│   └── ai/                      # ai workspace: pages, services, prompts, hooks, types
-├── types/                       # centralized types shared across workspaces
-├── utils/                       # shared utilities (formatters, validators)
-└── main.tsx / router.tsx        # app entry + top-level routing
+```powershell
+.\dev.ps1
 ```
 
----
+This PowerShell script automatically:
 
-## ⚙️ Setting Up the Project Locally
+- Starts the frontend dev server (http://localhost:5173)
+- Starts the backend server (http://localhost:3001)
+- Runs both in parallel with proper logging
 
-To get the frontend running on your machine, follow the step-by-step setup guide in
-👉 **[Setup Guide](docs/getting-started/setup.md)**
+**URLs:**
 
-That file includes:
-
-- Installing **nvm** (Node Version Manager)
-- Cloning the repo
-- Installing **Node.js v20.19.5** and matching **npm**
-- Running the frontend with **Vite**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3001
+- Database: Supabase (cloud-hosted)
 
 ---
 
-## 🌿 Git Workflow
+## Getting Started
 
-We use a **trunk-based branching model** for version control.
-Before creating or merging branches, review the full guide in
-👉 **[Branching Workflow](docs/development/workflow/branching.md)**
+### Prerequisites
 
-Example branch names:
+- Node.js 18+ and npm
+- Supabase account and project
+- OpenAI API key (for AI features)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/AlexeyMish7/Scrum-and-Get-it.git
+cd Scrum-and-Get-it
+```
+
+2. Install dependencies:
+
+```bash
+# Install frontend dependencies
+cd frontend
+npm install
+
+# Install backend dependencies
+cd ../server
+npm install
+```
+
+3. Set up environment variables:
+
+```bash
+# Frontend (.env)
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Backend (.env)
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+4. Run database migrations:
+
+- Navigate to your Supabase project SQL editor
+- Execute migration files from `db/migrations/` in chronological order
+- Or use the provided `db/apply_migration.sql` helper
+
+5. Start development servers:
+
+**Option 1: Easy way (Recommended)**
+
+```powershell
+.\dev.ps1
+```
+
+**Option 2: Manual**
+
+```bash
+# Terminal 1: Frontend
+cd frontend
+npm run dev
+
+# Terminal 2: Backend
+cd server
+npm run dev
+```
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - How the entire system works together
+- **[Git Collaboration Guide](docs/GIT_COLLABORATION.md)** - Branching strategy and workflow
+- **Frontend Documentation:**
+  - [Structure & Architecture](docs/frontend/1-structure.md)
+  - [Files Reference](docs/frontend/2-files-reference.md)
+  - [Overview (Non-Technical)](docs/frontend/3-overview.md)
+- **Server Documentation:**
+  - [Structure & Endpoints](docs/server/1-structure.md)
+  - [Files Reference](docs/server/2-files-reference.md)
+  - [Overview (Non-Technical)](docs/server/3-overview.md)
+- **Database:**
+  - [Complete Schema Reference](docs/database/database-schema.md)
+
+## Architecture
+
+FlowATS follows a modern three-tier architecture:
+
+- **Frontend (React)** - User interface and client-side logic
+- **Server (Node.js)** - AI orchestration, business logic, external API integration
+- **Database (PostgreSQL)** - Data persistence with Supabase
+
+**Key Architectural Patterns:**
+
+- **Workspace-based modularity** - Features organized in isolated workspaces
+- **Service layer abstraction** - CRUD operations centralized
+- **Event-driven updates** - Components communicate via custom events
+- **Caching strategy** - AI results cached for performance
+- **Type safety** - TypeScript throughout the entire stack
+
+See [Architecture Documentation](docs/ARCHITECTURE.md) for detailed system design.
+
+## Project Structure
 
 ```
-feat/auth-login
-fix/profile-upload
-docs/update-readme
+Scrum-and-Get-it/
+├── frontend/              # React frontend application
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── shared/    # Shared components, services, and utilities
+│   │   │   └── workspaces/# Feature-based workspaces
+│   │   │       ├── ai/           # AI generation features
+│   │   │       ├── job_pipeline/ # Job tracking and management
+│   │   │       ├── profile/      # User profile management
+│   │   │       └── interview_hub/# Interview scheduling
+│   │   └── ...
+├── server/                # Node.js backend
+│   ├── src/              # Server source code
+│   └── prompts/          # AI prompt templates
+├── db/                   # Database migrations and schemas
+└── docs/                 # Project documentation
 ```
 
+## Team
+
+**FlowATS** is developed by the **Scrum and Get It** team as a senior capstone project:
+
+- Agile/Scrum methodology with regular sprints
+- Code reviews and pair programming
+- Continuous integration and testing
+- User-centered iterative development
+
+## Development Workflow
+
+Our team follows a structured Git workflow:
+
+- **Feature branches** - One branch per feature, branched from `main`
+- **Rebase strategy** - Rebase on main before pushing to resolve conflicts locally
+- **No branch reuse** - Branches deleted after merge
+- **Pull requests** - All code reviewed before merging to `main`
+- **Testing** - Features tested before and after rebasing
+
+See [Git Collaboration Guide](docs/GIT_COLLABORATION.md) for complete workflow details.
+
+## License
+
+This project is developed as part of an academic capstone project.
+
+## Contact
+
+For questions or feedback about FlowATS, please reach out to the Scrum and Get It development team.
+
 ---
 
-## 🗖️ Sprint Milestones
-
-| Sprint   | Focus Area                  | Demo Date |
-| -------- | --------------------------- | --------- |
-| Sprint 1 | Authentication & Core Setup | Oct 28    |
-| Sprint 2 | Job Management & AI Content | Nov 11    |
-| Sprint 3 | Interview Tools & Analytics | Dec 2     |
-| Sprint 4 | Final Deployment            | Dec 16    |
-
----
-
-## 🧠 Additional Resources
-
-- 🧩 **Project Kickoff Slides:** Overview of concept, goals, and sprints
-- 💛 **PRD:** Functional requirements for Sprint 1
-- 🌱 **Branching Guide:** For consistent GitHub workflow
-- 🧪 **Setup Guide:** For local environment installation
-
----
-
-**Last Updated:** October 2025
-**Maintainers:** Jane Kalla, Alexey Mishin, Aliya Laliwala, Nafisa Ahmed, Nihaal Warraich
+_Built with ❤️ by Scrum and Get It using React, TypeScript, and AI_

@@ -1,17 +1,38 @@
 /**
- * Shared Common Components
- * Barrel export for simplified imports
+ * SHARED COMMON COMPONENTS - Barrel Export
+ *
+ * Centralized exports for reusable UI components.
+ * These components are used across multiple workspaces.
+ *
+ * Organization:
+ * - UI Primitives: Icon, QuickActionButton
+ * - Layouts: RightDrawer
+ * - Auth: ProtectedRoute
+ * - Domain-specific: ProfilePicture
+ * - Development: RegionAnchor (page markers for testing/debugging)
+ *
+ * Note: ConfirmDialog, ErrorSnackbar, and LoadingSpinner are exported from their
+ * respective specialized folders (dialogs/, feedback/) for better organization.
+ * Import them from @shared/components/dialogs or @shared/components/feedback instead.
  */
 
-export { default as ConfirmDialog } from "./ConfirmDialog";
-export { default as ErrorSnackbar } from "./ErrorSnackbar";
+// Re-export components from specialized folders for convenience
+// (dialogs and feedback folders have their own barrel exports)
+export { default as ConfirmDialog } from "../dialogs/ConfirmDialog";
+export { default as ErrorSnackbar } from "../feedback/ErrorSnackbar";
+
+// UI primitives and utilities
 export { default as Icon } from "./Icon";
-export { default as LoadingSpinner } from "./LoadingSpinner";
-export { default as NavItem } from "./NavItem";
-export { default as ProfilePicture } from "./ProfilePicture";
-export { default as ProtectedRoute } from "./ProtectedRoute";
 export { default as QuickActionButton } from "./QuickActionButton";
-export { default as RegionAnchor } from "./RegionAnchor";
+
+// Layout components
 export { default as RightDrawer } from "./RightDrawer";
-export { default as SidebarSection } from "./SidebarSection";
-export { default as SprintTaskSnackbar } from "./SprintTaskSnackbar";
+
+// Auth and routing
+export { default as ProtectedRoute } from "./ProtectedRoute";
+
+// Domain-specific components
+export { default as ProfilePicture } from "./ProfilePicture";
+
+// Development/debugging tools
+export { default as RegionAnchor } from "./RegionAnchor";

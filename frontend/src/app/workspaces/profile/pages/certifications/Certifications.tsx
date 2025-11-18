@@ -22,6 +22,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SearchIcon from "@mui/icons-material/Search";
 import dayjs from "dayjs";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
@@ -29,9 +30,10 @@ import type {
   NewCert,
 } from "../../types/certification";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import { Breadcrumbs } from "@shared/components/navigation";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -75,13 +77,14 @@ const Certifications: React.FC = () => {
 
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
+  const { confirm } = useConfirmDialog();
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<NewCert>>({});
   const [addOpen, setAddOpen] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Filtered by organization search
   const filteredCerts = useMemo(() => {
@@ -171,7 +174,7 @@ const Certifications: React.FC = () => {
           ? null
           : newCert.expirationDate || null,
         does_not_expire: Boolean(newCert.doesNotExpire),
-        cert_id: newCert.certId || null,
+        certification_id: newCert.certId || null,
         verification_status: "unverified",
       };
 
@@ -202,6 +205,7 @@ const Certifications: React.FC = () => {
         file: null,
       });
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       const typedRes = res as {
         data: CertificationRow | null;
         error: unknown | null;
@@ -287,7 +291,7 @@ const Certifications: React.FC = () => {
           ? null
           : editForm.expirationDate || null,
         does_not_expire: Boolean(editForm.doesNotExpire),
-        cert_id: editForm.certId || null,
+        certification_id: editForm.certId || null,
       };
 
       // Send updated fields to the service and optimistically update UI on success
@@ -313,7 +317,8 @@ const Certifications: React.FC = () => {
                     (payload.expiration_date as string | null) ??
                     c.expirationDate,
                   doesNotExpire: Boolean(payload.does_not_expire),
-                  certId: (payload.cert_id as string | null) ?? c.certId,
+                  certId:
+                    (payload.certification_id as string | null) ?? c.certId,
                 } as Partial<CertificationType>),
               }
             : c
@@ -323,6 +328,7 @@ const Certifications: React.FC = () => {
       // Close dialog and notify other parts of the app if needed
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification updated");
     } catch (err) {
       handleError(err, "Failed to update certification");
@@ -337,6 +343,16 @@ const Certifications: React.FC = () => {
       return handleError(new Error("Please sign in to delete a certification"));
     if (!editingCertId) return;
 
+    const confirmed = await confirm({
+      title: "Delete certification",
+      message:
+        "Delete this certification and its files? This cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
+
     try {
       const res = await certificationsService.deleteCertification(
         user.id,
@@ -346,8 +362,8 @@ const Certifications: React.FC = () => {
       // remove from local state so the list updates immediately
       setCertifications((prev) => prev.filter((c) => c.id !== editingCertId));
       closeEdit();
-      setConfirmDeleteOpen(false);
       window.dispatchEvent(new Event("certifications:changed"));
+      markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification deleted");
     } catch (err) {
       handleError(err, "Failed to delete certification");
@@ -386,6 +402,12 @@ const Certifications: React.FC = () => {
   return (
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+        <Breadcrumbs
+          items={[
+            { label: "Profile", path: "/profile" },
+            { label: "Certifications" },
+          ]}
+        />
         <Typography variant="h4" sx={{ mb: 2 }}>
           Manage Your Certifications
         </Typography>
@@ -656,7 +678,9 @@ const Certifications: React.FC = () => {
             <Button
               color="error"
               variant="outlined"
-              onClick={() => setConfirmDeleteOpen(true)}
+              onClick={async () => {
+                await handleDeleteCertification();
+              }}
             >
               Delete
             </Button>
@@ -675,16 +699,6 @@ const Certifications: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-        <ConfirmDialog
-          open={confirmDeleteOpen}
-          title="Delete certification"
-          description="Delete this certification and its files? This cannot be undone."
-          confirmText="Delete"
-          cancelText="Cancel"
-          onClose={() => setConfirmDeleteOpen(false)}
-          onConfirm={() => void handleDeleteCertification()}
-        />
 
         {/* Search bar */}
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>

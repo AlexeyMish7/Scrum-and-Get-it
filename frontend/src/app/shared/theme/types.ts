@@ -1,5 +1,8 @@
 /**
- * Theme design tokens and MUI typings augmentation
+ * Theme design tokens and type definitions
+ *
+ * Design tokens define the visual language of the application.
+ * MUI type augmentations are in mui-augmentations.d.ts
  */
 
 export type ThemeMode = "light" | "dark";
@@ -131,22 +134,3 @@ export interface BaseTokens {
 }
 
 export type DesignTokens = BaseTokens;
-
-// -----------------------------
-// MUI typings augmentation
-// -----------------------------
-declare module "@mui/material/styles" {
-  interface Theme {
-    designTokens: DesignTokens;
-  }
-  interface ThemeOptions {
-    designTokens?: Partial<DesignTokens>;
-  }
-
-  interface Palette {
-    tertiary: Palette["primary"]; // custom third color scale
-  }
-  interface PaletteOptions {
-    tertiary?: PaletteOptions["primary"]; // allow configuring in theme options
-  }
-}

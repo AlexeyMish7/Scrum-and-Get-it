@@ -37,7 +37,7 @@ import {
   compareVersions,
   restoreVersion,
   type VersionComparison,
-} from "@shared/services/resumeVersionService";
+} from "@ai/services/resumeVersionService";
 import { useAuth } from "@shared/context/AuthContext";
 
 interface VersionComparisonDialogProps {

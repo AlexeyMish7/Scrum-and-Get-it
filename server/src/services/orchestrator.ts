@@ -16,6 +16,15 @@ import aiClient from "./aiClient.js";
 import { logError, logInfo } from "../../utils/logger.js";
 // Use dynamic import for supabase to avoid throwing at module load when env is missing
 // import supabaseAdmin from "./supabaseAdmin.js"; // do not import statically
+
+// Type definitions for dynamic imports
+type SupabaseAdminModule = {
+  default: any; // Supabase client - third-party type, using any is acceptable here
+  getProfile: (userId: string) => Promise<any>;
+  getJob: (jobId: number) => Promise<any>;
+  getComprehensiveProfile: (userId: string) => Promise<any>;
+};
+
 // Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
 import { buildResumePrompt } from "../../prompts/resume.ts";
 import { buildCoverLetterPrompt } from "../../prompts/coverLetter.ts";
@@ -52,14 +61,15 @@ export async function handleGenerateResume(
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("./supabaseAdmin.js");
-    getProfile = (mod as any).getProfile;
-    getJob = (mod as any).getJob;
-    supabase = (mod as any).default;
+    const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+    getProfile = mod.getProfile;
+    getJob = mod.getJob;
+    supabase = mod.default;
     if (typeof getProfile !== "function" || typeof getJob !== "function") {
       throw new Error("supabase helpers not available");
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
     return {
       error:
         "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
@@ -69,14 +79,16 @@ export async function handleGenerateResume(
   let job: any;
   try {
     profile = await getProfile(req.userId);
-  } catch (e: any) {
-    return { error: `profile query failed: ${e?.message ?? e}` };
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    return { error: `profile query failed: ${err.message}` };
   }
   if (!profile) return { error: "profile not found" };
   try {
     job = await getJob(req.jobId);
-  } catch (e: any) {
-    return { error: `job query failed: ${e?.message ?? e}` };
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    return { error: `job query failed: ${err.message}` };
   }
   if (!job) return { error: "job not found" };
   if (job.user_id && job.user_id !== req.userId)
@@ -283,10 +295,10 @@ export async function handleGenerateCoverLetter(
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("./supabaseAdmin.js");
-    getComprehensiveProfile = (mod as any).getComprehensiveProfile;
-    getJob = (mod as any).getJob;
-    supabase = (mod as any).default;
+    const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+    getComprehensiveProfile = mod.getComprehensiveProfile;
+    getJob = mod.getJob;
+    supabase = mod.default;
     if (
       typeof getComprehensiveProfile !== "function" ||
       typeof getJob !== "function"
@@ -426,11 +438,12 @@ export async function handleSkillsOptimization(
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("./supabaseAdmin.js");
-    getProfile = (mod as any).getProfile;
-    getJob = (mod as any).getJob;
-    supabase = (mod as any).default;
-  } catch (e: any) {
+    const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+    getProfile = mod.getProfile;
+    getJob = mod.getJob;
+    supabase = mod.default;
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
     return {
       error:
         "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
@@ -545,11 +558,12 @@ export async function handleExperienceTailoring(req: {
   let getJob: (jobId: number) => Promise<any>;
   let supabase: any;
   try {
-    const mod = await import("./supabaseAdmin.js");
-    getProfile = (mod as any).getProfile;
-    getJob = (mod as any).getJob;
-    supabase = (mod as any).default;
-  } catch (e: any) {
+    const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+    getProfile = mod.getProfile;
+    getJob = mod.getJob;
+    supabase = mod.default;
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
     return {
       error:
         "server not configured: missing Supabase admin environment (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)",
@@ -1012,8 +1026,8 @@ export async function handleCompanyResearch(req: {
   // 2) Fetch job context if provided (for richer research)
   if (req.jobId) {
     try {
-      const mod = await import("./supabaseAdmin.js");
-      const getJob = (mod as any).getJob;
+      const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+      const getJob = mod.getJob;
       if (typeof getJob === "function") {
         jobContext = await getJob(req.jobId);
         // Verify job ownership
@@ -1021,10 +1035,11 @@ export async function handleCompanyResearch(req: {
           return { error: "job does not belong to user" };
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
       // Non-fatal: continue without job context
       logInfo("Could not fetch job context for company research", {
-        error: e?.message,
+        error: err.message,
       });
     }
   }

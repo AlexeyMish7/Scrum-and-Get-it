@@ -11,16 +11,11 @@
 export {
   getCorsHeaders,
   handleCorsPreflight,
-  applyCorsHeaders,
   type CorsOptions,
 } from "./cors.js";
 
 // Logging middleware
-export {
-  createRequestContext,
-  getDuration,
-  type RequestContext,
-} from "./logging.js";
+export { createRequestContext, type RequestContext } from "./logging.js";
 
 // Auth middleware
 export { requireAuth, tryAuth } from "./auth.js";

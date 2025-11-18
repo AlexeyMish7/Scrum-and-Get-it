@@ -1,3 +1,46 @@
+/**
+ * THEME CONTEXT (Global Theme State)
+ *
+ * Purpose:
+ * - Manage light/dark mode switching across entire application
+ * - Persist theme preference in localStorage
+ * - Support radius mode (tiny vs default border radius)
+ * - Apply theme presets for quick color scheme changes
+ *
+ * Theme System:
+ * - Two base themes: lightTheme, darkTheme (from @shared/theme)
+ * - Design token system with palette, effects, motion, interaction tokens
+ * - MUI ThemeProvider wraps entire app for consistent styling
+ * - CSS variables exported for non-MUI components
+ *
+ * Persistence:
+ * - Theme mode stored in localStorage (key: 'themeMode')
+ * - Radius mode stored in localStorage (key: 'radiusMode')
+ * - Preset stored in localStorage (key: 'themePreset')
+ * - Auto-load on app startup
+ *
+ * Backend Connection:
+ * - No backend integration (purely client-side)
+ * - User theme preference could be stored in profiles table (future)
+ *
+ * Usage:
+ *   import { useTheme } from '@shared/context/ThemeContext';
+ *
+ *   function MyComponent() {
+ *     const { mode, toggleMode, radiusMode, toggleRadiusMode } = useTheme();
+ *
+ *     return (
+ *       <Button onClick={toggleMode}>
+ *         Switch to {mode === 'light' ? 'dark' : 'light'} mode
+ *       </Button>
+ *     );
+ *   }
+ *
+ * Provider Setup:
+ *   <ThemeProvider>
+ *     <App />
+ *   </ThemeProvider>
+ */
 import {
   createContext,
   useCallback,
@@ -9,7 +52,16 @@ import {
 } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { darkTheme, lightTheme, type ThemeMode } from "@shared/theme";
+import {
+  darkTheme,
+  lightTheme,
+  type ThemeMode,
+  type PresetId,
+  applyPresetById,
+  isValidPreset,
+} from "@shared/theme";
+import lightPaletteTokens from "@shared/theme/palettes/lightPalette";
+import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -17,11 +69,29 @@ interface ThemeContextValue {
   toggleMode: () => void;
   radiusMode: "tiny" | "default";
   toggleRadiusMode: () => void;
+  // Preset support
+  currentPreset: PresetId | null;
+  applyPreset: (presetId: PresetId) => void;
+  clearPreset: () => void;
 }
+
+const STORAGE_KEY = "app.theme.mode";
+const PRESET_STORAGE_KEY = "app.theme.preset";
+
+// ******************** Context & Hook *******************
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "app.theme.mode";
+// Hook to access theme context - exported before provider for Fast Refresh compatibility
+export const useThemeContext = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useThemeContext must be used within ThemeContextProvider");
+  }
+  return context;
+};
+
+// ******************** Helper Functions *******************
 
 const readStoredMode = (): ThemeMode | null => {
   if (typeof window === "undefined") {
@@ -59,6 +129,37 @@ const persistMode = (mode: ThemeMode) => {
   }
 };
 
+const readStoredPreset = (): PresetId | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(PRESET_STORAGE_KEY);
+  if (stored && isValidPreset(stored)) {
+    return stored as PresetId;
+  }
+
+  return null;
+};
+
+const persistPreset = (presetId: PresetId | null) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (presetId) {
+      window.localStorage.setItem(PRESET_STORAGE_KEY, presetId);
+    } else {
+      window.localStorage.removeItem(PRESET_STORAGE_KEY);
+    }
+  } catch {
+    // Swallow storage errors
+  }
+};
+
+// ******************** Provider Component *******************
+
 export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   const [mode, setModeState] = useState<ThemeMode>(
     () => readStoredMode() ?? detectPreferredMode()
@@ -68,6 +169,9 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     const stored = window.localStorage.getItem("app.theme.radiusMode");
     return stored === "default" ? "default" : "tiny";
   });
+  const [currentPreset, setCurrentPreset] = useState<PresetId | null>(() =>
+    readStoredPreset()
+  );
 
   useEffect(() => {
     persistMode(mode);
@@ -78,7 +182,19 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     }
   }, [mode]);
 
-  const theme = mode === "dark" ? darkTheme : lightTheme;
+  useEffect(() => {
+    persistPreset(currentPreset);
+  }, [currentPreset]);
+
+  // Determine theme: use preset if set, otherwise use default light/dark theme
+  const theme = useMemo(() => {
+    if (currentPreset) {
+      const baseTokens =
+        mode === "dark" ? darkPaletteTokens : lightPaletteTokens;
+      return applyPresetById(currentPreset, baseTokens);
+    }
+    return mode === "dark" ? darkTheme : lightTheme;
+  }, [mode, currentPreset]);
 
   useEffect(() => {
     if (typeof window === "undefined" || readStoredMode() !== null) {
@@ -102,6 +218,14 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     setModeState((prev) => (prev === "light" ? "dark" : "light"));
   }, []);
 
+  const handleApplyPreset = useCallback((presetId: PresetId) => {
+    setCurrentPreset(presetId);
+  }, []);
+
+  const handleClearPreset = useCallback(() => {
+    setCurrentPreset(null);
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
@@ -110,8 +234,19 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       radiusMode,
       toggleRadiusMode: () =>
         setRadiusMode((p) => (p === "tiny" ? "default" : "tiny")),
+      currentPreset,
+      applyPreset: handleApplyPreset,
+      clearPreset: handleClearPreset,
     }),
-    [mode, setMode, toggleMode, radiusMode]
+    [
+      mode,
+      setMode,
+      toggleMode,
+      radiusMode,
+      currentPreset,
+      handleApplyPreset,
+      handleClearPreset,
+    ]
   );
 
   // Apply corner radius mode via CSS variables overriding factory defaults
@@ -153,12 +288,3 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     </ThemeContext.Provider>
   );
 }
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useThemeContext = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useThemeContext must be used within ThemeContextProvider");
-  }
-  return context;
-};

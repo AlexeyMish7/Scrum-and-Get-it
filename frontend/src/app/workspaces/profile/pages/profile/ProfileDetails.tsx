@@ -14,6 +14,7 @@ import ProfilePicture from "@shared/components/common/ProfilePicture";
 import profileService from "../../services/profileService";
 // Note: removed legacy ProfileDetails.css to rely on theme tokens and MUI sx props
 import type { ProfileData } from "../../types/profile";
+import { Breadcrumbs } from "@shared/components/navigation";
 
 const industries = [
   "Technology",
@@ -115,7 +116,7 @@ const ProfileDetails: React.FC = () => {
   const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState(true);
+  const [editMode, setEditMode] = useState(false);
 
   // Load profile from DB when user is available
   useEffect(() => {
@@ -230,15 +231,19 @@ const ProfileDetails: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, sm: 3 } }}>
+      <Breadcrumbs
+        items={[{ label: "Profile", path: "/profile" }, { label: "Details" }]}
+      />
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
         <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
           {editMode ? "Edit Profile" : "Profile Details"}
         </Typography>
 
+        {/* Show profile picture in both view and edit modes */}
+        <ProfilePicture />
+
         {editMode ? (
           <>
-            <ProfilePicture />
-
             {/* Row: Full name + Email */}
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
               <Box sx={{ flex: 1, minWidth: 240 }}>

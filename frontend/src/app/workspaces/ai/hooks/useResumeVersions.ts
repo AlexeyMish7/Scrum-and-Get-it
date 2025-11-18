@@ -7,6 +7,8 @@
  */
 
 import { useCallback } from "react";
+import type { ResumeDraft } from "./useResumeDraftsV2";
+
 // Lightweight id generator to avoid extra deps in the frontend
 function generateId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
@@ -17,7 +19,7 @@ export interface ResumeVersion {
   draftId: string; // id of the draft this version belongs to
   name: string;
   description?: string;
-  content: any; // snapshot of draft.content
+  content: ResumeDraft["content"]; // snapshot of draft.content
   jobId?: number | null;
   createdAt: string; // ISO
   archived?: boolean;
@@ -54,36 +56,43 @@ export function useResumeVersions() {
     return readAll().find((v) => v.id === id) || null;
   }, []);
 
-  const createVersion = useCallback((
-    draftId: string,
-    name: string,
-    content: any,
-    opts?: { description?: string; jobId?: number | null; setDefault?: boolean }
-  ) => {
-    const versions = readAll();
-    const version: ResumeVersion = {
-      id: generateId(),
-      draftId,
-      name,
-      description: opts?.description,
-      content,
-      jobId: opts?.jobId ?? null,
-      createdAt: new Date().toISOString(),
-      archived: false,
-      isDefault: !!opts?.setDefault,
-    };
-
-    // If setDefault true, clear other defaults for this draft
-    if (version.isDefault) {
-      for (const v of versions) {
-        if (v.draftId === draftId) v.isDefault = false;
+  const createVersion = useCallback(
+    (
+      draftId: string,
+      name: string,
+      content: ResumeDraft["content"],
+      opts?: {
+        description?: string;
+        jobId?: number | null;
+        setDefault?: boolean;
       }
-    }
+    ) => {
+      const versions = readAll();
+      const version: ResumeVersion = {
+        id: generateId(),
+        draftId,
+        name,
+        description: opts?.description,
+        content,
+        jobId: opts?.jobId ?? null,
+        createdAt: new Date().toISOString(),
+        archived: false,
+        isDefault: !!opts?.setDefault,
+      };
 
-    versions.push(version);
-    writeAll(versions);
-    return version;
-  }, []);
+      // If setDefault true, clear other defaults for this draft
+      if (version.isDefault) {
+        for (const v of versions) {
+          if (v.draftId === draftId) v.isDefault = false;
+        }
+      }
+
+      versions.push(version);
+      writeAll(versions);
+      return version;
+    },
+    []
+  );
 
   const deleteVersion = useCallback((id: string) => {
     const versions = readAll().filter((v) => v.id !== id);
@@ -110,15 +119,18 @@ export function useResumeVersions() {
     }
   }, []);
 
-  const setDefaultVersion = useCallback((draftId: string, id: string | null) => {
-    const versions = readAll();
-    for (const v of versions) {
-      if (v.draftId === draftId) {
-        v.isDefault = v.id === id;
+  const setDefaultVersion = useCallback(
+    (draftId: string, id: string | null) => {
+      const versions = readAll();
+      for (const v of versions) {
+        if (v.draftId === draftId) {
+          v.isDefault = v.id === id;
+        }
       }
-    }
-    writeAll(versions);
-  }, []);
+      writeAll(versions);
+    },
+    []
+  );
 
   return {
     listVersions,

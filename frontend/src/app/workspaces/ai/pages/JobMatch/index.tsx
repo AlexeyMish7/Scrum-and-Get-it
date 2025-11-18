@@ -39,7 +39,9 @@ import { useNavigate } from "react-router-dom";
 import useUserJobs from "@shared/hooks/useUserJobs";
 import useJobMatching from "@workspaces/ai/hooks/useJobMatching";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { Breadcrumbs } from "@shared/components/navigation";
+import type { BreadcrumbItem } from "@shared/components/navigation";
 
 export default function JobMatchPage() {
   const navigate = useNavigate();
@@ -84,8 +86,16 @@ export default function JobMatchPage() {
     return "error.main";
   };
 
+  // Breadcrumb navigation
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: "AI", path: "/ai" },
+    { label: "Job Matching" },
+  ];
+
   return (
     <Container maxWidth={false} sx={{ py: 3 }}>
+      <Breadcrumbs items={breadcrumbItems} />
+
       <Stack spacing={3}>
         {/* Header */}
         <Stack direction="row" alignItems="center" spacing={2}>

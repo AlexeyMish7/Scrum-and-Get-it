@@ -32,6 +32,7 @@ import useResumeVersions, {
 } from "@workspaces/ai/hooks/useResumeVersions";
 import { useResumeDraftsV2 } from "@workspaces/ai/hooks/useResumeDraftsV2";
 import useUserJobs from "@shared/hooks/useUserJobs";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 
 // Version content type for merge operations
 type VersionContent = Record<string, unknown>;
@@ -46,6 +47,7 @@ export default function ResumeVersionsPanel({ open, onClose }: Props) {
   const activeDraft = getActiveDraft?.();
   const versionsApi = useResumeVersions();
   const { jobs } = useUserJobs(50);
+  const { confirm } = useConfirmDialog();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -88,8 +90,15 @@ export default function ResumeVersionsPanel({ open, onClose }: Props) {
     setSetAsDefault(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm("Delete this version permanently?")) return;
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirm({
+      title: "Delete Version",
+      description: "Delete this version permanently?",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
     versionsApi.deleteVersion(id);
   };
 

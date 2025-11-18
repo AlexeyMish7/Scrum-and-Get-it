@@ -1,3 +1,48 @@
+/**
+ * AUTH CONTEXT (Global Authentication State)
+ *
+ * Purpose:
+ * - Manage user authentication state across entire application
+ * - Provide centralized login/logout/signup functionality
+ * - Handle JWT token refresh automatically
+ * - Persist session across browser refreshes
+ *
+ * Backend Connection:
+ * - Uses Supabase Auth (via supabaseClient.ts)
+ * - JWT tokens issued by Supabase (stored in localStorage)
+ * - Auto-refresh tokens before expiration (60-minute default)
+ * - Session state synced via onAuthStateChange listener
+ *
+ * Authentication Flow:
+ * 1. User submits credentials → signIn() or signUpNewUser()
+ * 2. Supabase validates & issues JWT → stored in localStorage
+ * 3. Session object available via { session, user } from useAuth()
+ * 4. All API calls include JWT in Authorization header
+ * 5. Backend validates JWT → extracts userId → scopes queries
+ *
+ * Security Model:
+ * - JWT tokens are httpOnly (cannot be accessed via JS in production)
+ * - localStorage used for session persistence (development)
+ * - Auto-logout on token expiration or validation failure
+ * - OAuth providers: Google, GitHub (optional)
+ *
+ * Usage:
+ *   import { useAuth } from '@shared/context/AuthContext';
+ *
+ *   function MyComponent() {
+ *     const { session, user, loading, signIn, signOut } = useAuth();
+ *
+ *     if (loading) return <LoadingSpinner />;
+ *     if (!user) return <LoginPrompt />;
+ *
+ *     return <div>Welcome, {user.email}</div>;
+ *   }
+ *
+ * Provider Setup:
+ *   <AuthProvider>
+ *     <App />
+ *   </AuthProvider>
+ */
 import {
   createContext,
   useContext,
@@ -47,10 +92,23 @@ type AuthContextValue = {
 // Type for provider props; ensures children passed are valid React elements
 type ProviderProps = { children: ReactNode };
 
-// ******************** Component *******************
+// ******************** Context & Hook *******************
 
 // Create the authentication context (undefined by default until provided)
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// Hook that lets components access authentication state and functions
+// Exported before the provider component for Fast Refresh compatibility
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext); // get the current auth context value
+
+  // Throw error if used outside <AuthContextProvider>
+  if (!ctx) throw new Error("useAuth must be used within AuthContextProvider");
+
+  return ctx; // return global auth data and helper functions
+}
+
+// ******************** Provider Component *******************
 
 // The AuthContextProvider wraps the app and supplies auth state + functions
 export function AuthContextProvider({ children }: ProviderProps) {
@@ -153,7 +211,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     try {
       // Attempt to sign in with Supabase (cleans email before sending)
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
@@ -171,11 +229,9 @@ export function AuthContextProvider({ children }: ProviderProps) {
 
       // Login successful — update session immediately when available to avoid
       // brief UI races before the onAuthStateChange listener fires.
-      try {
-        const s = await supabase.auth.getSession();
-        if (s?.data?.session) setSession(s.data.session);
-      } catch {
-        /* non-fatal */
+      if (data?.session) {
+        setSession(data.session);
+        setLoading(false);
       }
 
       return { ok: true };
@@ -252,17 +308,4 @@ export function AuthContextProvider({ children }: ProviderProps) {
       {/* all nested components can access this context via useAuth() */}
     </AuthContext.Provider>
   );
-}
-
-// ******************** Custom Hook *******************
-
-// Hook that lets components access authentication state and functions
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext); // get the current auth context value
-
-  // Throw error if used outside <AuthContextProvider>
-  if (!ctx) throw new Error("useAuth must be used within AuthContextProvider");
-
-  return ctx; // return global auth data and helper functions
 }

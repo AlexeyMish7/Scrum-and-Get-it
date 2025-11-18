@@ -14,7 +14,7 @@ import type {
   EmploymentRow,
 } from "../../types/employment.ts";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import {
   Dialog,
   DialogTitle,

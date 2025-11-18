@@ -1,24 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { School as SchoolIcon, Edit as EditIcon } from "@mui/icons-material";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
+import { AddEducationDialog } from "../../components/dialogs/AddEducationDialog";
 import {
   Box,
   Typography,
   Button,
   Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Switch,
-  FormControlLabel,
   Stack,
   Chip,
   Avatar,
+  IconButton,
 } from "@mui/material";
 import {
   Timeline,
@@ -30,8 +29,7 @@ import {
   TimelineOppositeContent,
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 // Removed CSS overrides to respect global theme; rely on MUI defaults
 import { parseMonthToMs } from "@shared/utils/dateUtils";
 
@@ -47,7 +45,6 @@ const EducationOverview: React.FC = () => {
   // Auth + navigation
   // `user` comes from AuthContext; `loading` is true while auth initializes.
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
 
   // Centralized error handling
   // useErrorHandler gives us a simple way to show errors and success notifications.
@@ -63,10 +60,11 @@ const EducationOverview: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Dialog state
-  // - `editingEntry` controls the edit dialog when not null
-  // - `confirmDeleteId` controls the delete confirmation dialog when not null
-  const [editingEntry, setEditingEntry] = useState<EducationEntry | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [selectedEntry, setSelectedEntry] = useState<
+    EducationEntry | undefined
+  >();
 
   // Use shared date utility to convert YYYY-MM strings to milliseconds.
   // Returns 0 for invalid/missing input so sorting is stable.
@@ -140,50 +138,26 @@ const EducationOverview: React.FC = () => {
     }
   }, [error, handleError]);
 
-  // Called when the edit dialog saves an entry.
-  // Sends the updated fields to the shared service and reloads the list.
-  const handleSaveEntry = async (updatedEntry: EducationEntry) => {
-    if (!user?.id) return;
-
-    try {
-      const formData = {
-        degree: updatedEntry.degree,
-        institution: updatedEntry.institution,
-        fieldOfStudy: updatedEntry.fieldOfStudy,
-        startDate: updatedEntry.startDate,
-        endDate: updatedEntry.endDate,
-        gpa: updatedEntry.gpa,
-        gpaPrivate: updatedEntry.gpaPrivate,
-        honors: updatedEntry.honors,
-        active: updatedEntry.active,
-      };
-
-      await educationService.updateEducation(
-        user.id,
-        updatedEntry.id,
-        formData
-      );
-      showSuccess("Education updated successfully");
-      setEditingEntry(null);
-      await loadEducation();
-    } catch (err) {
-      handleError(err);
-    }
+  // Dialog handlers
+  const handleOpenAddDialog = () => {
+    setDialogMode("add");
+    setSelectedEntry(undefined);
+    setDialogOpen(true);
   };
 
-  // Called when the user confirms delete.
-  // Uses the service to remove the row and refreshes the timeline.
-  const handleDeleteEntry = async (id: string) => {
-    if (!user?.id) return;
+  const handleOpenEditDialog = (entry: EducationEntry) => {
+    setDialogMode("edit");
+    setSelectedEntry(entry);
+    setDialogOpen(true);
+  };
 
-    try {
-      await educationService.deleteEducation(user.id, id);
-      showSuccess("Education deleted successfully");
-      setConfirmDeleteId(null);
-      await loadEducation();
-    } catch (err) {
-      handleError(err);
-    }
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedEntry(undefined);
+  };
+
+  const handleDialogSuccess = () => {
+    loadEducation();
   };
 
   if (isLoading || loading) {
@@ -192,6 +166,9 @@ const EducationOverview: React.FC = () => {
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Breadcrumbs
+        items={[{ label: "Profile", path: "/profile" }, { label: "Education" }]}
+      />
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
@@ -218,7 +195,7 @@ const EducationOverview: React.FC = () => {
             variant="contained"
             color="primary"
             startIcon={<Add />}
-            onClick={() => navigate("/education/manage")}
+            onClick={handleOpenAddDialog}
             size="medium"
           >
             Add Education
@@ -237,16 +214,14 @@ const EducationOverview: React.FC = () => {
               <TimelineItem>
                 <TimelineOppositeContent />
                 <TimelineSeparator>
-                  {/* Empty-state dot */}
                   <TimelineDot color="grey" />
                 </TimelineSeparator>
                 <TimelineContent>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="body1">
-                      No education entries yet. Click "+ Add Education" to get
-                      started building your academic profile.
-                    </Typography>
-                  </Paper>
+                  <EmptyState
+                    icon={<SchoolIcon />}
+                    title="No education entries yet"
+                    description="Click 'Add Education' to get started building your academic profile"
+                  />
                 </TimelineContent>
               </TimelineItem>
             ) : (
@@ -317,24 +292,16 @@ const EducationOverview: React.FC = () => {
                           </Typography>
                         )}
 
-                        {/* Action buttons: Edit opens the dialog; Delete asks for confirmation */}
+                        {/* Action buttons: Edit opens the dialog */}
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                          <Button
+                          <IconButton
                             size="small"
-                            variant="contained"
                             color="primary"
-                            onClick={() => setEditingEntry(edu)}
+                            onClick={() => handleOpenEditDialog(edu)}
+                            sx={{ ml: "auto" }}
                           >
-                            Edit
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="error"
-                            onClick={() => setConfirmDeleteId(edu.id)}
-                          >
-                            Delete
-                          </Button>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
                         </Stack>
                       </Paper>
                     </TimelineContent>
@@ -349,206 +316,15 @@ const EducationOverview: React.FC = () => {
       {/* Error Handling: shared snackbar used across pages */}
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
 
-      {/* Edit Dialog */}
-      {editingEntry && (
-        <EditEducationDialog
-          entry={editingEntry}
-          onClose={() => setEditingEntry(null)}
-          onSave={handleSaveEntry}
-          onDelete={(id) => {
-            setConfirmDeleteId(id);
-            setEditingEntry(null);
-          }}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      {confirmDeleteId && (
-        <DeleteConfirmationDialog
-          onConfirm={() => handleDeleteEntry(confirmDeleteId)}
-          onCancel={() => setConfirmDeleteId(null)}
-        />
-      )}
+      {/* Add/Edit Dialog */}
+      <AddEducationDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSuccess={handleDialogSuccess}
+        mode={dialogMode}
+        existingEntry={selectedEntry}
+      />
     </Box>
-  );
-};
-
-// Edit Education Dialog Component
-// A small form shown in a modal to edit an existing education entry.
-// It uses local component state and calls `onSave` with the updated object.
-interface EditEducationDialogProps {
-  entry: EducationEntry;
-  onClose: () => void;
-  onSave: (entry: EducationEntry) => void;
-  onDelete: (id: string) => void;
-}
-
-const EditEducationDialog: React.FC<EditEducationDialogProps> = ({
-  entry,
-  onClose,
-  onSave,
-  onDelete,
-}) => {
-  const [editedEntry, setEditedEntry] = useState<EducationEntry>({ ...entry });
-
-  const handleSave = () => {
-    onSave(editedEntry);
-  };
-
-  return (
-    <Dialog open={true} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Edit Education</DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 2 }}>
-          <TextField
-            label="Degree Type"
-            fullWidth
-            value={editedEntry.degree || ""}
-            onChange={(e) =>
-              setEditedEntry({ ...editedEntry, degree: e.target.value })
-            }
-          />
-          <TextField
-            label="Institution Name"
-            fullWidth
-            value={editedEntry.institution || ""}
-            onChange={(e) =>
-              setEditedEntry({ ...editedEntry, institution: e.target.value })
-            }
-          />
-          <TextField
-            label="Field of Study"
-            fullWidth
-            value={editedEntry.fieldOfStudy || ""}
-            onChange={(e) =>
-              setEditedEntry({ ...editedEntry, fieldOfStudy: e.target.value })
-            }
-          />
-          <TextField
-            label="Start Date (YYYY-MM)"
-            fullWidth
-            value={editedEntry.startDate || ""}
-            onChange={(e) =>
-              setEditedEntry({ ...editedEntry, startDate: e.target.value })
-            }
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={editedEntry.active || !editedEntry.endDate}
-                onChange={(e) =>
-                  setEditedEntry({
-                    ...editedEntry,
-                    active: e.target.checked,
-                    endDate: e.target.checked
-                      ? undefined
-                      : editedEntry.endDate || "",
-                  })
-                }
-              />
-            }
-            label="Currently Enrolled"
-          />
-          <TextField
-            label="End Date (YYYY-MM)"
-            fullWidth
-            value={editedEntry.endDate || ""}
-            onChange={(e) =>
-              setEditedEntry({
-                ...editedEntry,
-                endDate: e.target.value || undefined,
-              })
-            }
-            disabled={editedEntry.active}
-            helperText="Leave empty if currently enrolled"
-          />
-          <TextField
-            label="GPA"
-            type="number"
-            fullWidth
-            value={editedEntry.gpa?.toString() || ""}
-            onChange={(e) =>
-              setEditedEntry({
-                ...editedEntry,
-                gpa: parseFloat(e.target.value) || undefined,
-              })
-            }
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={editedEntry.gpaPrivate ?? false}
-                onChange={(e) =>
-                  setEditedEntry({
-                    ...editedEntry,
-                    gpaPrivate: e.target.checked,
-                  })
-                }
-              />
-            }
-            label="Hide GPA"
-          />
-          <TextField
-            label="Achievements & Honors"
-            fullWidth
-            multiline
-            rows={3}
-            value={editedEntry.honors || ""}
-            onChange={(e) =>
-              setEditedEntry({ ...editedEntry, honors: e.target.value })
-            }
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} variant="text" color="inherit">
-          Cancel
-        </Button>
-        <Button
-          onClick={() => onDelete(entry.id)}
-          variant="contained"
-          color="error"
-        >
-          Delete
-        </Button>
-        <Button onClick={handleSave} variant="contained" color="primary">
-          Save Changes
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-// Delete Confirmation Dialog Component
-// Simple confirmation modal shown when the user tries to remove an entry.
-// Keeps the UI flow explicit and prevents accidental deletes.
-interface DeleteConfirmationDialogProps {
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
-  onConfirm,
-  onCancel,
-}) => {
-  return (
-    <Dialog open={true} onClose={onCancel}>
-      <DialogTitle>Confirm Delete</DialogTitle>
-      <DialogContent>
-        <Typography>
-          Are you sure you want to delete this education entry? This action
-          cannot be undone.
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel} variant="text" color="inherit">
-          Cancel
-        </Button>
-        <Button onClick={onConfirm} variant="contained" color="error">
-          Delete
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 };
 

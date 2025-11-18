@@ -9,13 +9,17 @@ import { useEffect, useState, useCallback, useRef } from "react";
 // unnecessarily during quick auth transitions.
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
+import { useProfileChange } from "@shared/context";
 import employmentService from "../../services/employment";
-import EditEmploymentModal from "./EditEmploymentModal";
+import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
-import LoadingSpinner from "@shared/components/common/LoadingSpinner";
+import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { ErrorSnackbar } from "@shared/components/common/ErrorSnackbar";
-import ConfirmDialog from "@shared/components/common/ConfirmDialog";
+import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
+import { Breadcrumbs } from "@shared/components/navigation";
+import EmptyState from "@shared/components/feedback/EmptyState";
+import { Work as WorkIcon } from "@mui/icons-material";
 import type { EmploymentRow } from "../../types/employment";
 
 export default function EmploymentHistoryList() {
@@ -24,11 +28,17 @@ export default function EmploymentHistoryList() {
   // Start false to avoid a visible flash on quick loads; we show the spinner only
   // if loading lasts longer than spinnerDelayMs.
   const [isLoading, setIsLoading] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<EmploymentRow | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [selectedEntry, setSelectedEntry] = useState<
+    EmploymentRow | undefined
+  >();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+  const { markProfileChanged } = useProfileChange();
+  const { confirm } = useConfirmDialog();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -113,27 +123,46 @@ export default function EmploymentHistoryList() {
     // Only run on mount/navigation changes
   }, [location, navigate, showSuccess]);
 
-  if (isLoading || loading) return <LoadingSpinner />;
-
-  const handleDelete = async (entryId: string) => {
-    // Open confirmation dialog to confirm a destructive delete action.
-    // We don't delete immediately; user must confirm in the dialog.
-    setPendingDeleteId(entryId);
-    setConfirmOpen(true);
+  // Dialog handlers - defined before early return
+  const handleOpenAddDialog = () => {
+    setDialogMode("add");
+    setSelectedEntry(undefined);
+    setDialogOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    const id = pendingDeleteId;
-    setConfirmOpen(false);
-    setPendingDeleteId(null);
-    if (!id) return;
+  const handleOpenEditDialog = (entry: EmploymentRow) => {
+    setDialogMode("edit");
+    setSelectedEntry(entry);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedEntry(undefined);
+  };
+
+  const handleDialogSuccess = () => {
+    fetchEntries();
+  };
+
+  const handleDelete = async (entryId: string) => {
+    // Confirm deletion with user using hook-based dialog
+    const confirmed = await confirm({
+      title: "Delete employment entry?",
+      message: "This will permanently delete the selected employment entry.",
+      confirmText: "Delete",
+      confirmColor: "error",
+    });
+
+    if (!confirmed) return;
+
     if (!user) {
       handleError("Please sign in to delete entries.");
       return;
     }
 
     try {
-      const res = await employmentService.deleteEmployment(user.id, id);
+      const res = await employmentService.deleteEmployment(user.id, entryId);
       if (res.error) {
         console.error(res.error);
         handleError(res.error);
@@ -142,6 +171,7 @@ export default function EmploymentHistoryList() {
         // the backend state. Then set navigation state so the list page shows
         // a centralized success snackbar (consistent notification UX).
         await fetchEntries();
+        markProfileChanged(); // Invalidate analytics cache
         navigate(location.pathname, {
           replace: true,
           state: { success: "Employment entry deleted successfully!" },
@@ -153,8 +183,16 @@ export default function EmploymentHistoryList() {
     }
   };
 
+  if (isLoading || loading) return <LoadingSpinner />;
+
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
+      <Breadcrumbs
+        items={[
+          { label: "Profile", path: "/profile" },
+          { label: "Employment" },
+        ]}
+      />
       <Box
         sx={{
           display: "flex",
@@ -167,14 +205,23 @@ export default function EmploymentHistoryList() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate("/add-employment")}
+          onClick={handleOpenAddDialog}
         >
           Add Employment
         </Button>
       </Box>
 
       {entries !== null && entries.length === 0 && (
-        <Typography variant="body1">No employment entries yet.</Typography>
+        <EmptyState
+          icon={<WorkIcon />}
+          title="No employment entries yet"
+          description="Click 'Add Employment' to start building your work history"
+          action={
+            <Button variant="contained" onClick={handleOpenAddDialog}>
+              Add Employment
+            </Button>
+          }
+        />
       )}
 
       <Stack spacing={2} mt={2}>
@@ -203,7 +250,7 @@ export default function EmploymentHistoryList() {
                 <Button
                   variant="text"
                   color="primary"
-                  onClick={() => setEditingEntry(entry)}
+                  onClick={() => handleOpenEditDialog(entry)}
                 >
                   Edit
                 </Button>
@@ -226,26 +273,15 @@ export default function EmploymentHistoryList() {
         ))}
       </Stack>
 
-      {editingEntry && (
-        <EditEmploymentModal
-          entry={editingEntry}
-          onClose={() => setEditingEntry(null)}
-          onSave={() => {
-            // Close modal and refresh list; success message will be shown via navigation state
-            setEditingEntry(null);
-            fetchEntries();
-          }}
-        />
-      )}
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete employment entry?"
-        description="This will permanently delete the selected employment entry."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmDelete}
+      {/* Add/Edit Dialog */}
+      <AddEmploymentDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSuccess={handleDialogSuccess}
+        mode={dialogMode}
+        existingEntry={selectedEntry}
       />
+
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
     </Box>
   );
