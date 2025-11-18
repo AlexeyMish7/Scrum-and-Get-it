@@ -1,19 +1,61 @@
 /**
- * Analytics Cache Service — Client-side service for job analytics caching
+ * ANALYTICS CACHE SERVICE
  *
- * Purpose: Manage analytics cache in Supabase to avoid redundant AI API calls.
- * Handles cache hits/misses, expiration, and analytics type management.
+ * Purpose:
+ * - Manage analytics cache in Supabase analytics_cache table
+ * - Avoid redundant AI API calls (expensive GPT-4 requests)
+ * - TTL-based expiration with configurable cache duration
+ * - Profile-aware caching: auto-invalidates when user profile changes
+ * - Support multiple analytics types per job
  *
- * Contract:
- * - getAnalytics(userId, jobId, type): Fetch cached analytics or null if expired/missing
- * - setAnalytics(userId, jobId, type, data, ttlDays?): Store/update analytics with TTL
- * - invalidateAnalytics(userId, jobId, type?): Clear cache for job (all types or specific)
+ * Backend Connection:
+ * - Database: analytics_cache table (via @shared/services/crud)
+ * - RLS: User-scoped via withUser(userId) pattern
+ * - AI Backend: Caches results from AI generation API
  *
  * Analytics Types:
- * - match_score: Job match analysis with breakdown
- * - skills_gap: Skills development plan
- * - company_research: Company insights and culture
- * - interview_prep: Interview preparation recommendations
+ * - match_score: Job-profile compatibility analysis
+ * - skills_gap: Skills development recommendations
+ * - company_research: Company culture and insights
+ * - interview_prep: Interview preparation strategy
+ *
+ * Cache Strategy:
+ * 1. Check cache with getAnalytics() → returns data if valid (not expired, profile unchanged)
+ * 2. On cache miss → call AI backend → setAnalytics() to store with current profile version
+ * 3. On profile change → cache automatically invalidated on next read (profile_version mismatch)
+ * 4. On job update → invalidateAnalytics() to clear stale cache
+ *
+ * Profile Version Tracking:
+ * - Each cache entry stores profile_version (timestamp from ProfileChangeContext)
+ * - When user updates skills/education/employment, markProfileChanged() updates the version
+ * - Cache reads compare stored profile_version with current version
+ * - Mismatch = automatic cache invalidation (returns null, triggers regeneration)
+ * - No manual cache clearing needed - fully automatic!
+ *
+ * Usage:
+ *   import { getAnalytics, setAnalytics, invalidateAnalytics } from '@job_pipeline/services/analyticsCache';
+ *
+ *   // Check cache first (auto-validates profile version)
+ *   const cached = await getAnalytics(userId, jobId, 'match_score');
+ *   if (!cached) {
+ *     const result = await callAIBackend();
+ *     await setAnalytics(userId, jobId, 'match_score', result, 7); // 7 days TTL
+ *   }
+ *
+ *   // Profile changes are tracked automatically via ProfileChangeContext
+ *   // No need to manually invalidate - next read will see version mismatch
+ *
+ *   // Manual invalidation (if needed for job changes)
+ *   await invalidateAnalytics(userId, jobId); // Clear all types
+ *   await invalidateAnalytics(userId, jobId, 'match_score'); // Clear specific type
+ *
+ * Contract:
+ * - getAnalytics(userId, jobId, type): Fetch cached analytics or null if expired/profile changed
+ * - setAnalytics(userId, jobId, type, data, ttlDays?): Store/update analytics with current profile version
+ * - invalidateAnalytics(userId, jobId, type?): Clear cache for job (all types or specific)
+ * - getAllAnalytics(userId, jobId?): Fetch all analytics for user or specific job
+ * - getBatchMatchScores(userId, jobIds): Batch fetch match scores for multiple jobs
+ * - getCurrentProfileVersion(): Get current profile state version (for debugging)
  */
 
 import { upsertRow, withUser } from "@shared/services/crud";
@@ -24,6 +66,33 @@ export type AnalyticsType =
   | "company_research"
   | "interview_prep";
 
+/**
+ * Generate a profile version string based on localStorage timestamp.
+ * This represents the state of the user's profile (skills, education, employment, etc.)
+ *
+ * Returns: ISO timestamp string from ProfileChangeContext or current time as fallback
+ */
+export function getCurrentProfileVersion(): string {
+  try {
+    const stored = localStorage.getItem("profile_last_changed");
+    if (stored) {
+      return stored; // Already ISO format
+    }
+  } catch (e) {
+    console.warn("[AnalyticsCache] Failed to read profile version:", e);
+  }
+  // Fallback: use current time (will force regeneration on first load)
+  return new Date().toISOString();
+}
+
+// Map to database analytics_type values (dash-separated)
+const ANALYTICS_TYPE_MAP: Record<AnalyticsType, string> = {
+  match_score: "document-match-score",
+  skills_gap: "skills-gap",
+  company_research: "company-research",
+  interview_prep: "interview-prep",
+};
+
 export interface AnalyticsCacheEntry {
   id: string;
   user_id: string;
@@ -32,6 +101,7 @@ export interface AnalyticsCacheEntry {
   data: Record<string, unknown>;
   match_score?: number;
   metadata?: Record<string, unknown>;
+  profile_version?: string; // Hash of profile state when generated
   generated_at: string;
   expires_at: string;
   created_at: string;
@@ -59,7 +129,12 @@ export interface MatchScoreData {
 
 /**
  * Get cached analytics for a job.
- * Returns null if no valid cache exists (expired or not found).
+ * Returns null if no valid cache exists (expired, profile changed, or not found).
+ *
+ * Cache is considered invalid if:
+ * 1. Entry doesn't exist
+ * 2. Entry has expired (past expires_at)
+ * 3. Profile has changed since generation (profile_version mismatch)
  */
 export async function getAnalytics(
   userId: string,
@@ -69,14 +144,15 @@ export async function getAnalytics(
   try {
     const userCrud = withUser(userId);
     const now = new Date().toISOString();
+    const currentProfileVersion = getCurrentProfileVersion();
 
     const result = await userCrud.listRows<AnalyticsCacheEntry>(
-      "job_analytics_cache",
+      "analytics_cache",
       "*",
       {
         eq: {
           job_id: jobId,
-          analytics_type: type,
+          analytics_type: ANALYTICS_TYPE_MAP[type],
         },
         limit: 1,
       }
@@ -89,12 +165,30 @@ export async function getAnalytics(
 
     const data = result.data?.[0];
 
-    // Check if expired
-    if (data && new Date(data.expires_at) > new Date(now)) {
-      return data;
+    if (!data) {
+      return null;
     }
 
-    return null;
+    // Check if expired
+    if (new Date(data.expires_at) <= new Date(now)) {
+      console.log(
+        `[AnalyticsCache] Cache expired for job ${jobId} type ${type}`
+      );
+      return null;
+    }
+
+    // Check if profile has changed since generation
+    if (
+      data.profile_version &&
+      data.profile_version !== currentProfileVersion
+    ) {
+      console.log(
+        `[AnalyticsCache] Profile changed (${data.profile_version} → ${currentProfileVersion}), invalidating cache for job ${jobId}`
+      );
+      return null;
+    }
+
+    return data;
   } catch (err) {
     console.error("[AnalyticsCache] Unexpected error:", err);
     return null;
@@ -104,6 +198,7 @@ export async function getAnalytics(
 /**
  * Store or update analytics in cache.
  * Uses upsert to handle both insert and update cases.
+ * Automatically captures current profile version to enable cache invalidation.
  *
  * @param ttlDays Time-to-live in days (default: 7)
  */
@@ -127,16 +222,18 @@ export async function setAnalytics(
     const payload = {
       user_id: userId,
       job_id: jobId,
-      analytics_type: type,
+      document_id: null, // Not used for job analytics
+      analytics_type: ANALYTICS_TYPE_MAP[type],
       data,
       match_score: matchScore,
+      profile_version: getCurrentProfileVersion(), // Capture profile state
       metadata: (data.meta as Record<string, unknown>) || {},
       generated_at: new Date().toISOString(),
       expires_at: expiresAt.toISOString(),
     };
 
     const result = await upsertRow<AnalyticsCacheEntry>(
-      "job_analytics_cache",
+      "analytics_cache",
       payload,
       "user_id,job_id,analytics_type"
     );
@@ -147,7 +244,7 @@ export async function setAnalytics(
     }
 
     console.log(
-      `[AnalyticsCache] Stored ${type} for job ${jobId} (expires: ${ttlDays}d)`
+      `[AnalyticsCache] Stored ${type} for job ${jobId} (expires: ${ttlDays}d, profile: ${payload.profile_version})`
     );
     return result.data || null;
   } catch (err) {
@@ -173,10 +270,10 @@ export async function invalidateAnalytics(
     };
 
     if (type) {
-      filters.analytics_type = type;
+      filters.analytics_type = ANALYTICS_TYPE_MAP[type];
     }
 
-    const result = await userCrud.deleteRow("job_analytics_cache", filters);
+    const result = await userCrud.deleteRow("analytics_cache", filters);
 
     if (result.error) {
       console.error(
@@ -210,11 +307,11 @@ export async function getAllActiveAnalytics(
 
     const eqFilters: Record<string, string | number | boolean | null> = {};
     if (type) {
-      eqFilters.analytics_type = type;
+      eqFilters.analytics_type = ANALYTICS_TYPE_MAP[type];
     }
 
     const result = await userCrud.listRows<AnalyticsCacheEntry>(
-      "job_analytics_cache",
+      "analytics_cache",
       "*",
       {
         eq: eqFilters,
@@ -265,10 +362,10 @@ export async function getBatchMatchScores(
     const now = new Date().toISOString();
 
     const result = await userCrud.listRows<AnalyticsCacheEntry>(
-      "job_analytics_cache",
+      "analytics_cache",
       "job_id, match_score, expires_at",
       {
-        eq: { analytics_type: "match_score" },
+        eq: { analytics_type: ANALYTICS_TYPE_MAP["match_score"] },
         in: { job_id: jobIds },
       }
     );
@@ -308,4 +405,5 @@ export default {
   getAllActiveAnalytics,
   hasValidCache,
   getBatchMatchScores,
+  getCurrentProfileVersion,
 };

@@ -13,7 +13,7 @@ const mapRowToCertification = (r: CertificationRow): Certification => ({
   dateEarned: r.date_earned ?? "",
   expirationDate: r.expiration_date ?? undefined,
   doesNotExpire: Boolean(r.does_not_expire ?? false),
-  certId: r.cert_id ?? undefined,
+  certId: r.certification_id ?? undefined,
   media_path: typeof r.media_path === "string" ? r.media_path : null,
   mediaUrl: null,
   verification_status: r.verification_status ?? null,
@@ -79,6 +79,30 @@ const insertCertification = async (
   let mediaPath: string | null = null;
 
   try {
+    // Ensure profile exists (certifications table has FK to profiles)
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    if (!profileData) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: userId,
+          first_name: user.user_metadata?.first_name || "User",
+          last_name: user.user_metadata?.last_name || "",
+          email: user.email || "",
+        });
+        if (profileError) {
+          console.error("Profile creation failed:", profileError);
+        }
+      }
+    }
+
     if (file) {
       const key = `${userId}/${Date.now()}_${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -117,7 +141,7 @@ const insertCertification = async (
           file_path: mediaPath,
           mime_type: file.type || null,
           bytes: file.size || null,
-          meta: { source: "certification", certification_id: created.id },
+          metadata: { source: "certification", certification_id: created.id },
         };
         const docRes = await userCrud.insertRow("documents", docPayload, "*");
         if (!docRes.error) {
@@ -161,7 +185,7 @@ const deleteCertification = async (userId: string, id: string) => {
       "documents",
       "id,file_path",
       {
-        eq: { meta: { certification_id: id } as unknown as string },
+        eq: { metadata: { certification_id: id } as unknown as string },
       }
     );
     // remove any files referenced by documents rows
@@ -179,7 +203,7 @@ const deleteCertification = async (userId: string, id: string) => {
       // delete the documents rows themselves
       try {
         await userCrud.deleteRow("documents", {
-          eq: { meta: { certification_id: id } as unknown as string },
+          eq: { metadata: { certification_id: id } as unknown as string },
         });
         window.dispatchEvent(new Event("documents:changed"));
       } catch (err) {

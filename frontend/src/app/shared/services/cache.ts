@@ -1,39 +1,34 @@
 /**
  * DATA CACHE SERVICE
- * Simple in-memory cache for frequently accessed data.
  *
- * PURPOSE:
+ * Purpose:
+ * - In-memory cache for frequently accessed data
  * - Reduce redundant API calls for unchanged data
- * - Improve perceived performance with instant cache hits
- * - Provide TTL-based invalidation for stale data
+ * - TTL-based invalidation for stale data
  *
- * PATTERNS:
- * - get<T>(key): Retrieve cached data (returns null if expired/missing)
- * - set(key, data, ttl?): Store data with optional custom TTL
- * - invalidate(key): Remove specific cache entry
- * - invalidatePattern(regex): Remove entries matching pattern
- * - clear(): Clear entire cache
+ * Use Cases:
+ * - Job listings cache (jobsService.ts)
+ * - User profile data (short-term caching)
  *
- * USAGE:
- * ```ts
- * import { dataCache } from "@shared/services/cache";
- *
- * // Store data with 5-minute TTL
- * dataCache.set("jobs-user-123", jobsData, 5 * 60 * 1000);
- *
- * // Retrieve cached data
- * const cached = dataCache.get<JobRow[]>("jobs-user-123");
- * if (cached) return cached;
- *
- * // Invalidate on mutation
- * dataCache.invalidate("jobs-user-123");
- * ```
- *
- * LIMITATIONS:
+ * Limitations:
  * - In-memory only (cleared on page refresh)
  * - No persistence across sessions
- * - Simple TTL-based expiration (no LRU eviction yet)
- * - Not suitable for large datasets (consider react-query for advanced caching)
+ * - Simple TTL expiration (no LRU eviction)
+ * - Not suitable for large datasets
+ *
+ * Connection to Backend:
+ * - Used by jobsService to cache job listings
+ * - Invalidated on mutations (create/update/delete)
+ *
+ * Usage:
+ *   import { dataCache, getCacheKey } from '@shared/services/cache';
+ *
+ *   const key = getCacheKey('jobs', userId);
+ *   const cached = dataCache.get<JobRow[]>(key);
+ *   if (!cached) {
+ *     const data = await fetchJobs();
+ *     dataCache.set(key, data, 5 * 60 * 1000); // 5 min TTL
+ *   }
  */
 
 interface CacheEntry {

@@ -1,19 +1,27 @@
 /**
- * SHARED UTILITIES - Barrel Export
+ * SHARED UTILITIES - Central Export
  *
- * Central export point for all shared utility functions.
- * Import from here to maintain consistent module boundaries.
+ * Pure utility functions with no dependencies on React or UI.
+ * Safe to use anywhere in the app (components, services, hooks).
  */
 
-// Date formatting and parsing (SQL + UI)
+// =====================================================================
+// DATE & TIME UTILITIES
+// =====================================================================
+
+// SQL date formatting, parsing, and validation
 export * from "./dateUtils";
 
-// Sprint 2 task mapping and ownership
-export { pageTaskMap } from "./pageTaskMap";
-export { taskOwners } from "./taskOwners";
+// =====================================================================
+// REQUEST OPTIMIZATION
+// =====================================================================
 
-// Request optimization (prevents duplicate API calls)
+// Prevent duplicate concurrent API calls (reduces server load)
 export * from "./requestDeduplication";
 
-// Accessibility testing (dev/test environments only)
+// =====================================================================
+// DEVELOPMENT TOOLS
+// =====================================================================
+
+// Accessibility audit (dev/test only, no-op in production)
 export * from "./a11yAudit";

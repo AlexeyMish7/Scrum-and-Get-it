@@ -75,8 +75,8 @@ interface JobImportResponse {
     url: string;
     latency_ms: number;
     extraction?: {
-      source: "fetch" | "scraper";
-      method: "basic-fetch" | "puppeteer-browser";
+      strategy: string; // "fetch-basic" | "fetch-headers" | "puppeteer-browser"
+      retries: number;
       latency_ms: number;
     };
   };
@@ -95,6 +95,7 @@ export default function JobImportURL({ onImport }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<JobImportResponse | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   /**
    * Validate URL format
@@ -142,7 +143,7 @@ export default function JobImportURL({ onImport }: Props) {
   /**
    * Call backend AI import endpoint
    */
-  const handleImport = async () => {
+  const handleImport = async (forceBrowser: boolean = false) => {
     // Validation
     if (!url.trim()) {
       setError("Please enter a URL");
@@ -177,7 +178,9 @@ export default function JobImportURL({ onImport }: Props) {
         body: JSON.stringify({
           url: url.trim(),
           options: {
-            useBrowserFallback: true, // Auto-fallback to scraper if fetch fails
+            forceStrategy: forceBrowser ? "puppeteer" : undefined,
+            maxRetries: 3,
+            verbose: false,
           },
         }),
       });
@@ -191,10 +194,12 @@ export default function JobImportURL({ onImport }: Props) {
 
       const data: JobImportResponse = await response.json();
       setResult(data);
+      setRetryCount(0); // Reset retry count on success
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to import job posting";
       setError(errorMessage);
+      setRetryCount((prev) => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -238,7 +243,16 @@ export default function JobImportURL({ onImport }: Props) {
   const handleRetry = () => {
     setError(null);
     setResult(null);
-    handleImport();
+    handleImport(false);
+  };
+
+  /**
+   * Force browser mode (for sites that block basic requests)
+   */
+  const handleRetryWithBrowser = () => {
+    setError(null);
+    setResult(null);
+    handleImport(true);
   };
 
   return (
@@ -297,12 +311,29 @@ export default function JobImportURL({ onImport }: Props) {
           severity="error"
           sx={{ mb: 2 }}
           action={
-            <Button color="inherit" size="small" onClick={handleRetry}>
-              Retry
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button color="inherit" size="small" onClick={handleRetry}>
+                Retry
+              </Button>
+              {retryCount > 0 && (
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={handleRetryWithBrowser}
+                >
+                  Try Browser Mode
+                </Button>
+              )}
+            </Stack>
           }
         >
           {error}
+          {retryCount > 1 && (
+            <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+              Having trouble? Try "Browser Mode" for sites that block automated
+              requests.
+            </Typography>
+          )}
         </Alert>
       )}
 
@@ -445,15 +476,17 @@ export default function JobImportURL({ onImport }: Props) {
             </Button>
           </Box>
 
-          {/* Extraction Method Info (debug) */}
+          {/* Extraction Method Info */}
           {result.meta.extraction && (
             <Typography
               variant="caption"
               color="text.secondary"
               sx={{ display: "block", mt: 1, textAlign: "right" }}
             >
-              Extracted via {result.meta.extraction.method.replace("-", " ")} in{" "}
-              {result.meta.latency_ms}ms
+              Extracted via {result.meta.extraction.strategy.replace(/-/g, " ")}
+              {result.meta.extraction.retries > 0 &&
+                ` (${result.meta.extraction.retries} retries)`}{" "}
+              in {result.meta.latency_ms}ms
             </Typography>
           )}
         </Paper>

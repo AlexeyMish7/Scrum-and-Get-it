@@ -7,8 +7,6 @@ const profileNavItems: NavItem[] = [
   { to: "/profile/skills", label: "Skills" },
   { to: "/profile/projects", label: "Projects" },
   { to: "/profile/certifications", label: "Certifications" },
-  { to: "/profile/details", label: "Profile Details" },
-  { to: "/profile/settings", label: "Settings" },
 ];
 
 export default function ProfileSidebar() {

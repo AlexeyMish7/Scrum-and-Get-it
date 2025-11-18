@@ -17,14 +17,18 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.80.0",
+    "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",
     "openai": "^6.8.1",
     "puppeteer": "^24.30.0",
     "undici": "^7.16.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.0",
+    "@types/cheerio": "^0.22.35",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.10",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.10"
   }
 }

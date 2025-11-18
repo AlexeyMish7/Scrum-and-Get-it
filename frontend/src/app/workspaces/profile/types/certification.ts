@@ -5,15 +5,16 @@ export type CertificationRow = {
   name: string;
   issuing_org?: string | null;
   category?: string | null;
+  certification_id?: string | null;
   date_earned?: string | null;
   expiration_date?: string | null;
   does_not_expire?: boolean | null;
-  cert_id?: string | null;
-  media_path?: string | null;
   verification_status?: string | null;
+  verification_url?: string | null;
+  media_path?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
   updated_at?: string | null;
-  meta?: Record<string, unknown> | null;
 };
 
 export type Certification = {

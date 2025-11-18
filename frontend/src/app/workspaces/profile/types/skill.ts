@@ -11,7 +11,7 @@ export type DbSkillRow = {
     | "expert"
     | string;
   skill_category?: string;
-  meta?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
 };

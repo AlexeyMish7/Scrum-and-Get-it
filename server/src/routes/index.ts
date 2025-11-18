@@ -58,8 +58,8 @@ export { get as getCompanyResearch } from "./company/research.js";
 export { post as postSalaryResearch } from "./salary/research.js";
 
 // ===== LEGACY COMPATIBILITY EXPORTS =====
-// Maintain old names for backwards compatibility during migration
-// TODO: Remove these after server.ts is fully updated
+// Maintain old function names for server.ts during transition
+// These match the old handleXyz naming convention used in server.ts routing
 export { post as handleGenerateResume } from "./generate/resume.js";
 export { post as handleGenerateCoverLetter } from "./generate/cover-letter.js";
 export { post as handleSkillsOptimization } from "./generate/skills-optimization.js";

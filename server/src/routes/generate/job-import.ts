@@ -30,6 +30,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { generate } from "../../services/aiClient.js";
 import { scrapeWithBrowser } from "../../services/scraper.js";
 import {
+  extractJobPosting,
+  checkUrlAccessibility,
+} from "../../services/extractionStrategies.js";
+import {
   legacyLogInfo as logInfo,
   legacyLogError as logError,
 } from "../../../utils/logger.js";
@@ -60,94 +64,19 @@ export interface ExtractedJobData {
 interface JobImportRequestBody {
   url: string;
   options?: {
-    useScreenshot?: boolean; // Use Puppeteer scraper instead of basic fetch
-    useBrowserFallback?: boolean; // Auto-fallback to scraper if fetch fails
+    useScreenshot?: boolean; // DEPRECATED: Use forceStrategy instead
+    useBrowserFallback?: boolean; // DEPRECATED: Always enabled now
+    forceStrategy?: "fetch" | "puppeteer"; // Force specific extraction strategy
+    maxRetries?: number; // Max retry attempts (default: 3)
+    verbose?: boolean; // Enable verbose logging
   };
 }
 
-// Extraction metadata
+// Extraction metadata (for response)
 interface ExtractionMeta {
-  source: "fetch" | "scraper";
-  method: "basic-fetch" | "puppeteer-browser";
+  strategy: string;
+  retries: number;
   latency_ms: number;
-}
-
-/**
- * Fetch HTML content from job posting URL
- * Uses simple fetch with user-agent to avoid basic bot detection
- */
-async function fetchJobPostingHTML(url: string): Promise<string> {
-  logInfo("job_import_fetch_start", { url });
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const html = await response.text();
-    logInfo("job_import_fetch_ok", { url, size: html.length });
-    return html;
-  } catch (err: any) {
-    clearTimeout(timeout);
-    logError("job_import_fetch_error", {
-      url,
-      error: err?.message ?? String(err),
-    });
-    throw new Error(`Failed to fetch job posting: ${err?.message ?? err}`);
-  }
-}
-
-/**
- * Clean and truncate HTML for AI processing
- * Removes scripts, styles, and excess whitespace
- * Limits to reasonable token count
- */
-function cleanHTML(html: string): string {
-  // Remove script and style tags
-  let cleaned = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
-  cleaned = cleaned.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-
-  // Remove HTML comments
-  cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, "");
-
-  // Extract text content (basic approach)
-  // In production, consider using a proper HTML parser like cheerio
-  cleaned = cleaned.replace(/<[^>]+>/g, " ");
-
-  // Decode HTML entities
-  cleaned = cleaned
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-
-  // Normalize whitespace
-  cleaned = cleaned.replace(/\s+/g, " ").trim();
-
-  // Truncate to ~8000 characters (reasonable for AI context)
-  if (cleaned.length > 8000) {
-    cleaned = cleaned.substring(0, 8000) + "...";
-  }
-
-  return cleaned;
 }
 
 /**
@@ -286,8 +215,8 @@ export async function post(
   userId: string,
   counters: GenerationCounters
 ): Promise<void> {
-  // Rate limit (10/min per user)
-  const limit = checkLimit(`job-import:${userId}`, 10, 60_000);
+  // Rate limit (50 per 5min per user)
+  const limit = checkLimit(`job-import:${userId}`, 50, 300_000);
   if (!limit.ok) {
     res.setHeader("Retry-After", String(limit.retryAfterSec ?? 60));
     throw new ApiError(429, "rate limited", "rate_limited");
@@ -328,81 +257,50 @@ export async function post(
   const start = Date.now();
 
   try {
-    // Step 1: Fetch HTML (with optional scraper fallback)
-    let html: string;
-    let extractionMeta: ExtractionMeta;
-
-    // Force Puppeteer scraper if requested
-    if (body.options?.useScreenshot) {
-      logInfo("job_import_using_scraper", {
+    // Step 0: Quick accessibility check (optional, helps with early detection)
+    const accessCheck = await checkUrlAccessibility(body.url);
+    if (!accessCheck.accessible) {
+      logInfo("job_import_url_blocked", {
         url: body.url,
-        reqId,
-        reason: "user_requested",
+        reason: accessCheck.reason,
+        suggested: accessCheck.suggestedStrategy,
       });
-      const scraperStart = Date.now();
-      const result = await scrapeWithBrowser(body.url, {
-        waitForNetworkIdle: true,
-        timeout: 20000,
-      });
-      html = result.content;
-      extractionMeta = {
-        source: "scraper",
-        method: "puppeteer-browser",
-        latency_ms: Date.now() - scraperStart,
-      };
-    } else {
-      // Try basic fetch first
-      const fetchStart = Date.now();
-      try {
-        html = await fetchJobPostingHTML(body.url);
-        extractionMeta = {
-          source: "fetch",
-          method: "basic-fetch",
-          latency_ms: Date.now() - fetchStart,
-        };
-      } catch (fetchErr: any) {
-        // Fallback to scraper if fetch fails and auto-fallback is enabled
-        if (body.options?.useBrowserFallback !== false) {
-          logInfo("job_import_fetch_failed_fallback_scraper", {
-            url: body.url,
-            reqId,
-            fetchError: fetchErr?.message,
-          });
-          const scraperStart = Date.now();
-          const result = await scrapeWithBrowser(body.url, {
-            waitForNetworkIdle: true,
-            timeout: 20000,
-          });
-          html = result.content;
-          extractionMeta = {
-            source: "scraper",
-            method: "puppeteer-browser",
-            latency_ms: Date.now() - scraperStart,
-          };
-        } else {
-          // Re-throw if fallback is disabled
-          throw fetchErr;
-        }
-      }
+      // Continue anyway - extraction strategies will handle it
     }
 
-    // Step 2: Clean HTML for AI processing
-    const cleanedHTML = cleanHTML(html);
+    // Step 1: Extract HTML using multi-strategy approach
+    const forceStrategy =
+      body.options?.forceStrategy ||
+      (body.options?.useScreenshot ? "puppeteer" : undefined);
 
-    // Step 3: Build AI prompt
-    const prompt = buildExtractionPrompt(cleanedHTML, body.url);
+    const extractionResult = await extractJobPosting(body.url, {
+      forceStrategy,
+      maxRetries: body.options?.maxRetries ?? 3,
+      verbose: body.options?.verbose ?? false,
+      timeout: 20000, // 20 second timeout per attempt
+    });
 
-    // Step 4: Call AI extraction
+    logInfo("job_import_extraction_success", {
+      url: body.url,
+      strategy: extractionResult.meta.strategy,
+      retries: extractionResult.meta.retries,
+      latency_ms: extractionResult.meta.latency_ms,
+    });
+
+    // Step 2: Build AI prompt with cleaned content
+    const prompt = buildExtractionPrompt(extractionResult.cleanText, body.url);
+
+    // Step 3: Call AI extraction
     const aiResult = await generate("job-import", prompt, {
       model: "gpt-4o-mini",
       temperature: 0.1,
       maxTokens: 2000,
     });
 
-    // Step 5: Parse and validate result
+    // Step 4: Parse and validate result
     const extractedData = parseExtractionResult(aiResult);
 
-    // Step 6: Calculate confidence
+    // Step 5: Calculate confidence
     const confidence = calculateConfidence(extractedData);
 
     const latencyMs = Date.now() - start;
@@ -414,6 +312,7 @@ export async function post(
       confidence,
       hasTitle: !!extractedData.job_title,
       hasCompany: !!extractedData.company_name,
+      strategy: extractionResult.meta.strategy,
       latency_ms: latencyMs,
     });
 
@@ -427,7 +326,11 @@ export async function post(
         confidence,
         url: body.url,
         latency_ms: latencyMs,
-        extraction: extractionMeta,
+        extraction: {
+          strategy: extractionResult.meta.strategy,
+          retries: extractionResult.meta.retries,
+          latency_ms: extractionResult.meta.latency_ms,
+        },
       },
     });
   } catch (err: any) {

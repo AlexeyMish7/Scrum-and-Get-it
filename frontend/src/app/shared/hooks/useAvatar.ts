@@ -99,12 +99,12 @@ export function useAvatar(userId: string | undefined): string | null {
       const res = await getUserProfile<ProfileRow>(userId);
       if (res.error) return;
 
-      const meta =
-        (res.data?.meta as
+      const metadata =
+        (res.data?.metadata as
           | { avatar_path?: string | null; avatar_bucket?: string | null }
           | undefined) ?? {};
-      const avatarPath = meta?.avatar_path ?? null;
-      const avatarBucket = meta?.avatar_bucket ?? "avatars";
+      const avatarPath = metadata?.avatar_path ?? null;
+      const avatarBucket = metadata?.avatar_bucket ?? "avatars";
 
       if (!avatarPath) {
         if (active) setAvatarUrl(null);
@@ -146,9 +146,14 @@ export function useAvatar(userId: string | undefined): string | null {
       )
       .subscribe();
 
+    // Listen for custom avatar:updated event from ProfilePicture component
+    const handleAvatarUpdate = () => load();
+    window.addEventListener("avatar:updated", handleAvatarUpdate);
+
     return () => {
       active = false;
       channel.unsubscribe();
+      window.removeEventListener("avatar:updated", handleAvatarUpdate);
     };
   }, [userId]);
 

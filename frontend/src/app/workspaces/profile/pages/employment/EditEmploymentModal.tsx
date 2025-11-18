@@ -8,7 +8,6 @@ import { useState, useRef, useEffect } from "react";
 // is done once at the top so the form component stays simple.
 import type { RefObject } from "react";
 import { useAuth } from "@shared/context/AuthContext";
-import { useProfileChange } from "@shared/context";
 import employmentService from "../../services/employment";
 import type {
   EmploymentFormData,
@@ -151,7 +150,6 @@ export default function EditEmploymentModal({ entry, onClose, onSave }: Props) {
       } else {
         // Close modal and refresh parent list
         onSave();
-        markProfileChanged(); // Invalidate analytics cache
         // Use navigation state to surface a centralized success snackbar on the list page
         navigate(location.pathname, {
           replace: true,

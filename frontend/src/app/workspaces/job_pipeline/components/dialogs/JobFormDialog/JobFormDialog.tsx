@@ -159,6 +159,10 @@ export default function JobFormDialog({
         showSuccess(
           editJob ? "Job updated successfully!" : "Job saved successfully!"
         );
+
+        // Notify other components that jobs changed
+        window.dispatchEvent(new CustomEvent("jobs-updated"));
+
         if (onSuccess && res.data) {
           onSuccess(res.data);
         }

@@ -34,8 +34,6 @@ import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { Breadcrumbs } from "@shared/components/navigation";
-import EmptyState from "@shared/components/feedback/EmptyState";
-import { CardMembership as CertIcon } from "@mui/icons-material";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -176,7 +174,7 @@ const Certifications: React.FC = () => {
           ? null
           : newCert.expirationDate || null,
         does_not_expire: Boolean(newCert.doesNotExpire),
-        cert_id: newCert.certId || null,
+        certification_id: newCert.certId || null,
         verification_status: "unverified",
       };
 
@@ -293,7 +291,7 @@ const Certifications: React.FC = () => {
           ? null
           : editForm.expirationDate || null,
         does_not_expire: Boolean(editForm.doesNotExpire),
-        cert_id: editForm.certId || null,
+        certification_id: editForm.certId || null,
       };
 
       // Send updated fields to the service and optimistically update UI on success
@@ -319,7 +317,8 @@ const Certifications: React.FC = () => {
                     (payload.expiration_date as string | null) ??
                     c.expirationDate,
                   doesNotExpire: Boolean(payload.does_not_expire),
-                  certId: (payload.cert_id as string | null) ?? c.certId,
+                  certId:
+                    (payload.certification_id as string | null) ?? c.certId,
                 } as Partial<CertificationType>),
               }
             : c

@@ -1,3 +1,47 @@
+/**
+ * JOB MATERIALS SERVICE (⚠️ LEGACY - Use document_jobs table instead)
+ *
+ * Status: DEPRECATED - Kept for historical data access only
+ *
+ * Purpose (Historical):
+ * - Link resumes and cover letters to job applications
+ * - Support both legacy artifacts and newer document references
+ * - Track which materials were used for each application
+ *
+ * Migration Path:
+ * - New code → Use document_jobs table directly (many-to-many linking)
+ * - This service → Read-only access to legacy job_materials table
+ * - Do NOT create new job_materials records
+ *
+ * Why Deprecated:
+ * - Awkward dual-reference pattern (document_id vs artifact_id)
+ * - No support for multiple versions of same document
+ * - No branching or version history
+ * - Limited metadata capabilities
+ *
+ * Replacement Pattern:
+ *   Old: await upsertJobMaterials(userId, {
+ *          job_id: 123,
+ *          resume_document_id: 'abc',
+ *          cover_document_id: 'def'
+ *        })
+ *
+ *   New: await linkDocumentToJob(userId, {
+ *          document_id: 'abc',
+ *          job_id: 123,
+ *          document_type: 'resume'
+ *        })
+ *        await linkDocumentToJob(userId, {
+ *          document_id: 'def',
+ *          job_id: 123,
+ *          document_type: 'cover-letter'
+ *        })
+ *
+ * Backend Connection:
+ * - Database: job_materials table (via crud.ts + RLS)
+ * - RLS-enforced user_id scoping
+ * - Table still exists for historical data
+ */
 import { withUser } from "./crud";
 import type { Result, ListOptions } from "./types";
 
@@ -80,4 +124,3 @@ export default {
   listJobMaterialsHistory,
   getCurrentJobMaterials,
 };
-

@@ -32,7 +32,7 @@ export const SKILL_LEVEL_OPTIONS = Object.values(SKILL_LEVEL_LABELS);
 // Array of skill categories for UI dropdowns
 export const SKILL_CATEGORY_OPTIONS = [
   "Technical",
-  "Soft Skills",
+  "Soft",
   "Language",
   "Other",
 ] as const;

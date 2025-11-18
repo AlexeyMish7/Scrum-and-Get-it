@@ -22,7 +22,6 @@ import {
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import ArchiveToggle from "@job_pipeline/components/search/ArchiveToggle/ArchiveToggle";
 import ApplicationTimeline from "@job_pipeline/components/timeline/ApplicationTimeline/ApplicationTimeline";
-import MatchAnalysisPanel from "@job_pipeline/components/analytics/MatchAnalysisPanel/MatchAnalysisPanel";
 
 type Props = {
   jobId: string | number | null;
@@ -170,19 +169,51 @@ export default function JobDetails({ jobId }: Props) {
 
       // save job note (create or update)
       const notePayload = { ...(noteForm ?? {}) };
+
+      // Clean up the payload - remove database-managed fields and empty values
+      const excludeFields = ["id", "user_id", "created_at", "updated_at"];
+      excludeFields.forEach((field) => delete notePayload[field]);
+
+      Object.keys(notePayload).forEach((key) => {
+        if (
+          notePayload[key] === undefined ||
+          notePayload[key] === null ||
+          notePayload[key] === ""
+        ) {
+          delete notePayload[key];
+        }
+      });
+
+      console.log("[JobDetails] Saving note with payload:", notePayload);
+
       if (note && note.id) {
         // update existing note
         const res2 = await updateJobNote(user.id, String(note.id), notePayload);
-        if (res2.error) throw res2.error;
+        if (res2.error) {
+          console.error("[JobDetails] Error updating note:", res2.error);
+          throw res2.error;
+        }
       } else {
-        // create new note with job_id
-        notePayload.job_id = jobId;
+        // create new note with job_id (ensure it's a number)
+        notePayload.job_id = Number(jobId);
+        console.log(
+          "[JobDetails] Creating new note with payload:",
+          notePayload
+        );
         const res2 = await createJobNote(user.id, notePayload);
-        if (res2.error) throw res2.error;
+        if (res2.error) {
+          console.error("[JobDetails] Error creating note:", res2.error);
+          throw res2.error;
+        }
+        console.log("[JobDetails] Note created successfully:", res2.data);
       }
 
       showSuccess("Saved");
       setEditMode(false);
+
+      // Notify other components that jobs changed
+      window.dispatchEvent(new CustomEvent("jobs-updated"));
+
       // refresh
       const fresh = await jobsService.getJob(user.id, Number(jobId));
       if (!fresh.error) setJob(fresh.data as Record<string, unknown>);
@@ -507,14 +538,6 @@ export default function JobDetails({ jobId }: Props) {
               </>
             )}
           </Stack>
-
-          <Divider />
-
-          {/* AI Match Analysis Section */}
-          <MatchAnalysisPanel
-            userId={user?.id}
-            jobId={jobId ? Number(jobId) : null}
-          />
 
           <Divider />
 

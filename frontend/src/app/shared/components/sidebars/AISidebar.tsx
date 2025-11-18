@@ -1,12 +1,11 @@
 import WorkspaceSidebar, { type NavItem } from "./WorkspaceSidebar";
 
 const aiNavItems: NavItem[] = [
-  { to: "/ai", label: "Dashboard" },
-  { to: "/ai/job-match", label: "Job Match" },
-  { to: "/ai/company-research", label: "Company Research" },
-  { to: "/ai/resume", label: "Resume Studio" },
-  { to: "/ai/cover-letter", label: "Cover Letters" },
-  { to: "/ai/templates", label: "Templates" },
+  { to: "/ai-new", label: "AI Hub" },
+  { to: "/ai-new/generate/resume", label: "Generate Resume" },
+  { to: "/ai-new/generate/cover-letter", label: "Generate Cover Letter" },
+  { to: "/ai-new/library", label: "Document Library" },
+  { to: "/ai-new/templates", label: "Templates & Themes" },
 ];
 
 export default function AISidebar() {

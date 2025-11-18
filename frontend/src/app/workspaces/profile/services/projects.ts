@@ -102,6 +102,31 @@ const getProject = async (userId: string, id: string) => {
 // Create a new project for the current user
 const insertProject = async (userId: string, payload: Partial<ProjectRow>) => {
   const userCrud = crud.withUser(userId);
+
+  // Ensure profile exists (projects table has FK to profiles)
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .single();
+
+  if (!profileData) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        first_name: user.user_metadata?.first_name || "User",
+        last_name: user.user_metadata?.last_name || "",
+        email: user.email || "",
+      });
+      if (profileError) {
+        console.error("Profile creation failed:", profileError);
+      }
+    }
+  }
+
   return await userCrud.insertRow("projects", payload, "*");
 };
 

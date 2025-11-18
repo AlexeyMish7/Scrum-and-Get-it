@@ -1,3 +1,58 @@
+/**
+ * USE ERROR HANDLER HOOK
+ *
+ * Purpose:
+ * - Centralized error notification management for entire app
+ * - Convert database/API errors into user-friendly messages
+ * - Provide consistent snackbar notifications across all features
+ * - Support multiple severity levels (error, warning, info, success)
+ *
+ * Error Sources:
+ * - CRUD operations: Database query failures (via CrudError type)
+ * - API calls: Backend service errors (AI generation, job scraping)
+ * - Form validation: User input errors
+ * - Network failures: Timeout, offline, connection refused
+ *
+ * Backend Connection:
+ * - Receives errors from crud.ts (Supabase errors)
+ * - Receives errors from AI backend (via fetch responses)
+ * - Translates technical errors into user-friendly messages
+ *
+ * Features:
+ * - Auto-close after configurable duration (default: 4s)
+ * - Severity-based styling (error=red, success=green, etc.)
+ * - Stack multiple notifications (queue pattern)
+ * - Extract user-friendly message from CrudError
+ *
+ * Usage:
+ *   import { useErrorHandler } from '@shared/hooks/useErrorHandler';
+ *   import { ErrorSnackbar } from '@shared/components/feedback/ErrorSnackbar';
+ *
+ *   function MyComponent() {
+ *     const { notification, closeNotification, handleError, showSuccess } = useErrorHandler();
+ *
+ *     async function saveData() {
+ *       const result = await updateJob(userId, jobId, data);
+ *       if (result.error) {
+ *         handleError(result.error); // Shows error snackbar
+ *       } else {
+ *         showSuccess('Job saved successfully!');
+ *       }
+ *     }
+ *
+ *     return (
+ *       <>
+ *         <Button onClick={saveData}>Save</Button>
+ *         <ErrorSnackbar notification={notification} onClose={closeNotification} />
+ *       </>
+ *     );
+ *   }
+ *
+ * Integration with SystemLayer:
+ * - ErrorSnackbar rendered once in SystemLayer.tsx (global)
+ * - All pages can use handleError() without rendering snackbar
+ * - Ensures consistent error display across entire app
+ */
 import { useState, useCallback, useMemo } from "react";
 import type { CrudError } from "../services/types";
 

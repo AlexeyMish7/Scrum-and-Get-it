@@ -30,6 +30,8 @@ import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { FolderOpen as ProjectIcon } from "@mui/icons-material";
 import type { Project } from "../../types/project.ts";
+import type { ProjectRow } from "../../types/project";
+import { AddProjectDialog } from "../../components/dialogs/AddProjectDialog";
 // Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx
 
 // Main portfolio page showing all user's projects in a grid layout
@@ -48,6 +50,15 @@ const ProjectPortfolio: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { confirm } = useConfirmDialog();
+
+  // Add/Edit Project Dialog state
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [projectDialogMode, setProjectDialogMode] = useState<"add" | "edit">(
+    "add"
+  );
+  const [selectedProjectRow, setSelectedProjectRow] = useState<
+    ProjectRow | undefined
+  >();
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -212,7 +223,32 @@ const ProjectPortfolio: React.FC = () => {
       handleError(err as Error);
     }
   };
-  const handleAddProject = () => navigate("/profile/projects/new");
+  const handleAddProject = () => {
+    setProjectDialogMode("add");
+    setSelectedProjectRow(undefined);
+    setProjectDialogOpen(true);
+  };
+
+  const handleEditProject = async (projectId: string) => {
+    if (!user) return;
+    const res = await projectsService.getProject(user.id, projectId);
+    if (res.error || !res.data) {
+      handleError(res.error || "Failed to load project");
+      return;
+    }
+    setProjectDialogMode("edit");
+    setSelectedProjectRow(res.data as ProjectRow);
+    setProjectDialogOpen(true);
+  };
+
+  const handleCloseProjectDialog = () => {
+    setProjectDialogOpen(false);
+    setSelectedProjectRow(undefined);
+  };
+
+  const handleProjectDialogSuccess = () => {
+    fetchProjects();
+  };
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
@@ -581,7 +617,8 @@ const ProjectPortfolio: React.FC = () => {
             <Button
               onClick={() => {
                 if (!selectedProject) return;
-                navigate(`/projects/${selectedProject.id}/edit`);
+                setSelectedProject(null);
+                handleEditProject(selectedProject.id);
               }}
               variant="contained"
             >
@@ -609,6 +646,15 @@ const ProjectPortfolio: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Add/Edit Project Dialog */}
+        <AddProjectDialog
+          open={projectDialogOpen}
+          onClose={handleCloseProjectDialog}
+          onSuccess={handleProjectDialogSuccess}
+          mode={projectDialogMode}
+          existingEntry={selectedProjectRow}
+        />
 
         <ErrorSnackbar
           notification={notification}

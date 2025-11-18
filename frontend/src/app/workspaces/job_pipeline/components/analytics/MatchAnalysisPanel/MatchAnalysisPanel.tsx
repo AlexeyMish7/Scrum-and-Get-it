@@ -140,6 +140,17 @@ export default function MatchAnalysisPanel({ userId, jobId }: Props) {
             Match Analysis
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => refetch()}
+              startIcon={<RefreshIcon />}
+              disabled={loading}
+              sx={{ minWidth: "auto", px: 1 }}
+              aria-label="Regenerate match analysis with latest profile data"
+            >
+              {loading ? "Updating..." : "Refresh"}
+            </Button>
             {meta.cached && (
               <Chip
                 label="Cached"

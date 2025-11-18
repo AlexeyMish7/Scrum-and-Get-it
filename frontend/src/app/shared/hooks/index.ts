@@ -6,7 +6,6 @@
  * - Error handling and notifications
  * - Confirm dialog integration
  * - Debounce utilities
- * - Sprint task tracking
  * - User jobs loading
  * - Avatar loading with caching
  *
@@ -26,6 +25,5 @@ export {
 } from "./useErrorHandler";
 export { default as useConfirmDialog } from "./useConfirmDialog";
 export { useDebounce, useDebouncedCallback } from "./useDebounce";
-export { default as useSprintTasks } from "./useSprintTasks";
 export { default as useUserJobs } from "./useUserJobs";
 export { default as useAvatar } from "./useAvatar";

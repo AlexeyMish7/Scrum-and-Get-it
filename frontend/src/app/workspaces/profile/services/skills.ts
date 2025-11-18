@@ -1,8 +1,9 @@
 import crud from "@shared/services/crud";
+import { supabase } from "@shared/services/supabaseClient";
 import type { DbSkillRow, SkillItem } from "@profile/types/skill";
 
 const PROJECTION =
-  "id,skill_name,proficiency_level,skill_category,meta,created_at,updated_at";
+  "id,skill_name,proficiency_level,skill_category,metadata,created_at,updated_at";
 
 function mapRowToSkill(r: DbSkillRow): SkillItem {
   return {
@@ -12,9 +13,9 @@ function mapRowToSkill(r: DbSkillRow): SkillItem {
     level: (r.proficiency_level ?? "beginner").replace(/^./, (c: string) =>
       c.toUpperCase()
     ),
-    // read position from meta if present (may be number or string)
+    // read position from metadata if present (may be number or string)
     position: (() => {
-      const m = (r.meta as Record<string, unknown> | null) ?? null;
+      const m = (r.metadata as Record<string, unknown> | null) ?? null;
       if (!m) return undefined;
       const pVal =
         (m as Record<string, unknown>)["position"] ??
@@ -24,7 +25,7 @@ function mapRowToSkill(r: DbSkillRow): SkillItem {
       if (typeof pVal === "string") return parseInt(pVal, 10) || undefined;
       return undefined;
     })(),
-    meta: r.meta ?? null,
+    meta: r.metadata ?? null,
   };
 }
 
@@ -47,6 +48,60 @@ export async function listSkills(userId: string) {
 
 export async function createSkill(userId: string, payload: DbSkillRow) {
   const userCrud = crud.withUser(userId);
+
+  // Ensure profile exists before creating skill (skills table has FK to profiles)
+  // Use direct supabase query since profiles table doesn't have user_id column
+  const { data: profileData, error: profileCheckError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .single();
+
+  // If no profile exists, create a minimal one using auth user's email
+  if (!profileData && !profileCheckError) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return {
+          data: null,
+          error: { message: "Authentication required to add skills." },
+        };
+      }
+
+      const minimalProfile = {
+        id: userId,
+        first_name: user.user_metadata?.first_name || "User",
+        last_name: user.user_metadata?.last_name || "",
+        email: user.email || "",
+      };
+
+      // Use direct supabase insert since profiles table uses 'id' not 'user_id'
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert(minimalProfile);
+
+      if (profileError) {
+        console.error("Profile creation failed:", profileError);
+        return {
+          data: null,
+          error: {
+            message: "Failed to create profile. Please try again.",
+            details: profileError,
+          },
+        };
+      }
+    } catch (err) {
+      console.error("Profile creation error:", err);
+      return {
+        data: null,
+        error: { message: "Failed to initialize profile. Please try again." },
+      };
+    }
+  }
+
   const res = await userCrud.insertRow("skills", payload, "*");
   if (res.error) return { data: null, error: res.error };
   const inserted = Array.isArray(res.data) ? res.data[0] : res.data;
@@ -59,8 +114,8 @@ export async function updateSkill(
   payload: Partial<DbSkillRow>
 ) {
   const userCrud = crud.withUser(userId);
-  // If caller provided `meta`, merge it with existing row.meta to avoid
-  // clobbering other metadata keys (position is stored inside meta).
+  // If caller provided `meta`, merge it with existing row.metadata to avoid
+  // clobbering other metadata keys (position is stored inside metadata).
   const toUpdate: Record<string, unknown> = {
     ...(payload as Record<string, unknown>),
   };
@@ -113,9 +168,9 @@ export async function batchUpdateSkills(
 ) {
   const userCrud = crud.withUser(userId);
 
-  // Fetch existing meta for all affected rows in one call
+  // Fetch existing metadata for all affected rows in one call
   const ids = updates.map((u) => u.id);
-  const existingRes = await userCrud.listRows("skills", "id,meta", {
+  const existingRes = await userCrud.listRows("skills", "id,metadata", {
     in: { id: ids },
   });
   if (existingRes.error) return { data: null, error: existingRes.error };
@@ -125,12 +180,12 @@ export async function batchUpdateSkills(
   const metaById: Record<string, Record<string, unknown>> = {};
   existingRows.forEach((r) => {
     const id = String(r.id ?? "");
-    metaById[id] = (r.meta as Record<string, unknown>) ?? {};
+    metaById[id] = (r.metadata as Record<string, unknown>) ?? {};
   });
 
   const updatedRows: Array<ReturnType<typeof mapRowToSkill>> = [];
 
-  // Apply updates sequentially to avoid race conditions merging meta.
+  // Apply updates sequentially to avoid race conditions merging metadata.
   // Collect the updated DB rows and map them to SkillItem so the
   // caller can reconcile UI state from authoritative data immediately.
   for (const u of updates) {
@@ -144,7 +199,7 @@ export async function batchUpdateSkills(
     const payload: Record<string, unknown> = {};
     if (u.skill_category !== undefined)
       payload.skill_category = u.skill_category;
-    payload.meta = mergedMeta;
+    payload.metadata = mergedMeta;
 
     const res = await userCrud.updateRow(
       "skills",

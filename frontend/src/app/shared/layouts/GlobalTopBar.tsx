@@ -20,19 +20,16 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
-import WorkspacesIcon from "@mui/icons-material/DashboardCustomize";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { Add as AddIcon } from "@mui/icons-material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import { useThemeContext } from "@shared/context/ThemeContext";
 import { useAvatar } from "@shared/hooks/useAvatar";
-import QuickActionButton from "@shared/components/common/QuickActionButton";
 import logo from "@shared/assets/logos/logo-icon.png";
 
 type NavItem = {
@@ -54,8 +51,13 @@ const WORKSPACE_ITEMS: NavItem[] = [
   },
   {
     label: "AI Workspace",
-    path: "/ai",
-    description: "Research companies, match jobs, generate resumes",
+    path: "/ai-new",
+    description: "Generate resumes, cover letters, manage templates & themes",
+  },
+  {
+    label: "Interview Hub",
+    path: "/interviews",
+    description: "Schedule interviews, prep tasks, Google Calendar integration",
   },
 ];
 
@@ -77,11 +79,11 @@ const JOBS_TOOL_ITEMS: NavItem[] = [
 ];
 
 const AI_TOOL_ITEMS: NavItem[] = [
-  { label: "AI Home", path: "/ai" },
-  { label: "Resume Editor", path: "/ai/resume" },
-  { label: "Cover Letter", path: "/ai/cover-letter" },
-  { label: "Job Match", path: "/ai/job-match" },
-  { label: "Company Research", path: "/ai/company-research" },
+  { label: "AI Hub", path: "/ai-new" },
+  { label: "Generate Resume", path: "/ai-new/generate/resume" },
+  { label: "Generate Cover Letter", path: "/ai-new/generate/cover-letter" },
+  { label: "Document Library", path: "/ai-new/library" },
+  { label: "Templates", path: "/ai-new/templates" },
 ];
 
 const MENU_ITEMS: NavItem[] = [
@@ -129,15 +131,16 @@ export default function GlobalTopBar() {
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [workspaceAnchor, setWorkspaceAnchor] = useState<HTMLElement | null>(
-    null
-  );
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
 
   const avatarUrl = useAvatar(user?.id);
 
   const currentWorkspace = useMemo(() => {
-    if (location.pathname.startsWith("/ai")) return "AI";
+    if (
+      location.pathname.startsWith("/ai-new") ||
+      location.pathname.startsWith("/ai")
+    )
+      return "AI";
     if (location.pathname.startsWith("/jobs")) return "JOBS";
     return "PROFILE";
   }, [location.pathname]);
@@ -170,56 +173,9 @@ export default function GlobalTopBar() {
   const themeToggleLabel =
     mode === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
-  const renderMenuItems = (items: NavItem[], close: () => void) => (
-    <>
-      {items.map((item) => (
-        <MenuItem
-          key={item.path}
-          component={NavLink}
-          to={item.path}
-          onClick={close}
-          sx={{
-            borderRadius: 1,
-            typography: "body2",
-            color: location.pathname.startsWith(item.path)
-              ? theme.palette.primary.main
-              : undefined,
-            "&:hover": {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-            },
-          }}
-        >
-          <Box>
-            <Typography fontWeight={600}>{item.label}</Typography>
-            {item.description && (
-              <Typography variant="caption" color="text.secondary">
-                {item.description}
-              </Typography>
-            )}
-          </Box>
-        </MenuItem>
-      ))}
-    </>
-  );
-
   const highlightAi = currentWorkspace === "AI";
-
-  const quickActions = (
-    <Stack direction="row" spacing={1.25} alignItems="center">
-      <QuickActionButton
-        label="New Job"
-        to="/jobs/new"
-        startIcon={<AddIcon />}
-        size="small"
-      />
-      <QuickActionButton label="Resume" to="/ai/resume" size="small" />
-      <QuickActionButton
-        label="Cover Letter"
-        to="/ai/cover-letter"
-        size="small"
-      />
-    </Stack>
-  );
+  const highlightJobs = currentWorkspace === "JOBS";
+  const highlightProfile = currentWorkspace === "PROFILE";
 
   return (
     <AppBar
@@ -280,37 +236,79 @@ export default function GlobalTopBar() {
           <Stack direction="row" spacing={1.25} alignItems="center">
             <Button
               color="inherit"
-              startIcon={<WorkspacesIcon />}
-              onClick={(event) => setWorkspaceAnchor(event.currentTarget)}
+              component={NavLink}
+              to="/ai-new"
               size="large"
               sx={{
                 ...getNavVariantStyles(theme, highlightAi),
-                "& .MuiSvgIcon-root": { fontSize: 24 },
-                fontSize: 16,
-                px: 2,
-                py: 1,
-                borderRadius: 2,
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
               }}
             >
-              Workspaces
+              Generation Hub
             </Button>
-            <Menu
-              anchorEl={workspaceAnchor}
-              open={Boolean(workspaceAnchor)}
-              onClose={() => setWorkspaceAnchor(null)}
-              MenuListProps={{ sx: { width: 260 } }}
-            >
-              {renderMenuItems(WORKSPACE_ITEMS, () => setWorkspaceAnchor(null))}
-            </Menu>
 
-            {quickActions}
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/jobs"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightJobs),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Jobs Pipeline
+            </Button>
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/interviews"
+              size="large"
+              sx={{
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: alpha(theme.palette.text.primary, 0.04),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.text.primary, 0.12),
+                },
+              }}
+            >
+              Interviews
+            </Button>
+
+            <Box sx={{ flexGrow: 1 }} />
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/profile"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightProfile),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Profile Hub
+            </Button>
 
             <Tooltip title={themeToggleLabel}>
               <IconButton
                 color="inherit"
                 onClick={toggleMode}
                 sx={{
-                  borderRadius: 2,
+                  borderRadius: theme.shape.borderRadius,
                   backgroundColor: alpha(theme.palette.text.primary, 0.08),
                   "&:hover": {
                     backgroundColor: alpha(theme.palette.text.primary, 0.16),
@@ -324,7 +322,7 @@ export default function GlobalTopBar() {
 
             <IconButton
               onClick={(event) => setProfileAnchor(event.currentTarget)}
-              sx={{ p: 0, ml: 0.5 }}
+              sx={{ p: 0, ml: theme.spacing(0.5) }}
               aria-haspopup="true"
               aria-controls={profileAnchor ? "profile-menu" : undefined}
             >
@@ -344,7 +342,7 @@ export default function GlobalTopBar() {
                   component={NavLink}
                   to={item.path}
                   onClick={() => setProfileAnchor(null)}
-                  sx={{ gap: 1 }}
+                  sx={{ gap: theme.spacing(1) }}
                 >
                   {item.path === "/profile/settings" ? (
                     <SettingsIcon fontSize="small" />
@@ -354,8 +352,8 @@ export default function GlobalTopBar() {
                   {item.label}
                 </MenuItem>
               ))}
-              <Divider sx={{ my: 0.5 }} />
-              <MenuItem onClick={handleLogout} sx={{ gap: 1 }}>
+              <Divider sx={{ my: theme.spacing(0.5) }} />
+              <MenuItem onClick={handleLogout} sx={{ gap: theme.spacing(1) }}>
                 <LogoutIcon fontSize="small" />
                 Logout
               </MenuItem>
@@ -366,7 +364,7 @@ export default function GlobalTopBar() {
             color="inherit"
             onClick={handleDrawerToggle(true)}
             size="large"
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: theme.shape.borderRadius }}
           >
             <MenuIcon />
           </IconButton>
@@ -380,19 +378,23 @@ export default function GlobalTopBar() {
       >
         <Box
           sx={{
-            width: { xs: "100vw", sm: 360 },
+            width: { xs: "100vw", sm: theme.spacing(45) },
             display: "flex",
             flexDirection: "column",
             height: "100%",
             backgroundColor: alpha(theme.palette.background.default, 0.96),
           }}
         >
-          <Box sx={{ px: 3, py: 2.5 }}>
-            <Stack direction="row" spacing={2} alignItems="center">
+          <Box sx={{ px: theme.spacing(3), py: theme.spacing(2.5) }}>
+            <Stack
+              direction="row"
+              spacing={theme.spacing(2)}
+              alignItems="center"
+            >
               <Avatar
                 src={avatarUrl ?? undefined}
                 alt="User avatar"
-                sx={{ width: 48, height: 48 }}
+                sx={{ width: theme.spacing(6), height: theme.spacing(6) }}
               >
                 {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
               </Avatar>

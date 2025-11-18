@@ -101,35 +101,62 @@ export default function CalendarWidget() {
     }
   }, [expanded]);
 
-  // Load jobs with deadlines
+  // Load jobs with deadlines - refresh when drawer closes to pick up changes
+  const loadJobs = async () => {
+    if (!user?.id) return;
+    try {
+      const userCrud = withUser(user.id);
+      const res = await userCrud.listRows<JobRow>(
+        "jobs",
+        "id, job_title, company_name, application_deadline, city_name, state_code, job_status",
+        {
+          order: { column: "application_deadline", ascending: true },
+        }
+      );
+
+      // Include jobs with deadlines in active statuses (not archived/rejected)
+      const activeStatuses = [
+        "interested",
+        "applied",
+        "phone screen",
+        "interview",
+        "offer",
+      ];
+      const rows = (res.data ?? []).filter(
+        (r) =>
+          r.application_deadline &&
+          activeStatuses.includes(String(r.job_status ?? "").toLowerCase())
+      );
+      setJobs(rows);
+    } catch {
+      setJobs([]);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      if (!user?.id) return;
-      try {
-        const userCrud = withUser(user.id);
-        const res = await userCrud.listRows<JobRow>(
-          "jobs",
-          "id, job_title, company_name, application_deadline, city_name, state_code, job_status"
-        );
-        if (!mounted) return;
+    (async () => {
+      if (mounted) await loadJobs();
+    })();
 
-        // Filter to jobs with deadlines and "Interested" status
-        const rows = (res.data ?? []).filter(
-          (r) =>
-            r.application_deadline &&
-            String(r.job_status ?? "").toLowerCase() === "interested"
-        );
-        setJobs(rows);
-      } catch {
-        setJobs([]);
-      }
-    }
-    load();
+    // Listen for job updates from other components
+    const handleJobsUpdated = () => {
+      if (mounted) loadJobs();
+    };
+    window.addEventListener("jobs-updated", handleJobsUpdated);
+
     return () => {
       mounted = false;
+      window.removeEventListener("jobs-updated", handleJobsUpdated);
     };
   }, [user]);
+
+  // Refresh jobs when drawer closes (job might have been updated)
+  useEffect(() => {
+    if (!drawerOpen) {
+      loadJobs();
+    }
+  }, [drawerOpen]);
 
   // Calculate current display month
   const now = new Date();

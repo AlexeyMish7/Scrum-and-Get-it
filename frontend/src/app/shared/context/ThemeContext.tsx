@@ -1,3 +1,46 @@
+/**
+ * THEME CONTEXT (Global Theme State)
+ *
+ * Purpose:
+ * - Manage light/dark mode switching across entire application
+ * - Persist theme preference in localStorage
+ * - Support radius mode (tiny vs default border radius)
+ * - Apply theme presets for quick color scheme changes
+ *
+ * Theme System:
+ * - Two base themes: lightTheme, darkTheme (from @shared/theme)
+ * - Design token system with palette, effects, motion, interaction tokens
+ * - MUI ThemeProvider wraps entire app for consistent styling
+ * - CSS variables exported for non-MUI components
+ *
+ * Persistence:
+ * - Theme mode stored in localStorage (key: 'themeMode')
+ * - Radius mode stored in localStorage (key: 'radiusMode')
+ * - Preset stored in localStorage (key: 'themePreset')
+ * - Auto-load on app startup
+ *
+ * Backend Connection:
+ * - No backend integration (purely client-side)
+ * - User theme preference could be stored in profiles table (future)
+ *
+ * Usage:
+ *   import { useTheme } from '@shared/context/ThemeContext';
+ *
+ *   function MyComponent() {
+ *     const { mode, toggleMode, radiusMode, toggleRadiusMode } = useTheme();
+ *
+ *     return (
+ *       <Button onClick={toggleMode}>
+ *         Switch to {mode === 'light' ? 'dark' : 'light'} mode
+ *       </Button>
+ *     );
+ *   }
+ *
+ * Provider Setup:
+ *   <ThemeProvider>
+ *     <App />
+ *   </ThemeProvider>
+ */
 import {
   createContext,
   useCallback,

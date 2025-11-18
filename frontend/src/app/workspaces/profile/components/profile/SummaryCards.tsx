@@ -5,6 +5,10 @@ import {
   validateRequired,
 } from "@shared/hooks/useErrorHandler";
 import { SKILL_LEVEL_OPTIONS, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
+import { AddSkillDialog } from "../../components/dialogs/AddSkillDialog";
+import { AddEducationDialog } from "../../components/dialogs/AddEducationDialog";
+import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
+import { AddProjectDialog } from "../../components/dialogs/AddProjectDialog";
 import {
   Card,
   CardContent,
@@ -22,7 +26,6 @@ import {
   Checkbox,
   Snackbar,
   Alert,
-  Autocomplete,
 } from "@mui/material";
 import {
   FaBriefcase,
@@ -86,11 +89,18 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
     Record<string, string | number | boolean | undefined>
   >({});
   const [submitting, setSubmitting] = useState(false);
-  // Skill quick-add controlled fields (match AddSkills page UX)
-  const [skillInputValue, setSkillInputValue] = useState("");
-  const [skillName, setSkillName] = useState("");
-  const [skillCategory, setSkillCategory] = useState("");
-  const [skillLevel, setSkillLevel] = useState("");
+
+  // Skills dialog state
+  const [skillDialogOpen, setSkillDialogOpen] = useState(false);
+
+  // Education dialog state
+  const [educationDialogOpen, setEducationDialogOpen] = useState(false);
+
+  // Employment dialog state
+  const [employmentDialogOpen, setEmploymentDialogOpen] = useState(false);
+
+  // Project dialog state
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
 
   // centralized error handler hook for snackbars
   const { notification, closeNotification, showNotification, handleError } =
@@ -106,38 +116,16 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   const handleSubmit = async (card: (typeof cardsData)[0]) => {
     // Client-side validation for required fields and simple numeric ranges
     try {
-      // Special-case Skills quick-add: validate the controlled skill fields
-      if (card.title === "Skills") {
-        if (!skillName || !skillCategory || !skillLevel) {
-          showNotification(
-            "Please fill out skill name, category and proficiency.",
-            "error"
-          );
-          return;
-        }
-        setSubmitting(true);
-        // Map UI-friendly skill inputs to the DB shape expected by the
-        // shared mappers / AddSkills page. Note: proficiency_level is stored
-        // in the DB as a lowercase enum (beginner|intermediate|advanced|expert).
-        const payload: Record<string, unknown> = {
-          skill_name: skillName,
-          skill_category: skillCategory,
-          proficiency_level: String(skillLevel).toLowerCase(),
-        };
-        await Promise.resolve(
-          card.onAdd(
-            payload as Record<string, string | number | boolean | undefined>
-          )
-        );
-        // reset skill quick-add fields as well
-        setSkillInputValue("");
-        setSkillName("");
-        setSkillCategory("");
-        setSkillLevel("");
-        setSubmitting(false);
-        setOpenDialog(null);
-        return;
+      // Special-case Skills, Education, Employment, and Projects: use the dedicated dialogs
+      if (
+        card.title === "Skills" ||
+        card.title === "Education" ||
+        card.title === "Employment" ||
+        card.title === "Projects"
+      ) {
+        return; // Handled by dedicated dialogs
       }
+
       // Build requiredFields map for validateRequired
       const requiredFields: Record<string, unknown> = {};
       for (const f of card.fields) {
@@ -291,13 +279,44 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   ];
 
   const handleOpenDialog = (title: string) => {
-    setOpenDialog(title);
-    setFormData({});
+    if (title === "Skills") {
+      setSkillDialogOpen(true);
+    } else if (title === "Education") {
+      setEducationDialogOpen(true);
+    } else if (title === "Employment") {
+      setEmploymentDialogOpen(true);
+    } else if (title === "Projects") {
+      setProjectDialogOpen(true);
+    } else {
+      setOpenDialog(title);
+      setFormData({});
+    }
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(null);
     setFormData({});
+  };
+
+  const handleSkillDialogSuccess = async () => {
+    // Trigger the onAddSkill handler to refresh dashboard counts
+    // The AddSkillDialog already handles the actual skill creation
+    window.dispatchEvent(new CustomEvent("skills:changed"));
+  };
+
+  const handleEducationDialogSuccess = async () => {
+    // The AddEducationDialog already handles the actual education creation
+    window.dispatchEvent(new CustomEvent("education:changed"));
+  };
+
+  const handleEmploymentDialogSuccess = async () => {
+    // The AddEmploymentDialog already handles the actual employment creation
+    window.dispatchEvent(new CustomEvent("employment:changed"));
+  };
+
+  const handleProjectDialogSuccess = async () => {
+    // The AddProjectDialog already handles the actual project creation
+    window.dispatchEvent(new CustomEvent("projects:changed"));
   };
 
   const renderField = (field: FieldBase) => {
@@ -433,70 +452,11 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
                 mb: 2,
               }}
             >
-              {card.title === "Skills" ? (
-                <Box>
-                  <Box sx={{ mt: 2 }}>
-                    <Autocomplete
-                      freeSolo
-                      options={[]}
-                      inputValue={skillInputValue}
-                      onInputChange={(_, v) => {
-                        setSkillInputValue(v);
-                        setSkillName(v);
-                      }}
-                      onChange={(_, v) => {
-                        const val = typeof v === "string" ? v : v ?? "";
-                        setSkillName(val as string);
-                        setSkillInputValue(val as string);
-                      }}
-                      renderInput={(params) => (
-                        <TextField {...params} label="Skill" fullWidth />
-                      )}
-                    />
-                  </Box>
-
-                  <Box sx={{ mt: 2 }}>
-                    <TextField
-                      label="Category"
-                      select
-                      fullWidth
-                      value={skillCategory}
-                      onChange={(e) => setSkillCategory(e.target.value)}
-                    >
-                      {SKILL_CATEGORY_OPTIONS.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Box>
-
-                  <Box sx={{ mt: 2 }}>
-                    <TextField
-                      label="Proficiency"
-                      select
-                      fullWidth
-                      value={skillLevel}
-                      onChange={(e) => setSkillLevel(e.target.value)}
-                    >
-                      {SKILL_LEVEL_OPTIONS.map((lvl) => (
-                        <MenuItem key={lvl} value={lvl}>
-                          {lvl}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Box>
+              {card.fields.map((field) => (
+                <Box key={field.name} sx={{ mt: 2 }}>
+                  {renderField(field)}
                 </Box>
-              ) : (
-                card.fields.map((field) => (
-                  // <React.Fragment key={field.name}>
-                  //   {renderField(field)}
-                  // </React.Fragment>
-                  <Box key={field.name} sx={{ mt: 2 }}>
-                    {renderField(field)}
-                  </Box>
-                ))
-              )}
+              ))}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog} disabled={submitting}>
@@ -513,6 +473,39 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
           </Dialog>
         </React.Fragment>
       ))}
+
+      {/* Skills Dialog */}
+      <AddSkillDialog
+        open={skillDialogOpen}
+        onClose={() => setSkillDialogOpen(false)}
+        onSuccess={handleSkillDialogSuccess}
+        mode="add"
+      />
+
+      {/* Education Dialog */}
+      <AddEducationDialog
+        open={educationDialogOpen}
+        onClose={() => setEducationDialogOpen(false)}
+        onSuccess={handleEducationDialogSuccess}
+        mode="add"
+      />
+
+      {/* Employment Dialog */}
+      <AddEmploymentDialog
+        open={employmentDialogOpen}
+        onClose={() => setEmploymentDialogOpen(false)}
+        onSuccess={handleEmploymentDialogSuccess}
+        mode="add"
+      />
+
+      {/* Project Dialog */}
+      <AddProjectDialog
+        open={projectDialogOpen}
+        onClose={() => setProjectDialogOpen(false)}
+        onSuccess={handleProjectDialogSuccess}
+        mode="add"
+      />
+
       <Snackbar
         open={notification.open}
         autoHideDuration={notification.autoHideDuration}

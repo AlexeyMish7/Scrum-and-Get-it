@@ -45,8 +45,8 @@ export async function post(
   userId: string,
   counters: GenerationCounters
 ): Promise<void> {
-  // Rate limit (5/min per user)
-  const limit = checkLimit(`resume:${userId}`, 5, 60_000);
+  // Rate limit (50 per 5min per user)
+  const limit = checkLimit(`resume:${userId}`, 50, 300_000);
   if (!limit.ok) {
     res.setHeader("Retry-After", String(limit.retryAfterSec ?? 60));
     throw new ApiError(429, "rate limited", "rate_limited");

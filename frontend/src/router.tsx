@@ -18,13 +18,9 @@ import ResetPassword from "@profile/pages/auth/ResetPassword";
 import HomePage from "@profile/pages/home/HomePage";
 import Dashboard from "@profile/pages/dashboard/Dashboard";
 import EducationOverview from "@profile/pages/education/EducationOverview";
-import AddEducation from "@profile/pages/education/AddEducation";
 import Certifications from "@profile/pages/certifications/Certifications";
-import AddSkills from "@profile/pages/skills/AddSkills";
 import SkillsOverview from "@profile/pages/skills/SkillsOverview";
-import AddEmployment from "@profile/pages/employment/AddEmployment";
 import EmploymentHistoryList from "@profile/pages/employment/EmploymentHistoryList";
-import AddProjectForm from "@profile/pages/projects/AddProjectForm";
 import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
 import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 import ProfileDetails from "@profile/pages/profile/ProfileDetails";
@@ -34,11 +30,12 @@ import Settings from "@profile/pages/profile/Settings";
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
 import AiLayout from "@workspaces/ai/AiLayout";
+import AIWorkspaceLayout from "@ai_workspace/layouts/AIWorkspaceLayout";
 import JobsLayout from "@workspaces/job_pipeline/layouts/JobPipelineLayout";
 import UnifiedJobsLayout from "@workspaces/job_pipeline/layouts/UnifiedJobsLayout";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 
-// AI workspace pages (lazy loaded - heavy components with AI logic)
+// AI workspace (OLD - will be deprecated)
 const DashboardAI = lazy(
   () => import("@workspaces/ai/pages/DashboardAI/index")
 );
@@ -56,6 +53,27 @@ const ResumeEditorV2 = lazy(
 );
 const EditCoverLetter = lazy(
   () => import("@workspaces/ai/pages/EditCoverLetter/index")
+);
+
+// AI workspace (NEW - redesigned)
+const AIWorkspaceHub = lazy(() => import("@ai_workspace/pages/AIWorkspaceHub"));
+const DocumentLibrary = lazy(
+  () => import("@ai_workspace/pages/DocumentLibrary")
+);
+const TemplateManager = lazy(
+  () => import("@ai_workspace/pages/TemplateManager")
+);
+const CompanyResearchNew = lazy(
+  () => import("@ai_workspace/pages/CompanyResearch")
+);
+const GenerateResumePage = lazy(
+  () => import("@ai_workspace/pages/GenerateResume")
+);
+const GenerateCoverLetterPage = lazy(
+  () => import("@ai_workspace/pages/GenerateCoverLetter")
+);
+const DocumentEditorPage = lazy(
+  () => import("@ai_workspace/pages/DocumentEditorPage")
 );
 
 // Jobs workspace pages (lazy loaded - data-heavy components)
@@ -100,6 +118,13 @@ const ProfileView = lazy(
   () => import("@workspaces/job_pipeline/views/ProfileView/ProfileView")
 );
 
+// Interview Hub workspace (lazy loaded)
+const InterviewHub = lazy(() =>
+  import("@workspaces/interview_hub").then((module) => ({
+    default: module.InterviewHub,
+  }))
+);
+
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
   <div
@@ -116,8 +141,76 @@ const LazyLoadFallback = () => (
 
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
-  // AI workspace (scoped theme). Index route shows a simple AI landing.
-  // Lazy loaded for performance - reduces initial bundle size
+
+  // AI workspace (NEW) - Redesigned with centralized hub
+  {
+    path: "/ai-new",
+    element: (
+      <ProtectedRoute>
+        <AIWorkspaceLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <AIWorkspaceHub />
+          </Suspense>
+        ),
+      },
+      {
+        path: "library",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DocumentLibrary />
+          </Suspense>
+        ),
+      },
+      {
+        path: "templates",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TemplateManager />
+          </Suspense>
+        ),
+      },
+      {
+        path: "generate/resume",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <GenerateResumePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "generate/cover-letter",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <GenerateCoverLetterPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "document/:documentId",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DocumentEditorPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "research",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <CompanyResearchNew />
+          </Suspense>
+        ),
+      },
+    ],
+  },
+
+  // AI workspace (OLD) - Legacy routes (will be deprecated)
   {
     path: "/ai",
     element: (
@@ -175,6 +268,17 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  // Interview Hub workspace
+  {
+    path: "/interviews",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <InterviewHub />
+        </Suspense>
+      </ProtectedRoute>
+    ),
   },
   // Jobs workspace - SIMPLIFIED: Single pipeline view with integrated analytics & calendar
   {
@@ -269,17 +373,10 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "education", element: <EducationOverview /> },
-      { path: "education/add", element: <AddEducation /> },
-      { path: "education/:id/edit", element: <AddEducation /> },
       { path: "skills", element: <SkillsOverview /> },
-      { path: "skills/manage", element: <AddSkills /> },
       { path: "employment", element: <EmploymentHistoryList /> },
-      { path: "employment/add", element: <AddEmployment /> },
-      { path: "employment/:id/edit", element: <AddEmployment /> },
       { path: "projects", element: <ProjectPortfolio /> },
-      { path: "projects/new", element: <AddProjectForm /> },
       { path: "projects/:id", element: <ProjectDetails /> },
-      { path: "projects/:id/edit", element: <AddProjectForm /> },
       { path: "certifications", element: <Certifications /> },
       { path: "details", element: <ProfileDetails /> },
       { path: "settings", element: <Settings /> },
@@ -290,7 +387,7 @@ export const router = createBrowserRouter([
   { path: "/education", element: <Navigate to="/profile/education" replace /> },
   {
     path: "/education/manage",
-    element: <Navigate to="/profile/education/add" replace />,
+    element: <Navigate to="/profile/education" replace />,
   },
   {
     path: "/skillsOverview",
@@ -298,15 +395,15 @@ export const router = createBrowserRouter([
   },
   {
     path: "/add-skills",
-    element: <Navigate to="/profile/skills/manage" replace />,
+    element: <Navigate to="/profile/skills" replace />,
   },
   {
     path: "/skills/manage",
-    element: <Navigate to="/profile/skills/manage" replace />,
+    element: <Navigate to="/profile/skills" replace />,
   },
   {
     path: "/add-employment",
-    element: <Navigate to="/profile/employment/add" replace />,
+    element: <Navigate to="/profile/employment" replace />,
   },
   {
     path: "/employment-history",
@@ -324,15 +421,11 @@ export const router = createBrowserRouter([
   { path: "/settings", element: <Navigate to="/profile/settings" replace /> },
   {
     path: "/projects/new",
-    element: <Navigate to="/profile/projects/new" replace />,
+    element: <Navigate to="/profile/projects" replace />,
   },
   {
     path: "/projects/:id",
     element: <Navigate to="/profile/projects/:id" replace />,
-  },
-  {
-    path: "/projects/:id/edit",
-    element: <Navigate to="/profile/projects/:id/edit" replace />,
   },
 
   // Catch-all: redirect unknown routes to home

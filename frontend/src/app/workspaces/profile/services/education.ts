@@ -1,4 +1,5 @@
 import crud from "@shared/services/crud";
+import { supabase } from "@shared/services/supabaseClient";
 import type {
   DbEducationRow,
   EducationEntry,
@@ -10,7 +11,7 @@ import { dbDateToYYYYMM, formatToSqlDate } from "@shared/utils/dateUtils";
 // mapping logic and CRUD calls in one file so components remain simple.
 
 const PROJECTION =
-  "id,degree_type,institution_name,field_of_study,graduation_date,start_date,gpa,honors,enrollment_status,meta,created_at,updated_at";
+  "id,degree_type,institution_name,field_of_study,graduation_date,start_date,gpa,honors,enrollment_status,metadata,created_at,updated_at";
 
 function mapRowToEntry(r: DbEducationRow): EducationEntry {
   return {
@@ -21,7 +22,7 @@ function mapRowToEntry(r: DbEducationRow): EducationEntry {
     startDate: dbDateToYYYYMM(r.start_date) ?? "",
     endDate: dbDateToYYYYMM(r.graduation_date) ?? undefined,
     gpa: r.gpa ?? undefined,
-    gpaPrivate: r.meta?.privateGpa ?? false,
+    gpaPrivate: r.metadata?.privateGpa ?? false,
     honors: r.honors ?? undefined,
     active: r.enrollment_status === "enrolled",
     created_at: r.created_at ?? null,
@@ -51,6 +52,31 @@ export async function createEducation(
   payload: EducationFormData
 ) {
   const userCrud = crud.withUser(userId);
+
+  // Ensure profile exists (education table has FK to profiles)
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .single();
+
+  if (!profileData) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        first_name: user.user_metadata?.first_name || "User",
+        last_name: user.user_metadata?.last_name || "",
+        email: user.email || "",
+      });
+      if (profileError) {
+        console.error("Profile creation failed:", profileError);
+      }
+    }
+  }
+
   const dbPayload: Record<string, unknown> = {
     institution_name: payload.institution ?? null,
     degree_type: payload.degree ?? null,
@@ -58,9 +84,9 @@ export async function createEducation(
     graduation_date: formatToSqlDate(payload.endDate ?? null),
     start_date: formatToSqlDate(payload.startDate ?? null),
     gpa: payload.gpa ?? null,
-    enrollment_status: payload.active ? "enrolled" : "not_enrolled",
+    enrollment_status: payload.active ? "enrolled" : "graduated",
     honors: payload.honors ?? null,
-    meta: { privateGpa: !!payload.gpaPrivate },
+    metadata: { privateGpa: !!payload.gpaPrivate },
   };
   const res = await userCrud.insertRow("education", dbPayload, "*");
   if (res.error) return { data: null, error: res.error };
@@ -82,9 +108,9 @@ export async function updateEducation(
     graduation_date: formatToSqlDate(payload.endDate ?? null),
     start_date: formatToSqlDate(payload.startDate ?? null),
     gpa: payload.gpa ?? null,
-    enrollment_status: payload.active ? "enrolled" : "not_enrolled",
+    enrollment_status: payload.active ? "enrolled" : "graduated",
     honors: payload.honors ?? null,
-    meta: { privateGpa: !!payload.gpaPrivate },
+    metadata: { privateGpa: !!payload.gpaPrivate },
   };
   const res = await userCrud.updateRow(
     "education",

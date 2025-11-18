@@ -11,7 +11,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
 import employmentService from "../../services/employment";
-import EditEmploymentModal from "./EditEmploymentModal";
+import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
@@ -28,7 +28,13 @@ export default function EmploymentHistoryList() {
   // Start false to avoid a visible flash on quick loads; we show the spinner only
   // if loading lasts longer than spinnerDelayMs.
   const [isLoading, setIsLoading] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<EmploymentRow | null>(null);
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [selectedEntry, setSelectedEntry] = useState<
+    EmploymentRow | undefined
+  >();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
   const { markProfileChanged } = useProfileChange();
@@ -117,7 +123,27 @@ export default function EmploymentHistoryList() {
     // Only run on mount/navigation changes
   }, [location, navigate, showSuccess]);
 
-  if (isLoading || loading) return <LoadingSpinner />;
+  // Dialog handlers - defined before early return
+  const handleOpenAddDialog = () => {
+    setDialogMode("add");
+    setSelectedEntry(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (entry: EmploymentRow) => {
+    setDialogMode("edit");
+    setSelectedEntry(entry);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedEntry(undefined);
+  };
+
+  const handleDialogSuccess = () => {
+    fetchEntries();
+  };
 
   const handleDelete = async (entryId: string) => {
     // Confirm deletion with user using hook-based dialog
@@ -157,6 +183,8 @@ export default function EmploymentHistoryList() {
     }
   };
 
+  if (isLoading || loading) return <LoadingSpinner />;
+
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
       <Breadcrumbs
@@ -177,7 +205,7 @@ export default function EmploymentHistoryList() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate("/profile/employment/add")}
+          onClick={handleOpenAddDialog}
         >
           Add Employment
         </Button>
@@ -189,10 +217,7 @@ export default function EmploymentHistoryList() {
           title="No employment entries yet"
           description="Click 'Add Employment' to start building your work history"
           action={
-            <Button
-              variant="contained"
-              onClick={() => navigate("/profile/employment/add")}
-            >
+            <Button variant="contained" onClick={handleOpenAddDialog}>
               Add Employment
             </Button>
           }
@@ -225,7 +250,7 @@ export default function EmploymentHistoryList() {
                 <Button
                   variant="text"
                   color="primary"
-                  onClick={() => setEditingEntry(entry)}
+                  onClick={() => handleOpenEditDialog(entry)}
                 >
                   Edit
                 </Button>
@@ -248,17 +273,15 @@ export default function EmploymentHistoryList() {
         ))}
       </Stack>
 
-      {editingEntry && (
-        <EditEmploymentModal
-          entry={editingEntry}
-          onClose={() => setEditingEntry(null)}
-          onSave={() => {
-            // Close modal and refresh list; success message will be shown via navigation state
-            setEditingEntry(null);
-            fetchEntries();
-          }}
-        />
-      )}
+      {/* Add/Edit Dialog */}
+      <AddEmploymentDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSuccess={handleDialogSuccess}
+        mode={dialogMode}
+        existingEntry={selectedEntry}
+      />
+
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
     </Box>
   );

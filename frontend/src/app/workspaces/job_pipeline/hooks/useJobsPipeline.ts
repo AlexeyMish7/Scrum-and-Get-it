@@ -258,6 +258,9 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
         showSuccess(`Moved to ${newStage}`);
         preDragRef.current = undefined;
+
+        // Notify other components that jobs changed
+        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
 
@@ -291,26 +294,31 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
         showSuccess(`Moved ${jobIds.length} job(s) to ${newStage}`);
 
-        // Update allJobs
-        setAllJobs((prev) =>
-          prev.map((j) =>
-            jobIds.includes(Number(j.id))
-              ? {
-                  ...j,
-                  job_status: newStage,
-                  status_changed_at: new Date().toISOString(),
-                }
-              : j
-          )
+        // Update allJobs immediately
+        const updatedJobs = allJobs.map((j) =>
+          jobIds.includes(Number(j.id))
+            ? {
+                ...j,
+                job_status: newStage,
+                status_changed_at: new Date().toISOString(),
+              }
+            : j
         );
 
-        // Regroup by stage (simplified - just trigger refresh)
-        await refreshJobs();
+        setAllJobs(updatedJobs);
+
+        // Update jobsByStage immediately for instant UI feedback
+        setJobsByStage(groupJobsByStage(updatedJobs));
+
+        // Notify other components (like CalendarWidget) that jobs changed
+        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
+        // Refresh on error to revert optimistic update
+        await refreshJobs();
       }
     },
-    [user, handleError, showSuccess, refreshJobs]
+    [user, handleError, showSuccess, allJobs, groupJobsByStage, refreshJobs]
   );
 
   /**
@@ -342,6 +350,9 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
           });
           return updated;
         });
+
+        // Notify other components that jobs changed
+        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
       }

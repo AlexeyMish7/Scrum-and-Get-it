@@ -8,8 +8,8 @@
  * - UI Primitives: Icon, QuickActionButton
  * - Layouts: RightDrawer
  * - Auth: ProtectedRoute
- * - Domain-specific: ProfilePicture, SprintTaskSnackbar
- * - Development: RegionAnchor (page markers for testing)
+ * - Domain-specific: ProfilePicture
+ * - Development: RegionAnchor (page markers for testing/debugging)
  *
  * Note: ConfirmDialog, ErrorSnackbar, and LoadingSpinner are exported from their
  * respective specialized folders (dialogs/, feedback/) for better organization.
@@ -33,8 +33,6 @@ export { default as ProtectedRoute } from "./ProtectedRoute";
 
 // Domain-specific components
 export { default as ProfilePicture } from "./ProfilePicture";
-export { default as SprintTaskSnackbar } from "./SprintTaskSnackbar";
-export { ThemePresetSelector } from "./ThemePresetSelector";
 
 // Development/debugging tools
 export { default as RegionAnchor } from "./RegionAnchor";

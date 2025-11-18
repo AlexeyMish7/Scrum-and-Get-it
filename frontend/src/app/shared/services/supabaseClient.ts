@@ -1,9 +1,23 @@
 /**
- * Creates a single Supabase client for the whole app.
- * - Reads Vite env vars (declared in src/vite-env.d.ts)
- * - Throws early if env vars are missing (helps catch misconfig)
-
-*/
+ * SUPABASE CLIENT (Singleton)
+ *
+ * Purpose:
+ * - Single Supabase client instance for entire frontend
+ * - Direct database access with Row-Level Security (RLS) enforcement
+ * - Session management and JWT token handling
+ *
+ * Security Model:
+ * - Uses VITE_SUPABASE_ANON_KEY (public, safe to expose)
+ * - RLS policies enforce user_id scoping automatically
+ * - Never use service role key on frontend (backend only)
+ *
+ * Connection Flow:
+ * Frontend → Supabase Client (anon key + RLS) → Postgres
+ *
+ * Usage:
+ *   import { supabase } from '@shared/services/supabaseClient';
+ *   const { data } = await supabase.from('profiles').select('*');
+ */
 import { createClient } from "@supabase/supabase-js";
 
 // Vite injects these at build/dev time. The .d.ts tells TS they exist.

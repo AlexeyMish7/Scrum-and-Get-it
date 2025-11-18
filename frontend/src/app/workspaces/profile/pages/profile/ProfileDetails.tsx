@@ -116,7 +116,7 @@ const ProfileDetails: React.FC = () => {
   const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState(true);
+  const [editMode, setEditMode] = useState(false);
 
   // Load profile from DB when user is available
   useEffect(() => {
@@ -239,10 +239,11 @@ const ProfileDetails: React.FC = () => {
           {editMode ? "Edit Profile" : "Profile Details"}
         </Typography>
 
+        {/* Show profile picture in both view and edit modes */}
+        <ProfilePicture />
+
         {editMode ? (
           <>
-            <ProfilePicture />
-
             {/* Row: Full name + Email */}
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
               <Box sx={{ flex: 1, minWidth: 240 }}>

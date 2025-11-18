@@ -5,6 +5,7 @@ import { Box, Typography, Avatar, Button, Divider } from "@mui/material";
 
 import Icon from "@shared/components/common/Icon";
 import { useAuth } from "@shared/context/AuthContext";
+import { useAvatar } from "@shared/hooks/useAvatar";
 import * as crud from "@shared/services/crud";
 import { Breadcrumbs } from "@shared/components/navigation";
 import type { EmploymentRow } from "../../types/employment.ts";
@@ -87,6 +88,9 @@ import ProfileStrengthTips from "../../components/profile/ProfileStrengthTips.ts
 const Dashboard: FC = () => {
   // Auth
   const { user, loading } = useAuth();
+
+  // Avatar
+  const avatarUrl = useAvatar(user?.id);
 
   // Minimal display header placeholders (will be filled from DB/auth)
   const [displayName, setDisplayName] = useState<string>("Your Name");
@@ -560,8 +564,10 @@ const Dashboard: FC = () => {
         }}
       >
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar>
-            {displayName ? displayName.charAt(0).toUpperCase() : "U"}
+          <Avatar src={avatarUrl ?? undefined} sx={{ width: 56, height: 56 }}>
+            {!avatarUrl && displayName
+              ? displayName.charAt(0).toUpperCase()
+              : "U"}
           </Avatar>
           <Box>
             <Typography variant="h6" fontWeight={700}>

@@ -1,3 +1,48 @@
+/**
+ * AUTH CONTEXT (Global Authentication State)
+ *
+ * Purpose:
+ * - Manage user authentication state across entire application
+ * - Provide centralized login/logout/signup functionality
+ * - Handle JWT token refresh automatically
+ * - Persist session across browser refreshes
+ *
+ * Backend Connection:
+ * - Uses Supabase Auth (via supabaseClient.ts)
+ * - JWT tokens issued by Supabase (stored in localStorage)
+ * - Auto-refresh tokens before expiration (60-minute default)
+ * - Session state synced via onAuthStateChange listener
+ *
+ * Authentication Flow:
+ * 1. User submits credentials → signIn() or signUpNewUser()
+ * 2. Supabase validates & issues JWT → stored in localStorage
+ * 3. Session object available via { session, user } from useAuth()
+ * 4. All API calls include JWT in Authorization header
+ * 5. Backend validates JWT → extracts userId → scopes queries
+ *
+ * Security Model:
+ * - JWT tokens are httpOnly (cannot be accessed via JS in production)
+ * - localStorage used for session persistence (development)
+ * - Auto-logout on token expiration or validation failure
+ * - OAuth providers: Google, GitHub (optional)
+ *
+ * Usage:
+ *   import { useAuth } from '@shared/context/AuthContext';
+ *
+ *   function MyComponent() {
+ *     const { session, user, loading, signIn, signOut } = useAuth();
+ *
+ *     if (loading) return <LoadingSpinner />;
+ *     if (!user) return <LoginPrompt />;
+ *
+ *     return <div>Welcome, {user.email}</div>;
+ *   }
+ *
+ * Provider Setup:
+ *   <AuthProvider>
+ *     <App />
+ *   </AuthProvider>
+ */
 import {
   createContext,
   useContext,
