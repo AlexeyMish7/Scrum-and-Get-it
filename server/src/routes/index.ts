@@ -53,6 +53,7 @@ export {
 
 // ===== COMPANY RESEARCH =====
 export { get as getCompanyResearch } from "./company/research.js";
+export { get as getUserCompanies } from "./company/user-companies.js";
 
 // ===== SALARY RESEARCH =====
 export { post as postSalaryResearch } from "./salary/research.js";
@@ -77,4 +78,5 @@ export { post as handleCreateDraft } from "./cover-letter/drafts.js";
 export { patch as handleUpdateDraft } from "./cover-letter/drafts.js";
 export { del as handleDeleteDraft } from "./cover-letter/drafts.js";
 export { get as handleGetCompanyResearch } from "./company/research.js";
+export { get as handleGetUserCompanies } from "./company/user-companies.js";
 export { post as handleSalaryResearch } from "./salary/research.js";

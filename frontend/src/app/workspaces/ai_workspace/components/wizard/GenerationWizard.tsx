@@ -6,12 +6,14 @@
 
 import React, { useState } from "react";
 import { Box, Button, Container, Paper, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useGeneration } from "../../context/useGeneration";
 import { WizardStepper, type WizardStep } from "./WizardStepper";
 import { TemplateSelectionStep } from "./TemplateSelectionStep";
 import { ThemeSelectionStep } from "./ThemeSelectionStep";
@@ -47,8 +49,8 @@ const WIZARD_STEPS: WizardStep[] = [
   {
     id: "context",
     label: "Job Context",
-    description: "Add job-specific details",
-    optional: true,
+    description: "Select target job",
+    optional: false,
   },
   {
     id: "options",
@@ -123,8 +125,12 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
 }) => {
   // Auth and error handling
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
+
+  // Track generation state for navigation warning
+  const { setHasStartedGeneration } = useGeneration();
 
   // Wizard state
   const [activeStep, setActiveStep] = useState(0);
@@ -146,6 +152,24 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | undefined>();
 
+  // Set generation started flag when template is selected
+  // This enables the unsaved changes warning in navigation
+  React.useEffect(() => {
+    if (selectedTemplate) {
+      setHasStartedGeneration(true);
+    }
+  }, [selectedTemplate, setHasStartedGeneration]);
+
+  // Handle cancel - clear generation state and navigate away
+  const handleCancel = () => {
+    setHasStartedGeneration(false);
+    if (onCancel) {
+      onCancel();
+    } else {
+      window.history.back();
+    }
+  };
+
   /**
    * Check if current step can proceed
    */
@@ -155,8 +179,8 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
         return selectedTemplate !== null;
       case 1: // Theme selection
         return selectedTheme !== null;
-      case 2: // Job context (optional)
-        return true;
+      case 2: // Job context (required)
+        return jobContext.jobId !== undefined;
       case 3: // Options
         return true;
       case 4: // Preview
@@ -226,12 +250,14 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
       }
 
       // Show success notification
-      showSuccess("Document generated successfully!");
+      showSuccess("Document generated successfully! Opening editor...");
 
-      // Call onComplete callback with actual result
-      if (onComplete) {
-        onComplete(result);
-      }
+      // Clear generation state - user is navigating away
+      setHasStartedGeneration(false);
+
+      // Navigate to document editor instead of calling onComplete
+      // This allows users to immediately edit and refine the generated document
+      navigate(`/ai/document/${result.documentId}`);
     } catch (error) {
       setIsGenerating(false);
       handleError(error as Error);
@@ -304,10 +330,7 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
 
         {/* Navigation Buttons */}
         <Stack direction="row" spacing={2} justifyContent="space-between">
-          <Button
-            onClick={onCancel || (() => window.history.back())}
-            disabled={isGenerating}
-          >
+          <Button onClick={handleCancel} disabled={isGenerating}>
             Cancel
           </Button>
 

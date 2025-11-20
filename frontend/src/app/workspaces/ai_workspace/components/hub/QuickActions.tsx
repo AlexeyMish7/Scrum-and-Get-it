@@ -11,7 +11,7 @@ import {
   CardContent,
   Typography,
   Box,
-  Stack,
+  Grid,
 } from "@mui/material";
 import type { SvgIconProps } from "@mui/material";
 import {
@@ -30,7 +30,7 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     id: "new-resume",
     label: "New Resume",
     icon: "resume",
-    action: "/ai-new/generate/resume",
+    action: "/ai/generate/resume",
     color: "#1976d2",
     tooltip: "Create a new resume with AI assistance",
   },
@@ -38,7 +38,7 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     id: "new-cover-letter",
     label: "New Cover Letter",
     icon: "cover-letter",
-    action: "/ai-new/generate/cover-letter",
+    action: "/ai/generate/cover-letter",
     color: "#388e3c",
     tooltip: "Generate a tailored cover letter",
   },
@@ -46,7 +46,7 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     id: "company-research",
     label: "Company Research",
     icon: "research",
-    action: "/ai-new/research",
+    action: "/ai/research",
     color: "#f57c00",
     tooltip: "Research companies for your applications",
   },
@@ -90,15 +90,12 @@ export default function QuickActions({
         Quick Actions
       </Typography>
 
-      <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", gap: 2 }}>
+      <Grid container spacing={2}>
         {actions.map((action) => {
           const IconComponent = ICON_MAP[action.icon];
 
           return (
-            <Box
-              key={action.id}
-              sx={{ flex: "1 1 calc(33.33% - 16px)", minWidth: 250 }}
-            >
+            <Grid item key={action.id} xs={12} sm={6} md={4}>
               <Card
                 elevation={0}
                 sx={{
@@ -116,9 +113,9 @@ export default function QuickActions({
                 <CardActionArea
                   onClick={() => handleActionClick(action)}
                   disabled={action.disabled}
-                  sx={{ height: "100%", p: 2 }}
+                  sx={{ height: "100%" }}
                 >
-                  <CardContent sx={{ textAlign: "center" }}>
+                  <CardContent sx={{ textAlign: "center", py: 3, px: 2 }}>
                     <Box
                       sx={{
                         width: 64,
@@ -153,10 +150,10 @@ export default function QuickActions({
                   </CardContent>
                 </CardActionArea>
               </Card>
-            </Box>
+            </Grid>
           );
         })}
-      </Stack>
+      </Grid>
     </Box>
   );
 }

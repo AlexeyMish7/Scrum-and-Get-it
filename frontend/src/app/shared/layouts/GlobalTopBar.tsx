@@ -18,7 +18,7 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha, useTheme, type Theme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -51,7 +51,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
   },
   {
     label: "AI Workspace",
-    path: "/ai-new",
+    path: "/ai",
     description: "Generate resumes, cover letters, manage templates & themes",
   },
   {
@@ -79,11 +79,11 @@ const JOBS_TOOL_ITEMS: NavItem[] = [
 ];
 
 const AI_TOOL_ITEMS: NavItem[] = [
-  { label: "AI Hub", path: "/ai-new" },
-  { label: "Generate Resume", path: "/ai-new/generate/resume" },
-  { label: "Generate Cover Letter", path: "/ai-new/generate/cover-letter" },
-  { label: "Document Library", path: "/ai-new/library" },
-  { label: "Templates", path: "/ai-new/templates" },
+  { label: "AI Hub", path: "/ai" },
+  { label: "Generate Resume", path: "/ai/generate/resume" },
+  { label: "Generate Cover Letter", path: "/ai/generate/cover-letter" },
+  { label: "Document Library", path: "/ai/library" },
+  { label: "Templates", path: "/ai/templates" },
 ];
 
 const MENU_ITEMS: NavItem[] = [
@@ -91,10 +91,7 @@ const MENU_ITEMS: NavItem[] = [
   { label: "Settings", path: "/profile/settings" },
 ];
 
-const getNavVariantStyles = (
-  theme: ReturnType<typeof useTheme>,
-  highlight: boolean
-) => ({
+const getNavVariantStyles = (theme: Theme, highlight: boolean) => ({
   color: highlight
     ? theme.palette.primary.contrastText
     : theme.palette.text.primary,
@@ -119,7 +116,18 @@ export default function GlobalTopBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const appBarCfg = (theme as any).designTokens?.palette.appBar;
+  // Custom app bar configuration from theme (if available)
+  const appBarCfg = (
+    theme as Theme & { designTokens?: { palette?: { appBar?: unknown } } }
+  ).designTokens?.palette.appBar as
+    | {
+        bg?: string;
+        glassOpacity?: number;
+        blur?: number;
+        color?: string;
+        border?: string;
+      }
+    | undefined;
   const appBarBgBase = appBarCfg?.bg ?? theme.palette.background.default;
   const appBarOpacity = appBarCfg?.glassOpacity ?? 0.85;
   const appBarBlur = appBarCfg?.blur ?? 16;
@@ -137,12 +145,27 @@ export default function GlobalTopBar() {
 
   const currentWorkspace = useMemo(() => {
     if (
-      location.pathname.startsWith("/ai-new") ||
+      location.pathname.startsWith("/ai") ||
       location.pathname.startsWith("/ai")
     )
       return "AI";
     if (location.pathname.startsWith("/jobs")) return "JOBS";
     return "PROFILE";
+  }, [location.pathname]);
+
+  // Get the page title based on current route
+  const pageTitle = useMemo(() => {
+    if (location.pathname === "/ai") return "Generation Hub";
+    if (location.pathname === "/ai/library") return "Document Library";
+    if (location.pathname === "/ai/templates") return "Templates";
+    if (location.pathname === "/ai/research") return "Company Research";
+    if (location.pathname === "/ai/generate/resume") return "Generate Resume";
+    if (location.pathname === "/ai/generate/cover-letter")
+      return "Generate Cover Letter";
+    if (location.pathname.startsWith("/ai/document/")) return "Document Editor";
+    if (location.pathname.startsWith("/ai")) return "AI Workspace";
+    if (location.pathname.startsWith("/jobs")) return "Job Search Hub";
+    return "Profile";
   }, [location.pathname]);
 
   const toolItems = useMemo(() => {
@@ -225,7 +248,7 @@ export default function GlobalTopBar() {
               Flow ATS
             </Typography>
             <Typography variant="h6" fontWeight={800}>
-              {highlightAi ? "AI Workspace" : "Job Search Hub"}
+              {pageTitle}
             </Typography>
           </Box>
         </Box>
@@ -237,7 +260,7 @@ export default function GlobalTopBar() {
             <Button
               color="inherit"
               component={NavLink}
-              to="/ai-new"
+              to="/ai"
               size="large"
               sx={{
                 ...getNavVariantStyles(theme, highlightAi),

@@ -21,8 +21,8 @@
  * 6. Return document ID and preview for UI
  */
 
-import aiGeneration from "@workspaces/ai/services/aiGeneration";
-import { withUser } from "@shared/services/crud";
+import aiGeneration from "@shared/services/ai/aiGeneration";
+import { withUser, getRow } from "@shared/services/crud";
 import type {
   GenerationDocumentType,
   GenerationOptions,
@@ -30,6 +30,8 @@ import type {
   GenerationProgress,
 } from "../types";
 import type { Template, Theme } from "../types/template.types";
+import type { ResumeContent } from "../types/document.types";
+import type { ResumeArtifactContent } from "@shared/types/ai";
 
 /**
  * Job context data (re-export from JobContextStep component)
@@ -45,6 +47,134 @@ export interface JobContext {
   jobDescription?: string;
   /** Key requirements extracted from job posting */
   keyRequirements?: string[];
+}
+
+/**
+ * Transform AI-generated ResumeArtifactContent to ResumeContent format
+ * AND fetch user profile data to populate header
+ *
+ * WHY: AI backend returns a different structure (ResumeArtifactContent) than
+ * what the document editor expects (ResumeContent). This function bridges the gap
+ * and ensures header data comes from the user's profile.
+ */
+async function transformAIResumeContent(
+  userId: string,
+  aiContent: ResumeArtifactContent | undefined
+): Promise<ResumeContent> {
+  // Fetch user's profile data for header
+  // Note: profiles table uses 'id' as primary key (not user_id), so use direct getRow
+  const profileResult = await getRow("profiles", "*", {
+    eq: { id: userId },
+    single: true,
+  });
+
+  const profile = profileResult.data;
+
+  if (!profile) {
+    throw new Error(
+      "Profile not found. Please complete your profile before generating a resume."
+    );
+  }
+
+  // Build header from profile data
+  const header = {
+    fullName: `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
+    title: profile.job_title || "",
+    email: profile.email || "",
+    phone: profile.phone || "",
+    location: profile.location || "",
+    links: [
+      ...(profile.linkedin_url
+        ? [
+            {
+              type: "linkedin",
+              url: profile.linkedin_url,
+              label: "LinkedIn",
+            },
+          ]
+        : []),
+      ...(profile.github_url
+        ? [{ type: "github", url: profile.github_url, label: "GitHub" }]
+        : []),
+      ...(profile.portfolio_url
+        ? [
+            {
+              type: "portfolio",
+              url: profile.portfolio_url,
+              label: "Portfolio",
+            },
+          ]
+        : []),
+    ],
+    photoUrl: profile.avatar_url || undefined,
+  };
+
+  // Transform AI content to ResumeContent format
+  const content: ResumeContent = {
+    header,
+    summary: aiContent?.summary
+      ? {
+          enabled: true,
+          text: aiContent.summary,
+          highlights: aiContent.ats_keywords || [],
+        }
+      : undefined,
+    experience: {
+      enabled: true,
+      items:
+        aiContent?.sections?.experience?.map((exp) => ({
+          title: exp.role || "",
+          company: exp.company || "",
+          location: "",
+          startDate: "",
+          endDate: null,
+          current: false,
+          bullets: exp.bullets || [],
+          highlights: exp.notes || [],
+          technologies: [],
+        })) || [],
+    },
+    education: {
+      enabled: true,
+      items:
+        aiContent?.sections?.education?.map((edu) => ({
+          degree: edu.degree || "",
+          field: "",
+          institution: edu.institution || "",
+          location: "",
+          graduationDate: edu.graduation_date || "",
+          relevant: edu.details || [],
+        })) || [],
+    },
+    skills: {
+      enabled: true,
+      categories: aiContent?.ordered_skills
+        ? [
+            {
+              name: "Skills",
+              skills: aiContent.ordered_skills.map((skill) => ({
+                name: skill,
+                highlighted:
+                  aiContent.emphasize_skills?.includes(skill) || false,
+              })),
+            },
+          ]
+        : [],
+    },
+    projects: aiContent?.sections?.projects
+      ? {
+          enabled: true,
+          items: aiContent.sections.projects.map((proj) => ({
+            name: proj.name || "",
+            description: proj.role || "",
+            technologies: [],
+            bullets: proj.bullets || [],
+          })),
+        }
+      : undefined,
+  };
+
+  return content;
 }
 
 /**
@@ -72,21 +202,51 @@ export async function generateResume(
   jobContext?: JobContext,
   options?: GenerationOptions
 ): Promise<GenerationResult> {
-  // Call backend AI generation
+  // Call backend AI generation with all options mapped correctly
   const result = await aiGeneration.generateResume(
     userId,
     jobContext?.jobId || 0, // Use 0 if no job (general resume)
     {
       tone: options?.tone || "professional",
       templateId: template.id,
-      // Map ai_workspace options to backend API
-      ...(options?.atsOptimized && { focus: "ats" }),
-      ...(options?.skillsHighlight && { focus: "skills" }),
+      // Map focus from options - combine ATS and skills highlight into focus string
+      focus: options?.atsOptimized
+        ? "ats"
+        : options?.skillsHighlight
+        ? "skills"
+        : undefined,
+      // Include other options as needed
+      length: options?.length || "standard",
+      // Note: keywordMatch is applied automatically when jobId is provided
+      // includePortfolio will be handled by the template's section configuration
     }
   );
 
+  // Transform AI content to ResumeContent format and fetch user profile
+  const resumeContent = await transformAIResumeContent(userId, result.content);
+
   // Save to documents table
   const userCrud = withUser(userId);
+
+  // Validate that we have database UUIDs, not static string IDs
+  if (
+    !template.id.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    )
+  ) {
+    throw new Error(
+      `Template ID "${template.id}" is not a valid UUID. Please select a template from the database, not static fallback data. Try refreshing the page.`
+    );
+  }
+  if (
+    !_theme.id.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    )
+  ) {
+    throw new Error(
+      `Theme ID "${_theme.id}" is not a valid UUID. Please select a theme from the database, not static fallback data. Try refreshing the page.`
+    );
+  }
 
   const documentData = {
     type: "resume" as const,
@@ -96,7 +256,7 @@ export async function generateResume(
     theme_id: _theme.id,
     template_overrides: {},
     theme_overrides: {},
-    content: result.content || {},
+    content: resumeContent, // Use transformed content instead of raw AI response
     job_id: jobContext?.jobId || null,
     target_role: jobContext?.jobTitle || null,
     target_company: jobContext?.companyName || null,
@@ -127,7 +287,7 @@ export async function generateResume(
   const versionData = {
     document_id: document.id,
     version_number: 1,
-    content: result.content || {},
+    content: resumeContent, // Use transformed content instead of raw AI response
     template_id: template.id,
     theme_id: _theme.id,
     template_overrides: {},
@@ -171,10 +331,9 @@ export async function generateResume(
     await userCrud.insertRow("document_jobs", {
       document_id: document.id,
       job_id: jobContext.jobId,
-      document_type: "resume" as const,
-      status: "draft" as const,
-      application_status: null,
-      submitted_at: null,
+      version_id: version.id,
+      user_id: userId,
+      status: "planned",
     });
   }
 
@@ -182,7 +341,7 @@ export async function generateResume(
   return {
     documentId: document.id,
     versionId: version.id,
-    content: result.content || {},
+    content: resumeContent, // Return transformed content
     preview: {
       html: result.preview || "Generated resume preview...",
     },
@@ -223,6 +382,21 @@ export async function generateCoverLetter(
 ): Promise<GenerationResult> {
   if (!jobContext?.jobId) {
     throw new Error("Job context required for cover letter generation");
+  }
+
+  // Fetch user profile for header information
+  // Note: profiles table uses 'id' as primary key (not user_id)
+  const profileResult = await getRow("profiles", "*", {
+    eq: { id: userId },
+    single: true,
+  });
+
+  const profile = profileResult.data;
+
+  if (!profile) {
+    throw new Error(
+      "Profile not found. Please complete your profile before generating a cover letter."
+    );
   }
 
   // Call backend AI generation
@@ -274,11 +448,53 @@ export async function generateCoverLetter(
 
   const document = documentResult.data;
 
+  // Transform AI response to match editor structure
+  // AI returns: { sections: { opening, body: [], closing }, metadata }
+  // Editor needs: { header, recipient, salutation, body: { opening, body1, body2, body3, closing }, signature }
+  const aiContent = result.content || {};
+  const transformedContent = {
+    header: {
+      fullName:
+        profile.full_name ||
+        `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+        "",
+      email: profile.email || "",
+      phone: profile.phone_number || "",
+      location: profile.location || "",
+      date: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+    recipient: {
+      company: jobContext.companyName || "",
+      name: "",
+      title: "",
+      address: "",
+    },
+    salutation: "Dear Hiring Manager,",
+    body: {
+      opening: aiContent.sections?.opening || "",
+      body1: aiContent.sections?.body?.[0] || "",
+      body2: aiContent.sections?.body?.[1] || "",
+      body3: aiContent.sections?.body?.[2] || "",
+      closing: aiContent.sections?.closing || "",
+    },
+    signature: {
+      closing: "Sincerely,",
+      name:
+        profile.full_name ||
+        `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+        "",
+    },
+  };
+
   // Create initial version in document_versions table
   const versionData = {
     document_id: document.id,
     version_number: 1,
-    content: result.content || {},
+    content: transformedContent,
     template_id: template.id,
     theme_id: _theme.id,
     template_overrides: {},
@@ -321,24 +537,23 @@ export async function generateCoverLetter(
   await userCrud.insertRow("document_jobs", {
     document_id: document.id,
     job_id: jobContext.jobId,
-    document_type: "cover-letter" as const,
-    status: "draft" as const,
-    application_status: null,
-    submitted_at: null,
+    version_id: version.id,
+    user_id: userId,
+    status: "planned",
   });
 
   // Return result matching ai_workspace types
   return {
     documentId: document.id,
     versionId: version.id,
-    content: result.content || {},
+    content: transformedContent,
     preview: {
       html: result.preview || "Generated cover letter preview...",
     },
     metadata: {
       generatedAt: new Date().toISOString(),
       processingTime: 0,
-      tokensUsed: 0,
+      tokensUsed: aiContent.metadata?.tokens || 0,
       model: "gpt-4o-mini",
       issues: [],
     },

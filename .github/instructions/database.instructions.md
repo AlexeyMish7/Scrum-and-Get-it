@@ -799,11 +799,7 @@ CREATE TABLE public.companies (
   careers_page text,
 
   -- Structured data
-  company_data jsonb DEFAULT '{...}'::jsonb,       -- benefits, locations, techStack, recentNews, departments, fundingInfo
-
-  -- AI research cache
-  research_cache jsonb DEFAULT '{}'::jsonb,
-  research_last_updated timestamp with time zone,
+  company_data jsonb DEFAULT '{...}'::jsonb,       -- culture, leadership, products, benefits, locations, techStack, departments, fundingInfo
 
   logo_url text,
   is_verified boolean NOT NULL DEFAULT false,
@@ -812,6 +808,77 @@ CREATE TABLE public.companies (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
 
   CONSTRAINT companies_pkey PRIMARY KEY (id)
+);
+```
+
+**company_research_cache** - Volatile company research data
+
+```sql
+CREATE TABLE public.company_research_cache (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL UNIQUE,                 -- FK to companies
+
+  -- Volatile research data (news, events, funding - expires after 7 days)
+  research_data jsonb NOT NULL DEFAULT '{...}'::jsonb,
+
+  -- Metadata
+  metadata jsonb DEFAULT '{...}'::jsonb,           -- model, source, confidence
+  generated_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL DEFAULT (now() + '7 days'::interval),
+
+  -- Cache statistics
+  last_accessed_at timestamp with time zone NOT NULL DEFAULT now(),
+  access_count integer NOT NULL DEFAULT 0,
+
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+
+  CONSTRAINT company_research_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT company_research_cache_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE
+);
+```
+
+**Key Points:**
+
+- `companies` table: Persistent company data (name, industry, size, culture, leadership, products)
+- `company_research_cache` table: Volatile data (news, recent events, funding rounds) with 7-day TTL
+- Cache linked to companies via `company_id` FK
+- Shared across all users (no `user_id` column in either table)
+- Use `get_company_research(company_name)` function to get combined data
+- Use `upsert_company_info()` to save/update persistent data
+- Use `save_company_research()` to save/update volatile cache
+- Use `get_user_companies(user_id)` to get companies from user's employment history
+
+**Database Functions:**
+
+```sql
+-- Get distinct company names from user's employment history
+-- Used for quick-select in company research UI
+SELECT * FROM get_user_companies('user-uuid');
+-- Returns: [{ company_name: "Google" }, { company_name: "Microsoft" }, ...]
+
+-- Get combined company data (persistent + volatile)
+SELECT * FROM get_company_research('Google');
+-- Returns: Combined JSONB with company info + cached research
+
+-- Save/update persistent company info (returns company_id)
+SELECT upsert_company_info(
+  'Google',                    -- company_name
+  'Technology',                -- industry
+  '100000+',                   -- size
+  'Mountain View, CA',         -- location
+  1998,                        -- founded_year
+  'https://google.com',        -- website
+  'Organize world information', -- mission
+  'Search engine company',     -- description
+  '{}'::jsonb                  -- company_data
+);
+
+-- Save/update volatile research cache (linked to company_id)
+SELECT save_company_research(
+  'company-uuid',              -- company_id
+  '{"news": [...], "events": [...]}'::jsonb,  -- research_data
+  '{"model": "gpt-4"}'::jsonb  -- metadata
 );
 ```
 

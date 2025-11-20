@@ -262,67 +262,86 @@ export function getThemeColorPreview(theme: Theme): {
 
 /**
  * Map ThemeRow from database to Theme type for ai_workspace
+ *
+ * Database structure uses nested JSONB objects that match our migration:
+ * - colors.text.primary/secondary/muted
+ * - colors.background.paper/section/subtle
+ * - typography.fontFamily.heading/body/mono
+ * - typography.fontSize.name/heading/subheading/body/caption
+ * - spacing.section/subsection/item/compact
  */
 function mapThemeRowToTheme(row: ThemeRow): Theme {
+  // Access nested properties safely from JSONB structure
+  const colors = row.colors as any;
+  const typography = row.typography as any;
+  const spacing = row.spacing as any;
+  const effects = row.effects as any;
+
   return {
     id: row.id,
     name: row.name,
     category: (row.category || "modern") as ThemeCategory,
     typography: {
       headingFont: {
-        family: row.typography.fontFamily?.heading || "Arial",
-        weights: [400, 700],
+        family: typography?.fontFamily?.heading || "Arial",
+        weights: [
+          typography?.fontWeight?.heading || 700,
+          typography?.fontWeight?.subheading || 600,
+        ],
         fallbacks: ["sans-serif"],
       },
       bodyFont: {
-        family: row.typography.fontFamily?.body || "Arial",
-        weights: [400, 600],
+        family: typography?.fontFamily?.body || "Arial",
+        weights: [
+          typography?.fontWeight?.body || 400,
+          typography?.fontWeight?.emphasis || 500,
+        ],
         fallbacks: ["sans-serif"],
       },
       sizes: {
-        h1: row.typography.fontSize?.h1 || 24,
-        h2: row.typography.fontSize?.h2 || 18,
-        h3: row.typography.fontSize?.h3 || 14,
-        body: row.typography.fontSize?.body || 11,
-        small: row.typography.fontSize?.small || 9,
+        h1: typography?.fontSize?.name || 24,
+        h2: typography?.fontSize?.heading || 18,
+        h3: typography?.fontSize?.subheading || 14,
+        body: typography?.fontSize?.body || 11,
+        small: typography?.fontSize?.caption || 9,
       },
       lineHeight: {
-        tight: row.typography.lineHeight?.tight || 1.2,
-        normal: row.typography.lineHeight?.normal || 1.5,
-        relaxed: row.typography.lineHeight?.relaxed || 1.8,
+        tight: typography?.lineHeight?.tight || 1.2,
+        normal: typography?.lineHeight?.normal || 1.5,
+        relaxed: typography?.lineHeight?.relaxed || 1.8,
       },
     },
     colors: {
-      primary: row.colors.primary || "#000000",
-      secondary: row.colors.secondary || "#666666",
-      accent: row.colors.accent || "#0066cc",
+      primary: colors?.primary || "#000000",
+      secondary: colors?.secondary || "#666666",
+      accent: colors?.accent || "#0066cc",
       text: {
-        primary: row.colors.text || "#000000",
-        secondary: row.colors.textSecondary || "#666666",
-        muted: "#999999",
+        primary: colors?.text?.primary || "#000000",
+        secondary: colors?.text?.secondary || "#666666",
+        muted: colors?.text?.muted || "#999999",
       },
       background: {
-        paper: row.colors.background || "#ffffff",
-        section: row.colors.surface || "#f5f5f5",
-        subtle: "#fafafa",
+        paper: colors?.background?.paper || "#ffffff",
+        section: colors?.background?.section || "#f5f5f5",
+        subtle: colors?.background?.subtle || "#fafafa",
       },
-      border: row.colors.border || "#e0e0e0",
+      border: colors?.border || "#e0e0e0",
     },
     spacing: {
-      section: row.spacing.section || 1.5,
-      subsection: row.spacing.subsection || 1,
-      item: row.spacing.item || 0.5,
+      section: spacing?.section || 1.5,
+      subsection: spacing?.subsection || 1,
+      item: spacing?.item || 0.5,
     },
     elements: {
-      sectionDivider: "line",
+      sectionDivider: effects?.dividerStyle || "line",
       bulletStyle: "circle",
       headerStyle: "underline",
       iconSet: "material",
     },
     metadata: {
       thumbnail: "", // Not in database schema yet
-      description: row.metadata.description || "",
-      tags: row.metadata.tags || [],
+      description: row.metadata?.description || "",
+      tags: row.metadata?.tags || [],
       usageCount: 0,
       rating: undefined,
     },
@@ -344,14 +363,18 @@ export async function getAllThemes(
   try {
     const filters: {
       eq?: Record<string, string | number | boolean | null>;
+      is_?: Record<string, null>;
     } = {};
 
     if (category) {
       filters.eq = { category };
     }
 
+    // Fetch system themes (user_id IS NULL)
+    // Note: Supabase requires 'is' operator for null checks, not 'eq'
     const systemResult = await listRows<ThemeRow>("themes", "*", {
-      eq: { ...filters.eq, user_id: null },
+      eq: filters.eq,
+      is_: { user_id: null },
       order: { column: "name", ascending: true },
     });
 

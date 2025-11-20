@@ -47,6 +47,7 @@
 
 import type { Document } from "../types/document.types";
 import type { Template, Theme } from "../types/template.types";
+import { jsPDF } from "jspdf";
 
 /**
  * Export format types
@@ -203,32 +204,361 @@ export async function exportDocument(
 /**
  * Export document to PDF
  *
- * Uses backend PDF generation service or client-side library (e.g., jsPDF, pdfmake)
+ * Uses jsPDF library for client-side PDF generation
  */
 async function exportToPDF(
-  _document: Document,
+  document: Document,
   _template: Template,
-  _theme: Theme,
-  _options: ExportOptions,
+  theme: Theme,
+  options: ExportOptions,
   filename: string
 ): Promise<ExportResult> {
-  // TODO: Integrate with backend PDF generation endpoint
-  // POST /api/export/pdf with document, template, theme data
+  try {
+    // Create PDF document
+    const pdf = new jsPDF({
+      orientation: options.pdfOptions?.orientation || "portrait",
+      unit: "mm",
+      format: options.pdfOptions?.pageSize?.toLowerCase() || "a4",
+    });
 
-  // Mock implementation
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+    const content = document.content as any;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margins = options.pdfOptions?.margins || {
+      top: 15,
+      right: 15,
+      bottom: 15,
+      left: 15,
+    };
+    const maxWidth = pageWidth - margins.left - margins.right;
 
-  return {
-    success: true,
-    downloadUrl: "blob:mock-pdf-url",
-    filename: `${filename}.pdf`,
-    fileSize: 245760, // ~240 KB
-    metadata: {
-      format: "pdf",
-      timestamp: new Date().toISOString(),
-      version: "1.0",
-    },
-  };
+    let yPos = margins.top;
+    const lineHeight = 5;
+    const sectionSpacing = 6;
+
+    // Helper function to convert color to RGB
+    const colorToRGB = (
+      color: string | undefined
+    ): [number, number, number] => {
+      if (!color || typeof color !== "string") {
+        return [0, 0, 0]; // Default to black
+      }
+
+      // Remove # if present
+      const hex = color.startsWith("#") ? color.slice(1) : color;
+
+      // Ensure valid hex length
+      if (hex.length !== 6) {
+        return [0, 0, 0]; // Default to black
+      }
+
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+
+      // Check for NaN
+      if (isNaN(r) || isNaN(g) || isNaN(b)) {
+        return [0, 0, 0];
+      }
+
+      return [r, g, b];
+    };
+
+    // Helper function to add text with word wrap
+    const addText = (
+      text: string,
+      fontSize: number,
+      isBold = false,
+      color?: string
+    ) => {
+      pdf.setFontSize(fontSize);
+      pdf.setFont("helvetica", isBold ? "bold" : "normal");
+
+      const [r, g, b] = colorToRGB(
+        color || theme.colors?.text?.primary || theme.colors?.text
+      );
+      pdf.setTextColor(r, g, b);
+
+      const lines = pdf.splitTextToSize(text, maxWidth);
+      lines.forEach((line: string) => {
+        if (yPos > pdf.internal.pageSize.getHeight() - margins.bottom) {
+          pdf.addPage();
+          yPos = margins.top;
+        }
+        pdf.text(line, margins.left, yPos);
+        yPos += lineHeight;
+      });
+    };
+
+    const addLine = () => {
+      const [r, g, b] = colorToRGB(theme.colors?.primary);
+      pdf.setDrawColor(r, g, b);
+      pdf.line(margins.left, yPos, pageWidth - margins.right, yPos);
+      yPos += 3;
+    };
+
+    // Render based on document type
+    if (document.type === "resume") {
+      // Header
+      if (content.header) {
+        addText(content.header.fullName || "", 20, true, theme.colors?.primary);
+        yPos += 1;
+        addText(
+          content.header.title || "",
+          11,
+          false,
+          theme.colors?.text?.secondary || theme.colors?.textSecondary
+        );
+        yPos += 1;
+
+        const contactInfo = [
+          content.header.email,
+          content.header.phone,
+          content.header.location,
+        ]
+          .filter(Boolean)
+          .join(" | ");
+
+        if (contactInfo) {
+          addText(
+            contactInfo,
+            9,
+            false,
+            theme.colors?.text?.secondary || theme.colors?.textSecondary
+          );
+        }
+        yPos += sectionSpacing;
+      }
+
+      // Summary
+      if (content.summary?.enabled && content.summary.text) {
+        addText("PROFESSIONAL SUMMARY", 12, true, theme.colors?.primary);
+        yPos += 0.5;
+        addLine();
+        yPos += 2;
+        addText(content.summary.text, 9);
+        yPos += sectionSpacing;
+      }
+
+      // Experience
+      if (content.experience?.enabled && content.experience.items) {
+        addText("WORK EXPERIENCE", 12, true, theme.colors?.primary);
+        yPos += 0.5;
+        addLine();
+        yPos += 2;
+
+        content.experience.items.forEach((exp: any, index: number) => {
+          if (index > 0) yPos += 3;
+
+          addText(exp.title || "", 10, true);
+          addText(
+            `${exp.company || ""} • ${exp.location || ""}`,
+            9,
+            false,
+            theme.colors?.text?.secondary || theme.colors?.textSecondary
+          );
+          const startDate = exp.startDate || "";
+          const endDate = exp.current ? "Present" : exp.endDate || "";
+          if (startDate && endDate) {
+            addText(
+              `${startDate} – ${endDate}`,
+              8,
+              false,
+              theme.colors?.text?.secondary || theme.colors?.textSecondary
+            );
+          } else if (startDate) {
+            addText(
+              startDate,
+              8,
+              false,
+              theme.colors?.text?.secondary || theme.colors?.textSecondary
+            );
+          }
+          yPos += 1;
+
+          // Handle bullets array (the actual data structure)
+          const bullets = exp.bullets || [];
+          if (bullets.length > 0) {
+            bullets.forEach((bullet: string) => {
+              if (bullet && bullet.trim()) {
+                pdf.setFontSize(9);
+                const [r, g, b] = colorToRGB(
+                  theme.colors?.text?.primary || theme.colors?.text
+                );
+                pdf.setTextColor(r, g, b);
+                const bulletSymbol = "• ";
+                const lines = pdf.splitTextToSize(bullet.trim(), maxWidth - 8);
+                lines.forEach((line: string, i: number) => {
+                  if (
+                    yPos >
+                    pdf.internal.pageSize.getHeight() - margins.bottom
+                  ) {
+                    pdf.addPage();
+                    yPos = margins.top;
+                  }
+                  pdf.text(
+                    i === 0 ? bulletSymbol + line : "   " + line,
+                    margins.left + 5,
+                    yPos
+                  );
+                  yPos += lineHeight;
+                });
+              }
+            });
+          }
+        });
+        yPos += sectionSpacing;
+      }
+
+      // Education
+      if (content.education?.enabled && content.education.items) {
+        addText("EDUCATION", 12, true, theme.colors?.primary);
+        yPos += 0.5;
+        addLine();
+        yPos += 2;
+
+        content.education.items.forEach((edu: any, index: number) => {
+          if (index > 0) yPos += 3;
+
+          addText(`${edu.degree || ""} in ${edu.field || ""}`, 10, true);
+          addText(
+            `${edu.institution || ""}${
+              edu.location ? ` - ${edu.location}` : ""
+            }`,
+            9,
+            false,
+            theme.colors?.text?.secondary || theme.colors?.textSecondary
+          );
+          addText(
+            edu.graduationDate || "",
+            8,
+            false,
+            theme.colors?.text?.secondary || theme.colors?.textSecondary
+          );
+
+          if (edu.gpa) {
+            addText(`GPA: ${edu.gpa}`, 9);
+          }
+        });
+        yPos += sectionSpacing;
+      }
+
+      // Skills
+      if (content.skills?.enabled && content.skills.categories) {
+        addText("SKILLS", 12, true, theme.colors?.primary);
+        yPos += 0.5;
+        addLine();
+        yPos += 2;
+
+        content.skills.categories.forEach((category: any) => {
+          addText(
+            `${category.name || ""}:`,
+            10,
+            true,
+            theme.colors?.text?.secondary || theme.colors?.textSecondary
+          );
+          const skillsText =
+            category.skills?.map((s: any) => s.name).join(", ") || "";
+          addText(skillsText, 9);
+          yPos += 2;
+        });
+      }
+    } else if (document.type === "cover-letter") {
+      // Cover letter header
+      if (content.header) {
+        addText(content.header.fullName || "", 14, true, theme.colors?.primary);
+        yPos += 1;
+        addText(content.header.email || "", 9);
+        addText(content.header.phone || "", 9);
+        addText(content.header.location || "", 9);
+        yPos += 1;
+        addText(
+          content.header.date || new Date().toLocaleDateString(),
+          9,
+          false,
+          theme.colors?.text?.secondary || theme.colors?.textSecondary
+        );
+        yPos += sectionSpacing;
+      }
+
+      // Recipient
+      if (content.recipient) {
+        if (content.recipient.name) {
+          addText(content.recipient.name, 10);
+        }
+        if (content.recipient.title) {
+          addText(content.recipient.title, 10);
+        }
+        addText(content.recipient.company || "", 10, true);
+        if (content.recipient.address) {
+          addText(content.recipient.address, 10);
+        }
+        yPos += sectionSpacing;
+      }
+
+      // Salutation
+      if (content.salutation) {
+        addText(content.salutation, 10);
+        yPos += 1;
+      }
+
+      // Body paragraphs
+      if (content.body) {
+        if (content.body.opening) {
+          addText(content.body.opening, 10);
+          yPos += 2;
+        }
+        if (content.body.body1) {
+          addText(content.body.body1, 10);
+          yPos += 2;
+        }
+        if (content.body.body2) {
+          addText(content.body.body2, 10);
+          yPos += 2;
+        }
+        if (content.body.body3) {
+          addText(content.body.body3, 10);
+          yPos += 2;
+        }
+        if (content.body.closing) {
+          addText(content.body.closing, 10);
+          yPos += sectionSpacing;
+        }
+      }
+
+      // Signature
+      if (content.signature) {
+        addText(content.signature.closing || "Sincerely,", 10);
+        yPos += 4; // Space for handwritten signature
+        addText(
+          content.signature.name || content.header.fullName || "",
+          10,
+          true
+        );
+      }
+    }
+
+    // Generate blob
+    const pdfBlob = pdf.output("blob");
+    const url = URL.createObjectURL(pdfBlob);
+
+    return {
+      success: true,
+      downloadUrl: url,
+      filename: `${filename}.pdf`,
+      fileSize: pdfBlob.size,
+      metadata: {
+        format: "pdf",
+        timestamp: new Date().toISOString(),
+        version: "1.0",
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      filename: "",
+      error: error instanceof Error ? error.message : "PDF generation failed",
+    };
+  }
 }
 
 /**
@@ -241,24 +571,20 @@ async function exportToDOCX(
   _template: Template,
   _theme: Theme,
   _options: ExportOptions,
-  filename: string
+  _filename: string
 ): Promise<ExportResult> {
   // TODO: Integrate with backend DOCX generation endpoint
   // POST /api/export/docx with document, template, theme data
+  // Or use client-side library like docx.js
 
-  // Mock implementation
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  // Mock implementation - return error for now
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   return {
-    success: true,
-    downloadUrl: "blob:mock-docx-url",
-    filename: `${filename}.docx`,
-    fileSize: 180224, // ~176 KB
-    metadata: {
-      format: "docx",
-      timestamp: new Date().toISOString(),
-      version: "1.0",
-    },
+    success: false,
+    filename: "",
+    error:
+      "DOCX export is not yet implemented. Please use HTML or TXT format for now, or contact support for assistance.",
   };
 }
 
@@ -270,25 +596,201 @@ async function exportToDOCX(
 async function exportToHTML(
   document: Document,
   _template: Template,
-  _theme: Theme,
+  theme: Theme,
   options: ExportOptions,
   filename: string
 ): Promise<ExportResult> {
-  // TODO: Render document content with template+theme to HTML string
-  // Option to include standalone CSS or inline styles
-
-  // Mock implementation
+  // Render document content with theme styling
   await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const content = document.content as any;
+  let bodyContent = "";
+
+  // Render based on document type
+  if (document.type === "resume") {
+    // Header
+    if (content.header) {
+      bodyContent += `
+        <div class="header">
+          <h1>${content.header.fullName || ""}</h1>
+          <p class="title">${content.header.title || ""}</p>
+          <div class="contact">
+            ${
+              content.header.email ? `<span>${content.header.email}</span>` : ""
+            }
+            ${
+              content.header.phone ? `<span>${content.header.phone}</span>` : ""
+            }
+            ${
+              content.header.location
+                ? `<span>${content.header.location}</span>`
+                : ""
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    // Summary
+    if (content.summary?.enabled && content.summary.text) {
+      bodyContent += `
+        <div class="section">
+          <h2>Professional Summary</h2>
+          <p>${content.summary.text}</p>
+        </div>
+      `;
+    }
+
+    // Experience
+    if (content.experience?.enabled && content.experience.items) {
+      bodyContent += `<div class="section"><h2>Work Experience</h2>`;
+      content.experience.items.forEach((exp: any) => {
+        const bullets = exp.bullets || [];
+        const bulletList =
+          bullets.length > 0
+            ? bullets.map((b: string) => `<li>${b}</li>`).join("")
+            : "";
+
+        bodyContent += `
+          <div class="experience-item">
+            <h3>${exp.title || ""}</h3>
+            <p class="company">${exp.company || ""} • ${exp.location || ""}</p>
+            <p class="dates">${exp.startDate || ""} - ${
+          exp.current ? "Present" : exp.endDate || ""
+        }</p>
+            ${bulletList ? `<ul>${bulletList}</ul>` : ""}
+          </div>
+        `;
+      });
+      bodyContent += `</div>`;
+    }
+
+    // Education
+    if (content.education?.enabled && content.education.items) {
+      bodyContent += `<div class="section"><h2>Education</h2>`;
+      content.education.items.forEach((edu: any) => {
+        bodyContent += `
+          <div class="education-item">
+            <h3>${edu.degree || ""} in ${edu.field || ""}</h3>
+            <p class="institution">${edu.institution || ""} ${
+          edu.location ? `- ${edu.location}` : ""
+        }</p>
+            <p class="dates">${edu.graduationDate || ""}</p>
+            ${edu.gpa ? `<p>GPA: ${edu.gpa}</p>` : ""}
+          </div>
+        `;
+      });
+      bodyContent += `</div>`;
+    }
+
+    // Skills
+    if (content.skills?.enabled && content.skills.categories) {
+      bodyContent += `<div class="section"><h2>Skills</h2>`;
+      content.skills.categories.forEach((category: any) => {
+        bodyContent += `
+          <div class="skills-category">
+            <h4>${category.name || ""}</h4>
+            <p>${category.skills?.map((s: any) => s.name).join(", ") || ""}</p>
+          </div>
+        `;
+      });
+      bodyContent += `</div>`;
+    }
+  } else if (document.type === "cover-letter") {
+    // Cover letter rendering
+    bodyContent += `
+      <div class="cover-letter">
+        <div class="header">
+          <p><strong>${content.header?.fullName || ""}</strong></p>
+          <p>${content.header?.email || ""}</p>
+          <p>${content.header?.phone || ""}</p>
+          <p>${content.header?.location || ""}</p>
+          <p>${content.header?.date || ""}</p>
+        </div>
+        <br>
+        <div class="recipient">
+          ${content.recipient?.name ? `<p>${content.recipient.name}</p>` : ""}
+          ${content.recipient?.title ? `<p>${content.recipient.title}</p>` : ""}
+          <p><strong>${content.recipient?.company || ""}</strong></p>
+          ${
+            content.recipient?.address
+              ? `<p>${content.recipient.address}</p>`
+              : ""
+          }
+        </div>
+        <br>
+        <div class="salutation">
+          <p>${content.salutation || "Dear Hiring Manager,"}</p>
+        </div>
+        <br>
+        <div class="body">
+          ${content.body?.opening ? `<p>${content.body.opening}</p><br>` : ""}
+          ${content.body?.body1 ? `<p>${content.body.body1}</p><br>` : ""}
+          ${content.body?.body2 ? `<p>${content.body.body2}</p><br>` : ""}
+          ${content.body?.body3 ? `<p>${content.body.body3}</p><br>` : ""}
+          ${content.body?.closing ? `<p>${content.body.closing}</p>` : ""}
+        </div>
+        <br><br>
+        <div class="signature">
+          <p>${content.signature?.closing || "Sincerely,"}</p>
+          <br><br>
+          <p><strong>${
+            content.signature?.name || content.header?.fullName || ""
+          }</strong></p>
+        </div>
+      </div>
+    `;
+  }
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${document.config.name}</title>
-  ${options.htmlOptions?.includeCSS ? "<style>/* Theme styles */</style>" : ""}
+  ${
+    options.htmlOptions?.includeCSS
+      ? `<style>
+    body {
+      font-family: ${theme.typography?.bodyFont || "Arial, sans-serif"};
+      color: ${theme.colors?.text || "#000000"};
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 {
+      font-family: ${theme.typography?.headingFont || "Arial, sans-serif"};
+      color: ${theme.colors?.primary || "#1976d2"};
+    }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.75rem; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 2px solid ${
+      theme.colors?.primary || "#1976d2"
+    }; padding-bottom: 0.5rem; }
+    h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+    h4 { font-size: 1.1rem; margin-bottom: 0.5rem; color: ${
+      theme.colors?.secondary || "#dc004e"
+    }; }
+    .header { text-align: center; margin-bottom: 2rem; }
+    .title { font-size: 1.25rem; color: ${
+      theme.colors?.secondary || "#dc004e"
+    }; }
+    .contact { margin-top: 0.5rem; }
+    .contact span { margin: 0 1rem; }
+    .section { margin-bottom: 2rem; }
+    .experience-item, .education-item, .skills-category { margin-bottom: 1.5rem; }
+    .company, .institution, .dates { color: ${
+      theme.colors?.textSecondary || "#666666"
+    }; margin: 0.25rem 0; }
+    ul { margin-top: 0.5rem; margin-bottom: 0.5rem; padding-left: 1.5rem; }
+    li { margin-bottom: 0.5rem; line-height: 1.5; }
+    p { margin: 0.5rem 0; }
+  </style>`
+      : ""
+  }
 </head>
 <body>
-  <!-- Document content -->
+  ${bodyContent}
 </body>
 </html>`;
 
@@ -318,13 +820,127 @@ async function exportToTXT(
   _options: ExportOptions,
   filename: string
 ): Promise<ExportResult> {
-  // TODO: Extract plain text from document content
-  // Strip HTML tags, formatting, and structure
-
-  // Mock implementation
+  // Extract plain text from document content
   await new Promise((resolve) => setTimeout(resolve, 300));
 
-  const textContent = `${document.config.name}\n\n[Document content as plain text]`;
+  const content = document.content as any;
+  let textContent = "";
+
+  if (document.type === "resume") {
+    // Header
+    if (content.header) {
+      textContent += `${content.header.fullName || ""}\n`;
+      textContent += `${content.header.title || ""}\n`;
+      if (
+        content.header.email ||
+        content.header.phone ||
+        content.header.location
+      ) {
+        textContent += `${[
+          content.header.email,
+          content.header.phone,
+          content.header.location,
+        ]
+          .filter(Boolean)
+          .join(" | ")}\n`;
+      }
+      textContent += "\n";
+    }
+
+    // Summary
+    if (content.summary?.enabled && content.summary.text) {
+      textContent += "PROFESSIONAL SUMMARY\n";
+      textContent += "=".repeat(50) + "\n";
+      textContent += `${content.summary.text}\n\n`;
+    }
+
+    // Experience
+    if (content.experience?.enabled && content.experience.items) {
+      textContent += "WORK EXPERIENCE\n";
+      textContent += "=".repeat(50) + "\n";
+      content.experience.items.forEach((exp: any) => {
+        textContent += `${exp.title || ""}\n`;
+        textContent += `${exp.company || ""} • ${exp.location || ""}\n`;
+        textContent += `${exp.startDate || ""} - ${
+          exp.current ? "Present" : exp.endDate || ""
+        }\n`;
+
+        const bullets = exp.bullets || [];
+        if (bullets.length > 0) {
+          bullets.forEach((bullet: string) => {
+            if (bullet && bullet.trim()) {
+              textContent += `• ${bullet.trim()}\n`;
+            }
+          });
+        }
+        textContent += "\n";
+      });
+    }
+
+    // Education
+    if (content.education?.enabled && content.education.items) {
+      textContent += "EDUCATION\n";
+      textContent += "=".repeat(50) + "\n";
+      content.education.items.forEach((edu: any) => {
+        textContent += `${edu.degree || ""} in ${edu.field || ""}\n`;
+        textContent += `${edu.institution || ""}${
+          edu.location ? ` - ${edu.location}` : ""
+        }\n`;
+        textContent += `${edu.graduationDate || ""}\n`;
+        if (edu.gpa) {
+          textContent += `GPA: ${edu.gpa}\n`;
+        }
+        textContent += "\n";
+      });
+    }
+
+    // Skills
+    if (content.skills?.enabled && content.skills.categories) {
+      textContent += "SKILLS\n";
+      textContent += "=".repeat(50) + "\n";
+      content.skills.categories.forEach((category: any) => {
+        textContent += `${category.name || ""}:\n`;
+        textContent += `${
+          category.skills?.map((s: any) => s.name).join(", ") || ""
+        }\n\n`;
+      });
+    }
+  } else if (document.type === "cover-letter") {
+    // Cover letter
+    if (content.header) {
+      textContent += `${content.header.fullName || ""}\n`;
+      textContent += `${content.header.email || ""}\n`;
+      textContent += `${content.header.phone || ""}\n`;
+      textContent += `${content.header.location || ""}\n`;
+      textContent += `${content.header.date || ""}\n\n`;
+    }
+    if (content.recipient) {
+      if (content.recipient.name) textContent += `${content.recipient.name}\n`;
+      if (content.recipient.title)
+        textContent += `${content.recipient.title}\n`;
+      textContent += `${content.recipient.company || ""}\n`;
+      if (content.recipient.address)
+        textContent += `${content.recipient.address}\n`;
+      textContent += "\n";
+    }
+    if (content.salutation) {
+      textContent += `${content.salutation}\n\n`;
+    }
+    if (content.body) {
+      if (content.body.opening) textContent += `${content.body.opening}\n\n`;
+      if (content.body.body1) textContent += `${content.body.body1}\n\n`;
+      if (content.body.body2) textContent += `${content.body.body2}\n\n`;
+      if (content.body.body3) textContent += `${content.body.body3}\n\n`;
+      if (content.body.closing) textContent += `${content.body.closing}\n\n`;
+    }
+    if (content.signature) {
+      textContent += `${content.signature.closing || "Sincerely,"}\n\n\n`;
+      textContent += `${
+        content.signature.name || content.header.fullName || ""
+      }\n`;
+    }
+  }
+
   const blob = new Blob([textContent], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
@@ -523,14 +1139,34 @@ export function estimateExportSize(
   document: Document,
   format: ExportFormat
 ): number {
-  const baseSize = document.stats.charCount;
+  // Calculate base size from document content
+  const content = document.content as any;
+  let baseSize = 0;
+
+  // Estimate content size
+  if (document.type === "resume") {
+    baseSize += JSON.stringify(content.header || {}).length;
+    baseSize += content.summary?.text?.length || 0;
+    baseSize += JSON.stringify(content.experience?.items || []).length;
+    baseSize += JSON.stringify(content.education?.items || []).length;
+    baseSize += JSON.stringify(content.skills?.categories || []).length;
+  } else if (document.type === "cover-letter") {
+    baseSize += JSON.stringify(content.header || {}).length;
+    baseSize += JSON.stringify(content.recipient || {}).length;
+    baseSize += content.body?.text?.length || 0;
+  }
+
+  // Fallback to character count if available
+  if (baseSize === 0) {
+    baseSize = document.stats.charCount || 1000;
+  }
 
   const multipliers: Record<ExportFormat, number> = {
-    pdf: 2.5,
-    docx: 2.0,
-    html: 1.5,
-    txt: 1.0,
-    json: 1.8,
+    pdf: 3.0, // PDF has overhead for formatting, fonts, metadata
+    docx: 2.5, // DOCX is compressed XML
+    html: 2.0, // HTML with inline CSS
+    txt: 1.0, // Plain text, minimal overhead
+    json: 1.5, // JSON with formatting
   };
 
   return Math.round(baseSize * multipliers[format]);

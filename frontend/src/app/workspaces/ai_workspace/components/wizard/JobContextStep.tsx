@@ -105,14 +105,8 @@ export const JobContextStep: React.FC<JobContextStepProps> = ({
    * Populates form with job data when user selects from saved jobs
    */
   const handleJobSelect = (jobId: number | string) => {
-    if (jobId === "none") {
-      onUpdateContext({
-        jobId: undefined,
-        companyName: undefined,
-        jobTitle: undefined,
-        jobDescription: undefined,
-        keyRequirements: undefined,
-      });
+    // Don't allow clearing selection (empty string)
+    if (jobId === "" || jobId === "none") {
       return;
     }
 
@@ -146,30 +140,41 @@ export const JobContextStep: React.FC<JobContextStepProps> = ({
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
-        Job Context (Optional)
+        Job Context (Required)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Link this document to a job opening to tailor the AI-generated content.
+        Select or create a job to tailor your resume for.
       </Typography>
 
       <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 3 }}>
-        Linking to a job helps the AI generate more targeted content based on
-        the job description and requirements.
+        Your resume will be optimized for this specific job posting. Select an
+        existing job or create a new one to continue.
       </Alert>
+
+      {/* Show warning if no jobs exist */}
+      {!loading && savedJobs.length === 0 && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          You don't have any saved jobs yet. Create your first job to generate a
+          tailored resume.
+        </Alert>
+      )}
 
       <Stack spacing={3}>
         {/* Job selector */}
-        <FormControl fullWidth>
-          <InputLabel>Select Job</InputLabel>
+        <FormControl fullWidth required>
+          <InputLabel>Select Job *</InputLabel>
           <Select
-            value={jobContext.jobId || "none"}
-            label="Select Job"
+            value={jobContext.jobId || ""}
+            label="Select Job *"
             onChange={(e) => handleJobSelect(e.target.value)}
             disabled={loading}
+            error={!jobContext.jobId}
           >
-            <MenuItem value="none">
-              <em>No job context (general resume/cover letter)</em>
-            </MenuItem>
+            {savedJobs.length === 0 && (
+              <MenuItem value="" disabled>
+                <em>No jobs available - Create one below</em>
+              </MenuItem>
+            )}
             {savedJobs.map((job) => (
               <MenuItem key={job.id} value={job.id}>
                 {job.job_title} at {job.company_name}
@@ -180,12 +185,13 @@ export const JobContextStep: React.FC<JobContextStepProps> = ({
 
         {/* Add new job button */}
         <Button
-          variant="outlined"
+          variant={savedJobs.length === 0 ? "contained" : "outlined"}
           startIcon={<AddIcon />}
           onClick={() => setAddJobDialogOpen(true)}
           fullWidth
+          color={savedJobs.length === 0 ? "primary" : "inherit"}
         >
-          Add New Job
+          {savedJobs.length === 0 ? "Create Your First Job" : "Add New Job"}
         </Button>
 
         {/* Selected job details */}

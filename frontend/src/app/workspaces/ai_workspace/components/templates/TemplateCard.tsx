@@ -62,8 +62,8 @@ export function TemplateCard({
       {/* Template preview thumbnail */}
       <Box
         sx={{
-          height: 200,
-          bgcolor: "background.paper",
+          height: 220,
+          bgcolor: "#f5f5f5",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -72,6 +72,11 @@ export function TemplateCard({
           cursor: onPreview ? "pointer" : "default",
           overflow: "hidden",
           position: "relative",
+          "&:hover": onPreview
+            ? {
+                bgcolor: "#ebebeb",
+              }
+            : {},
         }}
         onClick={() => onPreview?.(template)}
       >
@@ -135,16 +140,19 @@ export function TemplateCard({
         </Box>
       </CardContent>
 
-      <CardActions sx={{ p: 2, pt: 0 }}>
-        <Button
-          variant={isSelected ? "outlined" : "contained"}
-          fullWidth
-          onClick={() => onSelect?.(template)}
-          disabled={isSelected}
-        >
-          {isSelected ? "Selected" : "Use Template"}
-        </Button>
-      </CardActions>
+      {/* Only show action button if onSelect callback is provided (wizard mode) */}
+      {onSelect && (
+        <CardActions sx={{ p: 2, pt: 0 }}>
+          <Button
+            variant={isSelected ? "outlined" : "contained"}
+            fullWidth
+            onClick={() => onSelect(template)}
+            disabled={isSelected}
+          >
+            {isSelected ? "Selected" : "Use Template"}
+          </Button>
+        </CardActions>
+      )}
     </Card>
   );
 }

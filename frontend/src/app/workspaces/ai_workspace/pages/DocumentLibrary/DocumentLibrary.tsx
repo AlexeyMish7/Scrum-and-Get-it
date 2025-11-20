@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -31,6 +32,7 @@ import { withUser } from "@shared/services/crud";
 import type { DocumentRow } from "@shared/types/database";
 
 export default function DocumentLibrary() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { notification, closeNotification, handleError } = useErrorHandler();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
@@ -233,7 +235,7 @@ export default function DocumentLibrary() {
                       <Button
                         size="small"
                         startIcon={<Visibility />}
-                        onClick={() => console.log("View document:", doc.id)}
+                        onClick={() => navigate(`/ai/document/${doc.id}`)}
                       >
                         View
                       </Button>

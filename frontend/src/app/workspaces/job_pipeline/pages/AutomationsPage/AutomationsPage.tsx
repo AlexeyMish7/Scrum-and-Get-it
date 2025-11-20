@@ -26,7 +26,7 @@ import InterviewScheduling from "./InterviewScheduling";
 import { useAuth } from "@shared/context/AuthContext";
 import { supabase } from "@shared/services/supabaseClient";
 import JSZip from "jszip";
-import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
+import { useCoverLetterDrafts } from "@shared/hooks/useCoverLetterDrafts";
 
 export default function AutomationsPage() {
   const { user } = useAuth() as any;
@@ -235,10 +235,12 @@ export default function AutomationsPage() {
         <Grid size={12}>
           <Card variant="outlined">
             <CardContent>
-              <Typography variant="h6">Generate Application Packages</Typography>
+              <Typography variant="h6">
+                Generate Application Packages
+              </Typography>
               <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-                Choose a resume and cover letter to combine into one downloadable
-                package.
+                Choose a resume and cover letter to combine into one
+                downloadable package.
               </Typography>
               <Button variant="contained" onClick={handleOpenDialog}>
                 Generate Package

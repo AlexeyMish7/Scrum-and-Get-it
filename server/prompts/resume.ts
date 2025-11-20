@@ -20,6 +20,7 @@ export interface BuildResumePromptArgs {
   job: any;
   tone?: string;
   focus?: string;
+  length?: string; // Content length: concise, standard, detailed
   templateId?: string; // Template identifier for template-aware generation
   // Optional enriched profile data
   skillsList?: Array<{ skill_name: string; skill_category?: string }>;
@@ -60,7 +61,7 @@ export interface BuildResumePromptArgs {
 }
 
 export function buildResumePrompt(args: BuildResumePromptArgs): string {
-  const { profile, job, tone, focus } = args;
+  const { profile, job, tone, focus, length } = args;
   const name = safe(profile?.full_name || profile?.first_name || "");
   const summary = safe(profile?.summary || "");
   // Prefer normalized skills from `skills` table when provided, fall back to any inline arrays on profile
@@ -80,6 +81,25 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
 
   const toneStr = tone || "professional";
   const focusStr = focus ? `Focus on ${safe(focus, 120)}.` : "";
+
+  // Length-specific instructions for AI
+  const lengthStr = length || "standard";
+  let lengthInstructions = "";
+  switch (lengthStr) {
+    case "concise":
+      lengthInstructions =
+        "Keep content VERY brief. Use 1-2 bullet points per experience. Target 1 page total. Prioritize only the most impactful achievements.";
+      break;
+    case "detailed":
+      lengthInstructions =
+        "Provide comprehensive details. Use 4-6 bullet points per experience. Include context, methodologies, and quantified outcomes. Target 2+ pages.";
+      break;
+    case "standard":
+    default:
+      lengthInstructions =
+        "Use balanced detail. Use 2-4 bullet points per experience. Include key achievements with metrics. Target 1-2 pages.";
+      break;
+  }
 
   // Template-specific style instructions
   const templateId = args.templateId || "classic";
@@ -201,6 +221,7 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
     `Write concise, ATS-friendly results tailored for the role.`,
     `Constraints: factual, action-oriented, quantified where possible, avoid fluff.`,
     `Template Style: ${templateInstructions}`,
+    `Content Length: ${lengthInstructions}`,
     // Expanded JSON contract to support richer editors while keeping backward compatibility with bullets[]
     `Output: Strict JSON only. Shape:`,
     `{

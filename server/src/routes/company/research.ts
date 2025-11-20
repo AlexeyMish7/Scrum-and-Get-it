@@ -87,7 +87,8 @@ export async function get(
     const research = await fetchCompanyResearch(
       sanitizedName,
       sanitizedIndustry,
-      sanitizedDescription
+      sanitizedDescription,
+      userId
     );
 
     if (!research) {

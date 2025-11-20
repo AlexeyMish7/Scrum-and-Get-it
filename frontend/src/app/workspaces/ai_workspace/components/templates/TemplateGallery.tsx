@@ -100,16 +100,19 @@ export function TemplateGallery({
     filteredTemplates = templateService.sortByPopularity(filteredTemplates);
   }
 
-  // Available subtypes for this category
-  const subtypes: TemplateSubtype[] = [
-    "chronological",
-    "functional",
-    "hybrid",
-    "creative",
-    "academic",
-    "executive",
-    "simple",
-  ];
+  // Available subtypes for this category - different for resume vs cover letter
+  const subtypes: TemplateSubtype[] =
+    category === "resume"
+      ? [
+          "chronological",
+          "functional",
+          "hybrid",
+          "creative",
+          "academic",
+          "executive",
+          "simple",
+        ]
+      : ["professional", "modern", "simple"];
 
   return (
     <Box>
