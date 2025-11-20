@@ -38,6 +38,14 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
     if (initialJobs && initialJobs.length) setJobs(initialJobs);
   }, [initialJobs]);
 
+  useEffect(() => {
+    if (jobs.length > 0) {
+      console.log("Running predictions for jobs:", jobs);
+      runPredictions();
+    }
+  }, [jobs]);
+
+
   const runPredictions = useCallback(
     async (overrideJobs?: JobRecord[]) => {
       const inputJobs = overrideJobs ?? jobs;
@@ -67,10 +75,10 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
 
         const payload = { jobs: compact };
 
-        const res = await aiClient.postJson<{
-          predictions?: Prediction[];
-          debug?: any;
-        }>("/api/predict/job-search", payload, userId);
+        // const res = await aiClient.postJson<{
+        //   predictions?: Prediction[];
+        //   debug?: any;
+        // }>("/api/predict/job-search", payload, userId);
 
         if (res && Array.isArray(res.predictions) && res.predictions.length) {
           const normalized = res.predictions.map((p, i) => ({
@@ -94,7 +102,7 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
       } finally {
         setIsLoading(false);
       }
-      return predictions;
+      return;
     },
     [jobs, userId]
   );
