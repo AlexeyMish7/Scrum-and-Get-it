@@ -222,6 +222,9 @@ export function buildResumePrompt(args: BuildResumePromptArgs): string {
     `Constraints: factual, action-oriented, quantified where possible, avoid fluff.`,
     `Template Style: ${templateInstructions}`,
     `Content Length: ${lengthInstructions}`,
+    `Generation ID: ${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(7)} (for uniqueness)`,
     // Expanded JSON contract to support richer editors while keeping backward compatibility with bullets[]
     `Output: Strict JSON only. Shape:`,
     `{

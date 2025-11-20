@@ -13,6 +13,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { errorNotifier } from "@shared/services/errorNotifier";
 import { useGeneration } from "../../context/useGeneration";
 import { WizardStepper, type WizardStep } from "./WizardStepper";
 import { TemplateSelectionStep } from "./TemplateSelectionStep";
@@ -214,19 +215,34 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
 
   /**
    * Start document generation with real AI backend integration
+   * Wrapped in try-catch to display user-friendly error snackbars
    */
   const handleGenerate = async () => {
     if (!selectedTemplate || !selectedTheme) {
-      handleError({ message: "Please select a template and theme first" });
+      errorNotifier.notifyWarning(
+        "Please select a template and theme before generating",
+        "Missing Configuration"
+      );
       return;
     }
 
     if (!user?.id) {
-      handleError({ message: "You must be logged in to generate documents" });
+      errorNotifier.notifyError(
+        new Error("You must be logged in to generate documents"),
+        "Authentication Required"
+      );
       return;
     }
 
     setIsGenerating(true);
+    setProgress({
+      progress: 5,
+      message: "Preparing your profile data...",
+      complete: false,
+    });
+
+    // Mark that generation has started (for navigation warning)
+    setHasStartedGeneration(true);
 
     try {
       // Call real AI generation service with progress updates
@@ -249,8 +265,16 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
         setCompletedSteps([...completedSteps, 4]);
       }
 
-      // Show success notification
-      showSuccess("Document generated successfully! Opening editor...");
+      // Check if mock data was used and warn the user
+      if (result.metadata?.isMockData) {
+        errorNotifier.notifyWarning(
+          "Generated content is sample data only - AI service unavailable",
+          "Mock Data Used"
+        );
+      } else {
+        // Show success notification
+        showSuccess("Document generated successfully! Opening editor...");
+      }
 
       // Clear generation state - user is navigating away
       setHasStartedGeneration(false);
@@ -260,6 +284,14 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
       navigate(`/ai/document/${result.documentId}`);
     } catch (error) {
       setIsGenerating(false);
+
+      // Use errorNotifier for user-friendly error display
+      errorNotifier.notifyApiError(error, "Document Generation Failed");
+
+      // Also log to console for debugging
+      console.error("Generation error:", error);
+
+      // Keep the old error handler for backwards compatibility
       handleError(error as Error);
     }
   };
@@ -357,10 +389,28 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
                 variant="contained"
                 onClick={handleGenerate}
                 disabled={!canProceed() || isGenerating || progress?.complete}
-                startIcon={<AutoAwesomeIcon />}
+                startIcon={
+                  isGenerating ? (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-flex",
+                        animation: "spin 1s linear infinite",
+                        "@keyframes spin": {
+                          "0%": { transform: "rotate(0deg)" },
+                          "100%": { transform: "rotate(360deg)" },
+                        },
+                      }}
+                    >
+                      ⚙️
+                    </Box>
+                  ) : (
+                    <AutoAwesomeIcon />
+                  )
+                }
               >
                 {isGenerating
-                  ? "Generating..."
+                  ? progress?.message?.split("...")[0] || "Generating"
                   : progress?.complete
                   ? "Generated"
                   : "Generate Document"}

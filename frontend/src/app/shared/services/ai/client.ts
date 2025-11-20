@@ -11,6 +11,7 @@
  */
 
 import { supabase } from "@shared/services/supabaseClient";
+import { mockDataNotifier } from "@shared/services/mockDataNotifier";
 
 const BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
 
@@ -117,6 +118,12 @@ async function postJson<T>(
       error.payload = data;
       throw error;
     }
+
+    // Check if response contains mock data and notify
+    if (mockDataNotifier.checkResponse(data)) {
+      mockDataNotifier.notify(path);
+    }
+
     return data as T;
   } catch (err) {
     // Re-throw authentication errors with clear message
@@ -179,6 +186,12 @@ async function getJson<T>(
       error.payload = data;
       throw error;
     }
+
+    // Check if response contains mock data and notify
+    if (mockDataNotifier.checkResponse(data)) {
+      mockDataNotifier.notify(path);
+    }
+
     return data as T;
   } catch (err) {
     // Re-throw authentication errors with clear message

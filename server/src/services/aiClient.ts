@@ -242,7 +242,18 @@ export async function generate(
     len: prompt.length,
   });
   try {
-    if (provider === "mock") return randomSampleForKind(kind);
+    if (provider === "mock") {
+      const mockResult = randomSampleForKind(kind);
+      // Add metadata to indicate mock data was used
+      return {
+        ...mockResult,
+        meta: {
+          ...("meta" in mockResult && mockResult.meta ? mockResult.meta : {}),
+          isMockData: true,
+          provider: "mock",
+        },
+      };
+    }
     if (provider === "openai") {
       const r = await sendToOpenAI(prompt, opts);
       logInfo("ai_generate_ok", {

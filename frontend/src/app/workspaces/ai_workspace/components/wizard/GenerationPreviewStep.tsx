@@ -236,19 +236,91 @@ export const GenerationPreviewStep: React.FC<GenerationPreviewStepProps> = ({
         </Paper>
 
         {/* Generation Progress */}
-        {isGenerating && progress && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Generating Document...
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={progress.progress}
-              sx={{ mb: 1 }}
+        {isGenerating && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 3,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <Box sx={{ position: "relative", zIndex: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    animation: "spin 2s linear infinite",
+                    fontSize: "2rem",
+                    mr: 2,
+                    "@keyframes spin": {
+                      "0%": { transform: "rotate(0deg)" },
+                      "100%": { transform: "rotate(360deg)" },
+                    },
+                  }}
+                >
+                  ✨
+                </Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Generating Your Document
+                </Typography>
+              </Box>
+
+              <LinearProgress
+                variant={progress?.progress ? "determinate" : "indeterminate"}
+                value={progress?.progress || 0}
+                sx={{
+                  mb: 2,
+                  height: 8,
+                  borderRadius: 1,
+                  bgcolor: "rgba(255,255,255,0.2)",
+                  "& .MuiLinearProgress-bar": {
+                    bgcolor: "white",
+                  },
+                }}
+              />
+
+              <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+                {progress?.message || "Initializing AI generation..."}
+              </Typography>
+
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                {progress && progress.progress < 30
+                  ? "📊 Analyzing your profile and job requirements..."
+                  : progress && progress.progress < 60
+                  ? "🤖 AI is crafting tailored content..."
+                  : progress && progress.progress < 90
+                  ? "📝 Formatting and optimizing..."
+                  : "✅ Almost ready!"}
+              </Typography>
+
+              <Typography
+                variant="caption"
+                sx={{ display: "block", mt: 2, opacity: 0.8 }}
+              >
+                This usually takes 10-20 seconds. Hang tight!
+              </Typography>
+            </Box>
+
+            {/* Animated background pulse */}
+            <Box
+              sx={{
+                position: "absolute",
+                top: "-50%",
+                right: "-10%",
+                width: "60%",
+                height: "200%",
+                background:
+                  "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
+                animation: "pulse 3s ease-in-out infinite",
+                "@keyframes pulse": {
+                  "0%, 100%": { opacity: 0.5, transform: "scale(1)" },
+                  "50%": { opacity: 0.8, transform: "scale(1.1)" },
+                },
+              }}
             />
-            <Typography variant="caption" color="text.secondary">
-              {progress.message}
-            </Typography>
           </Paper>
         )}
 
