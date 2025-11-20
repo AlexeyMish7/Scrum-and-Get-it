@@ -12,9 +12,20 @@
  * - deleteCoverLetterDraft: Soft delete (set is_active = false)
  */
 
-import supabaseAdmin from "./supabaseAdmin.js";
 import { ApiError } from "../../utils/errors.js";
 import { logInfo, legacyLogError as logError } from "../../utils/logger.js";
+
+// Helper to get supabase client with proper error handling
+async function getSupabaseAdmin() {
+  const { default: supabaseAdmin } = await import("./supabaseAdmin.js");
+  if (!supabaseAdmin) {
+    throw new ApiError(
+      503,
+      "Database not configured - server environment variables missing"
+    );
+  }
+  return supabaseAdmin;
+}
 
 // ============================================================================
 // Types
@@ -115,6 +126,7 @@ export async function listCoverLetterDrafts(
   userId: string
 ): Promise<CoverLetterDraftRow[]> {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     logInfo("list_cover_letter_drafts_start", { userId });
 
     const { data, error } = await supabaseAdmin
@@ -161,6 +173,7 @@ export async function getCoverLetterDraft(
   userId: string
 ): Promise<CoverLetterDraftRow> {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     logInfo("get_cover_letter_draft_start", { draftId, userId });
 
     const { data, error } = await supabaseAdmin
@@ -217,6 +230,7 @@ export async function createCoverLetterDraft(
   input: CreateCoverLetterDraftInput
 ): Promise<CoverLetterDraftRow> {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     logInfo("create_cover_letter_draft_start", {
       userId: input.user_id,
       name: input.name,
@@ -306,6 +320,7 @@ export async function updateCoverLetterDraft(
   input: UpdateCoverLetterDraftInput
 ): Promise<CoverLetterDraftRow> {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     logInfo("update_cover_letter_draft_start", { draftId, userId });
 
     // Get current draft for merging
@@ -399,6 +414,7 @@ export async function deleteCoverLetterDraft(
   userId: string
 ): Promise<void> {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     logInfo("delete_cover_letter_draft_start", { draftId, userId });
 
     const { error } = await supabaseAdmin

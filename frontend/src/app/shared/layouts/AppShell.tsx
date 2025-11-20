@@ -1,7 +1,9 @@
 import React from "react";
-import { Box, Container } from "@mui/material";
+import { Box } from "@mui/material";
 import GlobalTopBar from "./GlobalTopBar.tsx";
 import SystemLayer from "./SystemLayer.tsx";
+import { MockDataNotificationProvider } from "@shared/components/feedback/MockDataNotificationProvider";
+import { ErrorNotificationProvider } from "@shared/components/feedback/ErrorNotificationProvider";
 
 type AppShellProps = {
   sidebar?: React.ReactNode;
@@ -45,6 +47,8 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
       </Box>
 
       <SystemLayer />
+      <MockDataNotificationProvider />
+      <ErrorNotificationProvider />
     </Box>
   );
 }

@@ -13,7 +13,6 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { URL } from "node:url";
-import supabase from "../../services/supabaseAdmin.js";
 import { logInfo, logError } from "../../../utils/logger.js";
 import { sendJson } from "../../../utils/http.js";
 
@@ -34,6 +33,19 @@ export async function get(
   userId: string
 ): Promise<void> {
   try {
+    // Lazy import to avoid module-load crashes when env is not configured
+    const { default: supabase } = await import(
+      "../../services/supabaseAdmin.js"
+    );
+
+    if (!supabase) {
+      sendJson(res, 503, {
+        error: "Database not configured",
+        details: "Server environment variables missing",
+      });
+      return;
+    }
+
     logInfo("Fetching user companies from interested jobs", {
       reqId,
       userId,

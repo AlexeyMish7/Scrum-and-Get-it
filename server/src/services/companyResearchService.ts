@@ -34,9 +34,19 @@
  */
 
 import { logInfo, logWarn, logError } from "../../utils/logger.js";
-import supabase from "./supabaseAdmin.js";
 import { scrapeWithBrowser } from "./scraper.js";
 import { generate } from "./aiClient.js";
+
+// Helper to get supabase client with proper error handling
+async function getSupabaseAdmin() {
+  const { default: supabase } = await import("./supabaseAdmin.js");
+  if (!supabase) {
+    throw new Error(
+      "Database not configured - server environment variables missing"
+    );
+  }
+  return supabase;
+}
 
 // ========== INTERFACES ==========
 
@@ -285,6 +295,7 @@ async function getCompanyFromDatabase(
   companyName: string
 ): Promise<CompanyResearch | null> {
   try {
+    const supabase = await getSupabaseAdmin();
     // Use database function to get combined data
     const { data, error } = await supabase.rpc("get_company_research", {
       p_company_name: companyName,
@@ -348,6 +359,7 @@ async function getCompanyFromDatabase(
  */
 async function saveCompanyToDatabase(research: CompanyResearch): Promise<void> {
   try {
+    const supabase = await getSupabaseAdmin();
     // Step 1: Upsert company base info into companies table
     const { data: companyId, error: companyError } = await supabase.rpc(
       "upsert_company_info",
