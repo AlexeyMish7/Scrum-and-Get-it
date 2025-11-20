@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import type { JobRecord } from "../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
-import aiClient from "@workspaces/ai/services/client";
+import aiClient from "@shared/services/ai/client";
 import aiArtifacts from "@shared/services/aiArtifacts";
 
 export type Prediction = {

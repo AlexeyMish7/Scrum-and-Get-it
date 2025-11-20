@@ -13,6 +13,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { useGeneration } from "../../context/useGeneration";
 import { WizardStepper, type WizardStep } from "./WizardStepper";
 import { TemplateSelectionStep } from "./TemplateSelectionStep";
 import { ThemeSelectionStep } from "./ThemeSelectionStep";
@@ -127,6 +128,9 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
   const navigate = useNavigate();
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
+  
+  // Track generation state for navigation warning
+  const { setHasStartedGeneration } = useGeneration();
 
   // Wizard state
   const [activeStep, setActiveStep] = useState(0);
@@ -147,6 +151,24 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | undefined>();
+
+  // Set generation started flag when template is selected
+  // This enables the unsaved changes warning in navigation
+  React.useEffect(() => {
+    if (selectedTemplate) {
+      setHasStartedGeneration(true);
+    }
+  }, [selectedTemplate, setHasStartedGeneration]);
+
+  // Handle cancel - clear generation state and navigate away
+  const handleCancel = () => {
+    setHasStartedGeneration(false);
+    if (onCancel) {
+      onCancel();
+    } else {
+      window.history.back();
+    }
+  };
 
   /**
    * Check if current step can proceed
@@ -230,6 +252,9 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
       // Show success notification
       showSuccess("Document generated successfully! Opening editor...");
 
+      // Clear generation state - user is navigating away
+      setHasStartedGeneration(false);
+
       // Navigate to document editor instead of calling onComplete
       // This allows users to immediately edit and refine the generated document
       navigate(`/ai/document/${result.documentId}`);
@@ -306,7 +331,7 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
         {/* Navigation Buttons */}
         <Stack direction="row" spacing={2} justifyContent="space-between">
           <Button
-            onClick={onCancel || (() => window.history.back())}
+            onClick={handleCancel}
             disabled={isGenerating}
           >
             Cancel

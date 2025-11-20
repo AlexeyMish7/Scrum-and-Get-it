@@ -59,10 +59,6 @@ export default defineConfig({
         replacement: resolve(__dirname, "src/app/workspaces/profile") + "/",
       },
       {
-        find: "@ai",
-        replacement: resolve(__dirname, "src/app/workspaces/ai") + "/",
-      },
-      {
         find: "@jobs",
         replacement: resolve(__dirname, "src/app/workspaces/jobs") + "/",
       },
@@ -100,10 +96,6 @@ export default defineConfig({
         find: "@profileTypes",
         replacement:
           resolve(__dirname, "src/app/workspaces/profile/types") + "/",
-      },
-      {
-        find: "@aiTypes",
-        replacement: resolve(__dirname, "src/app/workspaces/ai/types") + "/",
       },
       {
         find: "@jobsTypes",

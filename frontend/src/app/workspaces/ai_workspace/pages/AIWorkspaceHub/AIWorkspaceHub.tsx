@@ -17,7 +17,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
 import type { RecentDocument } from "../../types";
 import type { DocumentRow } from "@shared/types/database";
-import { useJobPredictions } from "../../../ai/hooks/useJobPredictions";
+import { useJobPredictions } from "../../hooks/useJobPredictions";
 
 interface DocumentStats {
   totalDocuments: number;
@@ -54,8 +54,8 @@ export default function AIWorkspaceHub() {
   });
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
-  const { predictions, isLoading, error, runPredictions } = useJobPredictions(jobs);
-
+  const { predictions, isLoading, error, runPredictions } =
+    useJobPredictions(jobs);
 
   // Fetch real data from database
   useEffect(() => {
@@ -163,9 +163,10 @@ export default function AIWorkspaceHub() {
             AI Document Studio
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Welcome back{user?.email ? `, ${user.email.split("@")[0]}` : ""}! Create, manage, and optimize your application materials.
+            Welcome back{user?.email ? `, ${user.email.split("@")[0]}` : ""}!
+            Create, manage, and optimize your application materials.
           </Typography>
-          <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ mt: 2, display: "flex", gap: 2, alignItems: "center" }}>
             <Button variant="contained" onClick={() => setReportOpen(true)}>
               Generate Custom Report
             </Button>
@@ -194,96 +195,102 @@ export default function AIWorkspaceHub() {
         />
 
         {/* Predictions & Recommendations */}
-<Box sx={{ mt: 4 }}>
-  <Typography variant="h5" gutterBottom>
-    AI Predictions & Recommendations
-  </Typography>
-
-  {isLoading && <Typography>Loading predictions...</Typography>}
-  {error && <Typography color="error">Error: {error}</Typography>}
-
-  {!isLoading && predictions.length === 0 && (
-    <Typography>No predictions available yet.</Typography>
-  )}
-
-  {!isLoading &&
-    predictions.map((p) => (
-      <Box
-        key={p.id ?? p.kind}
-        sx={{
-          mb: 2,
-          p: 2,
-          border: "1px solid #ddd",
-          borderRadius: 2,
-          backgroundColor: "#fafafa",
-        }}
-      >
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {p.kind.replace(/_/g, " ").toUpperCase()}
-        </Typography>
-
-        {/* Predicted Value */}
-        <Typography>
-          Predicted Value:{" "}
-          {typeof p.score === "number"
-            ? `${p.score}${p.kind.includes("probability") ? "%" : ""}`
-            : JSON.stringify(p.score)}
-        </Typography>
-
-        {/* Confidence */}
-        {p.confidence !== undefined && (
-          <Typography>
-            Confidence: {(p.confidence * 100).toFixed(1)}%
-            {p.confidenceInterval &&
-              ` (CI: ${(p.confidenceInterval[0] * 100).toFixed(
-                1
-              )}% - ${(p.confidenceInterval[1] * 100).toFixed(1)}%)`}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            AI Predictions & Recommendations
           </Typography>
-        )}
 
-        {/* Recommendations */}
-        {p.recommendations && p.recommendations.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="subtitle2">Recommendations:</Typography>
-            <ul>
-              {p.recommendations.map((r, i) => (
-                <li key={i}>{r}</li>
-              ))}
-            </ul>
-          </Box>
-        )}
+          {isLoading && <Typography>Loading predictions...</Typography>}
+          {error && <Typography color="error">Error: {error}</Typography>}
 
-        {/* Scenario Analysis */}
-        {p.scenarioAnalysis && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="subtitle2">Scenario Planning:</Typography>
-            <ul>
-              {Object.entries(p.scenarioAnalysis).map(([scenario, outcome]) => (
-                <li key={scenario}>
-                  {scenario}:{" "}
-                  {typeof outcome === "number"
-                    ? (outcome * 100).toFixed(1) + "%"
-                    : outcome}
-                </li>
-              ))}
-            </ul>
-          </Box>
-        )}
+          {!isLoading && predictions.length === 0 && (
+            <Typography>No predictions available yet.</Typography>
+          )}
 
-        {/* Details */}
-        {p.details && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="subtitle2">Details:</Typography>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {typeof p.details === "string"
-                ? p.details
-                : JSON.stringify(p.details, null, 2)}
-            </pre>
-          </Box>
-        )}
-      </Box>
-    ))}
-</Box>
+          {!isLoading &&
+            predictions.map((p) => (
+              <Box
+                key={p.id ?? p.kind}
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  border: "1px solid #ddd",
+                  borderRadius: 2,
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  {p.kind.replace(/_/g, " ").toUpperCase()}
+                </Typography>
+
+                {/* Predicted Value */}
+                <Typography>
+                  Predicted Value:{" "}
+                  {typeof p.score === "number"
+                    ? `${p.score}${p.kind.includes("probability") ? "%" : ""}`
+                    : JSON.stringify(p.score)}
+                </Typography>
+
+                {/* Confidence */}
+                {p.confidence !== undefined && (
+                  <Typography>
+                    Confidence: {(p.confidence * 100).toFixed(1)}%
+                    {p.confidenceInterval &&
+                      ` (CI: ${(p.confidenceInterval[0] * 100).toFixed(
+                        1
+                      )}% - ${(p.confidenceInterval[1] * 100).toFixed(1)}%)`}
+                  </Typography>
+                )}
+
+                {/* Recommendations */}
+                {p.recommendations && p.recommendations.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="subtitle2">
+                      Recommendations:
+                    </Typography>
+                    <ul>
+                      {p.recommendations.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </Box>
+                )}
+
+                {/* Scenario Analysis */}
+                {p.scenarioAnalysis && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="subtitle2">
+                      Scenario Planning:
+                    </Typography>
+                    <ul>
+                      {Object.entries(p.scenarioAnalysis).map(
+                        ([scenario, outcome]) => (
+                          <li key={scenario}>
+                            {scenario}:{" "}
+                            {typeof outcome === "number"
+                              ? (outcome * 100).toFixed(1) + "%"
+                              : outcome}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </Box>
+                )}
+
+                {/* Details */}
+                {p.details && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="subtitle2">Details:</Typography>
+                    <pre style={{ whiteSpace: "pre-wrap" }}>
+                      {typeof p.details === "string"
+                        ? p.details
+                        : JSON.stringify(p.details, null, 2)}
+                    </pre>
+                  </Box>
+                )}
+              </Box>
+            ))}
+        </Box>
       </Stack>
     </Container>
   );

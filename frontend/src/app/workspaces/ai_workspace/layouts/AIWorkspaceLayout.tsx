@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import AppShell from "@shared/layouts/AppShell";
 import AINavBar from "../navigation/AINavBar";
 import { Box, Snackbar, Alert } from "@mui/material";
+import { GenerationProvider } from "../context/GenerationContext";
 
 const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
 
@@ -72,49 +73,51 @@ export default function AIWorkspaceLayout() {
   }, []);
 
   return (
-    <AppShell sidebar={null}>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          overflow: "hidden",
-        }}
-      >
-        {/* Horizontal navigation */}
-        <AINavBar />
-
-        {/* Main content area */}
+    <GenerationProvider>
+      <AppShell sidebar={null}>
         <Box
-          component="main"
           sx={{
-            flexGrow: 1,
-            overflow: "auto",
-            backgroundColor: "background.default",
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            overflow: "hidden",
           }}
         >
-          <Outlet />
-        </Box>
+          {/* Horizontal navigation */}
+          <AINavBar />
 
-        {/* Server connection status */}
-        <Snackbar
-          open={showAlert && !serverConnected}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-          sx={{ bottom: 24 }}
-        >
-          <Alert
-            severity="error"
-            variant="filled"
+          {/* Main content area */}
+          <Box
+            component="main"
             sx={{
-              width: "100%",
-              boxShadow: 3,
+              flexGrow: 1,
+              overflow: "auto",
+              backgroundColor: "background.default",
             }}
           >
-            Server connection lost. AI features will not work until the backend
-            server is running on {AI_BASE_URL}
-          </Alert>
-        </Snackbar>
-      </Box>
-    </AppShell>
+            <Outlet />
+          </Box>
+
+          {/* Server connection status */}
+          <Snackbar
+            open={showAlert && !serverConnected}
+            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+            sx={{ bottom: 24 }}
+          >
+            <Alert
+              severity="error"
+              variant="filled"
+              sx={{
+                width: "100%",
+                boxShadow: 3,
+              }}
+            >
+              Server connection lost. AI features will not work until the backend
+              server is running on {AI_BASE_URL}
+            </Alert>
+          </Snackbar>
+        </Box>
+      </AppShell>
+    </GenerationProvider>
   );
 }

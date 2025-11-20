@@ -7,7 +7,7 @@
 /**
  * AI workspace navigation tab
  */
-export type AIWorkspaceTab = "hub" | "library" | "templates" | "research";
+export type AIWorkspaceTab = "hub" | "library" | "templates" | "research" | "resume" | "cover-letter";
 
 /**
  * AI workspace route paths
@@ -27,6 +27,12 @@ export const AI_ROUTES = {
 
   /** Company research */
   RESEARCH: "/ai/research",
+
+  /** Generate resume */
+  RESUME: "/ai/generate/resume",
+
+  /** Generate cover letter */
+  COVER_LETTER: "/ai/generate/cover-letter",
 
   /** Create new document */
   CREATE: "/ai/create",
