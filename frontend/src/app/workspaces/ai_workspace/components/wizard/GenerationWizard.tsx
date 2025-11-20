@@ -6,6 +6,7 @@
 
 import React, { useState } from "react";
 import { Box, Button, Container, Paper, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -47,8 +48,8 @@ const WIZARD_STEPS: WizardStep[] = [
   {
     id: "context",
     label: "Job Context",
-    description: "Add job-specific details",
-    optional: true,
+    description: "Select target job",
+    optional: false,
   },
   {
     id: "options",
@@ -123,6 +124,7 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
 }) => {
   // Auth and error handling
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
 
@@ -155,8 +157,8 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
         return selectedTemplate !== null;
       case 1: // Theme selection
         return selectedTheme !== null;
-      case 2: // Job context (optional)
-        return true;
+      case 2: // Job context (required)
+        return jobContext.jobId !== undefined;
       case 3: // Options
         return true;
       case 4: // Preview
@@ -226,12 +228,11 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
       }
 
       // Show success notification
-      showSuccess("Document generated successfully!");
+      showSuccess("Document generated successfully! Opening editor...");
 
-      // Call onComplete callback with actual result
-      if (onComplete) {
-        onComplete(result);
-      }
+      // Navigate to document editor instead of calling onComplete
+      // This allows users to immediately edit and refine the generated document
+      navigate(`/ai/document/${result.documentId}`);
     } catch (error) {
       setIsGenerating(false);
       handleError(error as Error);

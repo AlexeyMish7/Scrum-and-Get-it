@@ -60,7 +60,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { withUser } from "@shared/services/crud";
-import { useCoverLetterDrafts } from "@workspaces/ai/hooks/useCoverLetterDrafts";
+import { useCoverLetterDrafts } from "@shared/hooks/useCoverLetterDrafts";
 import type { JobRow } from "@job_pipeline/types";
 
 // Types for documents

@@ -492,6 +492,15 @@ async function handleRequest(
       return;
     }
 
+    // GET /api/company/user-companies
+    if (method === "GET" && pathname === "/api/company/user-companies") {
+      const userId = await requireAuth(req);
+      const { handleGetUserCompanies } = await import("./routes/index.js");
+      await handleGetUserCompanies(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     // ------------------------------------------------------------------
     // 404 NOT FOUND
     // ------------------------------------------------------------------

@@ -11,7 +11,7 @@ import type {
   ExperienceTailoringResult,
   AIArtifactSummary,
   AIArtifact,
-} from "../types/ai";
+} from "@shared/types/ai";
 
 export async function generateResume(
   userId: string,

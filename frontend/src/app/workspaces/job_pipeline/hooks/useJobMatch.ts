@@ -22,7 +22,7 @@ import {
   setAnalytics,
   invalidateAnalytics,
 } from "@job_pipeline/services/analyticsCache";
-import aiGeneration from "@workspaces/ai/services/aiGeneration";
+import aiGeneration from "@shared/services/ai/aiGeneration";
 import skillsService from "@workspaces/profile/services/skills";
 
 // In-memory request deduplication cache

@@ -294,12 +294,12 @@ function mapTemplateRowToTemplate(row: TemplateRow): Template {
       columns: (row.layout.columns || 1) as ColumnLayout,
       pageSize: (row.layout.pageSize || "letter") as PageSize,
       margins: row.layout.margins || { top: 1, right: 1, bottom: 1, left: 1 },
-      sectionOrder: (row.layout.sectionOrder || []).map((sectionId) => ({
-        id: sectionId,
-        name: sectionId,
-        type: sectionId as SectionType,
-        required: false,
-        defaultEnabled: true,
+      sectionOrder: (row.layout.sectionOrder || []).map((section: any) => ({
+        id: section.id || section,
+        name: section.name || section,
+        type: (section.type || section) as SectionType,
+        required: section.required ?? false,
+        defaultEnabled: section.defaultEnabled ?? true,
       })),
       headerFooter: row.layout.headerFooter || {
         showHeader: true,
@@ -359,6 +359,7 @@ export async function getAllTemplates(
     // Build query filters
     const filters: {
       eq?: Record<string, string | number | boolean | null>;
+      is_?: Record<string, null>;
     } = {};
 
     if (category) {
@@ -366,8 +367,10 @@ export async function getAllTemplates(
     }
 
     // Fetch system templates (user_id IS NULL)
+    // Note: Supabase requires 'is' operator for null checks, not 'eq'
     const systemResult = await listRows<TemplateRow>("templates", "*", {
-      eq: { ...filters.eq, user_id: null },
+      eq: filters.eq,
+      is_: { user_id: null },
       order: { column: "name", ascending: true },
     });
 

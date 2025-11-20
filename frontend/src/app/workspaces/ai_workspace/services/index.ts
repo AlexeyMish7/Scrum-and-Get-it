@@ -7,11 +7,13 @@
  * - themeService: ⏳ Static only - Visual theme management (needs themes table)
  * - versionService: ⏳ In-memory only - Document version control (needs document_versions table)
  * - exportService: ⏳ Placeholders - Document export (needs backend export API)
+ * - companyResearchService: ✅ Backend integrated - Company research with shared cache
  *
  * Backend Integration Status:
  * ✅ AI Generation: POST /api/generate/resume, /api/generate/cover-letter
  * ✅ Templates: Fetches from templates table via @shared/services/crud
  * ✅ Documents: Saves to documents + document_versions tables
+ * ✅ Company Research: GET /api/company/research (7-day shared cache)
  * ⏳ Themes: TODO - Connect to themes table
  * ⏳ Export: TODO - Connect to backend export API
  */
@@ -31,6 +33,11 @@ export * from "./templateService";
 // THEME SERVICE (Database Integration)
 // =====================================================================
 export * from "./themeService";
+
+// =====================================================================
+// COMPANY RESEARCH SERVICE (Backend Integration)
+// =====================================================================
+export * from "./companyResearchService";
 
 // =====================================================================
 // DOCUMENT SERVICES (In-Memory/Placeholder)

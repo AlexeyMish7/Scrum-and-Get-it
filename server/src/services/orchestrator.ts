@@ -168,6 +168,7 @@ export async function handleGenerateResume(
     job,
     tone: req.options?.tone ?? "professional",
     focus: req.options?.focus,
+    length: req.options?.length ?? "standard",
     templateId,
     skillsList,
     employment,

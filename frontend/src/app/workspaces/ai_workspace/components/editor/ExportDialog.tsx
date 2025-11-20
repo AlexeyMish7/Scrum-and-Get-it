@@ -148,9 +148,96 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   /**
    * Handle preview
    */
-  const handlePreview = () => {
-    // TODO: Open preview in new window/dialog
-    console.log("Preview not implemented yet");
+  const handlePreview = async () => {
+    try {
+      setError(null);
+
+      // Generate preview based on format
+      let previewUrl: string;
+
+      if (format === "html") {
+        // Generate HTML and open in new window
+        const result = await exportDocument(document, template, theme, {
+          format: "html",
+          includeTemplate,
+          includeTheme,
+          filename,
+          htmlOptions: {
+            standalone: true,
+            includeCSS: true,
+            minify: false,
+          },
+        });
+
+        if (result.success && result.downloadUrl) {
+          previewUrl = result.downloadUrl;
+        } else {
+          setError(result.error || "Preview generation failed");
+          return;
+        }
+      } else if (format === "txt") {
+        // Generate TXT and open in new window
+        const result = await exportDocument(document, template, theme, {
+          format: "txt",
+          includeTemplate,
+          includeTheme,
+          filename,
+        });
+
+        if (result.success && result.downloadUrl) {
+          previewUrl = result.downloadUrl;
+        } else {
+          setError(result.error || "Preview generation failed");
+          return;
+        }
+      } else if (format === "pdf") {
+        // Generate PDF and open in new window
+        const result = await exportDocument(document, template, theme, {
+          format: "pdf",
+          includeTemplate,
+          includeTheme,
+          filename,
+          pdfOptions: {
+            pageSize: "A4",
+            margins: { top: 20, right: 20, bottom: 20, left: 20 },
+            orientation: "portrait",
+          },
+        });
+
+        if (result.success && result.downloadUrl) {
+          previewUrl = result.downloadUrl;
+        } else {
+          setError(result.error || "Preview generation failed");
+          return;
+        }
+      } else if (format === "json") {
+        // Generate JSON and open in new window
+        const result = await exportDocument(document, template, theme, {
+          format: "json",
+          includeTemplate,
+          includeTheme,
+          filename,
+        });
+
+        if (result.success && result.downloadUrl) {
+          previewUrl = result.downloadUrl;
+        } else {
+          setError(result.error || "Preview generation failed");
+          return;
+        }
+      } else {
+        setError(`Preview not available for ${format.toUpperCase()} format`);
+        return;
+      }
+
+      // Open preview in new window
+      const previewWindow = window.open(previewUrl, "_blank");
+      if (!previewWindow) {
+        setError("Please allow popups to view the preview");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Preview failed");
+    }
   };
 
   /**

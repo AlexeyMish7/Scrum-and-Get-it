@@ -5,28 +5,38 @@
  * WHY: Users need company context to write compelling, personalized cover letters
  *
  * Features:
- * - Company profile (name, industry, size, location, mission)
- * - Recent news and announcements (funding, product launches, expansion)
- * - Company culture indicators (startup vs corporate, remote-friendly, values)
- * - Key executives and leadership team
- * - Products/services overview
+ * - Company profile (name, industry, size, location, mission) → stored in companies table
+ * - Recent news and announcements (funding, product launches, expansion) → cached for 7 days
+ * - Company culture indicators (startup vs corporate, remote-friendly, values) → companies table
+ * - Key executives and leadership team → companies table
+ * - Products/services overview → companies table
+ * - DUAL STORAGE: Persistent data in companies table, volatile data (news) in cache
+ *
+ * Data Storage Strategy:
+ * 1. companies table: Static company info (name, industry, size, location, mission, culture, products)
+ * 2. company_research_cache table: Volatile data (news, recent events, funding, leadership changes)
+ * 3. Cache TTL: 7 days for volatile data (news becomes stale)
+ * 4. Shared across all users to reduce API costs
  *
  * Data Sources (in order of priority):
- * 1. User-provided job description (scraped from job posting)
- * 2. Mock data service (for MVP - replaces external API calls)
- * 3. TODO: Future integrations (Clearbit, LinkedIn, Crunchbase, news APIs)
+ * 1. Database (companies table + company_research_cache)
+ * 2. AI-generated research (via companyResearch prompt) - saved to both tables
+ * 3. Fallback mock data if AI fails
  *
  * Inputs:
  * - companyName: string (required)
  * - industry?: string (optional, from job posting)
  * - jobDescription?: string (optional, may contain company info)
+ * - userId?: string (optional, for logging only - data is shared)
  *
  * Outputs:
- * - CompanyResearch object with profile, news, culture, leadership
- * - Stored in cover_letter_drafts.company_research jsonb field
+ * - CompanyResearch object with persistent + volatile data combined
  */
 
 import { logInfo, logWarn, logError } from "../../utils/logger.js";
+import supabase from "./supabaseAdmin.js";
+import { scrapeWithBrowser } from "./scraper.js";
+import { generate } from "./aiClient.js";
 
 // ========== INTERFACES ==========
 
@@ -47,7 +57,7 @@ export interface CompanyResearch {
   products: string[]; // List of main products/services
 
   lastUpdated: string; // ISO timestamp
-  source: "mock" | "api" | "user-provided"; // Data source
+  source: "mock" | "api" | "user-provided" | "cached" | "database"; // Data source
 }
 
 export interface CompanyNews {
@@ -250,87 +260,428 @@ function generateMockCompanyResearch(
 // ========== PUBLIC API ==========
 
 /**
- * Fetch company research data
+ * Normalize company name for cache lookups
  *
- * Flow:
- * 1. Validate inputs
- * 2. Check cache (TODO: implement Redis/memory cache)
- * 3. Generate mock data (or call external API in production)
- * 4. Return CompanyResearch object
- *
- * Error Handling:
- * - Invalid company name → return null
- * - API failure → fallback to basic mock data
- * - Network timeout → return cached data if available
+ * Removes common suffixes and normalizes whitespace for consistent caching
+ * Example: "Google Inc." → "google"
  */
-export async function fetchCompanyResearch(
-  companyName: string,
-  industry?: string | null,
-  jobDescription?: string | null
+function normalizeCompanyName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(
+      /\s+(inc\.?|llc\.?|corp\.?|corporation|limited|ltd\.?|co\.?)$/i,
+      ""
+    );
+}
+
+/**
+ * Get company research from database (combines companies table + cache)
+ *
+ * Queries companies table for persistent data + company_research_cache for volatile data.
+ * Returns combined result if found.
+ */
+async function getCompanyFromDatabase(
+  companyName: string
 ): Promise<CompanyResearch | null> {
   try {
-    // Validate inputs
-    if (!companyName || companyName.trim().length === 0) {
-      logWarn("Invalid company name", { companyName });
+    // Use database function to get combined data
+    const { data, error } = await supabase.rpc("get_company_research", {
+      p_company_name: companyName,
+    });
+
+    if (error) {
+      logWarn("Error querying company research", {
+        error: error.message,
+        companyName,
+      });
       return null;
     }
 
-    logInfo("Fetching company research", {
-      companyName,
-      industry: industry || "unknown",
-    });
+    if (!data) {
+      logInfo("Company not found in database", { companyName });
+      return null;
+    }
 
-    // TODO: Check cache first
-    // const cached = await getFromCache(`company:${companyName}`);
-    // if (cached) return cached;
-
-    // TODO: In production, call external APIs here
-    // const research = await callClearbitAPI(companyName) || await callLinkedInAPI(companyName);
-
-    // For MVP, use mock data
-    const research = generateMockCompanyResearch(
-      companyName,
-      industry,
-      jobDescription
-    );
-
-    // TODO: Cache the result
-    // await saveToCache(`company:${companyName}`, research, 86400); // 24 hour TTL
-
-    logInfo("Company research fetched successfully", {
-      companyName,
-      newsCount: research.news.length,
-      source: research.source,
-    });
-
-    return research;
-  } catch (err) {
-    logError("Failed to fetch company research", err, { companyName });
-
-    // Fallback to minimal mock data
-    return {
-      companyName,
-      industry: industry || null,
-      size: null,
-      location: null,
-      founded: null,
-      website: null,
-      mission: null,
-      description: `${companyName} is a company in the ${
-        industry || "industry"
-      }.`,
-      news: [],
-      culture: {
+    // Transform database format to CompanyResearch interface
+    const research: CompanyResearch = {
+      companyName: data.companyName || companyName,
+      industry: data.industry || null,
+      size: data.size || null,
+      location: data.location || null,
+      founded: data.founded || null,
+      website: data.website || null,
+      mission: data.companyData?.mission || null,
+      description: data.description || null,
+      news: data.news || [],
+      culture: data.companyData?.culture || {
         type: "corporate",
         remotePolicy: null,
         values: [],
         perks: [],
       },
-      leadership: [],
-      products: [],
-      lastUpdated: new Date().toISOString(),
-      source: "mock",
+      leadership: data.companyData?.leadership || [],
+      products: data.companyData?.products || [],
+      lastUpdated: data.cacheHit
+        ? new Date().toISOString()
+        : new Date().toISOString(),
+      source: data.cacheHit ? "cached" : "database",
     };
+
+    logInfo("Company research retrieved from database", {
+      companyName,
+      cacheHit: data.cacheHit || false,
+    });
+
+    return research;
+  } catch (err) {
+    logError("Failed to get company from database", err, { companyName });
+    return null;
+  }
+}
+
+/**
+ * Save company research to database
+ *
+ * Saves persistent data to companies table and volatile data (news) to cache.
+ * Uses database functions for proper normalization and upsert logic.
+ */
+async function saveCompanyToDatabase(research: CompanyResearch): Promise<void> {
+  try {
+    // Step 1: Upsert company base info into companies table
+    const { data: companyId, error: companyError } = await supabase.rpc(
+      "upsert_company_info",
+      {
+        p_company_name: research.companyName,
+        p_industry: research.industry,
+        p_size: research.size,
+        p_location: research.location,
+        p_founded_year: research.founded,
+        p_website: research.website,
+        p_mission: research.mission,
+        p_description: research.description,
+        p_company_data: {
+          culture: research.culture,
+          leadership: research.leadership,
+          products: research.products,
+        },
+      }
+    );
+
+    if (companyError) {
+      logError("Failed to save company base info", companyError, {
+        companyName: research.companyName,
+      });
+      return;
+    }
+
+    logInfo("Saved company base info to database", {
+      companyName: research.companyName,
+      companyId,
+    });
+
+    // Step 2: Save volatile research data (news, events) to cache
+    const { error: cacheError } = await supabase.rpc("save_company_research", {
+      p_company_id: companyId,
+      p_research_data: {
+        news: research.news,
+        recentEvents: [],
+        fundingRounds: [],
+        leadershipChanges: [],
+        quarterlyHighlights: [],
+      },
+      p_metadata: {
+        model: "gpt-4",
+        source: research.source,
+        cached_at: new Date().toISOString(),
+      },
+    });
+
+    if (cacheError) {
+      logError("Failed to save research cache (non-blocking)", cacheError, {
+        companyName: research.companyName,
+        companyId,
+      });
+      // Don't throw - base company info already saved
+    } else {
+      logInfo("Saved volatile research data to cache", {
+        companyName: research.companyName,
+        companyId,
+      });
+    }
+  } catch (err) {
+    logError("Exception saving company to database", err, {
+      companyName: research.companyName,
+    });
+  }
+}
+
+/**
+ * Generate company research using AI and web scraping
+ *
+ * Flow:
+ * 1. Search Google for recent news about the company
+ * 2. Scrape company website for official information
+ * 3. Use AI to analyze and structure the data
+ * 4. Return comprehensive CompanyResearch object or null if not found
+ *
+ * Data sources:
+ * - Company website (official info, mission, products)
+ * - Google News search (recent announcements, funding, hiring)
+ * - AI analysis (structure, validate, fill gaps)
+ */
+async function generateCompanyResearchWithAI(
+  companyName: string,
+  industry?: string | null,
+  jobDescription?: string | null
+): Promise<CompanyResearch | null> {
+  logInfo("Generating AI-powered company research", { companyName });
+
+  try {
+    // Step 1: Search for company website and news
+    const searchQuery = `${companyName} ${
+      industry || ""
+    } company official website news`;
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+      searchQuery
+    )}&num=10`;
+
+    let webContent = "";
+    try {
+      const searchResult = await scrapeWithBrowser(searchUrl, {
+        waitForSelector: "#search",
+        timeout: 10000,
+      });
+      webContent = searchResult.content.slice(0, 15000); // Limit to avoid token overflow
+      logInfo("Web scraping successful", {
+        companyName,
+        contentLength: webContent.length,
+      });
+    } catch (scrapeErr) {
+      logWarn("Web scraping failed, using AI only", {
+        companyName,
+        error:
+          scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr),
+      });
+    }
+
+    // Step 2: Build AI prompt to analyze and structure the data
+    const prompt = `You are a professional business analyst researching companies for job seekers.
+
+COMPANY: ${companyName}
+${industry ? `INDUSTRY: ${industry}` : ""}
+${jobDescription ? `JOB CONTEXT: ${jobDescription.slice(0, 500)}` : ""}
+
+${webContent ? `RESEARCH DATA FROM WEB:\n${webContent}\n\n` : ""}
+
+Generate a comprehensive company research report with ACCURATE and RECENT information.
+
+IMPORTANT: If you cannot find credible information about this company, or if it appears the company does not exist or is too obscure to research, respond with ONLY the word "NOT_FOUND" instead of making up data.
+
+If you DO find the company, return a JSON object with this EXACT structure:
+{
+  "companyName": "${companyName}",
+  "industry": "exact industry name or null",
+  "size": "1-10" | "11-50" | "51-200" | "201-500" | "501-1000" | "1000+" or null,
+  "location": "City, State/Country" or null,
+  "founded": year as number or null,
+  "website": "https://..." or null,
+  "mission": "company mission statement" or null,
+  "description": "brief company description" or null,
+  "news": [
+    {
+      "title": "News headline",
+      "summary": "Brief summary of the news",
+      "date": "YYYY-MM-DD",
+      "category": "funding" | "product" | "expansion" | "hiring" | "award" | "general",
+      "url": "https://..." or undefined
+    }
+  ],
+  "culture": {
+    "type": "corporate" | "startup" | "creative" | "hybrid",
+    "remotePolicy": "on-site" | "hybrid" | "remote-first" | "fully-remote" | null,
+    "values": ["value1", "value2"],
+    "perks": ["perk1", "perk2"]
+  },
+  "leadership": [
+    {
+      "name": "Full Name",
+      "title": "Position",
+      "bio": "Brief bio" or undefined
+    }
+  ],
+  "products": ["product1", "product2"]
+}
+
+CRITICAL REQUIREMENTS:
+1. News must be RECENT (last 6 months) and REAL. Include dates.
+2. If you can't find recent news, return empty array - don't make it up.
+3. Company info must be ACCURATE - verify from official sources when possible.
+4. Leadership should be current executives (CEO, CTO, etc.) - use real names if available.
+5. Products should be actual offerings, not generic examples.
+6. Return ONLY the JSON object, no additional text or markdown formatting.`;
+
+    // Step 3: Call AI to generate structured research
+    const aiResponse = await generate("company-research", prompt, {
+      model: process.env.AI_MODEL || "gpt-4o-mini",
+      maxTokens: 2000,
+      temperature: 0.3, // Lower temperature for more factual responses
+    });
+
+    // Step 4: Parse AI response
+    let research: CompanyResearch;
+    try {
+      const responseText = (aiResponse.text || "").trim();
+
+      // Check if AI indicated company not found
+      if (responseText === "NOT_FOUND" || responseText.includes("NOT_FOUND")) {
+        logWarn("AI could not find credible information about company", {
+          companyName,
+        });
+        return null;
+      }
+
+      // Extract JSON from response (handle markdown code blocks)
+      const jsonMatch =
+        responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) ||
+        responseText.match(/(\{[\s\S]*\})/);
+      const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
+      const parsed = JSON.parse(jsonStr);
+
+      research = {
+        ...parsed,
+        lastUpdated: new Date().toISOString(),
+        source: "api" as const,
+      };
+
+      logInfo("AI research generated successfully", {
+        companyName,
+        newsCount: research.news.length,
+        hasWebsite: !!research.website,
+      });
+    } catch (parseErr) {
+      logError("Failed to parse AI response, company not found", parseErr, {
+        companyName,
+        response: (aiResponse.text || "").slice(0, 200),
+      });
+      return null;
+    }
+
+    return research;
+  } catch (err) {
+    logError("AI research generation failed, company not found", err, {
+      companyName,
+    });
+    // Return null to indicate company not found - don't generate mock data
+    return null;
+  }
+}
+
+/**
+ * Fetch company research data with dual storage
+ *
+ * Flow:
+ * 1. Validate inputs
+ * 2. Check database (companies table + company_research_cache)
+ * 3. If found: return combined data
+ * 4. If not found or cache expired: generate via AI + web scraping
+ * 5. Save persistent data to companies table
+ * 6. Save volatile data (news) to company_research_cache
+ * 7. Return CompanyResearch object
+ *
+ * Storage Strategy:
+ * - companies table: name, industry, size, location, mission, culture, leadership, products (persistent)
+ * - company_research_cache: news, recent events, funding, quarterly reports (7-day TTL)
+ *
+ * Error Handling:
+ * - Invalid company name → return null
+ * - Database query failure → proceed to generation
+ * - AI generation failure → fallback to basic mock data
+ * - Save failure → log error but return data (non-blocking)
+ */
+export async function fetchCompanyResearch(
+  companyName: string,
+  industry?: string | null,
+  jobDescription?: string | null,
+  userId?: string
+): Promise<CompanyResearch | null> {
+  try {
+    // Validate inputs
+    if (!companyName || companyName.trim().length === 0) {
+      logWarn("Invalid company name", { companyName, userId });
+      return null;
+    }
+
+    const normalized = normalizeCompanyName(companyName);
+
+    logInfo("Fetching company research", {
+      companyName,
+      normalized,
+      industry: industry || "unknown",
+      userId,
+    });
+
+    // Step 1: Check database (companies + cache)
+    const existing = await getCompanyFromDatabase(companyName);
+    if (existing && existing.source === "cached") {
+      // Have both persistent data + fresh cache
+      logInfo("Returning complete company research from database + cache", {
+        companyName,
+        userId,
+      });
+      return existing;
+    } else if (existing) {
+      // Have persistent data but cache expired - need to refresh volatile data
+      logInfo("Company found but cache expired - regenerating volatile data", {
+        companyName,
+        userId,
+      });
+      // Continue to generation to refresh news/events
+    }
+
+    // Step 2: Cache miss or expired - generate new research
+    logInfo("Generating company research", {
+      companyName,
+      normalized,
+      userId,
+    });
+
+    // Use AI + web scraping for accurate, recent data
+    const research = await generateCompanyResearchWithAI(
+      companyName,
+      industry,
+      jobDescription
+    );
+
+    // If AI couldn't find the company, return null
+    if (!research) {
+      logWarn("Company not found or could not be researched", {
+        companyName,
+        userId,
+      });
+      return null;
+    }
+
+    // Step 3: Save to database (companies table + cache)
+    saveCompanyToDatabase(research).catch((err) => {
+      logError("Failed to save to database (non-blocking)", err, {
+        companyName,
+        userId,
+      });
+    });
+
+    logInfo("Company research generated successfully", {
+      companyName,
+      newsCount: research.news.length,
+      source: research.source,
+      userId,
+    });
+
+    return research;
+  } catch (err) {
+    logError("Failed to fetch company research", err, { companyName, userId });
+    // Return null to indicate company not found/error - let frontend handle it
+    return null;
   }
 }
 

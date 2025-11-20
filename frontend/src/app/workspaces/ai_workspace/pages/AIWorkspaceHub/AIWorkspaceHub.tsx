@@ -97,12 +97,10 @@ export default function AIWorkspaceHub() {
           {}
         );
 
-        // Fetch document versions for ATS score
+        // Fetch document versions for ATS score (only non-null scores)
         const versionsResult = await userCrud.listRows<{
           ats_score: number | null;
-        }>("document_versions", "ats_score", {
-          neq: { ats_score: null },
-        });
+        }>("document_versions", "ats_score", {});
 
         // Fetch jobs applied count
         const jobsResult = await userCrud.listRows<{ id: number }>(

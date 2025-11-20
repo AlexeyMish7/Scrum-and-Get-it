@@ -4,7 +4,7 @@
  * Displays key statistics about documents, versions, and usage.
  */
 
-import { Card, CardContent, Typography, Stack, Box } from "@mui/material";
+import { Card, CardContent, Typography, Box, Stack, Grid } from "@mui/material";
 import type { SvgIconProps } from "@mui/material";
 import {
   Description as DocumentIcon,
@@ -84,15 +84,12 @@ export default function GenerationStats({
         Statistics
       </Typography>
 
-      <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", gap: 2 }}>
+      <Grid container spacing={2}>
         {stats.map((stat) => {
           const IconComponent = stat.icon;
 
           return (
-            <Box
-              key={stat.label}
-              sx={{ flex: "1 1 calc(25% - 16px)", minWidth: 200 }}
-            >
+            <Grid item key={stat.label} xs={12} sm={6} md={3}>
               <Card
                 elevation={0}
                 sx={{
@@ -145,10 +142,10 @@ export default function GenerationStats({
                   </Stack>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
           );
         })}
-      </Stack>
+      </Grid>
     </Box>
   );
 }

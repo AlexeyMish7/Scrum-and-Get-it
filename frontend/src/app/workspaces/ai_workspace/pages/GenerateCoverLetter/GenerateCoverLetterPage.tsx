@@ -24,15 +24,15 @@ const GenerateCoverLetterPage: React.FC = () => {
   const handleComplete = (result: GenerationResult) => {
     console.log("Generated document:", result);
     // TODO: Navigate to editor or document library
-    // navigate(`/ai-new/document/${result.documentId}`);
-    navigate("/ai-new/library");
+    // navigate(`/ai/document/${result.documentId}`);
+    navigate("/ai/library");
   };
 
   /**
    * Handle wizard cancellation
    */
   const handleCancel = () => {
-    navigate("/ai-new");
+    navigate("/ai");
   };
 
   return (

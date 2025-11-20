@@ -29,33 +29,12 @@ import Settings from "@profile/pages/profile/Settings";
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
 import ProfileLayout from "@profile/ProfileLayout";
-import AiLayout from "@workspaces/ai/AiLayout";
 import AIWorkspaceLayout from "@ai_workspace/layouts/AIWorkspaceLayout";
 import JobsLayout from "@workspaces/job_pipeline/layouts/JobPipelineLayout";
 import UnifiedJobsLayout from "@workspaces/job_pipeline/layouts/UnifiedJobsLayout";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 
-// AI workspace (OLD - will be deprecated)
-const DashboardAI = lazy(
-  () => import("@workspaces/ai/pages/DashboardAI/index")
-);
-const CompanyResearch = lazy(
-  () => import("@workspaces/ai/pages/CompanyResearch/index")
-);
-const TemplatesHub = lazy(
-  () => import("@workspaces/ai/pages/TemplatesHub/index")
-);
-const CoverLetterEditor = lazy(
-  () => import("@workspaces/ai/pages/CoverLetterEditor/index")
-);
-const ResumeEditorV2 = lazy(
-  () => import("@workspaces/ai/pages/ResumeEditorV2/index")
-);
-const EditCoverLetter = lazy(
-  () => import("@workspaces/ai/pages/EditCoverLetter/index")
-);
-
-// AI workspace (NEW - redesigned)
+// AI workspace (redesigned)
 const AIWorkspaceHub = lazy(() => import("@ai_workspace/pages/AIWorkspaceHub"));
 const DocumentLibrary = lazy(
   () => import("@ai_workspace/pages/DocumentLibrary")
@@ -72,8 +51,10 @@ const GenerateResumePage = lazy(
 const GenerateCoverLetterPage = lazy(
   () => import("@ai_workspace/pages/GenerateCoverLetter")
 );
-const DocumentEditorPage = lazy(
-  () => import("@ai_workspace/pages/DocumentEditorPage")
+const DocumentEditorPage = lazy(() =>
+  import("@ai_workspace/pages/DocumentEditorPage").then((module) => ({
+    default: module.DocumentEditorPage,
+  }))
 );
 
 // Jobs workspace pages (lazy loaded - data-heavy components)
@@ -142,9 +123,9 @@ const LazyLoadFallback = () => (
 export const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
 
-  // AI workspace (NEW) - Redesigned with centralized hub
+  // AI workspace - Redesigned with centralized hub
   {
-    path: "/ai-new",
+    path: "/ai",
     element: (
       <ProtectedRoute>
         <AIWorkspaceLayout />
@@ -204,66 +185,6 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <CompanyResearchNew />
-          </Suspense>
-        ),
-      },
-    ],
-  },
-
-  // AI workspace (OLD) - Legacy routes (will be deprecated)
-  {
-    path: "/ai",
-    element: (
-      <ProtectedRoute>
-        <AiLayout />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <DashboardAI />
-          </Suspense>
-        ),
-      },
-      {
-        path: "resume",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <ResumeEditorV2 />
-          </Suspense>
-        ),
-      },
-      {
-        path: "cover-letter",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <CoverLetterEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: "cover-letter-edit",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <EditCoverLetter />
-          </Suspense>
-        ),
-      },
-      {
-        path: "company-research",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <CompanyResearch />
-          </Suspense>
-        ),
-      },
-      {
-        path: "templates",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <TemplatesHub />
           </Suspense>
         ),
       },

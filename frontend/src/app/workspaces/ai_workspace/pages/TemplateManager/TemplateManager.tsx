@@ -70,7 +70,6 @@ export default function TemplateManager() {
             {/* Template gallery */}
             <TemplateGallery
               category={templateCategory}
-              onSelectTemplate={handleSelectTemplate}
               selectedTemplateId={selectedTemplate?.id}
             />
           </>

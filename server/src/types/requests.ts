@@ -13,12 +13,13 @@ export interface GenerateResumeRequest {
   jobId: number; // target job id
   /**
    * Optional generation tuning parameters provided by the client.
-   * tone: stylistic direction (e.g., "professional", "enthusiastic")
-   * focus: optional emphasis keyword (e.g., "leadership", "backend")
+   * tone: stylistic direction (e.g., "professional", "enthusiastic", "confident", "analytical")
+   * focus: optional emphasis keyword (e.g., "leadership", "backend", "ats", "skills")
    * variant: numeric index for multi-generation UX (select different seed)
    * model: request override for AI model (validated against allow-list)
    * prompt: user-supplied additive snippet appended to the base prompt
    * templateId: resume template identifier for template-aware AI generation
+   * length: target content length (concise, standard, detailed)
    */
   options?: {
     tone?: string;
@@ -27,6 +28,7 @@ export interface GenerateResumeRequest {
     model?: string;
     prompt?: string;
     templateId?: string;
+    length?: string;
   };
 }
 
