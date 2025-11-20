@@ -502,6 +502,18 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // PREDICTIONS
+    // ------------------------------------------------------------------
+    // POST /api/predict/job-search
+    if (method === "POST" && pathname === "/api/predict/job-search") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/predict/job-search.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
     // 404 NOT FOUND
     // ------------------------------------------------------------------
     jsonReply(res, 404, { error: "Not Found", path: pathname });

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
+import type { JobRecord } from "../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import { Container, Stack, Typography, Box, Button } from "@mui/material";
 import {
   QuickActions,
@@ -111,6 +112,14 @@ export default function AIWorkspaceHub() {
           }
         );
 
+        // Fetch full job records to power predictions
+        const jobsAllResult = await userCrud.listRows<JobRecord>(
+          "jobs",
+          "id,job_title,company_name,industry,created_at,status_changed_at,job_status",
+          {}
+        );
+        if (jobsAllResult.data) setJobs(jobsAllResult.data);
+
         // Calculate statistics
         const allDocs = allDocsResult.data || [];
         const oneWeekAgo = new Date();
@@ -153,6 +162,20 @@ export default function AIWorkspaceHub() {
 
     fetchData();
   }, [user?.id]);
+
+  // Trigger predictions when we have jobs loaded
+  useEffect(() => {
+    if (jobs.length > 0) {
+      // runPredictions is safe to call; the hook will handle auth/fallbacks
+      runPredictions();
+    }
+  }, [jobs, runPredictions]);
+
+  //   useEffect(() => {
+  //   if (jobs.length > 0) {
+  //     runPredictions();
+  //   }
+  // }, [jobs]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -201,7 +224,7 @@ export default function AIWorkspaceHub() {
           </Typography>
 
           {isLoading && <Typography>Loading predictions...</Typography>}
-          {error && <Typography color="error">Error: {error}</Typography>}
+          {/* {error && <Typography color="error">Error: {error}</Typography>} */}
 
           {!isLoading && predictions.length === 0 && (
             <Typography>No predictions available yet.</Typography>
