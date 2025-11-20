@@ -6,12 +6,13 @@
  */
 
 import { useState, useEffect } from "react";
-import { Container, Stack, Typography, Box } from "@mui/material";
+import { Container, Stack, Typography, Box, Button } from "@mui/material";
 import {
   QuickActions,
   RecentDocuments,
   GenerationStats,
 } from "../../components/hub";
+import ReportGeneratorDialog from "../../components/hub/ReportGeneratorDialog";
 import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
 import type { RecentDocument } from "../../types";
@@ -41,6 +42,7 @@ export default function AIWorkspaceHub() {
     jobsApplied: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Fetch real data from database
   useEffect(() => {
@@ -153,6 +155,15 @@ export default function AIWorkspaceHub() {
             Welcome back{user?.email ? `, ${user.email.split("@")[0]}` : ""}!
             Create, manage, and optimize your application materials.
           </Typography>
+          <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Button variant="contained" onClick={() => setReportOpen(true)}>
+              Generate Custom Report
+            </Button>
+            <ReportGeneratorDialog
+              open={reportOpen}
+              onClose={() => setReportOpen(false)}
+            />
+          </Box>
         </Box>
 
         {/* Quick Actions */}
