@@ -7,7 +7,13 @@
 /**
  * AI workspace navigation tab
  */
-export type AIWorkspaceTab = "hub" | "library" | "templates" | "research" | "resume" | "cover-letter";
+export type AIWorkspaceTab =
+  | "hub"
+  | "library"
+  | "templates"
+  | "research"
+  | "resume"
+  | "cover-letter";
 
 /**
  * AI workspace route paths

@@ -112,8 +112,8 @@ export default function AIWorkspaceLayout() {
                 boxShadow: 3,
               }}
             >
-              Server connection lost. AI features will not work until the backend
-              server is running on {AI_BASE_URL}
+              Server connection lost. AI features will not work until the
+              backend server is running on {AI_BASE_URL}
             </Alert>
           </Snackbar>
         </Box>

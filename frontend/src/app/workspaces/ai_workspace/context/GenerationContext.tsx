@@ -15,16 +15,20 @@ export interface GenerationContextValue {
   setHasStartedGeneration: (started: boolean) => void;
 }
 
-export const GenerationContext = createContext<GenerationContextValue | undefined>(
-  undefined
-);
+export const GenerationContext = createContext<
+  GenerationContextValue | undefined
+>(undefined);
 
 /**
  * GenerationProvider Component
  *
  * Wraps the AI workspace to track generation state.
  */
-export function GenerationProvider({ children }: { children: React.ReactNode }) {
+export function GenerationProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
 
   return (

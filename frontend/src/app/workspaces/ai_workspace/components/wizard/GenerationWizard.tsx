@@ -128,7 +128,7 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
   const navigate = useNavigate();
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
-  
+
   // Track generation state for navigation warning
   const { setHasStartedGeneration } = useGeneration();
 
@@ -330,10 +330,7 @@ export const GenerationWizard: React.FC<GenerationWizardProps> = ({
 
         {/* Navigation Buttons */}
         <Stack direction="row" spacing={2} justifyContent="space-between">
-          <Button
-            onClick={handleCancel}
-            disabled={isGenerating}
-          >
+          <Button onClick={handleCancel} disabled={isGenerating}>
             Cancel
           </Button>
 

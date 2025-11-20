@@ -75,7 +75,12 @@ export default function ConfirmNavigationDialog({
         <Button onClick={onClose} variant="outlined" color="inherit">
           Stay on Page
         </Button>
-        <Button onClick={onConfirm} variant="contained" color="warning" autoFocus>
+        <Button
+          onClick={onConfirm}
+          variant="contained"
+          color="warning"
+          autoFocus
+        >
           Leave Anyway
         </Button>
       </DialogActions>

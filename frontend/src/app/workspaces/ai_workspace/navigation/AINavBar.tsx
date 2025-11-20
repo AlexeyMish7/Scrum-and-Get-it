@@ -90,20 +90,24 @@ export default function AINavBar({ badgeCounts }: AINavBarProps) {
   const navigate = useNavigate();
   const { hasStartedGeneration, setHasStartedGeneration } = useGeneration();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null
+  );
 
   // Determine active tab from current path (including sub-routes)
   const activeTab = (() => {
     // Exact match first
-    const exactMatch = NAVIGATION_TABS.find((tab) => location.pathname === tab.path);
+    const exactMatch = NAVIGATION_TABS.find(
+      (tab) => location.pathname === tab.path
+    );
     if (exactMatch) return exactMatch.id;
-    
+
     // Check if current path starts with any tab path (for sub-routes)
-    const pathMatch = NAVIGATION_TABS.find((tab) => 
-      tab.path !== "/ai" && location.pathname.startsWith(tab.path)
+    const pathMatch = NAVIGATION_TABS.find(
+      (tab) => tab.path !== "/ai" && location.pathname.startsWith(tab.path)
     );
     if (pathMatch) return pathMatch.id;
-    
+
     // Default to hub
     return "hub";
   })();
@@ -116,11 +120,15 @@ export default function AINavBar({ badgeCounts }: AINavBarProps) {
     if (!tab) return;
 
     // Only warn if on generation page AND user has actually started (selected template)
-    const isOnGenerationPage = 
-      location.pathname === "/ai/generate/resume" || 
+    const isOnGenerationPage =
+      location.pathname === "/ai/generate/resume" ||
       location.pathname === "/ai/generate/cover-letter";
-    
-    if (isOnGenerationPage && hasStartedGeneration && tab.path !== location.pathname) {
+
+    if (
+      isOnGenerationPage &&
+      hasStartedGeneration &&
+      tab.path !== location.pathname
+    ) {
       setPendingNavigation(tab.path);
       setConfirmDialogOpen(true);
     } else {
