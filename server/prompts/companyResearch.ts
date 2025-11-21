@@ -42,7 +42,10 @@ export function buildCompanyResearchPrompt(
 
   // Extract additional context from job description if available
   const contextClues = jobDescription
-    ? `\n\nAdditional context from job posting:\n${jobDescription.slice(0, 500)}`
+    ? `\n\nAdditional context from job posting:\n${jobDescription.slice(
+        0,
+        500
+      )}`
     : "";
 
   const industryContext = industry
@@ -58,7 +61,7 @@ Provide accurate, factual information in the following JSON structure:
 {
   "companyName": "${companyName}",
   "industry": "primary industry",
-  "size": "employee count range: 1-10, 11-50, 51-200, 201-500, 501-1000, 1000+, or 10000+",
+  "size": "EXACTLY one of: 1-10 | 11-50 | 51-200 | 201-500 | 501-1000 | 1001-5000 | 5001-10000 | 10000+",
   "location": "headquarters city, state/country",
   "founded": year_founded_as_number,
   "website": "official website URL",
@@ -96,6 +99,8 @@ Provide accurate, factual information in the following JSON structure:
 
 RESEARCH PRIORITIES:
 1. Verify company exists and gather basic facts (name, industry, size, location, founding year)
+   - For size, use EXACTLY one of: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000, 10000+
+   - DO NOT use "1000+" - use either "501-1000", "1001-5000", "5001-10000", or "10000+" depending on actual employee count
 2. Find official mission statement and company description from their website
 3. Search for recent news (last 6 months) - prioritize funding, product launches, expansions
 4. Identify company culture type and remote work policy
@@ -132,11 +137,10 @@ export function validateCompanyResearchResponse(response: any): boolean {
   if (!response || typeof response !== "object") return false;
 
   // Just need company name - everything else is optional
-  const hasName = 
+  const hasName =
     typeof response.companyName === "string" ||
     typeof response.company_name === "string" ||
     typeof response.name === "string";
 
   return hasName;
 }
-

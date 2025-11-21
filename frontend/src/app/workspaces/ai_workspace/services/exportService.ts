@@ -208,7 +208,7 @@ export async function exportDocument(
  */
 async function exportToPDF(
   document: Document,
-  _template: Template,
+  template: Template,
   theme: Theme,
   options: ExportOptions,
   filename: string
@@ -223,12 +223,27 @@ async function exportToPDF(
 
     const content = document.content as any;
     const pageWidth = pdf.internal.pageSize.getWidth();
-    const margins = options.pdfOptions?.margins || {
-      top: 15,
-      right: 15,
-      bottom: 15,
-      left: 15,
+
+    // Use template margins or fallback to options/defaults
+    const margins = {
+      top:
+        template.layout.margins.top * 25.4 ||
+        options.pdfOptions?.margins?.top ||
+        15,
+      right:
+        template.layout.margins.right * 25.4 ||
+        options.pdfOptions?.margins?.right ||
+        15,
+      bottom:
+        template.layout.margins.bottom * 25.4 ||
+        options.pdfOptions?.margins?.bottom ||
+        15,
+      left:
+        template.layout.margins.left * 25.4 ||
+        options.pdfOptions?.margins?.left ||
+        15,
     };
+
     const maxWidth = pageWidth - margins.left - margins.right;
 
     let yPos = margins.top;
@@ -296,244 +311,320 @@ async function exportToPDF(
       yPos += 3;
     };
 
-    // Render based on document type
-    if (document.type === "resume") {
-      // Header
-      if (content.header) {
-        addText(content.header.fullName || "", 20, true, theme.colors?.primary);
-        yPos += 1;
-        addText(
-          content.header.title || "",
-          11,
-          false,
-          theme.colors?.text?.secondary || theme.colors?.textSecondary
-        );
-        yPos += 1;
+    // Helper to render a section based on its type
+    const renderSection = (sectionType: string, sectionData: any) => {
+      if (!sectionData || sectionData.enabled === false) return;
 
-        const contactInfo = [
-          content.header.email,
-          content.header.phone,
-          content.header.location,
-        ]
-          .filter(Boolean)
-          .join(" | ");
-
-        if (contactInfo) {
-          addText(
-            contactInfo,
-            9,
-            false,
-            theme.colors?.text?.secondary || theme.colors?.textSecondary
-          );
-        }
-        yPos += sectionSpacing;
-      }
-
-      // Summary
-      if (content.summary?.enabled && content.summary.text) {
-        addText("PROFESSIONAL SUMMARY", 12, true, theme.colors?.primary);
-        yPos += 0.5;
-        addLine();
-        yPos += 2;
-        addText(content.summary.text, 9);
-        yPos += sectionSpacing;
-      }
-
-      // Experience
-      if (content.experience?.enabled && content.experience.items) {
-        addText("WORK EXPERIENCE", 12, true, theme.colors?.primary);
-        yPos += 0.5;
-        addLine();
-        yPos += 2;
-
-        content.experience.items.forEach((exp: any, index: number) => {
-          if (index > 0) yPos += 3;
-
-          addText(exp.title || "", 10, true);
-          addText(
-            `${exp.company || ""} • ${exp.location || ""}`,
-            9,
-            false,
-            theme.colors?.text?.secondary || theme.colors?.textSecondary
-          );
-          const startDate = exp.startDate || "";
-          const endDate = exp.current ? "Present" : exp.endDate || "";
-          if (startDate && endDate) {
+      switch (sectionType) {
+        case "header":
+          if (document.type === "resume") {
             addText(
-              `${startDate} – ${endDate}`,
-              8,
+              sectionData.fullName || "",
+              20,
+              true,
+              theme.colors?.primary
+            );
+            yPos += 1;
+            addText(
+              sectionData.title || "",
+              11,
               false,
               theme.colors?.text?.secondary || theme.colors?.textSecondary
             );
-          } else if (startDate) {
+            yPos += 1;
+            const contactInfo = [
+              sectionData.email,
+              sectionData.phone,
+              sectionData.location,
+            ]
+              .filter(Boolean)
+              .join(" | ");
+            if (contactInfo) {
+              addText(
+                contactInfo,
+                9,
+                false,
+                theme.colors?.text?.secondary || theme.colors?.textSecondary
+              );
+            }
+            yPos += sectionSpacing;
+          } else {
+            // Cover letter header
             addText(
-              startDate,
-              8,
+              sectionData.fullName || "",
+              14,
+              true,
+              theme.colors?.primary
+            );
+            yPos += 1;
+            addText(sectionData.email || "", 9);
+            addText(sectionData.phone || "", 9);
+            addText(sectionData.location || "", 9);
+            yPos += 1;
+            addText(
+              sectionData.date || new Date().toLocaleDateString(),
+              9,
               false,
               theme.colors?.text?.secondary || theme.colors?.textSecondary
             );
+            yPos += sectionSpacing;
           }
-          yPos += 1;
+          break;
 
-          // Handle bullets array (the actual data structure)
-          const bullets = exp.bullets || [];
-          if (bullets.length > 0) {
-            bullets.forEach((bullet: string) => {
-              if (bullet && bullet.trim()) {
-                pdf.setFontSize(9);
-                const [r, g, b] = colorToRGB(
-                  theme.colors?.text?.primary || theme.colors?.text
+        case "summary":
+          if (sectionData.text) {
+            addText("PROFESSIONAL SUMMARY", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
+            addText(sectionData.text, 9);
+            yPos += sectionSpacing;
+          }
+          break;
+
+        case "experience":
+          if (sectionData.items && sectionData.items.length > 0) {
+            addText("WORK EXPERIENCE", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
+
+            sectionData.items.forEach((exp: any, index: number) => {
+              if (index > 0) yPos += 3;
+              addText(exp.title || "", 10, true);
+              addText(
+                `${exp.company || ""} • ${exp.location || ""}`,
+                9,
+                false,
+                theme.colors?.text?.secondary || theme.colors?.textSecondary
+              );
+              const startDate = exp.startDate || "";
+              const endDate = exp.current ? "Present" : exp.endDate || "";
+              if (startDate && endDate) {
+                addText(
+                  `${startDate} – ${endDate}`,
+                  8,
+                  false,
+                  theme.colors?.text?.secondary || theme.colors?.textSecondary
                 );
-                pdf.setTextColor(r, g, b);
-                const bulletSymbol = "• ";
-                const lines = pdf.splitTextToSize(bullet.trim(), maxWidth - 8);
-                lines.forEach((line: string, i: number) => {
-                  if (
-                    yPos >
-                    pdf.internal.pageSize.getHeight() - margins.bottom
-                  ) {
-                    pdf.addPage();
-                    yPos = margins.top;
+              }
+              yPos += 1;
+
+              const bullets = exp.bullets || [];
+              if (bullets.length > 0) {
+                bullets.forEach((bullet: string) => {
+                  if (bullet && bullet.trim()) {
+                    pdf.setFontSize(9);
+                    const [r, g, b] = colorToRGB(
+                      theme.colors?.text?.primary || theme.colors?.text
+                    );
+                    pdf.setTextColor(r, g, b);
+                    const lines = pdf.splitTextToSize(
+                      bullet.trim(),
+                      maxWidth - 8
+                    );
+                    lines.forEach((line: string, i: number) => {
+                      if (
+                        yPos >
+                        pdf.internal.pageSize.getHeight() - margins.bottom
+                      ) {
+                        pdf.addPage();
+                        yPos = margins.top;
+                      }
+                      pdf.text(
+                        i === 0 ? "• " + line : "   " + line,
+                        margins.left + 5,
+                        yPos
+                      );
+                      yPos += lineHeight;
+                    });
                   }
-                  pdf.text(
-                    i === 0 ? bulletSymbol + line : "   " + line,
-                    margins.left + 5,
-                    yPos
-                  );
-                  yPos += lineHeight;
                 });
               }
             });
+            yPos += sectionSpacing;
           }
-        });
-        yPos += sectionSpacing;
-      }
+          break;
 
-      // Education
-      if (content.education?.enabled && content.education.items) {
-        addText("EDUCATION", 12, true, theme.colors?.primary);
-        yPos += 0.5;
-        addLine();
-        yPos += 2;
+        case "education":
+          if (sectionData.items && sectionData.items.length > 0) {
+            addText("EDUCATION", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
 
-        content.education.items.forEach((edu: any, index: number) => {
-          if (index > 0) yPos += 3;
-
-          addText(`${edu.degree || ""} in ${edu.field || ""}`, 10, true);
-          addText(
-            `${edu.institution || ""}${
-              edu.location ? ` - ${edu.location}` : ""
-            }`,
-            9,
-            false,
-            theme.colors?.text?.secondary || theme.colors?.textSecondary
-          );
-          addText(
-            edu.graduationDate || "",
-            8,
-            false,
-            theme.colors?.text?.secondary || theme.colors?.textSecondary
-          );
-
-          if (edu.gpa) {
-            addText(`GPA: ${edu.gpa}`, 9);
+            sectionData.items.forEach((edu: any, index: number) => {
+              if (index > 0) yPos += 3;
+              addText(`${edu.degree || ""} in ${edu.field || ""}`, 10, true);
+              addText(
+                `${edu.institution || ""}${
+                  edu.location ? ` - ${edu.location}` : ""
+                }`,
+                9,
+                false,
+                theme.colors?.text?.secondary || theme.colors?.textSecondary
+              );
+              addText(
+                edu.graduationDate || "",
+                8,
+                false,
+                theme.colors?.text?.secondary || theme.colors?.textSecondary
+              );
+              if (edu.gpa) {
+                addText(`GPA: ${edu.gpa}`, 9);
+              }
+            });
+            yPos += sectionSpacing;
           }
-        });
-        yPos += sectionSpacing;
+          break;
+
+        case "skills":
+          if (sectionData.categories && sectionData.categories.length > 0) {
+            addText("SKILLS", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
+
+            sectionData.categories.forEach((category: any) => {
+              addText(
+                `${category.name || ""}:`,
+                10,
+                true,
+                theme.colors?.text?.secondary || theme.colors?.textSecondary
+              );
+              const skillsText =
+                category.skills?.map((s: any) => s.name).join(", ") || "";
+              addText(skillsText, 9);
+              yPos += 2;
+            });
+            yPos += sectionSpacing;
+          }
+          break;
+
+        case "projects":
+          if (sectionData.items && sectionData.items.length > 0) {
+            addText("PROJECTS", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
+
+            sectionData.items.forEach((project: any, index: number) => {
+              if (index > 0) yPos += 3;
+              addText(project.name || "", 10, true);
+              if (project.description) {
+                addText(project.description, 9);
+              }
+              yPos += 1;
+            });
+            yPos += sectionSpacing;
+          }
+          break;
+
+        case "certifications":
+          if (sectionData.items && sectionData.items.length > 0) {
+            addText("CERTIFICATIONS", 12, true, theme.colors?.primary);
+            yPos += 0.5;
+            addLine();
+            yPos += 2;
+
+            sectionData.items.forEach((cert: any) => {
+              addText(cert.name || "", 10, true);
+              if (cert.issuer) {
+                addText(
+                  cert.issuer,
+                  9,
+                  false,
+                  theme.colors?.text?.secondary || theme.colors?.textSecondary
+                );
+              }
+              yPos += 2;
+            });
+            yPos += sectionSpacing;
+          }
+          break;
+
+        case "recipient":
+          // Cover letter recipient
+          if (sectionData.name) addText(sectionData.name, 10);
+          if (sectionData.title) addText(sectionData.title, 10);
+          addText(sectionData.company || "", 10, true);
+          if (sectionData.address) addText(sectionData.address, 10);
+          yPos += sectionSpacing;
+          break;
+
+        case "salutation":
+        case "paragraph":
+          // Cover letter salutation/opening
+          if (typeof sectionData === "string") {
+            addText(sectionData, 10);
+            yPos += 1;
+          }
+          break;
+
+        case "signature":
+          // Cover letter signature
+          addText(sectionData.closing || "Sincerely,", 10);
+          yPos += 4;
+          addText(sectionData.name || content.header?.fullName || "", 10, true);
+          break;
+
+        default:
+          // Generic text section
+          if (typeof sectionData === "string" && sectionData) {
+            addText(sectionData, 10);
+            yPos += 2;
+          }
       }
+    };
 
-      // Skills
-      if (content.skills?.enabled && content.skills.categories) {
-        addText("SKILLS", 12, true, theme.colors?.primary);
-        yPos += 0.5;
-        addLine();
-        yPos += 2;
+    // Use template's section order if includeTemplate is true
+    if (options.includeTemplate && template.layout.sectionOrder) {
+      // Render sections in the order defined by the template
+      template.layout.sectionOrder.forEach((section) => {
+        if (!section.defaultEnabled && !content[section.id]?.enabled) return;
 
-        content.skills.categories.forEach((category: any) => {
-          addText(
-            `${category.name || ""}:`,
-            10,
-            true,
-            theme.colors?.text?.secondary || theme.colors?.textSecondary
-          );
-          const skillsText =
-            category.skills?.map((s: any) => s.name).join(", ") || "";
-          addText(skillsText, 9);
+        const sectionData = content[section.id];
+        if (sectionData) {
+          renderSection(section.type, sectionData);
+        }
+      });
+    } else {
+      // Fallback to old hardcoded order
+      // Render based on document type
+      if (document.type === "resume") {
+        // Render in standard order
+        if (content.header) renderSection("header", content.header);
+        if (content.summary) renderSection("summary", content.summary);
+        if (content.experience) renderSection("experience", content.experience);
+        if (content.education) renderSection("education", content.education);
+        if (content.skills) renderSection("skills", content.skills);
+        if (content.projects) renderSection("projects", content.projects);
+        if (content.certifications)
+          renderSection("certifications", content.certifications);
+      } else if (document.type === "cover-letter") {
+        // Cover letter sections in order
+        if (content.header) renderSection("header", content.header);
+        if (content.recipient) renderSection("recipient", content.recipient);
+        if (content.salutation) renderSection("salutation", content.salutation);
+        if (content.body?.opening) addText(content.body.opening, 10);
+        if (content.body?.body1) {
           yPos += 2;
-        });
-      }
-    } else if (document.type === "cover-letter") {
-      // Cover letter header
-      if (content.header) {
-        addText(content.header.fullName || "", 14, true, theme.colors?.primary);
-        yPos += 1;
-        addText(content.header.email || "", 9);
-        addText(content.header.phone || "", 9);
-        addText(content.header.location || "", 9);
-        yPos += 1;
-        addText(
-          content.header.date || new Date().toLocaleDateString(),
-          9,
-          false,
-          theme.colors?.text?.secondary || theme.colors?.textSecondary
-        );
-        yPos += sectionSpacing;
-      }
-
-      // Recipient
-      if (content.recipient) {
-        if (content.recipient.name) {
-          addText(content.recipient.name, 10);
-        }
-        if (content.recipient.title) {
-          addText(content.recipient.title, 10);
-        }
-        addText(content.recipient.company || "", 10, true);
-        if (content.recipient.address) {
-          addText(content.recipient.address, 10);
-        }
-        yPos += sectionSpacing;
-      }
-
-      // Salutation
-      if (content.salutation) {
-        addText(content.salutation, 10);
-        yPos += 1;
-      }
-
-      // Body paragraphs
-      if (content.body) {
-        if (content.body.opening) {
-          addText(content.body.opening, 10);
-          yPos += 2;
-        }
-        if (content.body.body1) {
           addText(content.body.body1, 10);
-          yPos += 2;
         }
-        if (content.body.body2) {
+        if (content.body?.body2) {
+          yPos += 2;
           addText(content.body.body2, 10);
-          yPos += 2;
         }
-        if (content.body.body3) {
+        if (content.body?.body3) {
+          yPos += 2;
           addText(content.body.body3, 10);
-          yPos += 2;
         }
-        if (content.body.closing) {
+        if (content.body?.closing) {
+          yPos += 2;
           addText(content.body.closing, 10);
           yPos += sectionSpacing;
         }
-      }
-
-      // Signature
-      if (content.signature) {
-        addText(content.signature.closing || "Sincerely,", 10);
-        yPos += 4; // Space for handwritten signature
-        addText(
-          content.signature.name || content.header.fullName || "",
-          10,
-          true
-        );
+        if (content.signature) renderSection("signature", content.signature);
       }
     }
 

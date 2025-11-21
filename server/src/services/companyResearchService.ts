@@ -360,23 +360,32 @@ async function getCompanyFromDatabase(
 async function saveCompanyToDatabase(research: CompanyResearch): Promise<void> {
   try {
     const supabase = await getSupabaseAdmin();
+
+    // Normalize company size to match database constraint
+    // AI sometimes returns "1000+" but database expects "10000+"
+    let normalizedSize = research.size;
+    if (normalizedSize === "1000+" || normalizedSize === "1,000+") {
+      normalizedSize = "10000+";
+    }
+
     // Step 1: Upsert company base info into companies table
     const { data: companyId, error: companyError } = await supabase.rpc(
       "upsert_company_info",
       {
         p_company_name: research.companyName,
         p_industry: research.industry,
-        p_size: research.size,
+        p_size: normalizedSize, // Use normalized size
         p_location: research.location,
         p_founded_year: research.founded,
         p_website: research.website,
-        p_mission: research.mission,
         p_description: research.description,
         p_company_data: {
+          mission: research.mission, // Mission goes in JSONB now
           culture: research.culture,
           leadership: research.leadership,
           products: research.products,
         },
+        p_source: "ai",
       }
     );
 

@@ -35,6 +35,7 @@ import {
   validateCompanyResearchResponse,
 } from "../../prompts/companyResearch.ts";
 import { fetchCompanyResearch } from "./companyResearchService.js";
+import type { CompanyResearch } from "./companyResearchService.js";
 import type {
   GenerateResumeRequest,
   GenerateCoverLetterRequest,
@@ -46,6 +47,59 @@ import type {
 // with your Supabase server client or other DB access method (use service role key server-side).
 
 // Types moved to types.ts for reuse
+
+/**
+ * Normalize company size to match database constraint
+ * Fixes common AI mistakes like "1000+" → "10000+"
+ */
+function normalizeCompanySize(size: string | null | undefined): string | null {
+  if (!size) return null;
+
+  const normalized = size.trim();
+
+  // Valid sizes that match database constraint
+  const validSizes = [
+    "1-10",
+    "11-50",
+    "51-200",
+    "201-500",
+    "501-1000",
+    "1001-5000",
+    "5001-10000",
+    "10000+",
+  ];
+
+  // If already valid, return as-is
+  if (validSizes.includes(normalized)) {
+    return normalized;
+  }
+
+  // Common AI mistakes
+  if (normalized === "1000+" || normalized === "1,000+") {
+    return "10000+"; // Amazon, Google, etc. are definitely 10000+
+  }
+
+  if (normalized === "5000+" || normalized === "5,000+") {
+    return "5001-10000";
+  }
+
+  // Try to extract number and map to range
+  const match = normalized.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num <= 10) return "1-10";
+    if (num <= 50) return "11-50";
+    if (num <= 200) return "51-200";
+    if (num <= 500) return "201-500";
+    if (num <= 1000) return "501-1000";
+    if (num <= 5000) return "1001-5000";
+    if (num <= 10000) return "5001-10000";
+    return "10000+";
+  }
+
+  // Couldn't normalize, return null to avoid constraint violation
+  return null;
+}
 
 export async function handleGenerateResume(
   req: GenerateResumeRequest
@@ -1193,10 +1247,11 @@ export async function handleCompanyResearch(req: {
         companyName,
       industry: researchData.industry || researchData.sector || "Unknown",
       size:
-        researchData.size ||
-        researchData.employee_count ||
-        researchData.employeeCount ||
-        null,
+        normalizeCompanySize(
+          researchData.size ||
+            researchData.employee_count ||
+            researchData.employeeCount
+        ) || null,
       location:
         researchData.location ||
         researchData.headquarters ||
@@ -1284,6 +1339,98 @@ export async function handleCompanyResearch(req: {
       hasRating: !!finalData.rating,
       source: "ai",
     });
+
+    // Save company research to database (companies table + company_research_cache)
+    // This persists the data so it can be reused across users and sessions
+    try {
+      const mod = (await import("./supabaseAdmin.js")) as SupabaseAdminModule;
+      const supabase = mod.default;
+
+      if (supabase) {
+        // Step 1: Upsert company base info into companies table
+        // Build company_data JSONB with all structured data (mission, culture, leadership, products)
+        const companyDataJsonb = {
+          mission: finalData.mission,
+          culture: finalData.culture,
+          leadership: finalData.leadership,
+          products: finalData.products,
+        };
+
+        logInfo("Saving company to database", {
+          companyName: finalData.companyName,
+          industry: finalData.industry,
+          size: finalData.size,
+          hasWebsite: !!finalData.website,
+          hasMission: !!finalData.mission,
+        });
+
+        const { data: companyId, error: companyError } = await supabase.rpc(
+          "upsert_company_info",
+          {
+            p_company_name: finalData.companyName,
+            p_industry: finalData.industry,
+            p_size: finalData.size, // Will be validated by CHECK constraint
+            p_location: finalData.location,
+            p_founded_year: finalData.founded,
+            p_website: finalData.website,
+            p_description: finalData.description,
+            p_company_data: companyDataJsonb,
+            p_source: "ai",
+          }
+        );
+
+        if (companyError) {
+          logError("Failed to save company base info (non-blocking)", {
+            companyName: finalData.companyName,
+            error: companyError.message,
+          });
+        } else {
+          logInfo("Saved company base info to database", {
+            companyName: finalData.companyName,
+            companyId,
+          });
+
+          // Step 2: Save volatile research data (news, events) to cache
+          const { error: cacheError } = await supabase.rpc(
+            "save_company_research",
+            {
+              p_company_id: companyId,
+              p_research_data: {
+                news: finalData.news,
+                recentEvents: [],
+                fundingRounds: [],
+                leadershipChanges: [],
+                quarterlyHighlights: [],
+              },
+              p_metadata: {
+                model: aiResult.model || "gpt-4o-mini",
+                source: "ai",
+                cached_at: now,
+              },
+            }
+          );
+
+          if (cacheError) {
+            logError("Failed to save research cache (non-blocking)", {
+              companyName: finalData.companyName,
+              companyId,
+              error: cacheError.message,
+            });
+          } else {
+            logInfo("Saved volatile research data to cache", {
+              companyName: finalData.companyName,
+              companyId,
+            });
+          }
+        }
+      }
+    } catch (saveErr: any) {
+      // Non-blocking error - log and continue
+      logError("Exception saving company to database (non-blocking)", {
+        companyName: finalData.companyName,
+        error: saveErr?.message ?? String(saveErr),
+      });
+    }
 
     return { artifact };
   } catch (err: any) {

@@ -17,13 +17,26 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on("uncaughtException", (error) => {
-  console.error(" Uncaught Exception:", error);
+  console.error("\n" + "=".repeat(80));
+  console.error("❌ UNCAUGHT EXCEPTION");
+  console.error("=".repeat(80));
+  console.error("\nError:", error);
+  console.error("\nStack:", error.stack);
+  console.error("=".repeat(80) + "\n");
   logError("Uncaught exception during server startup", error);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error(" Unhandled Rejection at:", promise, "reason:", reason);
+  console.error("\n" + "=".repeat(80));
+  console.error("❌ UNHANDLED PROMISE REJECTION");
+  console.error("=".repeat(80));
+  console.error("\nPromise:", promise);
+  console.error("Reason:", reason);
+  if (reason instanceof Error) {
+    console.error("\nStack:", reason.stack);
+  }
+  console.error("=".repeat(80) + "\n");
   logError(
     "Unhandled promise rejection",
     reason instanceof Error ? reason : new Error(String(reason))
@@ -37,6 +50,35 @@ try {
   server = createServer();
 
   server.listen(PORT, () => {
+    console.log("\n" + "=".repeat(80));
+    console.log("🚀 SERVER STARTED");
+    console.log("=".repeat(80));
+    console.log(`\n✅ Server running at http://localhost:${PORT}`);
+    console.log(`📦 Node version: ${process.version}`);
+    console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(
+      `🤖 AI Mode: ${
+        process.env.FAKE_AI === "true" ? "MOCK (Fake AI)" : "REAL (OpenAI)"
+      }`
+    );
+    console.log(
+      `🔐 Auth Mode: ${
+        process.env.ALLOW_DEV_AUTH === "true"
+          ? "DEV (Bypass)"
+          : "PRODUCTION (Supabase)"
+      }`
+    );
+    console.log(
+      `🗄️  Database: ${
+        process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+          ? "CONFIGURED ✓"
+          : "NOT CONFIGURED ✗"
+      }`
+    );
+    console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN || "*"}`);
+    console.log(`📝 Log Level: ${process.env.LOG_LEVEL || "info"}`);
+    console.log("\n" + "=".repeat(80) + "\n");
+
     logSystemEvent("startup", {
       port: PORT,
       node_version: process.version,
@@ -48,21 +90,41 @@ try {
       ),
       cors_origin: process.env.CORS_ORIGIN || "*",
     });
-    console.log(`✅ Server running at http://localhost:${PORT}`);
   });
 
   server.on("error", (error: any) => {
+    console.error("\n" + "=".repeat(80));
+    console.error("❌ SERVER ERROR");
+    console.error("=".repeat(80));
+
     if (error.code === "EADDRINUSE") {
-      console.error(`❌ Port ${PORT} is already in use`);
-      process.exit(1);
+      console.error(`\n⚠️  Port ${PORT} is already in use`);
+      console.error(`\nTry one of these solutions:`);
+      console.error(`  1. Stop the process using port ${PORT}`);
+      console.error(`  2. Change the PORT in your .env file`);
+      console.error(
+        `  3. Run: netstat -ano | findstr :${PORT} (to find the process)`
+      );
     } else {
-      console.error(" Server error:", error);
-      logError("Server error during runtime", error);
-      process.exit(1);
+      console.error(`\nError Code: ${error.code || "UNKNOWN"}`);
+      console.error(`Error Message: ${error.message}`);
+      console.error(`\nFull Error:`, error);
     }
+
+    console.error("\n" + "=".repeat(80) + "\n");
+    logError("Server error during runtime", error);
+    process.exit(1);
   });
 } catch (error) {
-  console.error(" Failed to create server:", error);
+  console.error("\n" + "=".repeat(80));
+  console.error("❌ FAILED TO CREATE SERVER");
+  console.error("=".repeat(80));
+  console.error("\nError:", error);
+  if (error instanceof Error) {
+    console.error("Stack:", error.stack);
+  }
+  console.error("\n" + "=".repeat(80) + "\n");
+
   logError(
     "Failed to create server instance",
     error instanceof Error ? error : new Error(String(error))
@@ -71,6 +133,10 @@ try {
 }
 
 process.on("SIGTERM", async () => {
+  console.log("\n" + "=".repeat(80));
+  console.log("🛑 SHUTTING DOWN SERVER (SIGTERM)");
+  console.log("=".repeat(80) + "\n");
+
   logSystemEvent("shutdown", { signal: "SIGTERM" });
   await closeBrowser(); // Gracefully close Puppeteer browser
   if (server) {
@@ -81,6 +147,10 @@ process.on("SIGTERM", async () => {
 });
 
 process.on("SIGINT", async () => {
+  console.log("\n" + "=".repeat(80));
+  console.log("🛑 SHUTTING DOWN SERVER (SIGINT - Ctrl+C)");
+  console.log("=".repeat(80) + "\n");
+
   logSystemEvent("shutdown", { signal: "SIGINT" });
   await closeBrowser(); // Gracefully close Puppeteer browser
   if (server) {

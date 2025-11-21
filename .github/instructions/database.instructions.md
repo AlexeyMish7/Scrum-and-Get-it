@@ -4,6 +4,14 @@
 
 PostgreSQL database hosted on Supabase with Row Level Security (RLS) policies. All tables enforce user-level isolation - users can only access their own data.
 
+**Database Statistics (as of 2025-11-20):**
+
+- **19 tables** with data in production
+- **5 custom ENUM types** for data validation
+- **23 database functions** (including RLS helpers, cleanup jobs, company research)
+- **18 triggers** for auto-updating timestamps and maintaining data integrity
+- **Shared company data** - Companies table accessible to all users (no user_id isolation)
+
 ---
 
 ## Core Concepts
@@ -65,9 +73,92 @@ CREATE POLICY "Users can delete their own jobs"
 3. Paste and run
 4. Verify with SELECT queries
 
+## Custom Types (ENUMs)
+
+```sql
+-- Proficiency levels for skills
+CREATE TYPE proficiency_level_enum AS ENUM (
+  'beginner',
+  'intermediate',
+  'advanced',
+  'expert'
+);
+
+-- Education levels
+CREATE TYPE education_level_enum AS ENUM (
+  'high_school',
+  'associate',
+  'bachelor',
+  'master',
+  'phd',
+  'other'
+);
+
+-- Experience levels for profiles and jobs
+CREATE TYPE experience_level_enum AS ENUM (
+  'entry',
+  'mid',
+  'senior',
+  'executive'
+);
+
+-- Project status
+CREATE TYPE project_status_enum AS ENUM (
+  'planned',
+  'ongoing',
+  'completed'
+);
+
+-- Certification verification status
+CREATE TYPE verification_status_enum AS ENUM (
+  'unverified',
+  'pending',
+  'verified',
+  'rejected'
+);
+```
+
 ---
 
-## Schema Overview
+## Table Dependency Hierarchy
+
+```
+auth.users (Supabase managed)
+  └─ profiles (1:1) - Extended user info
+      ├─ skills (1:many) - User's technical/soft skills
+      ├─ employment (1:many) - Work history
+      ├─ education (1:many) - Educational background
+      ├─ projects (1:many) - Portfolio projects
+      ├─ certifications (1:many) - Professional certifications
+      ├─ jobs (1:many) - Job opportunities tracking
+      │   ├─ job_notes (1:1 optional) - Personal notes per job
+      │   ├─ analytics_cache (many) - AI match scores
+      │   └─ document_jobs (many) - Documents used for applications
+      ├─ documents (1:many) - Resumes/cover letters
+      │   ├─ document_versions (1:many) - Git-like versioning
+      │   ├─ export_history (1:many) - PDF/DOCX exports
+      │   └─ document_jobs (many) - Links to job applications
+      ├─ generation_sessions (1:many) - AI generation tracking
+      ├─ analytics_cache (1:many) - Cached AI analysis
+      └─ user_company_notes (1:many) - Private company notes
+
+companies (shared data - NO user_id)
+  ├─ jobs (many) - Jobs link to companies
+  ├─ user_company_notes (many) - User-specific notes about companies
+  └─ company_research_cache (1:1) - Volatile research data
+
+templates (system + user)
+  ├─ documents (many)
+  ├─ document_versions (many)
+  └─ generation_sessions (many)
+
+themes (system + user)
+  ├─ documents (many)
+  ├─ document_versions (many)
+  └─ generation_sessions (many)
+```
+
+---
 
 ### User & Profile System
 
