@@ -155,6 +155,7 @@ BEGIN
 
   IF v_company_id IS NULL THEN
     -- Company doesn't exist, create it
+    -- Note: mission is stored in company_data JSONB, not as separate column
     INSERT INTO public.companies (
       name,
       industry,
@@ -173,11 +174,12 @@ BEGIN
       p_founded_year,
       p_website,
       p_description,
-      p_company_data
+      jsonb_build_object('mission', p_mission) || p_company_data
     )
     RETURNING id INTO v_company_id;
   ELSE
     -- Company exists, update with any new info (only non-null values)
+    -- Mission is merged into company_data JSONB
     UPDATE public.companies
     SET
       industry = COALESCE(p_industry, industry),
@@ -186,7 +188,11 @@ BEGIN
       founded_year = COALESCE(p_founded_year, founded_year),
       website = COALESCE(p_website, website),
       description = COALESCE(p_description, description),
-      company_data = company_data || p_company_data,
+      company_data = CASE
+        WHEN p_mission IS NOT NULL
+        THEN company_data || jsonb_build_object('mission', p_mission) || p_company_data
+        ELSE company_data || p_company_data
+      END,
       updated_at = now()
     WHERE id = v_company_id;
   END IF;

@@ -275,7 +275,12 @@ async function handleRequest(
   res: http.ServerResponse
 ) {
   counters.requests_total++;
-  console.log("🧭 Incoming request:", req.method, req.url);
+
+  // Skip logging health checks to reduce clutter
+  const isHealthCheck = req.url === "/api/health";
+  if (!isHealthCheck) {
+    console.log("🧭 Incoming request:", req.method, req.url);
+  }
 
   const ctx = createRequestContext(req);
 
@@ -296,7 +301,7 @@ async function handleRequest(
     // ------------------------------------------------------------------
     if (method === "GET" && pathname === "/api/health") {
       await handleHealth(url, res, { startedAt, counters });
-      ctx.logComplete(method, pathname, 200);
+      // Don't log health checks to reduce clutter
       return;
     }
 

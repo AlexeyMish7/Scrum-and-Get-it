@@ -74,9 +74,22 @@ function writeLog(
 
   const output = JSON.stringify(logEntry);
 
+  // ANSI color codes for better visibility
+  const colors = {
+    reset: "\x1b[0m",
+    red: "\x1b[31m",
+    yellow: "\x1b[33m",
+    gray: "\x1b[90m",
+  };
+
   if (level === "error") {
+    // Red text for errors
     // eslint-disable-next-line no-console
-    console.error(output);
+    console.error(colors.red + output + colors.reset);
+  } else if (level === "warn") {
+    // Yellow text for warnings
+    // eslint-disable-next-line no-console
+    console.log(colors.yellow + output + colors.reset);
   } else {
     // eslint-disable-next-line no-console
     console.log(output);
