@@ -2,6 +2,11 @@
  * AI Service Client (frontend)
  * Small fetch wrapper for the backend AI orchestrator endpoints.
  *
+ * Backend Connection Configuration:
+ *  - Base URL configured via VITE_AI_BASE_URL environment variable
+ *  - Default fallback: http://localhost:8787 (server default port)
+ *  - Server runs on Node.js/Express (see server/src/index.ts)
+ *
  * Inputs:
  *  - path: string (endpoint path)
  *  - body: object (request payload)
@@ -13,6 +18,9 @@
 import { supabase } from "@shared/services/supabaseClient";
 import { mockDataNotifier } from "@shared/services/mockDataNotifier";
 
+// Backend AI server base URL
+// Configure via VITE_AI_BASE_URL in .env file
+// Example: VITE_AI_BASE_URL=http://localhost:8787
 const BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
 
 /**

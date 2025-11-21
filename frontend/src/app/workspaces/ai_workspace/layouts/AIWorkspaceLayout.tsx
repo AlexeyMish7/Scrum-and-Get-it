@@ -3,6 +3,12 @@
  *
  * New centralized layout for AI workspace without sidebar.
  * Uses horizontal navigation tabs and AppShell for consistent structure.
+ *
+ * Backend Connection:
+ *  - Connects to Node.js/Express AI server
+ *  - Base URL configured via VITE_AI_BASE_URL environment variable
+ *  - Default: http://localhost:8787 (server default port in server/src/index.ts)
+ *  - Health check endpoint: /api/health
  */
 
 import { Outlet } from "react-router-dom";
@@ -12,10 +18,14 @@ import AINavBar from "../navigation/AINavBar";
 import { Box, Snackbar, Alert } from "@mui/material";
 import { GenerationProvider } from "../context/GenerationContext";
 
+// Backend AI server base URL
+// Configure via VITE_AI_BASE_URL in .env file
+// Must match the server port configuration (default: 8787)
 const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
 
 /**
  * Check if the AI server is reachable
+ * Calls GET /api/health endpoint with 3-second timeout
  */
 async function checkServerConnection(): Promise<boolean> {
   try {

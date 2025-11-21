@@ -3,6 +3,11 @@
  *
  * Loads environment variables, creates the HTTP server, and starts listening.
  * Handles graceful shutdown on SIGTERM/SIGINT.
+ *
+ * Configuration:
+ *  - PORT: Server port (default: 8787)
+ *  - Must match VITE_AI_BASE_URL in frontend/.env
+ *  - Example: VITE_AI_BASE_URL=http://localhost:8787
  */
 
 // Load environment variables FIRST (before any imports that depend on process.env)
@@ -13,6 +18,9 @@ import { createServer } from "./server.js";
 import { logSystemEvent, logError } from "../utils/logger.js";
 import { closeBrowser } from "./services/scraper.js";
 
+// Server port configuration
+// Default: 8787 (should match frontend VITE_AI_BASE_URL)
+// Override via PORT environment variable in server/.env
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
 
 // Global error handlers to prevent crashes from unhandled rejections

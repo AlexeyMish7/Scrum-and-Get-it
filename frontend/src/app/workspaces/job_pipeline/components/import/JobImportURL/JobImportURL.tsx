@@ -4,6 +4,12 @@
  * AI-powered job posting URL importer.
  * Extracts job details from job posting URLs using backend AI endpoint.
  *
+ * Backend Connection:
+ *  - Connects to Node.js/Express AI server
+ *  - Base URL configured via VITE_AI_BASE_URL environment variable
+ *  - Default: http://localhost:8787
+ *  - Endpoint: POST /api/generate/job-import
+ *
  * Features:
  * - URL input with validation
  * - AI extraction with loading state
@@ -19,8 +25,6 @@
  * 4. Display extracted data with confidence badge
  * 5. User reviews and clicks "Apply to Form"
  * 6. Parent form fields pre-filled
- *
- * API: POST /api/generate/job-import
  */
 
 import { useState } from "react";
@@ -168,7 +172,7 @@ export default function JobImportURL({ onImport }: Props) {
 
     try {
       // Call backend AI endpoint
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8787";
+      const apiUrl = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
       const response = await fetch(`${apiUrl}/api/generate/job-import`, {
         method: "POST",
         headers: {
