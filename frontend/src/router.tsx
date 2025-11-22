@@ -33,6 +33,7 @@ import AIWorkspaceLayout from "@ai_workspace/layouts/AIWorkspaceLayout";
 import JobsLayout from "@workspaces/job_pipeline/layouts/JobPipelineLayout";
 import UnifiedJobsLayout from "@workspaces/job_pipeline/layouts/UnifiedJobsLayout";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
+import AppShell from "@shared/layouts/AppShell";
 
 // AI workspace (redesigned)
 const AIWorkspaceHub = lazy(() => import("@ai_workspace/pages/AIWorkspaceHub"));
@@ -104,6 +105,11 @@ const InterviewHub = lazy(() =>
   import("@workspaces/interview_hub").then((module) => ({
     default: module.InterviewHub,
   }))
+);
+
+// Network Hub (contacts)
+const NetworkContacts = lazy(() =>
+  import("@workspaces/network_hub/pages/ContactsDashboard/ContactsDashboard")
 );
 
 // Loading fallback component for lazy-loaded routes
@@ -198,6 +204,19 @@ export const router = createBrowserRouter([
         <Suspense fallback={<LazyLoadFallback />}>
           <InterviewHub />
         </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  // Network Hub - Contacts
+  {
+    path: "/network",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <NetworkContacts />
+          </Suspense>
+        </AppShell>
       </ProtectedRoute>
     ),
   },

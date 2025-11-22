@@ -59,6 +59,11 @@ const WORKSPACE_ITEMS: NavItem[] = [
     path: "/interviews",
     description: "Schedule interviews, prep tasks, Google Calendar integration",
   },
+  {
+    label: "Network Hub",
+    path: "/network",
+    description: "Manage professional contacts and interactions",
+  },
 ];
 
 const PROFILE_TOOL_ITEMS: NavItem[] = [
@@ -84,6 +89,11 @@ const AI_TOOL_ITEMS: NavItem[] = [
   { label: "Generate Cover Letter", path: "/ai/generate/cover-letter" },
   { label: "Document Library", path: "/ai/library" },
   { label: "Templates", path: "/ai/templates" },
+];
+
+const NETWORK_TOOL_ITEMS: NavItem[] = [
+  { label: "Network Hub", path: "/network" },
+  { label: "Contacts", path: "/network" },
 ];
 
 const MENU_ITEMS: NavItem[] = [
@@ -144,12 +154,9 @@ export default function GlobalTopBar() {
   const avatarUrl = useAvatar(user?.id);
 
   const currentWorkspace = useMemo(() => {
-    if (
-      location.pathname.startsWith("/ai") ||
-      location.pathname.startsWith("/ai")
-    )
-      return "AI";
+    if (location.pathname.startsWith("/ai")) return "AI";
     if (location.pathname.startsWith("/jobs")) return "JOBS";
+    if (location.pathname.startsWith("/network")) return "NETWORK";
     return "PROFILE";
   }, [location.pathname]);
 
@@ -165,6 +172,8 @@ export default function GlobalTopBar() {
     if (location.pathname.startsWith("/ai/document/")) return "Document Editor";
     if (location.pathname.startsWith("/ai")) return "AI Workspace";
     if (location.pathname.startsWith("/jobs")) return "Job Search Hub";
+    if (location.pathname === "/network") return "Network Hub";
+    if (location.pathname.startsWith("/network")) return "Network Hub";
     return "Profile";
   }, [location.pathname]);
 
@@ -174,6 +183,8 @@ export default function GlobalTopBar() {
         return AI_TOOL_ITEMS;
       case "JOBS":
         return JOBS_TOOL_ITEMS;
+      case "NETWORK":
+        return NETWORK_TOOL_ITEMS;
       default:
         return PROFILE_TOOL_ITEMS;
     }
@@ -199,6 +210,7 @@ export default function GlobalTopBar() {
   const highlightAi = currentWorkspace === "AI";
   const highlightJobs = currentWorkspace === "JOBS";
   const highlightProfile = currentWorkspace === "PROFILE";
+  const highlightNetwork = currentWorkspace === "NETWORK";
 
   return (
     <AppBar
@@ -306,6 +318,22 @@ export default function GlobalTopBar() {
               }}
             >
               Interviews
+            </Button>
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/network"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightNetwork),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Network Hub
             </Button>
 
             <Box sx={{ flexGrow: 1 }} />

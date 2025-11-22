@@ -1575,3 +1575,243 @@ export async function deleteDocumentJob(
   const userCrud = withUser(userId);
   return userCrud.deleteRow("document_jobs", { eq: { id: linkId } });
 }
+
+// =====================================================================
+// CONTACTS SYSTEM MAPPERS (2 tables)
+// =====================================================================
+
+/**
+ * mapContact()
+ * Normalize and validate contact data used in the `contacts` table.
+ */
+export const mapContact = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const first_name = String(
+    formData.first_name ?? formData.firstName ?? ""
+  ).trim();
+  const last_name = String(
+    formData.last_name ?? formData.lastName ?? ""
+  ).trim();
+  const emailRaw = formData.email as string | undefined;
+  const email = emailRaw ? String(emailRaw).trim().toLowerCase() : null;
+  const phone = (formData.phone as string) ?? null;
+  const company = (formData.company as string) ?? null;
+  const role = (formData.role as string) ?? null;
+  const industry = (formData.industry as string) ?? null;
+  const relationship_type = (formData.relationship_type as string) ?? null;
+  const relationship_strength =
+    formData.relationship_strength == null
+      ? null
+      : Number(formData.relationship_strength) || null;
+
+  // At least one identifying field should be present
+  if (!first_name && !last_name && !email) {
+    return { error: "Provide at least a name or email for the contact" };
+  }
+
+  const payload: Record<string, unknown> = {
+    first_name: first_name || null,
+    last_name: last_name || null,
+    email,
+    phone,
+    company,
+    role,
+    industry,
+    relationship_type,
+    relationship_strength,
+    personal_notes: (formData.personal_notes as string) ?? null,
+    professional_notes: (formData.professional_notes as string) ?? null,
+    linkedin_url: (formData.linkedin_url as string) ?? null,
+    mutual_contacts: (() => {
+      const raw = (formData as any).mutual_contact_ids ?? (formData as any).mutual_contacts;
+      if (raw == null) return null;
+      if (Array.isArray(raw)) return raw.map(String);
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw as string);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        } catch {
+          // fallthrough to CSV split
+        }
+        return (raw as string).split(',').map((s) => s.trim()).filter(Boolean);
+      }
+      return null;
+    })(),
+  };
+
+  return { payload };
+};
+
+/**
+ * mapContactInteraction()
+ * Normalize and validate interaction data used in `contact_interactions`.
+ */
+export const mapContactInteraction = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const contact_id = formData.contact_id as string | undefined;
+  if (!contact_id) return { error: "contact_id is required" };
+
+  const interaction_type = (formData.interaction_type as string) ?? null;
+  const notes = (formData.notes as string) ?? null;
+
+  // Accept Date or ISO string for occurred_at; default to now
+  let occurred_at: string | null = null;
+  if (formData.occurred_at != null) {
+    try {
+      const d = formData.occurred_at instanceof Date
+        ? formData.occurred_at
+        : new Date(String(formData.occurred_at));
+      if (!Number.isNaN(d.getTime())) occurred_at = d.toISOString();
+    } catch {
+      occurred_at = null;
+    }
+  }
+  if (!occurred_at) occurred_at = new Date().toISOString();
+
+  const payload: Record<string, unknown> = {
+    contact_id,
+    interaction_type,
+    notes,
+    occurred_at,
+  };
+
+  return { payload };
+};
+
+// Contacts CRUD helpers (user-scoped)
+export async function listContacts(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("contacts", "*", opts);
+}
+
+export async function getContact(
+  userId: string,
+  contactId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("contacts", "*", { eq: { id: contactId }, single: true });
+}
+
+export async function createContact(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapContact(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("contacts", mapped.payload ?? {});
+}
+
+export async function updateContact(
+  userId: string,
+  contactId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  // Normalize mutual_contact_ids -> mutual_contacts for updates coming from UI
+  if ((formData as any).mutual_contact_ids !== undefined) {
+    const mc = (formData as any).mutual_contact_ids;
+    if (mc == null) {
+      (formData as any).mutual_contacts = null;
+    } else if (Array.isArray(mc)) {
+      (formData as any).mutual_contacts = mc.map(String);
+    } else if (typeof mc === 'string') {
+      try {
+        const parsed = JSON.parse(mc as string);
+        (formData as any).mutual_contacts = Array.isArray(parsed) ? parsed.map(String) : (mc as string).split(',').map((s) => s.trim()).filter(Boolean);
+      } catch {
+        (formData as any).mutual_contacts = (mc as string).split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    delete (formData as any).mutual_contact_ids;
+  }
+
+  // Allow partial updates; if core identity fields provided validate them
+  if (formData.first_name || formData.last_name || formData.email) {
+    const mapped = mapContact(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("contacts", mapped.payload ?? {}, { eq: { id: contactId } });
+  }
+
+  return userCrud.updateRow("contacts", formData, { eq: { id: contactId } });
+}
+
+export async function deleteContact(
+  userId: string,
+  contactId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("contacts", { eq: { id: contactId } });
+}
+
+// Contact Interactions CRUD helpers (user-scoped)
+export async function listContactInteractions(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("contact_interactions", "*", opts);
+}
+
+export async function getContactInteraction(
+  userId: string,
+  interactionId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("contact_interactions", "*", {
+    eq: { id: interactionId },
+    single: true,
+  });
+}
+
+export async function createContactInteraction(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapContactInteraction(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("contact_interactions", mapped.payload ?? {});
+}
+
+export async function updateContactInteraction(
+  userId: string,
+  interactionId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  return userCrud.updateRow("contact_interactions", formData, {
+    eq: { id: interactionId },
+  });
+}
+
+export async function deleteContactInteraction(
+  userId: string,
+  interactionId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("contact_interactions", { eq: { id: interactionId } });
+}
