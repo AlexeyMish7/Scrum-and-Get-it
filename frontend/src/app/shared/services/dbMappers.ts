@@ -271,6 +271,34 @@ export const mapJob = (
         : Number(formData.end_salary_range) || null
       : Number(formData.end_salary) || null;
 
+  // Normalize job_type to allowed DB values
+  const normalizeJobType = (raw: unknown): string | null => {
+    if (raw == null) return null;
+    const s = String(raw).trim().toLowerCase();
+    if (!s) return null;
+    // common variants mapping
+    const map: Record<string, string> = {
+      "full-time": "full-time",
+      "full time": "full-time",
+      "fulltime": "full-time",
+      "part-time": "part-time",
+      "part time": "part-time",
+      "parttime": "part-time",
+      contract: "contract",
+      internship: "internship",
+      intern: "internship",
+      freelance: "freelance",
+      "freelance/contract": "freelance",
+    };
+    if (map[s]) return map[s];
+    // accept exact allowed values (fallback)
+    const allowed = new Set(["full-time", "part-time", "contract", "internship", "freelance"]);
+    if (allowed.has(s)) return s;
+    return null;
+  };
+
+  const job_type_value = normalizeJobType(formData.job_type);
+
   const payload: Record<string, unknown> = {
     job_title,
     company_name,
@@ -289,7 +317,7 @@ export const mapJob = (
     ),
     job_description: (formData.job_description as string) ?? null,
     industry: (formData.industry as string) ?? null,
-    job_type: (formData.job_type as string) ?? null,
+    job_type: job_type_value,
     experience_level: (formData.experience_level as string) ?? null,
     required_skills: Array.isArray(formData.required_skills)
       ? (formData.required_skills as string[])

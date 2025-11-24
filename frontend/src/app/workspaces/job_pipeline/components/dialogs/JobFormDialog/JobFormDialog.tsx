@@ -42,7 +42,13 @@ const industries = [
   "Other",
 ];
 
-const jobTypes = ["Full-time", "Part-time", "Internship", "Contract"];
+const jobTypes = [
+  { label: "Full-time", value: "full-time" },
+  { label: "Part-time", value: "part-time" },
+  { label: "Contract", value: "contract" },
+  { label: "Internship", value: "internship" },
+  { label: "Freelance", value: "freelance" },
+];
 
 interface JobFormDialogProps {
   open: boolean;
@@ -427,8 +433,8 @@ export default function JobFormDialog({
                 sx={{ flex: 1 }}
               >
                 {jobTypes.map((opt) => (
-                  <MenuItem key={opt} value={opt}>
-                    {opt}
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
                   </MenuItem>
                 ))}
               </TextField>
