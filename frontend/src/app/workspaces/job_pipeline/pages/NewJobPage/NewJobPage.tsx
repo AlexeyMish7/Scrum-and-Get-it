@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import JobFormDialog from "../../components/JobFormDialog";
+import JobFormDialog from "../../components/dialogs/JobFormDialog";
 import type { JobRow } from "@job_pipeline/types";
 
 export default function NewJobPage() {
