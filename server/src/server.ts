@@ -55,6 +55,7 @@ import {
   handleUpdateDraft,
   handleDeleteDraft,
 } from "./routes/index.js";
+import { post as handleNetworkingAnalytics } from "./routes/analytics/networking.js";
 
 // ------------------------------------------------------------------
 // ENVIRONMENT LOADING
@@ -385,6 +386,16 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/generate/relationship") {
       const userId = await requireAuth(req);
       await handleRelationship(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // NETWORKING ANALYTICS ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/networking") {
+      const userId = await requireAuth(req);
+      await handleNetworkingAnalytics(req, res, url, ctx.reqId, userId);
       ctx.logComplete(method, pathname, 200);
       return;
     }
