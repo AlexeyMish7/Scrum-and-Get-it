@@ -41,6 +41,7 @@ import {
   handleSkillsOptimization,
   handleExperienceTailoring,
   handleCompanyResearch,
+  handleRelationship,
   handleJobImport,
   handleJobMatch,
   handleSalaryResearch,
@@ -377,6 +378,13 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/generate/job-match") {
       const userId = await requireAuth(req);
       await handleJobMatch(req, res, url, ctx.reqId, userId, counters);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/relationship") {
+      const userId = await requireAuth(req);
+      await handleRelationship(req, res, url, ctx.reqId, userId, counters as any);
       ctx.logComplete(method, pathname, 200);
       return;
     }

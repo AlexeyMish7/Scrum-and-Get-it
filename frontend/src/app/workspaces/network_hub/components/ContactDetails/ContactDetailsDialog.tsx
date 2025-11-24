@@ -3,6 +3,8 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Tabs, Tab, B
 import ContactEditTab from "./ContactEditTab";
 import ContactInteractionsTab from "./ContactInteractions/ContactInteractionsTab";
 import ContactMutualsTab from "./ContactMutualsTab";
+import AddReminders from "../RelationshipMaintenance/Reminders/AddReminders";
+import RelationshipActionsTab from "../RelationshipMaintenance/Actions/RelationshipActionsTab";
 
 type ContactRow = {
     id?: string;
@@ -14,6 +16,8 @@ type ContactRow = {
     relationship_strength?: number | null;
     email?: string | null;
     phone?: string | null;
+    personal_notes?: string | null;
+    professional_notes?: string | null;
 };
 
 export default function ContactDetailsDialog({
@@ -52,7 +56,8 @@ export default function ContactDetailsDialog({
                     <Tab label="Edit" />
                     <Tab label="Interactions" />
                     <Tab label="Mutuals" />
-                    <Tab label="Manage Reminders" />
+                    <Tab label="Reminders" />
+                    <Tab label="Relationship Actions" />
                 </Tabs>
 
                     <Box sx={{ mt: 2 }}>
@@ -71,6 +76,12 @@ export default function ContactDetailsDialog({
                                     onRefresh?.();
                                 }} onSaved={() => { onRefresh?.(); }} />
                             </Box>
+                        )}
+                        {tab === 3 && (
+                            <AddReminders contactId={contactData.id} onSaved={() => { onRefresh?.(); }} />
+                        )}
+                        {tab === 4 && (
+                            <RelationshipActionsTab contact={contactData} onRefresh={() => { onRefresh?.(); }} />
                         )}
                     </Box>
             </DialogContent>

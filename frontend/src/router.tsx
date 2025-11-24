@@ -111,6 +111,7 @@ const InterviewHub = lazy(() =>
 const NetworkContacts = lazy(() =>
   import("@workspaces/network_hub/pages/ContactsDashboard/ContactsDashboard")
 );
+const NetworkTemplatesPage = lazy(() => import("@workspaces/network_hub/pages/TemplatesPage/TemplatesPage"));
 
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
@@ -215,6 +216,18 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LazyLoadFallback />}>
             <NetworkContacts />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/network/templates",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <NetworkTemplatesPage />
           </Suspense>
         </AppShell>
       </ProtectedRoute>

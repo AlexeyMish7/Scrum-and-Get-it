@@ -1815,3 +1815,120 @@ export async function deleteContactInteraction(
   const userCrud = withUser(userId);
   return userCrud.deleteRow("contact_interactions", { eq: { id: interactionId } });
 }
+
+// =====================================================================
+// CONTACT REMINDERS MAPPERS (contact_reminders table)
+// =====================================================================
+
+/**
+ * mapContactReminder()
+ * Normalize and validate reminder rows for `contact_reminders` table.
+ */
+export const mapContactReminder = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const contact_id = formData.contact_id as string | undefined;
+  if (!contact_id) return { error: "contact_id is required" };
+
+  // Parse remind_at and completed_at into full ISO timestamps if possible
+  function parseIso(v: unknown): string | null {
+    if (v == null) return null;
+    try {
+      const d = v instanceof Date ? v : new Date(String(v));
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  const remind_at = parseIso(formData.remind_at ?? formData.reminder_time);
+  const completed_at = parseIso(formData.completed_at);
+
+  // frequency_interval stored as bigint; accept numeric or string
+  let frequency_interval: number | null = null;
+  if (formData.frequency_interval != null) {
+    const n = Number((formData.frequency_interval as unknown) ?? NaN);
+    frequency_interval = Number.isNaN(n) ? null : Math.floor(n);
+  }
+
+  const reminder_type = (formData.reminder_type as string) ?? null;
+
+  const payload: Record<string, unknown> = {
+    contact_id,
+    remind_at,
+    frequency_interval,
+    completed_at,
+    reminder_type,
+  };
+
+  return { payload };
+};
+
+// Contact Reminders CRUD helpers (user-scoped)
+export async function listContactReminders(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("contact_reminders", "*", opts);
+}
+
+export async function getContactReminder(
+  userId: string,
+  reminderId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("contact_reminders", "*", {
+    eq: { id: reminderId },
+    single: true,
+  });
+}
+
+export async function createContactReminder(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapContactReminder(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("contact_reminders", mapped.payload ?? {});
+}
+
+export async function updateContactReminder(
+  userId: string,
+  reminderId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  // If core fields are provided (contact_id or remind_at), validate via mapper
+  if (formData.contact_id != null || formData.remind_at != null) {
+    const mapped = mapContactReminder({ ...formData, contact_id: formData.contact_id });
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("contact_reminders", mapped.payload ?? {}, {
+      eq: { id: reminderId },
+    });
+  }
+
+  return userCrud.updateRow("contact_reminders", formData, { eq: { id: reminderId } });
+}
+
+export async function deleteContactReminder(
+  userId: string,
+  reminderId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("contact_reminders", { eq: { id: reminderId } });
+}
