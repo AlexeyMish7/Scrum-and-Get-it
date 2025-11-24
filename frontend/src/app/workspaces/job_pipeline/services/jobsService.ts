@@ -161,6 +161,30 @@ const getJob = async (
 };
 
 /**
+ * Normalize job_type to match database CHECK constraint values.
+ * Converts "Full-time" → "full-time", "Part-time" → "part-time", etc.
+ */
+function normalizeJobType(jobType: string | null | undefined): string | null {
+  if (!jobType) return null;
+  
+  const normalized = jobType.toLowerCase().trim();
+  
+  // Map common variations to database values
+  const validTypes = ['full-time', 'part-time', 'contract', 'internship', 'freelance'];
+  
+  if (validTypes.includes(normalized)) {
+    return normalized;
+  }
+  
+  // Handle variations without hyphens
+  if (normalized === 'fulltime' || normalized === 'full time') return 'full-time';
+  if (normalized === 'parttime' || normalized === 'part time') return 'part-time';
+  
+  // Return null for invalid values (database will use NULL which is allowed)
+  return null;
+}
+
+/**
  * CREATE JOB: Create a new job entry.
  *
  * Inputs:
@@ -210,7 +234,8 @@ const createJob = async (
     application_deadline: formData.application_deadline ?? null,
     job_description: formData.job_description ?? null,
     industry: formData.industry ?? null,
-    job_type: formData.job_type ?? null,
+    job_type: normalizeJobType(formData.job_type),
+    source: 'manual', // Jobs created via form are always manual
     // Default to "Interested" if no status provided
     job_status: formData.job_status ?? "Interested",
     status_changed_at: new Date().toISOString(),
@@ -272,7 +297,12 @@ const updateJob = async (
   for (const key of keys) {
     const value = updates[key];
     if (value !== undefined) {
-      payload[key] = value;
+      // Normalize job_type if it's being updated
+      if (key === 'job_type') {
+        payload[key] = normalizeJobType(value as string);
+      } else {
+        payload[key] = value;
+      }
     }
   }
 

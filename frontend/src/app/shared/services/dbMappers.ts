@@ -246,6 +246,30 @@ export const mapCertification = (
 import type { Result, ListOptions } from "./types";
 import { withUser } from "./crud";
 
+/**
+ * Normalize job_type to match database CHECK constraint values.
+ * Converts "Full-time" → "full-time", "Part-time" → "part-time", etc.
+ */
+function normalizeJobType(jobType: string | null | undefined): string | null {
+  if (!jobType) return null;
+  
+  const normalized = jobType.toLowerCase().trim();
+  
+  // Map common variations to database values
+  const validTypes = ['full-time', 'part-time', 'contract', 'internship', 'freelance'];
+  
+  if (validTypes.includes(normalized)) {
+    return normalized;
+  }
+  
+  // Handle variations without hyphens
+  if (normalized === 'fulltime' || normalized === 'full time') return 'full-time';
+  if (normalized === 'parttime' || normalized === 'part time') return 'part-time';
+  
+  // Return null for invalid values (database will use NULL which is allowed)
+  return null;
+}
+
 export const mapJob = (
   formData: Record<string, unknown>
 ): MapperResult<Record<string, unknown>> => {
@@ -289,8 +313,9 @@ export const mapJob = (
     ),
     job_description: (formData.job_description as string) ?? null,
     industry: (formData.industry as string) ?? null,
-    job_type: (formData.job_type as string) ?? null,
+    job_type: normalizeJobType(formData.job_type as string),
     experience_level: (formData.experience_level as string) ?? null,
+    source: (formData.source as string) ?? 'manual', // Default source for manual job creation
     required_skills: Array.isArray(formData.required_skills)
       ? (formData.required_skills as string[])
       : [],
