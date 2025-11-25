@@ -8,10 +8,9 @@
 
 import { useState } from "react";
 import { Box } from "@mui/material";
-import AnalyticsPanel from "../../components/AnalyticsPanel";
+import { AnalyticsPanel } from "../../components/analytics";
 
 export default function AnalyticsPage() {
-  const [expanded, setExpanded] = useState(true);
   const [expanded, setExpanded] = useState(true);
 
   return (

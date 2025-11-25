@@ -56,6 +56,7 @@ import {
   generateAIInsights,
 } from "../../pages/AnalyticsPage/analyticsHelpers";
 import type { JobRecord } from "../../pages/AnalyticsPage/analyticsHelpers";
+import AnalyticsDashboard from "../../../../../../pages/AnalyticsDashboard";
 
 interface AnalyticsPanelProps {
   expanded: boolean;
@@ -79,6 +80,7 @@ export default function AnalyticsPanel({
       return 5;
     }
   });
+  const [showFullDashboard, setShowFullDashboard] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -284,6 +286,17 @@ export default function AnalyticsPanel({
             />
           )}
         </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowFullDashboard((s) => !s);
+          }}
+          sx={{ mr: 1 }}
+        >
+          {showFullDashboard ? "Hide Full Dashboard" : "View Full Dashboard"}
+        </Button>
         <IconButton size="small">
           {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
@@ -292,6 +305,11 @@ export default function AnalyticsPanel({
       {/* Collapsible content */}
       <Collapse in={expanded}>
         <Divider />
+        {showFullDashboard && (
+          <Box sx={{ p: 2 }}>
+            <AnalyticsDashboard />
+          </Box>
+        )}
         <Box sx={{ p: 2 }}>
           {loading && <LinearProgress sx={{ mb: 2 }} />}
 

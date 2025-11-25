@@ -59,6 +59,12 @@ export { get as getUserCompanies } from "./company/user-companies.js";
 // ===== SALARY RESEARCH =====
 export { post as postSalaryResearch } from "./salary/research.js";
 
+// ===== INTERVIEW ANALYTICS =====
+export { post as postAnalyticsIngest } from "./analytics.js";
+export { get as getAnalyticsOverview } from "./analytics.js";
+export { getTrends as getAnalyticsTrends } from "./analytics.js";
+export { getBenchmarks as getAnalyticsBenchmarks } from "./analytics.js";
+
 // ===== LEGACY COMPATIBILITY EXPORTS =====
 // Maintain old function names for server.ts during transition
 // These match the old handleXyz naming convention used in server.ts routing

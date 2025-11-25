@@ -25,6 +25,7 @@ import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
 import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 import ProfileDetails from "@profile/pages/profile/ProfileDetails";
 import Settings from "@profile/pages/profile/Settings";
+const ProfileAnalytics = lazy(() => import("./pages/AnalyticsDashboard"));
 
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
@@ -250,6 +251,38 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
+      {
+        path: "pipeline",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PipelineView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <AnalyticsView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "documents",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DocumentsView />
+          </Suspense>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProfileView />
+          </Suspense>
+        ),
+      },
     ],
   },
   // Jobs workspace - LEGACY: Old routes maintained for backward compatibility
@@ -325,6 +358,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
+      {
+        path: "analytics",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProfileAnalytics />
+          </Suspense>
+        ),
+      },
       { path: "education", element: <EducationOverview /> },
       { path: "skills", element: <SkillsOverview /> },
       { path: "employment", element: <EmploymentHistoryList /> },
