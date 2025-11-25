@@ -2,22 +2,41 @@
  * UnifiedJobsLayout — Simplified 2-column layout for Jobs workspace
  *
  * Purpose: Main container with Pipeline (left) and Calendar (right).
- * No sidebar navigation - just the main pipeline kanban with integrated analytics.
+ * Includes navigation tabs for Pipeline, Analytics, Documents, and Profile views.
  *
  * Contract:
- * - Inputs: None (single route - always shows pipeline)
- * - Outputs: 2-column grid: Pipeline (70%) | Calendar (30%)
- * - Layout: Pipeline board with job cards | Deadline calendar widget
+ * - Inputs: None (routes defined in router)
+ * - Outputs: 2-column grid: Main content (70%) | Calendar (30%)
+ * - Layout: Content with navigation | Deadline calendar widget
  */
 
-import { Outlet } from "react-router-dom";
-import { Box, useMediaQuery, useTheme } from "@mui/material";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Box, useMediaQuery, useTheme, Tabs, Tab, Paper } from "@mui/material";
+import {
+  ViewKanban as PipelineIcon,
+  Analytics as AnalyticsIcon,
+  Description as DocumentsIcon,
+  Person as ProfileIcon,
+} from "@mui/icons-material";
 import AppShell from "@shared/layouts/AppShell";
 import CalendarWidget from "../widgets/CalendarWidget/CalendarWidget";
 
 export default function UnifiedJobsLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine active tab based on current path
+  const currentTab = location.pathname.split("/")[2] || "pipeline";
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
+    if (newValue === "pipeline") {
+      navigate("/jobs");
+    } else {
+      navigate(`/jobs/${newValue}`);
+    }
+  };
 
   return (
     <AppShell>
@@ -31,20 +50,71 @@ export default function UnifiedJobsLayout() {
           overflow: "hidden",
         }}
       >
-        {/* Main Pipeline Area - LEFT SIDE (takes remaining space) */}
+        {/* Main Content Area - LEFT SIDE (takes remaining space) */}
         <Box
           sx={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
             height: "100%",
-            overflow: "auto",
-            bgcolor: "background.paper",
-            borderRadius: { xs: 0, sm: 1, md: 2 },
-            boxShadow: { xs: 0, sm: 1, md: 2 },
+            overflow: "hidden",
           }}
         >
-          <Outlet />
+          {/* Navigation Tabs */}
+          <Paper
+            sx={{
+              borderRadius: { xs: 0, sm: 1, md: 2 },
+              boxShadow: { xs: 0, sm: 1, md: 2 },
+              mb: 2,
+            }}
+          >
+            <Tabs
+              value={currentTab}
+              onChange={handleTabChange}
+              variant="fullWidth"
+              sx={{ borderBottom: 1, borderColor: "divider" }}
+            >
+              <Tab
+                icon={<PipelineIcon />}
+                iconPosition="start"
+                label="Pipeline"
+                value="pipeline"
+              />
+              <Tab
+                icon={<AnalyticsIcon />}
+                iconPosition="start"
+                label="Analytics"
+                value="analytics"
+              />
+              <Tab
+                icon={<DocumentsIcon />}
+                iconPosition="start"
+                label="Documents"
+                value="documents"
+              />
+              <Tab
+                icon={<ProfileIcon />}
+                iconPosition="start"
+                label="Profile"
+                value="profile"
+              />
+            </Tabs>
+          </Paper>
+
+          {/* Main View Content */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "auto",
+              bgcolor: "background.paper",
+              borderRadius: { xs: 0, sm: 1, md: 2 },
+              boxShadow: { xs: 0, sm: 1, md: 2 },
+            }}
+          >
+            <Outlet />
+          </Box>
         </Box>
 
         {/* Calendar Widget (Desktop only) - RIGHT SIDE (fixed width) */}

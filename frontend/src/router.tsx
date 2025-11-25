@@ -59,26 +59,15 @@ const DocumentEditorPage = lazy(() =>
   }))
 );
 
-// Jobs workspace pages (lazy loaded - data-heavy components)
-const PipelinePage = lazy(
-  () => import("./app/workspaces/job_pipeline/pages/PipelinePage/PipelinePage")
-);
+// Jobs workspace pages (lazy loaded - legacy routes only)
 const NewJobPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/NewJobPage")
 );
 const JobDetailsPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/JobDetailsPage")
 );
-const DocumentsPage = lazy(
-  () =>
-    import("./app/workspaces/job_pipeline/pages/DocumentsPage/DocumentsPage")
-);
 const SavedSearchesPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/SavedSearchesPage")
-);
-const AnalyticsPage = lazy(
-  () =>
-    import("./app/workspaces/job_pipeline/pages/AnalyticsPage/AnalyticsPage")
 );
 const AutomationsPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/AutomationsPage")
@@ -252,6 +241,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
+<<<<<<< HEAD
         path: "pipeline",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
@@ -260,6 +250,8 @@ export const router = createBrowserRouter([
         ),
       },
       {
+=======
+>>>>>>> 3a6adee (More analytics)
         path: "analytics",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
