@@ -1698,11 +1698,33 @@ export const mapContactInteraction = (
   }
   if (!occurred_at) occurred_at = new Date().toISOString();
 
+  // Analytics tracking fields (optional)
+  const referral_generated = formData.referral_generated === true;
+  const job_opportunity_created = formData.job_opportunity_created === true;
+  const event_name = (formData.event_name as string) || null;
+  const event_outcome = (formData.event_outcome as string) || null;
+  const value_provided = (formData.value_provided as string) || null;
+  const value_received = (formData.value_received as string) || null;
+  const follow_up_scheduled = formData.follow_up_scheduled === true;
+  const interaction_quality = formData.interaction_quality != null 
+    ? Number(formData.interaction_quality) 
+    : null;
+  const tags = Array.isArray(formData.tags) ? formData.tags : null;
+
   const payload: Record<string, unknown> = {
     contact_id,
     interaction_type,
     notes,
     occurred_at,
+    referral_generated,
+    job_opportunity_created,
+    event_name,
+    event_outcome,
+    value_provided,
+    value_received,
+    follow_up_scheduled,
+    interaction_quality,
+    tags,
   };
 
   return { payload };
@@ -1959,4 +1981,57 @@ export async function deleteContactReminder(
 ): Promise<Result<null>> {
   const userCrud = withUser(userId);
   return userCrud.deleteRow("contact_reminders", { eq: { id: reminderId } });
+}
+
+// =====================================================================
+// NETWORKING ANALYTICS
+// =====================================================================
+
+/**
+ * Fetch networking analytics from server
+ * Calculates comprehensive metrics on networking effectiveness
+ */
+export async function getNetworkingAnalytics(
+  userId: string,
+  authToken: string,
+  timeRange: string = "30d"
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/networking", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ timeRange }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to fetch networking analytics",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result.data,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error fetching analytics",
+        status: null,
+      },
+      status: null,
+    };
+  }
 }
