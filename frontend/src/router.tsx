@@ -83,12 +83,6 @@ const PipelineView = lazy(
 const AnalyticsView = lazy(
   () => import("@workspaces/job_pipeline/views/AnalyticsView/AnalyticsView")
 );
-const DocumentsView = lazy(
-  () => import("@workspaces/job_pipeline/views/DocumentsView/DocumentsView")
-);
-const ProfileView = lazy(
-  () => import("@workspaces/job_pipeline/views/ProfileView/ProfileView")
-);
 
 // Interview Hub workspace (lazy loaded)
 const InterviewHub = lazy(() =>
@@ -241,37 +235,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-<<<<<<< HEAD
-        path: "pipeline",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <PipelineView />
-          </Suspense>
-        ),
-      },
-      {
-=======
->>>>>>> 3a6adee (More analytics)
         path: "analytics",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <AnalyticsView />
-          </Suspense>
-        ),
-      },
-      {
-        path: "documents",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <DocumentsView />
-          </Suspense>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <ProfileView />
           </Suspense>
         ),
       },

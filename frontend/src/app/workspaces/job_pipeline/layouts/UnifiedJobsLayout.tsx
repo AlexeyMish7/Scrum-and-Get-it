@@ -15,8 +15,6 @@ import { Box, useMediaQuery, useTheme, Tabs, Tab, Paper } from "@mui/material";
 import {
   ViewKanban as PipelineIcon,
   Analytics as AnalyticsIcon,
-  Description as DocumentsIcon,
-  Person as ProfileIcon,
 } from "@mui/icons-material";
 import AppShell from "@shared/layouts/AppShell";
 import CalendarWidget from "../widgets/CalendarWidget/CalendarWidget";
@@ -85,18 +83,6 @@ export default function UnifiedJobsLayout() {
                 iconPosition="start"
                 label="Analytics"
                 value="analytics"
-              />
-              <Tab
-                icon={<DocumentsIcon />}
-                iconPosition="start"
-                label="Documents"
-                value="documents"
-              />
-              <Tab
-                icon={<ProfileIcon />}
-                iconPosition="start"
-                label="Profile"
-                value="profile"
               />
             </Tabs>
           </Paper>
