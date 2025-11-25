@@ -59,26 +59,15 @@ const DocumentEditorPage = lazy(() =>
   }))
 );
 
-// Jobs workspace pages (lazy loaded - data-heavy components)
-const PipelinePage = lazy(
-  () => import("./app/workspaces/job_pipeline/pages/PipelinePage/PipelinePage")
-);
+// Jobs workspace pages (lazy loaded - legacy routes only)
 const NewJobPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/NewJobPage")
 );
 const JobDetailsPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/JobDetailsPage")
 );
-const DocumentsPage = lazy(
-  () =>
-    import("./app/workspaces/job_pipeline/pages/DocumentsPage/DocumentsPage")
-);
 const SavedSearchesPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/SavedSearchesPage")
-);
-const AnalyticsPage = lazy(
-  () =>
-    import("./app/workspaces/job_pipeline/pages/AnalyticsPage/AnalyticsPage")
 );
 const AutomationsPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/AutomationsPage")
@@ -93,12 +82,6 @@ const PipelineView = lazy(
 );
 const AnalyticsView = lazy(
   () => import("@workspaces/job_pipeline/views/AnalyticsView/AnalyticsView")
-);
-const DocumentsView = lazy(
-  () => import("@workspaces/job_pipeline/views/DocumentsView/DocumentsView")
-);
-const ProfileView = lazy(
-  () => import("@workspaces/job_pipeline/views/ProfileView/ProfileView")
 );
 
 // Interview Hub workspace (lazy loaded)
@@ -252,34 +235,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "pipeline",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <PipelineView />
-          </Suspense>
-        ),
-      },
-      {
         path: "analytics",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <AnalyticsView />
-          </Suspense>
-        ),
-      },
-      {
-        path: "documents",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <DocumentsView />
-          </Suspense>
-        ),
-      },
-      {
-        path: "profile",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <ProfileView />
           </Suspense>
         ),
       },

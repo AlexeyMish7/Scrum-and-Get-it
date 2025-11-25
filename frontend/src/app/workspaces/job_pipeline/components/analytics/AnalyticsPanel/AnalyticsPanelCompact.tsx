@@ -49,6 +49,12 @@ import NextDeadlinesWidget from "@job_pipeline/components/calendar/NextDeadlines
 import DeadlineCalendar from "@job_pipeline/components/calendar/DeadlineCalendar/DeadlineCalendar";
 import BenchmarkCard from "../../pages/AnalyticsPage/BenchmarkCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
+import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchCard/CompanyResearchCard";
+import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
+import InterviewAnalyticsCard from "@job_pipeline/components/cards/InterviewAnalyticsCard/InterviewAnalyticsCard";
+import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
+import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
+import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -785,10 +791,84 @@ export default function AnalyticsPanel({
             </Grid>
           </Grid>
 
-          {/* Salary research */}
+          {/* Research & Intelligence */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
+            Research & Intelligence
+          </Typography>
           <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid size={{ xs: 12, md: 6 }}>
               <SalaryResearchCard />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <CompanyResearchCard />
+            </Grid>
+          </Grid>
+
+          {/* Interview Performance */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
+            Interview Performance
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={12}>
+              <InterviewAnalyticsCard />
+            </Grid>
+          </Grid>
+
+          {/* Quality Analysis */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
+            Quality Analysis
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={12}>
+              <ApplicationQualityCard />
+            </Grid>
+          </Grid>
+
+          {/* Skills Development */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
+            Skills Development
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={12}>
+              <SkillsGapCard />
+            </Grid>
+          </Grid>
+
+          {/* Timeline & Process Insights */}
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
+            Timeline & Process Insights
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TimeToHireCard />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <ResponseRateCard />
             </Grid>
           </Grid>
 
