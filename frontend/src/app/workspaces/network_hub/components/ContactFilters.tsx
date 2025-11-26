@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, TextField, MenuItem, Button } from "@mui/material";
+import { Box, TextField, MenuItem, Button, Checkbox, FormControlLabel } from "@mui/material";
 
 type Filters = {
 	q?: string;
@@ -7,6 +7,7 @@ type Filters = {
 	company?: string | null;
 	role?: string | null;
 	relationship_type?: string | null;
+	is_professional_reference?: boolean | undefined;
 };
 
 type Props = {
@@ -22,9 +23,11 @@ const ContactFilters: React.FC<Props> = ({ onChange, onClear }) => {
 	const [company, setCompany] = useState<string | null>(null);
 	const [role, setRole] = useState<string | null>(null);
 	const [relationship_type, setRelationshipType] = useState<string | null>(null);
+	const [isProfessional, setIsProfessional] = useState<boolean>(false);
 
 	const emit = () => {
-		onChange?.({ q: q || undefined, industry, company, role, relationship_type });
+		const prof = isProfessional ? true : undefined;
+		onChange?.({ q: q || undefined, industry, company, role, relationship_type, is_professional_reference: prof });
 	};
 
 	const clear = () => {
@@ -89,6 +92,12 @@ const ContactFilters: React.FC<Props> = ({ onChange, onClear }) => {
 					</MenuItem>
 				))}
 			</TextField>
+
+
+			<FormControlLabel
+				control={<Checkbox checked={isProfessional} onChange={(e) => setIsProfessional(e.target.checked)} />}
+				label="Only References"
+			/>
 
 			<Button variant="contained" onClick={emit} size="small">
 				Apply

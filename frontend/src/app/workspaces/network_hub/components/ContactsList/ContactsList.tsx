@@ -30,12 +30,14 @@ const ContactsList: React.FC = () => {
 			// Build simple eq/ilike filters from `filters` state
 			const opts: any = {};
 			if (filters) {
-				const { q, industry, company, role, relationship_type } = filters as any;
+				const { q, industry, company, role, relationship_type, is_professional_reference } = filters as any;
 				opts.eq = {};
 				if (industry) opts.eq.industry = industry;
 				if (company) opts.eq.company = company;
 				if (role) opts.eq.role = role;
 				if (relationship_type) opts.eq.relationship_type = relationship_type;
+				// Accept explicit boolean filter for professional references
+				if (typeof is_professional_reference !== "undefined") opts.eq.is_professional_reference = is_professional_reference;
 				// Free text search using ilike on name/email/company/notes
 				if (q) opts.ilike = { first_name: `%${q}%` };
 			}

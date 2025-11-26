@@ -48,6 +48,12 @@ export {
   createJobNote,
   updateJobNote,
   deleteJobNote,
+  // References
+  listReferences,
+  getReference,
+  createReference,
+  updateReference,
+  deleteReference,
   // Cover letter drafts
   listCoverLetterDrafts,
   getCoverLetterDraft,
