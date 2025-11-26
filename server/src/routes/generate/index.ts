@@ -17,5 +17,6 @@ export { post as postSkillsOptimization } from "./skills-optimization.js";
 export { post as postExperienceTailoring } from "./experience-tailoring.js";
 export { post as postCompanyResearch } from "./company-research.js";
 export { post as postRelationship } from "./relationship.js";
+export { post as postReferencePoints } from "./reference-points.js";
 export type { GenerationCounters } from "./types.js";
 export { makePreview } from "./utils.js";

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, TextField, Button, Stack } from "@mui/material";
+import { Box, TextField, Button, Stack, Checkbox, FormControlLabel } from "@mui/material";
 
 type Props = {
     initialData?: Record<string, any> | null;
@@ -20,6 +20,7 @@ export default function ContactEditTab({ initialData, onSave }: Props) {
             role: initialData?.role ?? "",
             industry: initialData?.industry ?? "",
             relationship_strength: initialData?.relationship_strength ?? undefined,
+            is_professional_reference: initialData?.is_professional_reference ?? false,
             professional_notes: initialData?.professional_notes ?? "",
             personal_notes: initialData?.personal_notes ?? "",
         });
@@ -55,6 +56,13 @@ export default function ContactEditTab({ initialData, onSave }: Props) {
                     <TextField label="Company" value={form.company || ''} fullWidth onChange={(e) => updateField('company', e.target.value)} />
                     <TextField label="Role" value={form.role || ''} fullWidth onChange={(e) => updateField('role', e.target.value)} />
                 </Stack>
+
+                <Box>
+                    <FormControlLabel
+                        control={<Checkbox checked={Boolean(form.is_professional_reference)} onChange={(e) => updateField('is_professional_reference', e.target.checked)} />}
+                        label="Professional Reference"
+                    />
+                </Box>
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <TextField label="Industry" value={form.industry || ''} fullWidth onChange={(e) => updateField('industry', e.target.value)} />
