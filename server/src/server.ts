@@ -390,6 +390,14 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/reference-points") {
+      const userId = await requireAuth(req);
+      const { handleReferencePoints } = await import("./routes/index.js");
+      await handleReferencePoints(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     // ------------------------------------------------------------------
     // NETWORKING ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
@@ -447,6 +455,8 @@ async function handleRequest(
       ctx.logComplete(method, pathname, 200);
       return;
     }
+
+    
 
     // ------------------------------------------------------------------
     // COVER LETTER DRAFTS ENDPOINTS (protected)

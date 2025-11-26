@@ -8,6 +8,8 @@ import {
 	Button,
 	Box,
 	Stack,
+	Checkbox,
+	FormControlLabel,
 } from "@mui/material";
 
 type Props = {
@@ -24,7 +26,11 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		setForm(initialData ? { ...initialData } : {});
+		setForm(
+			initialData
+				? { ...initialData, is_professional_reference: (initialData.is_professional_reference as boolean) ?? false }
+				: { is_professional_reference: false }
+		);
 		setError(null);
 	}, [initialData, open]);
 
@@ -80,6 +86,13 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 					<Box display="flex" gap={2} flexWrap="wrap">
 						<TextField sx={{ flex: "1 1 240px" }} label="Industry" value={String(form.industry ?? "")} onChange={(e) => setField("industry", e.target.value)} />
 						<TextField sx={{ flex: "1 1 200px" }} label="Relationship Type" value={String(form.relationship_type ?? "")} onChange={(e) => setField("relationship_type", e.target.value)} />
+					</Box>
+
+					<Box>
+						<FormControlLabel
+							control={<Checkbox checked={Boolean(form.is_professional_reference)} onChange={(e) => setField("is_professional_reference", e.target.checked)} />}
+							label="Professional Reference"
+						/>
 					</Box>
 
 					<TextField fullWidth label="Personal notes" value={String(form.personal_notes ?? "")} multiline rows={3} onChange={(e) => setField("personal_notes", e.target.value)} />

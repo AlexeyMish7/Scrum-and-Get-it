@@ -56,6 +56,68 @@ export function formatToSqlDate(v: unknown): string | null {
   return null;
 }
 
+// --- References list CRUD helpers (references_list table) ---
+/**
+ * listReferences()
+ * List reference requests for the current user. Optionally filter by contact_id or job_id.
+ */
+export async function listReferences(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("references_list", "*", opts);
+}
+
+/**
+ * getReference()
+ * Get a single reference request row for the user.
+ */
+export async function getReference(
+  userId: string,
+  id: number | string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("references_list", "*", { eq: { id }, single: true });
+}
+
+/**
+ * createReference()
+ * Insert a new reference request for the user.
+ */
+export async function createReference(
+  userId: string,
+  payload: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("references_list", payload, "*");
+}
+
+/**
+ * updateReference()
+ * Update an existing reference request (scoped to current user).
+ */
+export async function updateReference(
+  userId: string,
+  id: number | string,
+  payload: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  return userCrud.updateRow("references_list", payload, { eq: { id } }, "*");
+}
+
+/**
+ * deleteReference()
+ * Delete a reference request for the current user.
+ */
+export async function deleteReference(
+  userId: string,
+  id: number | string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("references_list", { eq: { id } });
+}
+
 type MapperResult<T> = { payload?: T; error?: string };
 
 // =====================================================================
@@ -1648,6 +1710,7 @@ export const mapContact = (
     industry,
     relationship_type,
     relationship_strength,
+    is_professional_reference: (formData.is_professional_reference as unknown) === true,
     personal_notes: (formData.personal_notes as string) ?? null,
     professional_notes: (formData.professional_notes as string) ?? null,
     linkedin_url: (formData.linkedin_url as string) ?? null,
