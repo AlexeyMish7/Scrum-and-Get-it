@@ -92,10 +92,36 @@ const InterviewHub = lazy(() =>
 );
 
 // Network Hub (contacts)
-const NetworkContacts = lazy(() =>
-  import("@workspaces/network_hub/pages/ContactsDashboard/ContactsDashboard")
+const NetworkContacts = lazy(
+  () =>
+    import("@workspaces/network_hub/pages/ContactsDashboard/ContactsDashboard")
 );
-const NetworkTemplatesPage = lazy(() => import("@workspaces/network_hub/pages/TemplatesPage/TemplatesPage"));
+const NetworkTemplatesPage = lazy(
+  () => import("@workspaces/network_hub/pages/TemplatesPage/TemplatesPage")
+);
+
+// Team Management workspace
+import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
+const TeamDashboard = lazy(() =>
+  import("@workspaces/team_management/pages/TeamDashboard").then((module) => ({
+    default: module.TeamDashboard,
+  }))
+);
+const TeamSettings = lazy(() =>
+  import("@workspaces/team_management/pages/TeamSettings").then((module) => ({
+    default: module.TeamSettings,
+  }))
+);
+const Invitations = lazy(() =>
+  import("@workspaces/team_management/pages/Invitations").then((module) => ({
+    default: module.Invitations,
+  }))
+);
+const TeamReports = lazy(() =>
+  import("@workspaces/team_management/pages/TeamReports").then((module) => ({
+    default: module.TeamReports,
+  }))
+);
 
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
@@ -216,6 +242,50 @@ export const router = createBrowserRouter([
         </AppShell>
       </ProtectedRoute>
     ),
+  },
+  // Team Management workspace
+  {
+    path: "/team",
+    element: (
+      <ProtectedRoute>
+        <TeamLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TeamDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TeamSettings />
+          </Suspense>
+        ),
+      },
+      {
+        path: "invitations",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <Invitations />
+          </Suspense>
+        ),
+      },
+      {
+        path: "reports",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TeamReports />
+          </Suspense>
+        ),
+      },
+      // TODO: Add /team/messages route
+    ],
   },
   // Jobs workspace - SIMPLIFIED: Single pipeline view with integrated analytics & calendar
   {

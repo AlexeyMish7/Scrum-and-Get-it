@@ -64,6 +64,11 @@ const WORKSPACE_ITEMS: NavItem[] = [
     path: "/network",
     description: "Manage professional contacts and interactions",
   },
+  {
+    label: "Team Management",
+    path: "/team",
+    description: "Collaborate with mentors and candidates, manage team members",
+  },
 ];
 
 const PROFILE_TOOL_ITEMS: NavItem[] = [
@@ -94,6 +99,13 @@ const AI_TOOL_ITEMS: NavItem[] = [
 const NETWORK_TOOL_ITEMS: NavItem[] = [
   { label: "Network Hub", path: "/network" },
   { label: "Contacts", path: "/network" },
+];
+
+const TEAM_TOOL_ITEMS: NavItem[] = [
+  { label: "Team Dashboard", path: "/team" },
+  { label: "Team Settings", path: "/team/settings" },
+  { label: "Team Reports", path: "/team/reports" },
+  { label: "Invitations", path: "/team/invitations" },
 ];
 
 const MENU_ITEMS: NavItem[] = [
@@ -157,6 +169,7 @@ export default function GlobalTopBar() {
     if (location.pathname.startsWith("/ai")) return "AI";
     if (location.pathname.startsWith("/jobs")) return "JOBS";
     if (location.pathname.startsWith("/network")) return "NETWORK";
+    if (location.pathname.startsWith("/team")) return "TEAM";
     return "PROFILE";
   }, [location.pathname]);
 
@@ -174,6 +187,10 @@ export default function GlobalTopBar() {
     if (location.pathname.startsWith("/jobs")) return "Job Search Hub";
     if (location.pathname === "/network") return "Network Hub";
     if (location.pathname.startsWith("/network")) return "Network Hub";
+    if (location.pathname === "/team") return "Team Dashboard";
+    if (location.pathname === "/team/settings") return "Team Settings";
+    if (location.pathname === "/team/invitations") return "Invitations";
+    if (location.pathname.startsWith("/team")) return "Team Management";
     return "Profile";
   }, [location.pathname]);
 
@@ -185,6 +202,8 @@ export default function GlobalTopBar() {
         return JOBS_TOOL_ITEMS;
       case "NETWORK":
         return NETWORK_TOOL_ITEMS;
+      case "TEAM":
+        return TEAM_TOOL_ITEMS;
       default:
         return PROFILE_TOOL_ITEMS;
     }
@@ -334,6 +353,22 @@ export default function GlobalTopBar() {
               }}
             >
               Network Hub
+            </Button>
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/team"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, currentWorkspace === "TEAM"),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Team
             </Button>
 
             <Box sx={{ flexGrow: 1 }} />
