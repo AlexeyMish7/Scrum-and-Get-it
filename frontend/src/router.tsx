@@ -99,6 +99,9 @@ const NetworkContacts = lazy(
 const NetworkTemplatesPage = lazy(
   () => import("@workspaces/network_hub/pages/TemplatesPage/TemplatesPage")
 );
+const NetworkInterviewsPage = lazy(
+  () => import("@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews")
+);
 
 // Team Management workspace
 import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
@@ -238,6 +241,18 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LazyLoadFallback />}>
             <NetworkTemplatesPage />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/network/interviews",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <NetworkInterviewsPage />
           </Suspense>
         </AppShell>
       </ProtectedRoute>

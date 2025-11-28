@@ -2098,3 +2098,345 @@ export async function getNetworkingAnalytics(
     };
   }
 }
+
+// =====================================================================
+// NETWORKING EVENTS (networking_events table)
+// =====================================================================
+
+/**
+ * mapNetworkingEvent()
+ * Normalize and validate networking event rows for `networking_events` table.
+ */
+export const mapNetworkingEvent = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  // small helper to parse Date/ISO-ish values into full ISO strings
+  function parseIso(v: unknown): string | null {
+    if (v == null) return null;
+    try {
+      const d = v instanceof Date ? v : new Date(String(v));
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  const name = (formData.name as string) ?? null;
+  const location = (formData.location as string) ?? null;
+  const url = (formData.url as string) ?? null;
+  const start_time = parseIso(formData.start_time ?? formData.startTime ?? formData.starts_at);
+  const end_time = parseIso(formData.end_time ?? formData.endTime ?? formData.ends_at);
+  const goals = (formData.goals as string) ?? null;
+  const research_notes = (formData.research_notes as string) ?? (formData.researchNotes as string) ?? null;
+  const preparation_notes = (formData.preparation_notes as string) ?? (formData.preparationNotes as string) ?? null;
+  const industry = (formData.industry as string) ?? null;
+  const attended = formData.attended === true ? true : formData.attended === false ? false : null;
+
+  const payload: Record<string, unknown> = {
+    name: name && String(name).trim() ? String(name).trim() : null,
+    location: location && String(location).trim() ? String(location).trim() : null,
+    url: url && String(url).trim() ? String(url).trim() : null,
+    start_time,
+    end_time,
+    goals: goals ?? null,
+    research_notes,
+    preparation_notes,
+    industry,
+    attended,
+  };
+
+  return { payload };
+};
+
+// Networking Events CRUD helpers (user-scoped)
+export async function listNetworkingEvents(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("networking_events", "*", opts);
+}
+
+export async function getNetworkingEvent(
+  userId: string,
+  eventId: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("networking_events", "*", { eq: { id: eventId }, single: true });
+}
+
+export async function createNetworkingEvent(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapNetworkingEvent(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("networking_events", mapped.payload ?? {});
+}
+
+export async function updateNetworkingEvent(
+  userId: string,
+  eventId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+
+  // If core fields provided (name/start_time/end_time), normalize via mapper
+  if (
+    formData.name != null ||
+    formData.start_time != null ||
+    formData.end_time != null ||
+    formData.startTime != null ||
+    formData.endTime != null
+  ) {
+    const mapped = mapNetworkingEvent(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("networking_events", mapped.payload ?? {}, { eq: { id: eventId } });
+  }
+
+  // Otherwise perform a partial update
+  return userCrud.updateRow("networking_events", formData, { eq: { id: eventId } });
+}
+
+export async function deleteNetworkingEvent(
+  userId: string,
+  eventId: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("networking_events", { eq: { id: eventId } });
+}
+
+// =====================================================================
+// NETWORKING EVENT CONTACTS (networking_event_contacts table)
+// =====================================================================
+
+/**
+ * mapNetworkingEventContact()
+ * Normalize and validate rows for `networking_event_contacts` table.
+ */
+export const mapNetworkingEventContact = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const event_id = String(
+    formData.event_id ?? formData.eventId ?? formData.event ?? ""
+  ).trim();
+  const contact_id = String(
+    formData.contact_id ?? formData.contactId ?? formData.contact ?? ""
+  ).trim();
+
+  if (!event_id) return { error: "event_id is required" };
+  if (!contact_id) return { error: "contact_id is required" };
+
+  const payload: Record<string, unknown> = {
+    event_id,
+    contact_id,
+    follow_up_required:
+      formData.follow_up_required === true || formData.followUpRequired === true
+        ? true
+        : formData.follow_up_required === false || formData.followUpRequired === false
+        ? false
+        : null,
+    follow_up_notes: (formData.follow_up_notes as string) ?? (formData.followUpNotes as string) ?? null,
+  };
+
+  return { payload };
+};
+
+// Networking Event Contacts CRUD helpers (user-scoped)
+export async function listNetworkingEventContacts(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("networking_event_contacts", "*", opts);
+}
+
+export async function getNetworkingEventContact(
+  userId: string,
+  id: string | number
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("networking_event_contacts", "*", { eq: { id }, single: true });
+}
+
+export async function createNetworkingEventContact(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapNetworkingEventContact(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("networking_event_contacts", mapped.payload ?? {});
+}
+
+export async function updateNetworkingEventContact(
+  userId: string,
+  id: string | number,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+
+  // If core identity fields provided, validate via mapper
+  if (formData.event_id != null || formData.contact_id != null || formData.eventId != null || formData.contactId != null) {
+    const mapped = mapNetworkingEventContact(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("networking_event_contacts", mapped.payload ?? {}, { eq: { id } });
+  }
+
+  // Partial update
+  return userCrud.updateRow("networking_event_contacts", formData, { eq: { id } });
+}
+
+export async function deleteNetworkingEventContact(
+  userId: string,
+  id: string | number
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("networking_event_contacts", { eq: { id } });
+}
+
+// =====================================================================
+// INFORMATIONAL INTERVIEWS (informational_interviews table)
+// =====================================================================
+
+/**
+ * mapInformationalInterview()
+ * Normalize and validate informational interview payloads.
+ */
+export const mapInformationalInterview = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const contact_id = String(
+    formData.contact_id ?? formData.contactId ?? formData.contact ?? ""
+  ).trim();
+
+  if (!contact_id) return { error: "contact_id is required" };
+
+  // Accept timestamps or date strings; convert to ISO if valid
+  function toIso(v: unknown): string | null {
+    if (v == null) return null;
+    if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+    const s = String(v).trim();
+    if (!s) return null;
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  const payload: Record<string, unknown> = {
+    contact_id,
+    request_template:
+      (formData.request_template as Record<string, unknown>) ??
+      (formData.requestTemplate as Record<string, unknown>) ??
+      {},
+    // Note: DB column is `prepartion_notes` (keeps DB naming/typo intact)
+    prepartion_notes:
+      (formData.prepartion_notes as Record<string, unknown>) ??
+      (formData.preparationNotes as Record<string, unknown>) ??
+      (formData.preparation_notes as Record<string, unknown>) ??
+      {},
+    interview_date: toIso(formData.interview_date ?? formData.interviewDate ?? null),
+    additional_notes:
+      (formData.additional_notes as string) ?? (formData.additionalNotes as string) ?? null,
+    // Status: optional textual status (e.g., 'confirmed', 'completed', 'ignored')
+    status: (formData.status as string) ?? null,
+  };
+
+  return { payload };
+};
+
+// CRUD helpers for informational_interviews (user-scoped)
+export async function listInformationalInterviews(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("informational_interviews", "*", opts);
+}
+
+export async function getInformationalInterview(
+  userId: string,
+  id: string | number
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("informational_interviews", "*", { eq: { id }, single: true });
+}
+
+export async function createInformationalInterview(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapInformationalInterview(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("informational_interviews", mapped.payload ?? {});
+}
+
+export async function updateInformationalInterview(
+  userId: string,
+  id: string | number,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+
+  // If identity fields present, validate full payload via mapper
+  if (
+    formData.contact_id != null ||
+    formData.contactId != null ||
+    formData.request_template != null ||
+    formData.prepartion_notes != null ||
+    formData.status != null
+  ) {
+    const mapped = mapInformationalInterview(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("informational_interviews", mapped.payload ?? {}, { eq: { id } });
+  }
+
+  // Partial update allowed
+  return userCrud.updateRow("informational_interviews", formData, { eq: { id } });
+}
+
+export async function deleteInformationalInterview(
+  userId: string,
+  id: string | number
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("informational_interviews", { eq: { id } });
+}
