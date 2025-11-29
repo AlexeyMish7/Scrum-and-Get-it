@@ -32,6 +32,7 @@ export { post as postReferencePoints } from "./generate/reference-points.js";
 export { post as postInterviewRequest } from "./generate/interview-request.js";
 export { post as postJobImport } from "./generate/job-import.js";
 export { post as postJobMatch } from "./generate/job-match.js";
+export { post as postProfileTips } from "./generate/profile-tips.js";
 export type { GenerationCounters } from "./generate/types.js";
 
 // ===== ARTIFACTS =====
@@ -77,6 +78,7 @@ export { post as handleExperienceTailoring } from "./generate/experience-tailori
 export { post as handleCompanyResearch } from "./generate/company-research.js";
 export { post as handleJobImport } from "./generate/job-import.js";
 export { post as handleJobMatch } from "./generate/job-match.js";
+export { post as handleProfileTips } from "./generate/profile-tips.js";
 export { post as handleRelationship } from "./generate/relationship.js";
 export { post as handleReferencePoints } from "./generate/reference-points.js";
 export { post as handleGenerateInterviewRequest } from "./generate/interview-request.js";
