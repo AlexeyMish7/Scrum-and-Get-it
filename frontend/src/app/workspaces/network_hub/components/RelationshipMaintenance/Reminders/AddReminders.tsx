@@ -24,9 +24,15 @@ import DoneIcon from "@mui/icons-material/Done";
 export default function AddReminders({
 	contactId,
 	onSaved,
+	initialType,
+	initialRemindAt,
+	confirmInterviewId,
 }: {
 	contactId?: string | null;
 	onSaved?: () => void;
+	initialType?: string | null;
+	initialRemindAt?: string | null;
+	confirmInterviewId?: string | null;
 }) {
 	const { user } = useAuth();
 	const [loading, setLoading] = useState(false);
@@ -64,8 +70,23 @@ export default function AddReminders({
 	};
 
 	useEffect(() => {
-		load();
-	}, [user, contactId]);
+	load();
+
+	// If an initial reminder type is provided (e.g., from event follow-up), prefill it
+	if (initialType) setReminderType(initialType);
+
+	// If an initial remind-at ISO is provided, prefill the datetime-local input
+	if (initialRemindAt) {
+		try {
+			const d = new Date(initialRemindAt);
+			if (!Number.isNaN(d.getTime())) {
+				setRemindAt(toLocalDatetimeInput(d));
+			}
+		} catch (err) {
+			// ignore invalid date
+		}
+	}
+}, [user, contactId, initialType, initialRemindAt]);
 
 	if (!contactId) return <Typography variant="body2">Select a contact to manage reminders.</Typography>;
 
@@ -96,6 +117,14 @@ export default function AddReminders({
 				setReminderType("");
 				setRecurring(false);
 				await load();
+				// If caller provided an informational interview id, mark it confirmed
+				if (confirmInterviewId) {
+					try {
+						await db.updateInformationalInterview(user.id, confirmInterviewId, { status: "confirmed" });
+					} catch (err) {
+						console.error("Failed to confirm informational interview after creating reminder", err);
+					}
+				}
 				onSaved?.();
 			} else {
 				console.error("Create reminder error", res.error);

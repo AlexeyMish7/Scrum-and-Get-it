@@ -189,6 +189,13 @@ const ProfilePicture: React.FC = () => {
       }
 
       try {
+        // If the stored avatar_path is an external URL (e.g. LinkedIn CDN),
+        // use it directly instead of trying to sign a storage object.
+        if (typeof avatar_path === "string" && /^https?:\/\//.test(avatar_path)) {
+          setAvatarUrl(avatar_path);
+          return;
+        }
+
         const cacheKey = `avatar:${avatar_bucket}:${avatar_path}`;
         const raw = localStorage.getItem(cacheKey);
         if (raw) {
@@ -297,7 +304,7 @@ const ProfilePicture: React.FC = () => {
 
       // try to remove existing avatar first (silent)
       try {
-        if (metaPath) {
+        if (metaPath && !/^https?:\/\//.test(String(metaPath))) {
           await supabase.storage
             .from(BUCKET)
             .remove([metaPath])
@@ -355,14 +362,19 @@ const ProfilePicture: React.FC = () => {
         throw new Error("Could not save avatar metadata. Please try again.");
       }
 
-      // create signed URL for display
-      const { data: signedData, error: signedErr } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(fileName, 60 * 60);
-      if (signedErr) {
-        console.warn("createSignedUrl error", signedErr);
+      // create signed URL for display (only for storage-stored avatars)
+      let signed: string | null = null;
+      try {
+        const { data: signedData, error: signedErr } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(fileName, 60 * 60);
+        if (signedErr) {
+          console.warn("createSignedUrl error", signedErr);
+        }
+        signed = signedData?.signedUrl ?? null;
+      } catch (err) {
+        console.warn("createSignedUrl error", err);
       }
-      const signed = signedData?.signedUrl ?? null;
       setAvatarUrl(signed);
       setMetaPath(fileName);
       // cache signed url to reduce reloads during navigation
@@ -580,7 +592,12 @@ const ProfilePicture: React.FC = () => {
                   setPendingFile(null);
                   closeNotification();
                   // reload current avatar preview if available
-                  if (metaPath) {
+                    if (metaPath) {
+                      // If metaPath is an external URL, use it directly
+                      if (/^https?:\/\//.test(String(metaPath))) {
+                        setAvatarUrl(String(metaPath));
+                        return;
+                      }
                     // try to use cached signed url first
                     try {
                       const raw = localStorage.getItem(

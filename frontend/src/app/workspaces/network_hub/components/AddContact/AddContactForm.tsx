@@ -18,9 +18,10 @@ type Props = {
 	onClose: () => void;
 	onCreate?: (payload: Record<string, unknown>) => Promise<void> | void;
 	onUpdate?: (payload: Record<string, unknown>) => Promise<void> | void;
+    includeFollowUp?: boolean;
 };
 
-const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate, onUpdate }) => {
+const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate, onUpdate, includeFollowUp }) => {
 	const [form, setForm] = useState<Record<string, unknown>>({});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -28,8 +29,8 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 	useEffect(() => {
 		setForm(
 			initialData
-				? { ...initialData, is_professional_reference: (initialData.is_professional_reference as boolean) ?? false }
-				: { is_professional_reference: false }
+				? { ...initialData, is_professional_reference: (initialData.is_professional_reference as boolean) ?? false, follow_up_required: (initialData.follow_up_required as boolean) ?? false, follow_up_notes: (initialData.follow_up_notes as string) ?? "" }
+				: { is_professional_reference: false, follow_up_required: false, follow_up_notes: "" }
 		);
 		setError(null);
 	}, [initialData, open]);
@@ -99,10 +100,26 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 
 					<TextField fullWidth label="Professional notes" value={String(form.professional_notes ?? "")} multiline rows={3} onChange={(e) => setField("professional_notes", e.target.value)} />
 
+
+
 					<Box display="flex" gap={2} flexWrap="wrap">
 						<TextField sx={{ flex: "1 1 240px" }} label="LinkedIn URL" value={String(form.linkedin_url ?? "")} onChange={(e) => setField("linkedin_url", e.target.value)} />
 						<TextField sx={{ flex: "1 1 160px" }} label="Relationship strength (1-10)" type="number" value={form.relationship_strength ?? ""} onChange={(e) => setField("relationship_strength", e.target.value ? Number(e.target.value) : null)} />
 					</Box>
+
+					{includeFollowUp && (
+						<Box>
+							<FormControlLabel
+								control={
+									<Checkbox checked={Boolean(form.follow_up_required)} onChange={(e) => setField("follow_up_required", e.target.checked)} />
+								}
+								label="Require follow-up"
+							/>
+							{Boolean(form.follow_up_required) && (
+								<TextField fullWidth multiline rows={3} label="Follow up notes" value={String(form.follow_up_notes ?? "")} onChange={(e) => setField("follow_up_notes", e.target.value)} sx={{ mt: 1 }} />
+							)}
+						</Box>
+					)}
 
 					{error ? (
 						<Box>

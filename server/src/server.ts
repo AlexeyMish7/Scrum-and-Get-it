@@ -42,6 +42,7 @@ import {
   handleExperienceTailoring,
   handleCompanyResearch,
   handleRelationship,
+  handleProfileTips,
   handleJobImport,
   handleJobMatch,
   handleSalaryResearch,
@@ -394,6 +395,22 @@ async function handleRequest(
         counters as any
       );
       ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/profile-tips") {
+      const userId = await requireAuth(req);
+      const { handleProfileTips } = await import("./routes/index.js");
+      await handleProfileTips(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/interview-request") {
+      const userId = await requireAuth(req);
+      const { handleGenerateInterviewRequest } = await import("./routes/index.js");
+      await handleGenerateInterviewRequest(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 201);
       return;
     }
 

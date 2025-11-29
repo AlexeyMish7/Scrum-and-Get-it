@@ -248,9 +248,19 @@ export function AuthContextProvider({ children }: ProviderProps) {
   ) => {
     try {
       // Start OAuth flow: redirect user to provider’s consent screen
+      // Support both legacy 'linkedin' and new 'linkedin_oidc' provider keys
+      let requestedProvider: any = provider as any;
+      if (requestedProvider === "linkedin") requestedProvider = "linkedin_oidc";
+
+      // For LinkedIn OIDC, request appropriate scopes
+      const options: any = { redirectTo: `${window.location.origin}/auth/callback` };
+      if (requestedProvider === "linkedin_oidc") {
+        options.scopes = "openid r_liteprofile r_emailaddress";
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider, // e.g. "google" or "github"
-        options: { redirectTo: `${window.location.origin}/auth/callback` }, // URL to return to after login
+        provider: requestedProvider, // e.g. "google" or "github" or "linkedin_oidc"
+        options,
       });
 
       // If Supabase returns an error (bad config, canceled login, etc.)
