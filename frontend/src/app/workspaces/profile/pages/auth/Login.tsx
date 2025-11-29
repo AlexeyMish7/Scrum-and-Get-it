@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -168,6 +169,8 @@ const Login = () => {
         >
           Sign in with Google
         </Button>
+
+        <LinkedInButton sx={{ mt: 1 }} />
 
         <Box textAlign="center" mt={2}>
           <Typography variant="body2">
