@@ -89,7 +89,7 @@ export default function GenerationStats({
           const IconComponent = stat.icon;
 
           return (
-            <Grid item key={stat.label} xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={stat.label}>
               <Card
                 elevation={0}
                 sx={{

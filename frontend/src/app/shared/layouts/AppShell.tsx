@@ -4,6 +4,8 @@ import GlobalTopBar from "./GlobalTopBar.tsx";
 import SystemLayer from "./SystemLayer.tsx";
 import { MockDataNotificationProvider } from "@shared/components/feedback/MockDataNotificationProvider";
 import { ErrorNotificationProvider } from "@shared/components/feedback/ErrorNotificationProvider";
+import { BackgroundGradientAnimation } from "@shared/components/backgrounds";
+import { useThemeContext } from "@shared/context/ThemeContext";
 
 type AppShellProps = {
   sidebar?: React.ReactNode;
@@ -11,44 +13,69 @@ type AppShellProps = {
 };
 
 export default function AppShell({ sidebar, children }: AppShellProps) {
+  const { backgroundMode } = useThemeContext();
+
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <GlobalTopBar />
-      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Sidebar slot - only render if sidebar provided */}
-        {sidebar && (
+    <>
+      {/* Animated gradient background - rendered when backgroundMode is 'gradient' */}
+      {backgroundMode === "gradient" && <BackgroundGradientAnimation />}
+
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          // When using gradient background, make content background transparent
+          bgcolor:
+            backgroundMode === "gradient"
+              ? "transparent"
+              : "background.default",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <GlobalTopBar />
+        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/*
+           * Sidebar slot - only render container if sidebar provided
+           * Note: For animated sidebars, the width is controlled by the sidebar itself
+           * via Framer Motion. We just need to let it flex without fixed width.
+           */}
+          {sidebar && (
+            <Box
+              sx={{
+                // On mobile (xs-sm), animated sidebar handles its own positioning
+                // On desktop (md+), let sidebar control its own width
+                display: { xs: "block", md: "flex" },
+                flexShrink: 0,
+                overflow: "visible",
+              }}
+            >
+              {sidebar}
+            </Box>
+          )}
+
+          {/* Main content area */}
           <Box
-            component="nav"
-            sx={{ width: { xs: 0, md: 280 }, flexShrink: 0, overflow: "auto" }}
+            component="main"
+            sx={{
+              flexGrow: 1,
+              py: { xs: 2, md: 4 },
+              px: { xs: 2, md: 3 },
+              // Add padding on left for mobile hamburger button
+              pl: { xs: 7, md: 3 },
+              overflow: "auto",
+            }}
           >
-            {sidebar}
+            {children}
           </Box>
-        )}
-
-        {/* Main content area */}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            py: { xs: 2, md: 4 },
-            px: { xs: 2, md: 3 },
-            overflow: "hidden",
-          }}
-        >
-          {children}
         </Box>
-      </Box>
 
-      <SystemLayer />
-      <MockDataNotificationProvider />
-      <ErrorNotificationProvider />
-    </Box>
+        <SystemLayer />
+        <MockDataNotificationProvider />
+        <ErrorNotificationProvider />
+      </Box>
+    </>
   );
 }

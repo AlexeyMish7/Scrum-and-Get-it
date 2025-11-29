@@ -63,6 +63,9 @@ import {
 import lightPaletteTokens from "@shared/theme/palettes/lightPalette";
 import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
 
+/** Background mode - default is solid background, gradient uses animated gradient */
+export type BackgroundMode = "default" | "gradient";
+
 interface ThemeContextValue {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
@@ -73,10 +76,14 @@ interface ThemeContextValue {
   currentPreset: PresetId | null;
   applyPreset: (presetId: PresetId) => void;
   clearPreset: () => void;
+  // Background mode
+  backgroundMode: BackgroundMode;
+  setBackgroundMode: (mode: BackgroundMode) => void;
 }
 
 const STORAGE_KEY = "app.theme.mode";
 const PRESET_STORAGE_KEY = "app.theme.preset";
+const BACKGROUND_MODE_KEY = "app.theme.backgroundMode";
 
 // ******************** Context & Hook *******************
 
@@ -158,6 +165,31 @@ const persistPreset = (presetId: PresetId | null) => {
   }
 };
 
+const readStoredBackgroundMode = (): BackgroundMode => {
+  if (typeof window === "undefined") {
+    return "default";
+  }
+
+  const stored = window.localStorage.getItem(BACKGROUND_MODE_KEY);
+  if (stored === "gradient") {
+    return "gradient";
+  }
+
+  return "default";
+};
+
+const persistBackgroundMode = (bgMode: BackgroundMode) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(BACKGROUND_MODE_KEY, bgMode);
+  } catch {
+    // Swallow storage errors
+  }
+};
+
 // ******************** Provider Component *******************
 
 export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
@@ -172,6 +204,9 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   const [currentPreset, setCurrentPreset] = useState<PresetId | null>(() =>
     readStoredPreset()
   );
+  const [backgroundMode, setBackgroundModeState] = useState<BackgroundMode>(
+    () => readStoredBackgroundMode()
+  );
 
   useEffect(() => {
     persistMode(mode);
@@ -185,6 +220,16 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   useEffect(() => {
     persistPreset(currentPreset);
   }, [currentPreset]);
+
+  // Persist background mode changes
+  useEffect(() => {
+    persistBackgroundMode(backgroundMode);
+  }, [backgroundMode]);
+
+  // Background mode setter with persistence
+  const setBackgroundMode = useCallback((newMode: BackgroundMode) => {
+    setBackgroundModeState(newMode);
+  }, []);
 
   // Determine theme: use preset if set, otherwise use default light/dark theme
   const theme = useMemo(() => {
@@ -210,13 +255,54 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
-  const setMode = useCallback((nextMode: ThemeMode) => {
-    setModeState(nextMode);
-  }, []);
+  /**
+   * Helper to get the matching preset for the opposite mode
+   * e.g., "creative-light" -> "creative-dark" when switching to dark mode
+   */
+  const getMatchingPreset = useCallback(
+    (newMode: ThemeMode, preset: PresetId | null): PresetId | null => {
+      if (!preset) return null;
+
+      // Extract the category from the preset ID (e.g., "creative" from "creative-light")
+      const parts = preset.split("-");
+      if (parts.length < 2) return null;
+
+      const category = parts.slice(0, -1).join("-"); // Handle multi-word categories
+      const targetPresetId = `${category}-${newMode}` as PresetId;
+
+      // Verify the target preset exists
+      if (isValidPreset(targetPresetId)) {
+        return targetPresetId;
+      }
+
+      return null;
+    },
+    []
+  );
+
+  const setMode = useCallback(
+    (nextMode: ThemeMode) => {
+      setModeState(nextMode);
+      // Auto-sync preset to matching mode variant
+      const matchingPreset = getMatchingPreset(nextMode, currentPreset);
+      if (matchingPreset && matchingPreset !== currentPreset) {
+        setCurrentPreset(matchingPreset);
+      }
+    },
+    [currentPreset, getMatchingPreset]
+  );
 
   const toggleMode = useCallback(() => {
-    setModeState((prev) => (prev === "light" ? "dark" : "light"));
-  }, []);
+    setModeState((prev) => {
+      const nextMode = prev === "light" ? "dark" : "light";
+      // Auto-sync preset to matching mode variant
+      const matchingPreset = getMatchingPreset(nextMode, currentPreset);
+      if (matchingPreset && matchingPreset !== currentPreset) {
+        setCurrentPreset(matchingPreset);
+      }
+      return nextMode;
+    });
+  }, [currentPreset, getMatchingPreset]);
 
   const handleApplyPreset = useCallback((presetId: PresetId) => {
     setCurrentPreset(presetId);
@@ -237,6 +323,8 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       currentPreset,
       applyPreset: handleApplyPreset,
       clearPreset: handleClearPreset,
+      backgroundMode,
+      setBackgroundMode,
     }),
     [
       mode,
@@ -246,6 +334,8 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       currentPreset,
       handleApplyPreset,
       handleClearPreset,
+      backgroundMode,
+      setBackgroundMode,
     ]
   );
 

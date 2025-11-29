@@ -1,7 +1,9 @@
 import React from "react";
-import { Box, Typography, Divider } from "@mui/material";
+import { Box, Typography, Divider, Paper } from "@mui/material";
+import PaletteIcon from "@mui/icons-material/Palette";
 import DeleteAccount from "./DeleteAccount";
 import { Breadcrumbs } from "@shared/components/navigation";
+import { ThemeSettingsPanel } from "@shared/components/theme";
 
 const Settings: React.FC = () => {
   return (
@@ -12,6 +14,20 @@ const Settings: React.FC = () => {
       <Typography variant="h2" gutterBottom>
         Settings
       </Typography>
+
+      {/* Appearance Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <PaletteIcon color="primary" />
+          <Typography variant="h5" component="h2">
+            Appearance
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Customize the look and feel of your application
+        </Typography>
+        <ThemeSettingsPanel />
+      </Paper>
 
       <Divider sx={{ my: 3 }} />
 
