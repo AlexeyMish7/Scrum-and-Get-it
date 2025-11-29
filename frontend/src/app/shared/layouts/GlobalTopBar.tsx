@@ -16,6 +16,8 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
 } from "@mui/material";
 import { alpha, useTheme, type Theme } from "@mui/material/styles";
@@ -25,6 +27,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import PaletteIcon from "@mui/icons-material/Palette";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
@@ -421,6 +424,11 @@ export default function GlobalTopBar() {
               anchorEl={profileAnchor}
               open={Boolean(profileAnchor)}
               onClose={() => setProfileAnchor(null)}
+              slotProps={{
+                paper: {
+                  sx: { minWidth: 220 },
+                },
+              }}
             >
               {MENU_ITEMS.map((item) => (
                 <MenuItem
@@ -438,6 +446,47 @@ export default function GlobalTopBar() {
                   {item.label}
                 </MenuItem>
               ))}
+
+              <Divider sx={{ my: theme.spacing(0.5) }} />
+
+              {/* Theme Section */}
+              <Box sx={{ px: 2, py: 1 }}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  sx={{ mb: 1 }}
+                >
+                  <PaletteIcon fontSize="small" color="action" />
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={500}
+                  >
+                    Appearance
+                  </Typography>
+                </Stack>
+                <ToggleButtonGroup
+                  value={mode}
+                  exclusive
+                  onChange={() => {
+                    toggleMode();
+                    setProfileAnchor(null);
+                  }}
+                  size="small"
+                  fullWidth
+                >
+                  <ToggleButton value="light" sx={{ gap: 0.5, py: 0.5 }}>
+                    <LightModeIcon fontSize="small" />
+                    Light
+                  </ToggleButton>
+                  <ToggleButton value="dark" sx={{ gap: 0.5, py: 0.5 }}>
+                    <DarkModeIcon fontSize="small" />
+                    Dark
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+
               <Divider sx={{ my: theme.spacing(0.5) }} />
               <MenuItem onClick={handleLogout} sx={{ gap: theme.spacing(1) }}>
                 <LogoutIcon fontSize="small" />

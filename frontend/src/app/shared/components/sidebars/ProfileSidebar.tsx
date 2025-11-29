@@ -1,21 +1,75 @@
-import WorkspaceSidebar, { type NavItem } from "./WorkspaceSidebar";
+/**
+ * PROFILE SIDEBAR COMPONENT
+ *
+ * Animated sidebar for the Profile workspace.
+ * Uses Framer Motion for smooth expand/collapse animations.
+ *
+ * Desktop: Collapses to icons only, expands on hover
+ * Mobile: Hamburger menu with slide-in drawer
+ */
 
-const profileNavItems: NavItem[] = [
-  { to: "/profile", label: "Dashboard", end: true },
-  { to: "/profile/employment", label: "Employment" },
-  { to: "/profile/education", label: "Education" },
-  { to: "/profile/skills", label: "Skills" },
-  { to: "/profile/projects", label: "Projects" },
-  { to: "/profile/certifications", label: "Certifications" },
-  { to: "/profile/analytics", label: "Analytics" },
-];
+import AnimatedSidebar from "./AnimatedSidebar";
+import AnimatedSidebarLink from "./AnimatedSidebarLink";
+import { SidebarProvider } from "@shared/context/SidebarContext";
 
+// MUI Icons for each navigation item
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import WorkIcon from "@mui/icons-material/Work";
+import SchoolIcon from "@mui/icons-material/School";
+import StarIcon from "@mui/icons-material/Star";
+import FolderIcon from "@mui/icons-material/Folder";
+import CardMembershipIcon from "@mui/icons-material/CardMembership";
+import AnalyticsIcon from "@mui/icons-material/Analytics";
+
+/**
+ * ProfileSidebar - Animated navigation for Profile workspace
+ *
+ * Wraps itself in SidebarProvider to manage open/close state.
+ */
 export default function ProfileSidebar() {
   return (
-    <WorkspaceSidebar
-      title="Profile Workspace"
-      ariaLabel="Profile workspace navigation"
-      navItems={profileNavItems}
-    />
+    <SidebarProvider>
+      <AnimatedSidebar
+        title="Profile Workspace"
+        ariaLabel="Profile workspace navigation"
+      >
+        <AnimatedSidebarLink
+          to="/profile"
+          icon={<DashboardIcon />}
+          label="Dashboard"
+          end
+        />
+        <AnimatedSidebarLink
+          to="/profile/employment"
+          icon={<WorkIcon />}
+          label="Employment"
+        />
+        <AnimatedSidebarLink
+          to="/profile/education"
+          icon={<SchoolIcon />}
+          label="Education"
+        />
+        <AnimatedSidebarLink
+          to="/profile/skills"
+          icon={<StarIcon />}
+          label="Skills"
+        />
+        <AnimatedSidebarLink
+          to="/profile/projects"
+          icon={<FolderIcon />}
+          label="Projects"
+        />
+        <AnimatedSidebarLink
+          to="/profile/certifications"
+          icon={<CardMembershipIcon />}
+          label="Certifications"
+        />
+        <AnimatedSidebarLink
+          to="/profile/analytics"
+          icon={<AnalyticsIcon />}
+          label="Analytics"
+        />
+      </AnimatedSidebar>
+    </SidebarProvider>
   );
 }

@@ -62,18 +62,64 @@ export function applyPreset(
   preset: ThemePreset,
   baseTokens: BaseTokens
 ): Theme {
-  // Build complete tokens by merging preset with base
-  // Presets are partial but typed as DeepPartial; we trust they have complete values
+  // Deep merge helper for nested objects
+  // Preset values override base values, but missing preset values fall back to base
+  const deepMerge = <T extends Record<string, unknown>>(
+    base: T,
+    override?: Partial<T>
+  ): T => {
+    if (!override) return base;
+
+    const result = { ...base };
+    for (const key of Object.keys(override) as (keyof T)[]) {
+      const overrideValue = override[key];
+      const baseValue = base[key];
+
+      // If both are objects (not arrays), deep merge them
+      if (
+        typeof baseValue === "object" &&
+        baseValue !== null &&
+        !Array.isArray(baseValue) &&
+        typeof overrideValue === "object" &&
+        overrideValue !== null &&
+        !Array.isArray(overrideValue)
+      ) {
+        result[key] = deepMerge(
+          baseValue as Record<string, unknown>,
+          overrideValue as Record<string, unknown>
+        ) as T[keyof T];
+      } else if (overrideValue !== undefined) {
+        result[key] = overrideValue as T[keyof T];
+      }
+    }
+    return result;
+  };
+
+  // Build complete tokens by deep merging preset with base
+  // This ensures nested properties like effects.overlay are preserved
+  // even if preset only overrides effects.borderRadius
   const completeTokens: BaseTokens = {
     mode: preset.meta.mode,
-    palette: (preset.tokens.palette ??
-      baseTokens.palette) as BaseTokens["palette"],
-    effects: (preset.tokens.effects ??
-      baseTokens.effects) as BaseTokens["effects"],
-    motion: (preset.tokens.motion ?? baseTokens.motion) as BaseTokens["motion"],
-    interaction: (preset.tokens.interaction ??
-      baseTokens.interaction) as BaseTokens["interaction"],
-    input: (preset.tokens.input ?? baseTokens.input) as BaseTokens["input"],
+    palette: deepMerge(
+      baseTokens.palette,
+      preset.tokens.palette as Partial<BaseTokens["palette"]>
+    ),
+    effects: deepMerge(
+      baseTokens.effects,
+      preset.tokens.effects as Partial<BaseTokens["effects"]>
+    ),
+    motion: deepMerge(
+      baseTokens.motion,
+      preset.tokens.motion as Partial<BaseTokens["motion"]>
+    ),
+    interaction: deepMerge(
+      baseTokens.interaction,
+      preset.tokens.interaction as Partial<BaseTokens["interaction"]>
+    ),
+    input: deepMerge(
+      baseTokens.input,
+      preset.tokens.input as Partial<BaseTokens["input"]>
+    ),
   };
 
   // Generate MUI theme from complete tokens

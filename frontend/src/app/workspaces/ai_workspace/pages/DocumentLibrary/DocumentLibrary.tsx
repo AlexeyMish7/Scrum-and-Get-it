@@ -142,7 +142,7 @@ export default function DocumentLibrary() {
           {filteredDocuments.length > 0 ? (
             <Grid container spacing={3}>
               {filteredDocuments.map((doc) => (
-                <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={doc.id}>
                   <Card
                     sx={{
                       height: "100%",

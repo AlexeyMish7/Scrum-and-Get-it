@@ -95,7 +95,7 @@ export default function QuickActions({
           const IconComponent = ICON_MAP[action.icon];
 
           return (
-            <Grid item key={action.id} xs={12} sm={6} md={4}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={action.id}>
               <Card
                 elevation={0}
                 sx={{
