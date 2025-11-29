@@ -100,7 +100,10 @@ const NetworkTemplatesPage = lazy(
   () => import("@workspaces/network_hub/pages/TemplatesPage/TemplatesPage")
 );
 const NetworkInterviewsPage = lazy(
-  () => import("@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews")
+  () =>
+    import(
+      "@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews"
+    )
 );
 
 // Team Management workspace
@@ -124,6 +127,13 @@ const TeamReports = lazy(() =>
   import("@workspaces/team_management/pages/TeamReports").then((module) => ({
     default: module.TeamReports,
   }))
+);
+const MentorDashboard = lazy(() =>
+  import("@workspaces/team_management/pages/MentorDashboard").then(
+    (module) => ({
+      default: module.MentorDashboard,
+    })
+  )
 );
 
 // Loading fallback component for lazy-loaded routes
@@ -296,6 +306,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <TeamReports />
+          </Suspense>
+        ),
+      },
+      {
+        path: "mentor",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <MentorDashboard />
           </Suspense>
         ),
       },

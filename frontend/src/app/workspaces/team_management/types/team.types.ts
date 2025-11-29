@@ -515,3 +515,41 @@ export interface TeamContextState {
   loading: boolean;
   error: string | null;
 }
+
+/**
+ * Team context value shape
+ * Provides all team state and operations
+ * Used by useTeam hook and TeamProvider
+ */
+export interface TeamContextValue {
+  // Current team state
+  currentTeam: TeamWithMembers | null;
+  userRole: TeamRole | null;
+  userTeams: UserTeamInfo[];
+  loading: boolean;
+  error: string | null;
+
+  // Permission helpers
+  isAdmin: boolean;
+  isMentor: boolean;
+  isCandidate: boolean;
+  can: (permission: string) => boolean;
+
+  // Team operations
+  createTeam: (
+    data: CreateTeamData
+  ) => Promise<{ ok: boolean; error?: string }>;
+  switchTeam: (teamId: string) => Promise<void>;
+  refreshTeam: () => Promise<void>;
+  refreshTeams: () => Promise<void>;
+
+  // Member management
+  inviteMember: (
+    data: InviteMemberData
+  ) => Promise<{ ok: boolean; error?: string }>;
+  updateMemberRole: (
+    memberId: string,
+    data: UpdateMemberRoleData
+  ) => Promise<{ ok: boolean; error?: string }>;
+  removeMember: (memberId: string) => Promise<{ ok: boolean; error?: string }>;
+}
