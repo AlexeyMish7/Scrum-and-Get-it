@@ -75,10 +75,11 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
 
         const payload = { jobs: compact };
 
-        // const res = await aiClient.postJson<{
-        //   predictions?: Prediction[];
-        //   debug?: any;
-        // }>("/api/predict/job-search", payload, userId);
+        // Call the frontend aiClient which posts to the server prediction endpoint
+        const res = await aiClient.postJson<{
+          predictions?: Prediction[];
+          debug?: any;
+        }>("/api/predict/job-search", payload, userId);
 
         if (res && Array.isArray(res.predictions) && res.predictions.length) {
           const normalized = res.predictions.map((p, i) => ({
