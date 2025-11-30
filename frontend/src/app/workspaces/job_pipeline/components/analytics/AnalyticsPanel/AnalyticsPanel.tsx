@@ -45,6 +45,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "../../pages/AnalyticsPage/BenchmarkCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
+import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgressionCard/SalaryProgressionCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -604,9 +605,18 @@ export default function AnalyticsPanel({
             </Grid>
           </Grid>
 
-          {/* Salary research */}
+          {/* Salary analytics - progression and market research */}
           <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={12}>
+              {user?.id ? (
+                <SalaryProgressionCard userId={user.id} timeRange="all" />
+              ) : (
+                <Paper sx={{ p: 2 }}>
+                  <Typography>Loading user...</Typography>
+                </Paper>
+              )}
+            </Grid>
+            <Grid size={12}>
               <SalaryResearchCard />
             </Grid>
           </Grid>
