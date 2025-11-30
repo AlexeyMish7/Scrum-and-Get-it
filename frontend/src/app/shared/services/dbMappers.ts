@@ -2761,3 +2761,134 @@ export async function deleteInformationalInterview(
   const userCrud = withUser(userId);
   return userCrud.deleteRow("informational_interviews", { eq: { id } });
 }
+
+// ================================================================
+// PREPARATION ACTIVITIES CRUD
+// ================================================================
+
+/**
+ * Map preparation activity form data to database payload
+ */
+function mapPreparationActivity(formData: Record<string, unknown>): { payload?: Record<string, unknown>; error?: string } {
+  const activity_type = (formData.activity_type ?? formData.activityType) as string;
+  
+  if (!activity_type) {
+    return { error: "activity_type is required" };
+  }
+
+  const validActivityTypes = [
+    'resume_tailoring',
+    'cover_letter_writing',
+    'company_research',
+    'skills_practice',
+    'interview_prep',
+    'networking',
+    'portfolio_update',
+    'certification',
+    'project_completion',
+    'mock_interview',
+    'salary_research'
+  ];
+
+  if (!validActivityTypes.includes(activity_type)) {
+    return { error: `Invalid activity_type: ${activity_type}` };
+  }
+
+  const payload: Record<string, unknown> = {
+    activity_type,
+    job_id: formData.job_id ?? formData.jobId ?? null,
+    activity_description: (formData.activity_description ?? formData.activityDescription ?? formData.description) as string | null,
+    time_spent_minutes: formData.time_spent_minutes ?? formData.timeSpentMinutes ?? formData.timeSpent ?? null,
+    completion_quality: (formData.completion_quality ?? formData.completionQuality ?? formData.quality) as string | null,
+    days_before_application: formData.days_before_application ?? formData.daysBeforeApplication ?? null,
+    activity_date: formatToSqlDate(formData.activity_date ?? formData.activityDate ?? new Date()),
+    led_to_response: formData.led_to_response ?? formData.ledToResponse ?? null,
+    led_to_interview: formData.led_to_interview ?? formData.ledToInterview ?? null,
+    led_to_offer: formData.led_to_offer ?? formData.ledToOffer ?? null,
+    tools_used: formData.tools_used ?? formData.toolsUsed ?? null,
+    resources_consulted: formData.resources_consulted ?? formData.resourcesConsulted ?? null,
+    notes: (formData.notes as string) ?? null,
+  };
+
+  return { payload };
+}
+
+/**
+ * List all preparation activities for a user
+ */
+export async function listPreparationActivities(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("preparation_activities", "*", opts);
+}
+
+/**
+ * Get a single preparation activity by ID
+ */
+export async function getPreparationActivity(
+  userId: string,
+  id: string | number
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("preparation_activities", "*", { eq: { id }, single: true });
+}
+
+/**
+ * Create a new preparation activity
+ */
+export async function createPreparationActivity(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapPreparationActivity(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("preparation_activities", mapped.payload ?? {});
+}
+
+/**
+ * Update an existing preparation activity
+ */
+export async function updatePreparationActivity(
+  userId: string,
+  id: string | number,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+
+  // If activity_type present, validate full payload
+  if (formData.activity_type != null || formData.activityType != null) {
+    const mapped = mapPreparationActivity(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("preparation_activities", mapped.payload ?? {}, { eq: { id } });
+  }
+
+  // Partial update allowed
+  return userCrud.updateRow("preparation_activities", formData, { eq: { id } });
+}
+
+/**
+ * Delete a preparation activity
+ */
+export async function deletePreparationActivity(
+  userId: string,
+  id: string | number
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("preparation_activities", { eq: { id } });
+}
+
