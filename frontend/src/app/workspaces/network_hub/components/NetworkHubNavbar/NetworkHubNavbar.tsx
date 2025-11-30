@@ -1,6 +1,15 @@
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Tabs, Tab, type SelectChangeEvent } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import InformationInterviewButton from "../InformationInterview/InformationInterviewButton";
+import {
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Tabs,
+  Tab,
+  type SelectChangeEvent,
+} from "@mui/material";
+import { Group } from "@mui/icons-material";
 
 interface Props {
   title?: string;
@@ -19,7 +28,14 @@ export default function NetworkHubNavbar({
 }: Props) {
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 1,
+        }}
+      >
         <Typography variant="h4">{title}</Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -27,7 +43,9 @@ export default function NetworkHubNavbar({
             <InputLabel>Time Range</InputLabel>
             <Select
               value={timeRange}
-              onChange={(e: SelectChangeEvent<string>) => onTimeRangeChange(e.target.value as string)}
+              onChange={(e: SelectChangeEvent<string>) =>
+                onTimeRangeChange(e.target.value as string)
+              }
               label="Time Range"
             >
               <MenuItem value="7d">Last 7 days</MenuItem>
@@ -37,15 +55,22 @@ export default function NetworkHubNavbar({
               <MenuItem value="all">All time</MenuItem>
             </Select>
           </FormControl>
-
-          <InformationInterviewButton />
         </Box>
       </Box>
 
-      <Tabs value={selectedTab} onChange={(_e, v) => onTabChange(v)} sx={{ mb: 2 }}>
+      <Tabs
+        value={selectedTab}
+        onChange={(_e, v) => onTabChange(v)}
+        sx={{ mb: 2 }}
+      >
         <Tab label="Contacts" />
         <Tab label="Events" />
         <Tab label="Interviews" />
+        <Tab
+          label="Peer Groups"
+          icon={<Group sx={{ fontSize: 18 }} />}
+          iconPosition="start"
+        />
       </Tabs>
     </Box>
   );
