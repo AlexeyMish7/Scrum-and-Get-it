@@ -23,3 +23,6 @@ export { AchievementCelebration } from "./AchievementCelebration";
 export { AccountabilityPartnerCard } from "./AccountabilityPartnerCard";
 export { ProgressVisualization } from "./ProgressVisualization";
 export { TeamProgressOverview } from "./TeamProgressOverview";
+
+// UC-114: Enterprise Career Services Components
+export * from "./enterprise";

@@ -165,6 +165,15 @@ const CandidateProgressPage = lazy(() =>
   )
 );
 
+// Enterprise Dashboard (UC-114: Corporate Career Services Integration)
+const EnterpriseDashboard = lazy(() =>
+  import("@workspaces/team_management/pages/EnterpriseDashboard").then(
+    (module) => ({
+      default: module.EnterpriseDashboard,
+    })
+  )
+);
+
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
   <div
@@ -394,6 +403,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <CandidateProgressPage />
+          </Suspense>
+        ),
+      },
+      // Enterprise Dashboard (UC-114: Corporate Career Services Integration)
+      {
+        path: "enterprise",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <EnterpriseDashboard />
           </Suspense>
         ),
       },
