@@ -12,3 +12,4 @@ export { default as ApplicationQualityCard } from "./ApplicationQualityCard/Appl
 export { default as TimeToHireCard } from "./TimeToHireCard/TimeToHireCard";
 export { default as ResponseRateCard } from "./ResponseRateCard/ResponseRateCard";
 export { default as BenchmarkCard } from "./BenchmarkCard/BenchmarkCard";
+export { default as GoalSettingCard } from "./GoalSettingCard/GoalSettingCard";

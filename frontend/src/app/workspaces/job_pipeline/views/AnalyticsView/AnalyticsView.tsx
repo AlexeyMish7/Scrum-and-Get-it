@@ -46,6 +46,7 @@ import InterviewAnalyticsCard from "@job_pipeline/components/cards/InterviewAnal
 import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
+import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -63,14 +64,6 @@ export default function AnalyticsView() {
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [weeklyGoal, setWeeklyGoal] = useState<number>(() => {
-    try {
-      const raw = localStorage.getItem("jobs:weeklyGoal");
-      return raw ? Number(raw) : 5;
-    } catch {
-      return 5;
-    }
-  });
 
   // Load jobs
   useEffect(() => {
@@ -215,7 +208,7 @@ export default function AnalyticsView() {
       responseRate,
       deadlineStats.adherence,
       timeToOffer,
-      weeklyGoal,
+      5, // Default weekly goal
       thisWeekApplications
     );
   }, [
@@ -224,17 +217,8 @@ export default function AnalyticsView() {
     responseRate,
     deadlineStats.adherence,
     timeToOffer,
-    weeklyGoal,
     thisWeekApplications,
   ]);
-
-  function saveGoal() {
-    try {
-      localStorage.setItem("jobs:weeklyGoal", String(weeklyGoal));
-    } catch {
-      // ignore
-    }
-  }
 
   function exportCsv() {
     const rows: string[][] = [];
@@ -721,42 +705,7 @@ export default function AnalyticsView() {
           </Grid>
 
           <Grid size={{ xs: 12, md: 6 }}>
-            <Paper sx={{ p: 2 }} variant="outlined">
-              <Typography variant="subtitle1" fontWeight={600}>
-                Weekly Goal
-              </Typography>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="body2" gutterBottom>
-                Set your weekly application target
-              </Typography>
-              <Box
-                sx={{ display: "flex", gap: 1, alignItems: "center", mt: 1 }}
-              >
-                <TextField
-                  size="small"
-                  type="number"
-                  value={weeklyGoal}
-                  onChange={(e) => setWeeklyGoal(Number(e.target.value) || 0)}
-                  label="Applications/week"
-                />
-                <Button variant="contained" onClick={saveGoal} size="small">
-                  Save Goal
-                </Button>
-              </Box>
-              <Typography sx={{ mt: 2 }} variant="body2">
-                Progress this week: {thisWeekApplications}/{weeklyGoal}
-              </Typography>
-              {thisWeekApplications >= weeklyGoal && weeklyGoal > 0 && (
-                <Typography
-                  sx={{ mt: 0.5 }}
-                  variant="body2"
-                  color="success.main"
-                  fontWeight={600}
-                >
-                  ✓ Goal achieved!
-                </Typography>
-              )}
-            </Paper>
+            <GoalSettingCard />
           </Grid>
         </Grid>
 
