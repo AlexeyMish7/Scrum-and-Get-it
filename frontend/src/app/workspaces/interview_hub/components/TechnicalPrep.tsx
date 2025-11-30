@@ -19,6 +19,8 @@ import {
 import useInterviewBank from "../hooks/useInterviewQuestionBank";
 import type { InterviewQuestion } from "../hooks/useInterviewQuestionBank";
 import aiClient from "@shared/services/ai/client";
+import { useAuth } from "@shared/context/AuthContext";
+import { createPreparationActivity } from "@shared/services/dbMappers";
 
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
@@ -28,6 +30,7 @@ function formatElapsed(ms: number) {
 }
 
 export default function TechnicalPrep() {
+  const { user } = useAuth();
   const [tab, setTab] = useState(0);
   const [selected, setSelected] = useState<InterviewQuestion | null>(null);
   const [open, setOpen] = useState(false);
@@ -146,6 +149,27 @@ export default function TechnicalPrep() {
     const next = [rec, ...attempts].slice(0, 50);
     setAttempts(next);
     localStorage.setItem("sgt:technical_prep_attempts", JSON.stringify(next));
+    
+    // Save to database for pattern recognition analysis
+    if (user?.id && status === "completed") {
+      const activityType = rec.category === "technical" || rec.category === "coding" 
+        ? "skills_practice" 
+        : rec.category === "behavioral" 
+          ? "interview_prep"
+          : "interview_prep";
+      
+      createPreparationActivity(user.id, {
+        activity_type: activityType,
+        activity_description: `${rec.origin || "Technical"} prep: ${rec.text}`,
+        time_spent_minutes: Math.ceil(elapsed / 60000),
+        completion_quality: elapsed < 600000 ? "basic" : elapsed < 1800000 ? "thorough" : "exceptional",
+        activity_date: new Date(now),
+        notes: code ? `Solution submitted (${code.length} chars)` : "Practice completed",
+      }).catch(err => {
+        console.error("Failed to save prep activity to database:", err);
+      });
+    }
+    
     setOpen(false);
     setSelected(null);
     setTimeStart(null);
