@@ -48,6 +48,7 @@ import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeTo
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
 import CompetitivePositioningCard from "@job_pipeline/components/cards/CompetitivePositioningCard/CompetitivePositioningCard";
+import PatternRecognitionCard from "@job_pipeline/components/cards/PatternRecognitionCard/PatternRecognitionCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -600,6 +601,10 @@ export default function AnalyticsView() {
 
           <Grid size={12}>
             <CompetitivePositioningCard />
+          </Grid>
+
+          <Grid size={12}>
+            <PatternRecognitionCard />
           </Grid>
         </Grid>
 

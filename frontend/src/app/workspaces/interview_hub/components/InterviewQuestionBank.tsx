@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import hook from "../hooks/useInterviewQuestionBank";
+import { useAuth } from "@shared/context/AuthContext";
+import { createPreparationActivity } from "@shared/services/dbMappers";
 
 interface Props {
   // optional pre-fill values
@@ -106,6 +108,7 @@ function QuestionCard({
 }
 
 export default function InterviewQuestionBank({ jobTitle = "Software Engineer", industry = "Technology" }: Props) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(jobTitle);
   const [ind, setInd] = useState(industry);
   const [difficulty, setDifficulty] = useState<"entry" | "mid" | "senior">("mid");
@@ -132,6 +135,27 @@ export default function InterviewQuestionBank({ jobTitle = "Software Engineer", 
     hook.markPracticed(id, response);
     // force refresh by updating local state
     setGenerated((g) => [...g]);
+    
+    // Save to database for pattern recognition analysis
+    if (user?.id) {
+      const question = generated.find(q => q.id === id);
+      if (question) {
+        const activityType = question.category === "behavioral" || question.category === "situational"
+          ? "interview_prep"
+          : "skills_practice";
+        
+        createPreparationActivity(user.id, {
+          activity_type: activityType,
+          activity_description: `Practiced ${question.category} question: ${question.text.substring(0, 100)}`,
+          time_spent_minutes: response ? Math.ceil(response.length / 50) : 5,
+          completion_quality: response && response.length > 200 ? "thorough" : response ? "basic" : "basic",
+          activity_date: new Date(),
+          notes: response ? `Written response (${response.length} chars)` : "Question marked as practiced",
+        }).catch(err => {
+          console.error("Failed to save prep activity to database:", err);
+        });
+      }
+    }
   };
 
   const filtered = generated.filter((q) => q.category === category);

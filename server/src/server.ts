@@ -483,6 +483,27 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // PATTERN RECOGNITION ANALYTICS ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/pattern-recognition") {
+      console.log("🎯 HIT PATTERN RECOGNITION ROUTE!");
+      try {
+        const userId = await requireAuth(req);
+        (req as any).userId = userId;
+        const { handleGetPatternRecognition } = await import("./routes/analytics/pattern-recognition.js");
+        console.log("✅ Import successful, calling handler...");
+        await handleGetPatternRecognition(req, res);
+        console.log("✅ Handler completed");
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in pattern recognition route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // ADMIN BENCHMARK ENDPOINTS (protected, admin only in production)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/admin/compute-benchmarks") {

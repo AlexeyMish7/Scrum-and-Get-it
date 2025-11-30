@@ -31,6 +31,7 @@ import aiClient from "@shared/services/ai/client";
 import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import { pipelineService } from "@job_pipeline/services";
 import { useAuth } from "@shared/context/AuthContext";
+import { createPreparationActivity } from "@shared/services/dbMappers";
 
 type Interview = {
   id: string;
@@ -328,6 +329,25 @@ export default function InterviewScheduling() {
       try {
         const tasks = generatePrepTasks(newIv);
         setPrepDialog({ open: true, tasks, title: newIv.title });
+        
+        // Save prep tasks to database for pattern recognition
+        if (user?.id && tasks.length > 0) {
+          const linkedJobId = newIv.linkedJob ? Number(newIv.linkedJob) : null;
+          const daysBeforeInterview = Math.ceil((s.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          
+          createPreparationActivity(user.id, {
+            activity_type: "interview_prep",
+            job_id: linkedJobId && !isNaN(linkedJobId) ? linkedJobId : null,
+            activity_description: `Interview prep for: ${newIv.title}`,
+            time_spent_minutes: 0, // Will be updated when tasks completed
+            completion_quality: null,
+            days_before_application: daysBeforeInterview > 0 ? daysBeforeInterview : null,
+            activity_date: new Date(),
+            notes: `Prep tasks generated: ${tasks.join("; ")}`,
+          }).catch(err => {
+            console.error("Failed to save prep activity to database:", err);
+          });
+        }
       } catch {}
       // If this interview is linked to a tracked job id, move that job to Interview stage
       try {
