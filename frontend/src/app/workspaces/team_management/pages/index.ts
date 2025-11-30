@@ -11,3 +11,6 @@ export { MentorDashboard } from "./MentorDashboard";
 export { CandidateProgressPage } from "./CandidateProgressPage";
 // export { TeamMessages } from "./TeamMessages";
 // export { SubscriptionPage } from "./SubscriptionPage";
+
+// UC-114: Enterprise Career Services
+export { EnterpriseDashboard } from "./EnterpriseDashboard";

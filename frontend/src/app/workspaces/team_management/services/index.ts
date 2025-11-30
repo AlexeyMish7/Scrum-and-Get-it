@@ -8,3 +8,6 @@
 export * from "./teamService";
 export * from "./mentorService";
 export * from "./progressSharingService";
+
+// UC-114: Enterprise Career Services
+export * from "./enterpriseService";

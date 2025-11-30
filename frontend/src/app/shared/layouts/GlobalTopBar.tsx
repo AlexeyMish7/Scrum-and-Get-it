@@ -109,6 +109,7 @@ const NETWORK_TOOL_ITEMS: ToolItem[] = [
 const TEAM_TOOL_ITEMS: NavItem[] = [
   { label: "Team Dashboard", path: "/team" },
   { label: "Mentor Dashboard", path: "/team/mentor" },
+  { label: "Enterprise", path: "/team/enterprise" },
   { label: "Team Settings", path: "/team/settings" },
   { label: "Team Reports", path: "/team/reports" },
   { label: "Invitations", path: "/team/invitations" },
@@ -195,6 +196,7 @@ export default function GlobalTopBar() {
     if (location.pathname.startsWith("/network")) return "Network Hub";
     if (location.pathname === "/team") return "Team Dashboard";
     if (location.pathname === "/team/mentor") return "Mentor Dashboard";
+    if (location.pathname === "/team/enterprise") return "Enterprise Dashboard";
     if (location.pathname === "/team/settings") return "Team Settings";
     if (location.pathname === "/team/invitations") return "Invitations";
     if (location.pathname.startsWith("/team")) return "Team Management";
