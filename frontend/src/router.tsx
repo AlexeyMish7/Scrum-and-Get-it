@@ -118,6 +118,11 @@ const NetworkInterviewsPage = lazy(
     )
 );
 
+// Peer Groups (UC-112: Peer Networking and Support Groups)
+const PeerGroupsHub = lazy(
+  () => import("@workspaces/network_hub/pages/PeerGroupsHub")
+);
+
 // Team Management workspace
 import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
 const TeamDashboard = lazy(() =>
@@ -299,6 +304,19 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LazyLoadFallback />}>
             <NetworkInterviewsPage />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
+  // Peer Groups Hub (UC-112: Peer Networking and Support Groups)
+  {
+    path: "/network/peer-groups",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PeerGroupsHub />
           </Suspense>
         </AppShell>
       </ProtectedRoute>

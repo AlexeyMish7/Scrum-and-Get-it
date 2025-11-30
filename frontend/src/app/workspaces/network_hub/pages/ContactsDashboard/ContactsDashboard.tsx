@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import EventList from "@workspaces/network_hub/components/NetworkingEvents/EventList";
 import ContactsList from "@workspaces/network_hub/components/ContactsList/ContactsList";
 import InformationalInterviews from "@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews";
+import PeerGroupsHub from "@workspaces/network_hub/pages/PeerGroupsHub";
 import { Breadcrumbs } from "@shared/components/navigation";
 import { useAuth } from "@shared/context/AuthContext";
 import NetworkHubNavbar from "@workspaces/network_hub/components/NetworkHubNavbar/NetworkHubNavbar";
@@ -309,6 +310,7 @@ export default function ContactsDashboard() {
 
         {selectedTab === 1 && <EventList />}
         {selectedTab === 2 && <InformationalInterviews />}
+        {selectedTab === 3 && <PeerGroupsHub />}
       </Box>
     </Box>
   );
