@@ -190,6 +190,15 @@ export default function JobDetails({ jobId }: Props) {
       const notePayload = { ...(noteForm ?? {}) };
       const excludeFields = ["id", "user_id", "created_at", "updated_at"];
       excludeFields.forEach((field) => delete notePayload[field]);
+      
+      // Convert salary fields from string to number
+      if (notePayload.offered_salary) {
+        notePayload.offered_salary = Number(notePayload.offered_salary);
+      }
+      if (notePayload.negotiated_salary) {
+        notePayload.negotiated_salary = Number(notePayload.negotiated_salary);
+      }
+      
       Object.keys(notePayload).forEach((key) => {
         if (
           notePayload[key] === undefined ||
@@ -694,6 +703,70 @@ export default function JobDetails({ jobId }: Props) {
                   multiline
                   minRows={2}
                 />
+                
+                {/* Offer Details & Tracking */}
+                <Divider sx={{ mt: 2 }} />
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                  Offer Details & Tracking
+                </Typography>
+                <TextField
+                  label="Offer Received Date"
+                  type="date"
+                  value={String(noteForm.offer_received_date ?? "")}
+                  onChange={(e) =>
+                    setNoteForm((n) => ({
+                      ...n,
+                      offer_received_date: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Offered Base Salary"
+                  type="number"
+                  value={String(noteForm.offered_salary ?? "")}
+                  onChange={(e) =>
+                    setNoteForm((n) => ({
+                      ...n,
+                      offered_salary: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                  placeholder="e.g., 120000"
+                />
+                <TextField
+                  label="Negotiated Base Salary"
+                  type="number"
+                  value={String(noteForm.negotiated_salary ?? "")}
+                  onChange={(e) =>
+                    setNoteForm((n) => ({
+                      ...n,
+                      negotiated_salary: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                  placeholder="e.g., 130000"
+                />
+                <TextField
+                  select
+                  label="Negotiation Outcome"
+                  value={String(noteForm.negotiation_outcome ?? "")}
+                  onChange={(e) =>
+                    setNoteForm((n) => ({
+                      ...n,
+                      negotiation_outcome: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="">None</MenuItem>
+                  <MenuItem value="accepted">Accepted</MenuItem>
+                  <MenuItem value="declined">Declined</MenuItem>
+                  <MenuItem value="countered">Countered</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="withdrawn">Withdrawn</MenuItem>
+                </TextField>
               </>
             ) : (
               <>
@@ -717,6 +790,35 @@ export default function JobDetails({ jobId }: Props) {
                     ? String(note.salary_negotiation_notes)
                     : "-"}
                 </Typography>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>
+                  Offer Details & Tracking
+                </Typography>
+                <Typography variant="body2">
+                  Offer Received:{" "}
+                  {note?.offer_received_date
+                    ? String(note.offer_received_date)
+                    : "-"}
+                </Typography>
+                <Typography variant="body2">
+                  Offered Salary:{" "}
+                  {note?.offered_salary
+                    ? `$${String(note.offered_salary)}`
+                    : "-"}
+                </Typography>
+                <Typography variant="body2">
+                  Negotiated Salary:{" "}
+                  {note?.negotiated_salary
+                    ? `$${String(note.negotiated_salary)}`
+                    : "-"}
+                </Typography>
+                <Typography variant="body2">
+                  Outcome:{" "}
+                  {note?.negotiation_outcome
+                    ? String(note.negotiation_outcome)
+                    : "-"}
+                </Typography>
+                <Divider sx={{ my: 1 }} />
                 <Typography variant="caption" color="text.secondary">
                   Recruiter: {String(note?.recruiter_name ?? "-")}
                 </Typography>
