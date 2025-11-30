@@ -386,6 +386,15 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/checklist") {
+      const userId = await requireAuth(req);
+      // dynamic import to avoid loading when not needed
+      const mod = await import("./routes/generate/checklist.js");
+      await mod.post(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/relationship") {
       const userId = await requireAuth(req);
       await handleRelationship(
