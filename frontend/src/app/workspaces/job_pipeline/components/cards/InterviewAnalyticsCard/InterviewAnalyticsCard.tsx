@@ -81,6 +81,12 @@ export default function InterviewAnalyticsCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobRecord[]>([]);
+  const [practiceRecords, setPracticeRecords] = useState<{
+    id: string;
+    questionId: string;
+    practicedAt: string;
+    draftResponse?: string;
+  }[]>([]);
 
   // Load jobs data
   useEffect(() => {
@@ -113,6 +119,97 @@ export default function InterviewAnalyticsCard() {
 
     loadJobs();
   }, [user?.id]);
+
+  // Load practice records from localStorage and listen for storage events
+  useEffect(() => {
+    function loadPractice() {
+      try {
+        const raw = localStorage.getItem("sgt:interview_question_practice");
+        const arr = raw ? (JSON.parse(raw) as any[]) : [];
+        setPracticeRecords(Array.isArray(arr) ? arr : []);
+      } catch (e) {
+        setPracticeRecords([]);
+      }
+    }
+
+    loadPractice();
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key === "sgt:interview_question_practice") loadPractice();
+    };
+    window.addEventListener("storage", onStorage);
+    // custom event from practice UI (if any)
+    const handlePractice = () => loadPractice();
+    window.addEventListener("practice-updated", handlePractice as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("practice-updated", handlePractice as EventListener);
+    };
+  }, []);
+
+  // Compute practice metrics (last 4 weeks)
+  const practiceMetrics = useMemo(() => {
+    const records = practiceRecords || [];
+    const totalSessions = records.length;
+    const distinctQuestions = new Set(records.map((r) => r.questionId)).size;
+    const lastSessionDate = records
+      .map((r) => new Date(r.practicedAt))
+      .filter((d) => !isNaN(d.getTime()))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+
+    const now = new Date();
+    // compute week buckets: W-3 (oldest) ... W-0 (current)
+    const weeks = [0, 0, 0, 0];
+    for (const r of records) {
+      const d = new Date(r.practicedAt);
+      if (isNaN(d.getTime())) continue;
+      // number of weeks ago (0 = this week)
+      const diff = Math.floor((now.getTime() - d.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const idx = Math.max(0, Math.min(3, 3 - diff));
+      // idx mapping: diff=0 -> 3, diff=3 -> 0; we want weeks[3]=current
+      // adjust differently: compute weekOffset = Math.floor((nowStart - dStart)/msWeek)
+      const wStart = new Date(now);
+      wStart.setHours(0, 0, 0, 0);
+      wStart.setDate(now.getDate() - now.getDay()); // sunday of current week
+      const weeksAgo = Math.floor((wStart.getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / (7 * 24 * 60 * 60 * 1000));
+      const widx = Math.max(0, Math.min(3, weeksAgo));
+      // place into weeks so index 3 = current, 0 = oldest
+      weeks[3 - widx] += 1;
+    }
+
+    const recent = weeks[3];
+    const previous = weeks[2] || 0;
+    const trend = previous === 0 ? (recent === 0 ? 0 : 1) : (recent - previous) / previous;
+
+    return {
+      totalSessions,
+      distinctQuestions,
+      lastSession: lastSessionDate ? lastSessionDate.toISOString() : null,
+      weeks, // [oldest,..,current]
+      recent,
+      previous,
+      trend,
+    };
+  }, [practiceRecords]);
+
+  const practiceRecommendations = useMemo(() => {
+    const recs: string[] = [];
+    const m = practiceMetrics;
+    if (m.totalSessions === 0) {
+      recs.push("Start with short mock sessions: aim for 3 sessions this week (30–45 min).");
+    } else {
+      if (m.trend > 0.2) recs.push("Your practice frequency is increasing — keep the momentum and add one recorded mock per week to review.");
+      else if (m.trend < -0.2) recs.push("Practice frequency is falling — schedule weekly reminders and set small goals (1–2 topics per session).");
+      else recs.push("Practice frequency is steady. Focus on targeted drills for weak areas (behavioral or technical).");
+
+      if (m.distinctQuestions < Math.max(5, m.totalSessions / 2)) {
+        recs.push("Diversify question types: practice behavioral, situational, and technical prompts.");
+      }
+    }
+
+    recs.push("Use STAR for behavioral answers and time-box technical problems during practice.");
+    recs.push("After each mock, note one improvement goal and track it across sessions.");
+    return recs;
+  }, [practiceMetrics]);
 
   // Calculate interview metrics
   const metrics: InterviewMetrics = useMemo(() => {
@@ -509,6 +606,52 @@ export default function InterviewAnalyticsCard() {
           )}
 
           <Divider sx={{ my: 3 }} />
+
+          {/* Interview Practice Analytics */}
+          <Box sx={{ mb: 3 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+              <AIIcon color="secondary" />
+              <Typography variant="subtitle1" fontWeight={600}>
+                Interview Practice Analytics
+              </Typography>
+              <Chip label="Practice" size="small" color="secondary" />
+            </Stack>
+
+            <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+              <Box>
+                <Typography variant="caption">Total sessions</Typography>
+                <Typography variant="h6">{practiceMetrics.totalSessions}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption">Distinct questions</Typography>
+                <Typography variant="h6">{practiceMetrics.distinctQuestions}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption">Last session</Typography>
+                <Typography variant="body2">{practiceMetrics.lastSession ? new Date(practiceMetrics.lastSession).toLocaleString() : "—"}</Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="caption">Sessions (last 4 weeks)</Typography>
+              <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", height: 56, mt: 1 }}>
+                {practiceMetrics.weeks.map((w, i) => (
+                  <Box key={i} sx={{ flex: 1, textAlign: "center" }}>
+                    <Box sx={{ height: `${Math.min(100, (w || 0) * 20)}%`, bgcolor: "secondary.main", mx: 0.5, borderRadius: 0.5 }} />
+                    <Typography variant="caption">{w}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Personalized recommendations</Typography>
+            <Box component="ul" sx={{ pl: 2, m: 0 }}>
+              {practiceRecommendations.map((r, i) => (
+                <li key={i}><Typography variant="body2" sx={{ mb: 1 }}>{r}</Typography></li>
+              ))}
+            </Box>
+          </Box>
 
           {/* AI Interview Tips */}
           <Box>
