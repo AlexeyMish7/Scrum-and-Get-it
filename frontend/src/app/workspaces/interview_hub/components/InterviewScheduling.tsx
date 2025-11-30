@@ -101,6 +101,13 @@ export default function InterviewScheduling() {
     title?: string;
   }>({ open: false, items: [], interviewId: null });
 
+  const [followupDialog, setFollowupDialog] = useState<{
+    open: boolean;
+    templates: { id: string; title: string; subject: string; body: string; suggestedDays?: number; category?: string }[];
+    interviewId?: string | null;
+    title?: string;
+  }>({ open: false, templates: [], interviewId: null });
+
   const [thankYouDialog, setThankYouDialog] = useState<{
     open: boolean;
     text: string;
@@ -489,6 +496,164 @@ export default function InterviewScheduling() {
     setInterviews((cur) => cur.filter((iv) => iv.id !== id));
     try { window.dispatchEvent(new CustomEvent("interviews-updated")); } catch {}
     setSnack({ open: true, msg: "Interview removed", sev: "info" });
+  }
+
+  // Follow-up persistence and tracking (localStorage)
+  function saveFollowupRecord(record: any) {
+    try {
+      const raw = localStorage.getItem("sgt:interview_followups");
+      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      arr.push(record);
+      localStorage.setItem("sgt:interview_followups", JSON.stringify(arr));
+      try { window.dispatchEvent(new CustomEvent("interview-followups-updated")); } catch {}
+    } catch (e) {
+      console.error("Failed to save followup record", e);
+    }
+  }
+
+  function updateFollowupRecord(id: string, patch: Partial<any>) {
+    try {
+      const raw = localStorage.getItem("sgt:interview_followups");
+      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      const idx = arr.findIndex((x) => x.id === id);
+      if (idx >= 0) {
+        arr[idx] = { ...arr[idx], ...patch };
+        localStorage.setItem("sgt:interview_followups", JSON.stringify(arr));
+        try { window.dispatchEvent(new CustomEvent("interview-followups-updated")); } catch {}
+      }
+    } catch (e) {
+      console.error("Failed to update followup", e);
+    }
+  }
+
+  function loadFollowupsForInterview(interviewId: string) {
+    try {
+      const raw = localStorage.getItem("sgt:interview_followups");
+      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      return arr.filter((x) => x.interviewId === interviewId);
+    } catch {
+      return [];
+    }
+  }
+
+  function getFollowupStats(interviewId: string) {
+    const all = loadFollowupsForInterview(interviewId);
+    const sent = all.filter((f) => f.sentAt).length;
+    const responded = all.filter((f) => f.respondedAt).length;
+    const rate = sent ? Math.round((responded / sent) * 100) : 0;
+    return { total: all.length, sent, responded, responseRate: rate };
+  }
+
+  // Generate follow-up templates locally, personalized from interview
+  function generateFollowupTemplates(iv: Interview) {
+    const company = (() => {
+      try { const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob)); return match?.company_name ?? (iv.linkedJob || ""); } catch { return iv.linkedJob || ""; }
+    })();
+    const interviewer = iv.interviewer || "";
+    const when = new Date(iv.start).toLocaleDateString();
+    const convo = iv.notes ? `${iv.notes}` : "our conversation";
+    const baseName = interviewer ? `Hi ${interviewer},` : "Hello,";
+
+    const templates = [] as any[];
+
+    // Thank-you (1 day)
+    templates.push({
+      id: uid("fu"),
+      title: "Thank-you note (prompt)",
+      subject: `Thank you — ${iv.title}${company ? ` at ${company}` : ""}`,
+      body: `${baseName}\n\nThank you for speaking with me on ${when} about the ${iv.title}${company ? ` at ${company}` : ""}. I enjoyed ${convo} and appreciated learning more about the team and the role. I'm excited about the opportunity to contribute and would be happy to provide any additional information.\n\nBest regards,\n`,
+      suggestedDays: 1,
+      category: "thank-you",
+    });
+
+    // Company summary / prep reminder (immediate)
+    templates.push({
+      id: uid("fu"),
+      title: "Company summary & talking points",
+      subject: `Company notes — ${company || iv.title}`,
+      body: `Company: ${company || "(company)"}\nSuggested talking points: 1) ... 2) ... 3) ...\nUse these to reference during follow-ups or future conversations.`,
+      suggestedDays: 0,
+      category: "company-summary",
+    });
+
+    // Status inquiry (7 days)
+    templates.push({
+      id: uid("fu"),
+      title: "Status inquiry (polite)",
+      subject: `Checking in on ${iv.title} — ${company || ""}`,
+      body: `${baseName}\n\nI hope you're well. I wanted to check in about the ${iv.title}${company ? ` role at ${company}` : ""} and see if there is any update on the hiring timeline. I remain very interested and am happy to provide additional details if helpful.\n\nBest,\n`,
+      suggestedDays: 7,
+      category: "status-inquiry",
+    });
+
+    // Feedback request (after completed)
+    templates.push({
+      id: uid("fu"),
+      title: "Feedback request",
+      subject: `Request for interview feedback — ${iv.title}`,
+      body: `${baseName}\n\nThank you again for the opportunity to interview for the ${iv.title}${company ? ` at ${company}` : ""}. If you have a moment, I'd appreciate any feedback you can share about my interview performance so I can continue improving. Thank you for your time.\n\nSincerely,\n`,
+      suggestedDays: 2,
+      category: "feedback",
+    });
+
+    // Networking follow-up (rejection) template
+    templates.push({
+      id: uid("fu"),
+      title: "Networking follow-up (after rejection)",
+      subject: `Thanks for the update — staying in touch`,
+      body: `${baseName}\n\nThank you for letting me know the outcome. I appreciate the chance to interview and would welcome staying in touch for future opportunities. If appropriate, could we connect on LinkedIn or I can follow the team updates?\n\nBest regards,\n`,
+      suggestedDays: 1,
+      category: "networking",
+    });
+
+    return templates;
+  }
+
+  // Send follow-up: copy to clipboard and open mailto (best-effort)
+  async function sendFollowupTemplate(interviewId: string, tpl: any) {
+    try {
+      const record = {
+        id: tpl.id,
+        interviewId,
+        title: tpl.title,
+        subject: tpl.subject,
+        body: tpl.body,
+        createdAt: new Date().toISOString(),
+        sentAt: null,
+        respondedAt: null,
+        category: tpl.category,
+      };
+      // copy body to clipboard
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(tpl.body);
+        }
+      } catch {}
+      // open Gmail compose in a new tab (falls back to mailto if blocked)
+      try {
+        const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent((tpl.to || ""))}&su=${encodeURIComponent(tpl.subject)}&body=${encodeURIComponent(tpl.body)}`;
+        // Try opening Gmail; if popup blocked or user prefers default mail client, fallback to mailto
+        const win = window.open(gmail, "_blank");
+        if (!win) {
+          const mailto = `mailto:${encodeURIComponent((tpl.to || ""))}?subject=${encodeURIComponent(tpl.subject)}&body=${encodeURIComponent(tpl.body)}`;
+          window.open(mailto, "_blank");
+        }
+      } catch {
+        try {
+          const mailto = `mailto:${encodeURIComponent((tpl.to || ""))}?subject=${encodeURIComponent(tpl.subject)}&body=${encodeURIComponent(tpl.body)}`;
+          window.open(mailto, "_blank");
+        } catch {}
+      }
+
+      // mark sent
+      record.sentAt = new Date().toISOString();
+      saveFollowupRecord(record);
+      setSnack({ open: true, msg: "Follow-up prepared and copied to clipboard (use your mail client to send)", sev: "success" });
+      return record;
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, msg: "Failed to prepare follow-up", sev: "error" });
+    }
   }
 
   // Download .ics calendar file
@@ -1037,15 +1202,7 @@ export default function InterviewScheduling() {
                     >
                       Add to Google Calendar
                     </Button>
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            const tasks = generatePrepTasks(iv);
-                            setPrepDialog({ open: true, tasks, title: iv.title });
-                          }}
-                        >
-                          Prep Tasks
-                        </Button>
+                        {/* Prep Tasks button removed per UX request */}
                         <Button
                           size="small"
                           onClick={() => {
@@ -1062,6 +1219,15 @@ export default function InterviewScheduling() {
                           }}
                         >
                           Prep Checklist
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            const templates = generateFollowupTemplates(iv);
+                            setFollowupDialog({ open: true, templates, interviewId: iv.id, title: iv.title });
+                          }}
+                        >
+                          Follow-ups
                         </Button>
                         <Button
                           size="small"
@@ -1260,6 +1426,110 @@ export default function InterviewScheduling() {
               setChecklistDialog({ open: false, items: [], interviewId: null });
             }}>Mark all done</Button>
             <Button onClick={() => setChecklistDialog({ open: false, items: [], interviewId: null })}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Follow-ups dialog */}
+        <Dialog
+          open={followupDialog.open}
+          onClose={() => setFollowupDialog({ open: false, templates: [], interviewId: null })}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle>Follow-up Templates{followupDialog.title ? ` — ${followupDialog.title}` : ""}</DialogTitle>
+          <DialogContent>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Templates</Typography>
+            <List>
+              {followupDialog.templates.map((t, i) => (
+                <ListItem key={t.id} sx={{ alignItems: 'flex-start', py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="subtitle1">{t.title}</Typography>
+                    <TextField
+                      label="Subject"
+                      fullWidth
+                      size="small"
+                      value={t.subject}
+                      onChange={(e) => {
+                        const copy = followupDialog.templates.map((x) => x.id === t.id ? { ...x, subject: e.target.value } : x);
+                        setFollowupDialog((s) => ({ ...s, templates: copy }));
+                      }}
+                      sx={{ mb: 0 }}
+                    />
+                    <TextField
+                      label="Body"
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      value={t.body}
+                      onChange={(e) => {
+                        const copy = followupDialog.templates.map((x) => x.id === t.id ? { ...x, body: e.target.value } : x);
+                        setFollowupDialog((s) => ({ ...s, templates: copy }));
+                      }}
+                      sx={{ mb: 0 }}
+                    />
+                    <Box sx={{ mt: 0.5, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Button size="small" onClick={async () => {
+                        if (!followupDialog.interviewId) return;
+                        await sendFollowupTemplate(followupDialog.interviewId, t);
+                      }}>Send</Button>
+                      <Button size="small" onClick={() => {
+                        if (!followupDialog.interviewId) return;
+                        const rec = { id: t.id, interviewId: followupDialog.interviewId, title: t.title, subject: t.subject, body: t.body, createdAt: new Date().toISOString(), sentAt: new Date().toISOString(), respondedAt: null, category: t.category };
+                        saveFollowupRecord(rec);
+                        setSnack({ open: true, msg: 'Follow-up recorded as sent', sev: 'success' });
+                      }}>Mark sent</Button>
+                      <Button size="small" onClick={() => {
+                        if (!followupDialog.interviewId) return;
+                        const existing = loadFollowupsForInterview(followupDialog.interviewId).filter((x:any)=>x.title===t.title).slice(-1)[0];
+                        if (existing) {
+                          updateFollowupRecord(existing.id, { respondedAt: new Date().toISOString() });
+                        } else {
+                          // create a new follow-up record and mark it as sent+responded
+                          const now = new Date().toISOString();
+                          const rec = { id: `${t.id}-${Date.now()}`, interviewId: followupDialog.interviewId, title: t.title, subject: t.subject, body: t.body, createdAt: now, sentAt: now, respondedAt: now, category: t.category };
+                          saveFollowupRecord(rec);
+                        }
+                        setSnack({ open: true, msg: 'Marked as responded', sev: 'success' });
+                      }}>Mark responded</Button>
+                    </Box>
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Past follow-ups & stats</Typography>
+            <Box sx={{ mt: 1 }}>
+              {followupDialog.interviewId ? (
+                (() => {
+                  const stats = getFollowupStats(followupDialog.interviewId as string);
+                  const recent = loadFollowupsForInterview(followupDialog.interviewId as string).slice(-8).reverse();
+                  return (
+                    <>
+                      <Typography variant="body2">Sent: {stats.sent} • Responded: {stats.responded} • Response Rate: {stats.responseRate}%</Typography>
+                      <List>
+                        {recent.map((r: any) => (
+                          <ListItem key={r.id} disableGutters sx={{ py: 1, alignItems: 'flex-start' }}>
+                            <ListItemText
+                              primary={`${r.title} ${r.sentAt ? `• sent ${new Date(r.sentAt).toLocaleString()}`: ''} ${r.respondedAt ? `• responded ${new Date(r.respondedAt).toLocaleString()}`: ''}`}
+                              secondary={r.subject}
+                              secondaryTypographyProps={{ style: { whiteSpace: 'normal' } }}
+                            />
+                            <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+                              {!r.respondedAt ? <Button size="small" onClick={() => updateFollowupRecord(r.id, { respondedAt: new Date().toISOString() })}>Mark responded</Button> : null}
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </>
+                  );
+                })()
+              ) : (
+                <Typography variant="body2">Open an interview to view follow-up history.</Typography>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setFollowupDialog({ open: false, templates: [], interviewId: null })}>Close</Button>
           </DialogActions>
         </Dialog>
 
