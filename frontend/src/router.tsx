@@ -123,6 +123,11 @@ const PeerGroupsHub = lazy(
   () => import("@workspaces/network_hub/pages/PeerGroupsHub")
 );
 
+// Family Support (UC-113: Family and Personal Support Integration)
+const FamilySupportHub = lazy(
+  () => import("@workspaces/network_hub/pages/FamilySupportHub")
+);
+
 // Team Management workspace
 import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
 const TeamDashboard = lazy(() =>
@@ -317,6 +322,19 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LazyLoadFallback />}>
             <PeerGroupsHub />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
+  // Family Support Hub (UC-113: Family and Personal Support Integration)
+  {
+    path: "/network/family-support",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <FamilySupportHub />
           </Suspense>
         </AppShell>
       </ProtectedRoute>

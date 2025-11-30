@@ -99,9 +99,11 @@ const AI_TOOL_ITEMS: NavItem[] = [
   { label: "Templates", path: "/ai/templates" },
 ];
 
-const NETWORK_TOOL_ITEMS: NavItem[] = [
+const NETWORK_TOOL_ITEMS: ToolItem[] = [
   { label: "Network Hub", path: "/network" },
   { label: "Contacts", path: "/network" },
+  { label: "Peer Groups", path: "/network/peer-groups" },
+  { label: "Family Support", path: "/network/family-support" },
 ];
 
 const TEAM_TOOL_ITEMS: NavItem[] = [
