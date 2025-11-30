@@ -2099,6 +2099,327 @@ export async function getNetworkingAnalytics(
   }
 }
 
+/**
+ * GET SALARY ANALYTICS
+ * 
+ * Fetch comprehensive salary progression and negotiation analytics
+ * Calculates salary progression over time, negotiation success rates,
+ * compensation evolution, and career advancement impact on earnings
+ */
+export async function getSalaryAnalytics(
+  userId: string,
+  authToken: string,
+  timeRange: string = "all"
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/salary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ timeRange }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to fetch salary analytics",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error fetching salary analytics",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
+// =====================================================================
+// CAREER GOALS (career_goals table)
+// =====================================================================
+
+/**
+ * GET GOALS
+ * 
+ * Fetch user's career goals with optional filtering
+ */
+export async function getGoals(
+  userId: string,
+  authToken: string,
+  options?: { status?: string; category?: string }
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        action: "get",
+        ...options,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to fetch goals",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error fetching goals",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
+/**
+ * CREATE GOAL
+ * 
+ * Create a new career goal
+ */
+export async function createGoal(
+  userId: string,
+  authToken: string,
+  goalData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        action: "create",
+        ...goalData,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to create goal",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error creating goal",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
+/**
+ * UPDATE GOAL
+ * 
+ * Update an existing goal (progress, status, etc.)
+ */
+export async function updateGoal(
+  userId: string,
+  authToken: string,
+  goalId: string,
+  updates: Record<string, unknown>
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        action: "update",
+        goal_id: goalId,
+        ...updates,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to update goal",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error updating goal",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
+/**
+ * DELETE GOAL
+ * 
+ * Delete a goal
+ */
+export async function deleteGoal(
+  userId: string,
+  authToken: string,
+  goalId: string
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        action: "delete",
+        goal_id: goalId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to delete goal",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error deleting goal",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
+/**
+ * GET GOALS ANALYTICS
+ * 
+ * Fetch comprehensive goal analytics with insights and recommendations
+ */
+export async function getGoalsAnalytics(
+  userId: string,
+  authToken: string
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        action: "analytics",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to fetch goals analytics",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error fetching goals analytics",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
 // =====================================================================
 // NETWORKING EVENTS (networking_events table)
 // =====================================================================

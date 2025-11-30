@@ -57,6 +57,7 @@ import {
   TrendingUp as TrendingUpIcon,
   Assignment as AssignmentIcon,
   EmojiEvents as EmojiEventsIcon,
+  School as SchoolIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
@@ -73,6 +74,7 @@ export function TeamDashboard() {
     userTeams,
     userRole,
     isAdmin,
+    isMentor,
     loading,
     error,
     switchTeam,
@@ -351,6 +353,16 @@ export function TeamDashboard() {
               onClick={() => setShowInviteDialog(true)}
             >
               Invite Member
+            </Button>
+          )}
+          {(isMentor || isAdmin) && (
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<SchoolIcon />}
+              onClick={() => navigate("/team/mentor")}
+            >
+              Mentor Dashboard
             </Button>
           )}
           <Button
