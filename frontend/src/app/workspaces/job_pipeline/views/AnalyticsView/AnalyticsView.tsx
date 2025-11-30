@@ -47,6 +47,7 @@ import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQu
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
+import CompetitivePositioningCard from "@job_pipeline/components/cards/CompetitivePositioningCard/CompetitivePositioningCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -595,6 +596,10 @@ export default function AnalyticsView() {
 
           <Grid size={12}>
             <BenchmarkCard jobs={jobs} />
+          </Grid>
+
+          <Grid size={12}>
+            <CompetitivePositioningCard />
           </Grid>
         </Grid>
 

@@ -386,6 +386,15 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/checklist") {
+      const userId = await requireAuth(req);
+      // dynamic import to avoid loading when not needed
+      const mod = await import("./routes/generate/checklist.js");
+      await mod.post(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/relationship") {
       const userId = await requireAuth(req);
       await handleRelationship(
@@ -450,6 +459,44 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/analytics/goals") {
       const userId = await requireAuth(req);
       await handleGoalsAnalytics(req, res, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // COMPETITIVE BENCHMARKING ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/competitive/position") {
+      console.log("🎯 HIT COMPETITIVE ROUTE!");
+      try {
+        const { handleGetCompetitivePosition } = await import("./routes/analytics/competitive.js");
+        console.log("✅ Import successful, calling handler...");
+        await handleGetCompetitivePosition(req, res);
+        console.log("✅ Handler completed");
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in competitive route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // ADMIN BENCHMARK ENDPOINTS (protected, admin only in production)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/admin/compute-benchmarks") {
+      const userId = await requireAuth(req);
+      const { handleComputeBenchmarks } = await import("./routes/admin/benchmarks.js");
+      await handleComputeBenchmarks(req, res);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "GET" && pathname === "/api/admin/benchmark-status") {
+      const userId = await requireAuth(req);
+      const { handleBenchmarkStatus } = await import("./routes/admin/benchmarks.js");
+      await handleBenchmarkStatus(req, res);
       ctx.logComplete(method, pathname, 200);
       return;
     }

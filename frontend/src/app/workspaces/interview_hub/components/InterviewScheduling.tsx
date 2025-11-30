@@ -21,6 +21,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EditIcon from "@mui/icons-material/Edit";
@@ -91,6 +93,13 @@ export default function InterviewScheduling() {
     tasks: string[];
     title?: string;
   }>({ open: false, tasks: [] });
+
+  const [checklistDialog, setChecklistDialog] = useState<{
+    open: boolean;
+    items: { id: string; text: string; done: boolean; meta?: any }[];
+    interviewId?: string | null;
+    title?: string;
+  }>({ open: false, items: [], interviewId: null });
 
   const [thankYouDialog, setThankYouDialog] = useState<{
     open: boolean;
@@ -270,6 +279,16 @@ export default function InterviewScheduling() {
         status: "scheduled",
       };
       setInterviews((cur) => [newIv, ...cur]);
+      try {
+        const checklist = generatePrepChecklist(newIv);
+        saveChecklistForInterview(newIv.id, checklist);
+        // asynchronously enrich checklist with AI suggestions (non-blocking)
+        (async () => {
+          try {
+            await enrichChecklistWithAI(newIv, newIv.id, checklist);
+          } catch {}
+        })();
+      } catch {}
       // notify calendar/widgets that interviews changed
       try {
         window.dispatchEvent(new CustomEvent("interviews-updated"));
@@ -530,6 +549,292 @@ export default function InterviewScheduling() {
     return tasks;
   }
 
+  // Generate a richer pre-interview checklist tailored to role and company
+  function generatePrepChecklist(iv: Interview) {
+    const idBase = iv.id;
+    const items: { id: string; text: string; done: boolean; meta?: any }[] = [];
+
+    // derive job/company details if linked to a tracked job
+    let jobTitle = iv.title || "";
+    let companyName = "";
+    let industry = "";
+    try {
+      const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob));
+      if (match) {
+        jobTitle = jobTitle || match.job_title || "";
+        companyName = match.company_name || "";
+        industry = match.industry || "";
+      } else if (iv.linkedJob && typeof iv.linkedJob === "string") {
+        // if linkedJob is free-text company name, capture it
+        companyName = String(iv.linkedJob);
+      }
+    } catch {}
+
+    // role-specific: extract keywords and create focused tasks
+    const keywords = (jobTitle || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).slice(0,4);
+    items.push({ id: `${idBase}-jd`, text: `Review the job description for "${jobTitle}" and map your experience to requirements`, done: false });
+    items.push({ id: `${idBase}-star`, text: "Prepare 3 STAR stories tailored to the role (focus on impact and metrics)", done: false });
+
+    // technical / role-specific suggestions
+    const titleStr = jobTitle.toLowerCase();
+    if (/engineer|developer|software|backend|frontend|full-?stack/.test(titleStr)) {
+      items.push({ id: `${idBase}-algos`, text: `Practice relevant algorithms/data-structures problems (focus on ${keywords[0] || 'core topics'})`, done: false });
+      items.push({ id: `${idBase}-coding-setup`, text: "Set up coding environment and test screen-sharing; rehearse typing/communication while solving", done: false });
+    }
+    if (/designer|ux|ui|product designer/.test(titleStr)) {
+      items.push({ id: `${idBase}-portfolio-design`, text: "Prepare portfolio walkthrough and examples that match the role's responsibilities", done: false });
+    }
+    if (/product|pm|product manager/.test(titleStr)) {
+      items.push({ id: `${idBase}-product-sense`, text: "Prepare product-sense examples and prioritize metrics-driven examples", done: false });
+    }
+
+    // Company research
+    if (companyName) {
+      items.push({ id: `${idBase}-research`, text: `Research ${companyName}: mission, recent news, product updates and competitors`, done: false });
+      items.push({ id: `${idBase}-questions`, text: "Prepare 5 thoughtful, company-specific questions to ask the interviewer", done: false });
+    } else {
+      items.push({ id: `${idBase}-research`, text: "Research the company & team: mission, recent news, products, and competitors", done: false });
+      items.push({ id: `${idBase}-questions`, text: "Prepare 5 thoughtful questions to ask the interviewer", done: false });
+    }
+
+    // Attire suggestion based on simple heuristics
+    let attire = "Business casual";
+    try {
+      if (industry && /finance|bank|legal|consult/i.test(String(industry))) attire = "Formal / Professional";
+      else if (industry && /tech|software|startup/i.test(String(industry))) attire = "Casual / Smart casual";
+      else if (companyName && /startup|early stage|venture/i.test(String(companyName).toLowerCase())) attire = "Casual / Smart casual";
+    } catch {}
+    items.push({ id: `${idBase}-attire`, text: `Suggested attire: ${attire}`, done: false, meta: { attire } });
+
+    // Logistics
+    items.push({ id: `${idBase}-logistics-time`, text: `Confirm date & time and time zone`, done: false });
+    items.push({ id: `${idBase}-logistics-location`, text: `Verify location / video link: ${(iv as any).location || "(add link)"}`, done: false });
+    items.push({ id: `${idBase}-tech-check`, text: "Test technology: camera, mic, screen sharing, internet", done: false });
+
+    // Confidence activities
+    items.push({ id: `${idBase}-confidence-1`, text: "Do a 5-minute breathing exercise before the interview", done: false });
+    items.push({ id: `${idBase}-confidence-2`, text: "Run a 20-minute mock interview (record or time-box answers)", done: false });
+
+    // Portfolio / samples
+    if (/designer|product|pm|product manager/.test(titleStr)) {
+      items.push({ id: `${idBase}-portfolio`, text: "Prepare portfolio or product artifacts and links (test they open)", done: false });
+    } else if (/engineer|developer|software/.test(titleStr)) {
+      items.push({ id: `${idBase}-portfolio`, text: "Prepare code samples, repos, and deployment links (ensure they open)", done: false });
+    } else {
+      items.push({ id: `${idBase}-portfolio`, text: "Prepare work samples or case examples to reference during interview", done: false });
+    }
+
+    // Post-interview follow up (checkbox triggers creating follow-up reminder)
+    items.push({ id: `${idBase}-post-followup`, text: "Create post-interview follow-up task (thank-you note) — schedule for next day", done: false, meta: { postFollowup: true } });
+
+    // include generated-from metadata as a hidden item (helps detect changes later)
+    items.push({ id: `${idBase}-__meta`, text: JSON.stringify({ jobTitle, companyName, industry, generatedAt: new Date().toISOString() }), done: true, meta: { internal: true } });
+
+    return items;
+  }
+
+  function saveChecklistForInterview(interviewId: string, items: { id: string; text: string; done: boolean; meta?: any }[]) {
+    try {
+      const raw = localStorage.getItem("sgt:interview_prep");
+      const map = raw ? (JSON.parse(raw) as Record<string, any>) : {};
+      // store object with items + meta for future compatibility
+      map[interviewId] = { items, meta: { savedAt: new Date().toISOString() } };
+      localStorage.setItem("sgt:interview_prep", JSON.stringify(map));
+      // notify other components
+      try { window.dispatchEvent(new CustomEvent("interviews-updated")); } catch {}
+    } catch (e) {
+      console.error("Failed to save checklist", e);
+    }
+  }
+
+  function loadChecklistForInterview(interviewId: string, iv?: Interview) {
+    try {
+      const raw = localStorage.getItem("sgt:interview_prep");
+      const map = raw ? (JSON.parse(raw) as Record<string, any>) : {};
+      const entry = map[interviewId];
+      if (!entry) return null;
+      // backward-compat: if entry is array, return it
+      if (Array.isArray(entry)) return entry;
+      // entry expected to be { items, meta }
+      if (entry.items && Array.isArray(entry.items)) {
+        // if iv provided, check meta in the generated __meta item to see if job/title changed; if changed, regenerate
+        if (iv) {
+          try {
+            const metaItem = entry.items.find((x: any) => String(x.id || "").endsWith("__meta"));
+            if (metaItem && metaItem.text) {
+              const data = JSON.parse(metaItem.text);
+              const currentTitle = iv.title || "";
+              const linkedJobName = (() => {
+                try {
+                  const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob));
+                  return match?.company_name ?? (iv.linkedJob ? String(iv.linkedJob) : "");
+                } catch { return iv.linkedJob ?? ""; }
+              })();
+              if (data.jobTitle !== currentTitle || (data.companyName || "") !== (linkedJobName || "")) {
+                // regenerate fresh checklist to reflect role/company change
+                const newChecklist = generatePrepChecklist(iv);
+                saveChecklistForInterview(interviewId, newChecklist);
+                return newChecklist;
+              }
+            }
+          } catch {}
+        }
+        return entry.items;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Asynchronously ask the AI to enrich a generated checklist (non-blocking)
+  async function enrichChecklistWithAI(iv: Interview, interviewId: string, currentItems: { id: string; text: string; done: boolean; meta?: any }[]) {
+    try {
+      // prepare a compact prompt payload
+      const jobTitle = iv.title || "";
+      const linkedJobName = (() => {
+        try {
+          const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob));
+          return match?.company_name ?? (iv.linkedJob ? String(iv.linkedJob) : "");
+        } catch {
+          return iv.linkedJob ?? "";
+        }
+      })();
+      const industry = (() => {
+        try {
+          const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob));
+          return match?.industry ?? "";
+        } catch { return ""; }
+      })();
+
+      const payload = {
+        jobTitle,
+        company: linkedJobName || undefined,
+        industry: industry || undefined,
+        interviewType: iv.type,
+        roleHints: jobTitle,
+        maxItems: 6,
+      } as any;
+
+      const res = await aiClient.postJson("/api/generate/checklist", payload);
+      // expect either { items: string[] } or { text: string }
+      let aiLines: string[] = [];
+      if (!res) return;
+      if (Array.isArray((res as any).items)) {
+        aiLines = (res as any).items.map((s: any) => String(s).trim()).filter(Boolean);
+      } else if ((res as any).text) {
+        aiLines = String((res as any).text).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      } else if ((res as any).content) {
+        aiLines = String((res as any).content).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      }
+
+      if (!aiLines.length) aiLines = [];
+
+      // prepare container to collect AI items
+      const aiItems: { id: string; text: string; done: boolean }[] = [];
+
+      // dedupe against existing visible items
+      const existingSet = new Set(currentItems.map((x) => String(x.text || "").toLowerCase().trim()));
+      for (let i = 0; i < aiLines.length; i++) {
+        const l = aiLines[i];
+        if (!existingSet.has(l.toLowerCase())) {
+          aiItems.push({ id: `${interviewId}-ai-${Date.now()}-${i}`, text: l, done: false });
+        }
+      }
+
+      // If we have a linked company, try to fetch a concise company research summary and add it as checklist items
+      const linked = linkedJobName;
+      if (linked) {
+        try {
+          const research = await aiClient.postJson("/api/generate/company-research", { companyName: linked } as any);
+          const content = (research as any)?.content;
+
+          // helper to safely extract text from various shapes
+          const extractText = (v: any): string => {
+            if (!v && v !== 0) return "";
+            if (typeof v === "string") return v;
+            if (Array.isArray(v)) return v.map(extractText).filter(Boolean).join(" ");
+            if (typeof v === "object") {
+              // prefer common text fields
+              if (typeof v.text === "string") return v.text;
+              if (typeof v.summary === "string") return v.summary;
+              if (typeof v.description === "string") return v.description;
+              // fall back to joining object values that are strings
+              const vals = Object.values(v).map(extractText).filter(Boolean);
+              return vals.join(" ");
+            }
+            return String(v);
+          };
+
+          let summaryText = "";
+          if (!content) {
+            summaryText = (research as any)?.preview ?? (research as any)?.text ?? "";
+          } else if (typeof content === "string") {
+            summaryText = content;
+          } else {
+            const parts: string[] = [];
+            const tryFields = ["mission", "insights", "culture", "news", "summary"];
+            for (const f of tryFields) {
+              if (content[f]) {
+                const t = extractText(content[f]);
+                if (t) parts.push(t);
+              }
+            }
+            // fallback to top-level string fields
+            if (!parts.length) {
+              if (content.company) parts.push(extractText(content.company));
+              if (content.overview) parts.push(extractText(content.overview));
+            }
+            summaryText = parts.join(" — ").trim();
+          }
+
+          if (summaryText) {
+            // compact to short snippet
+            const compact = summaryText.replace(/\s+/g, " ").split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0, 3).join(" ");
+            const companyItem = `Company summary for ${linked}: ${compact}`;
+            if (!existingSet.has(companyItem.toLowerCase())) {
+              // place company summary near the front but after the job-description item later
+              aiItems.unshift({ id: `${interviewId}-company-${Date.now()}`, text: companyItem, done: false });
+            }
+            // also add a suggested preparatory action referencing deeper research
+            const deepItem = `Read full company research (summary above) and note 3 questions or talking points`;
+            if (!existingSet.has(deepItem.toLowerCase())) {
+              aiItems.splice(Math.min(1, aiItems.length), 0, { id: `${interviewId}-company-ask-${Date.now()}`, text: deepItem, done: false });
+            }
+          }
+        } catch (e) {
+          // ignore research failures; AI enrichment still proceeds
+          console.debug("company research fetch failed", e);
+        }
+      }
+
+      if (!aiItems.length) return;
+
+      // insert AI items after the job-description item (second bullet) if present,
+      // otherwise before __meta, otherwise append
+      const copy = [...currentItems];
+      const jdIdx = copy.findIndex((x) => String(x.id || "") === `${interviewId}-jd`);
+      if (jdIdx >= 0) {
+        copy.splice(jdIdx + 1, 0, ...aiItems);
+      } else {
+        const metaIdx = copy.findIndex((x) => String(x.id || "").endsWith("__meta"));
+        if (metaIdx >= 0) {
+          copy.splice(metaIdx, 0, ...aiItems);
+        } else {
+          copy.push(...aiItems);
+        }
+      }
+
+      // persist and update dialog if still open for this interview
+      saveChecklistForInterview(interviewId, copy);
+      setChecklistDialog((s) => (s.interviewId === interviewId ? { ...s, items: copy } : s));
+      setSnack({ open: true, msg: "Checklist enhanced with role/company-specific suggestions", sev: "success" });
+    } catch (e) {
+      // ignore failures silently, keep base checklist
+      console.debug("AI checklist enrichment failed", e);
+    }
+  }
+
   return (
     <Card variant="outlined">
       <CardContent>
@@ -743,6 +1048,23 @@ export default function InterviewScheduling() {
                         </Button>
                         <Button
                           size="small"
+                          onClick={() => {
+                            // load or generate checklist (pass iv so loader can detect job/title changes)
+                            const existing = loadChecklistForInterview(iv.id, iv as Interview);
+                            const items = existing ?? generatePrepChecklist(iv);
+                            setChecklistDialog({ open: true, items, interviewId: iv.id, title: iv.title });
+                            // enrich checklist asynchronously with AI suggestions
+                            (async () => {
+                              try {
+                                await enrichChecklistWithAI(iv as Interview, iv.id, items);
+                              } catch {}
+                            })();
+                          }}
+                        >
+                          Prep Checklist
+                        </Button>
+                        <Button
+                          size="small"
                           onClick={() => window.open(outlookCalendarLink(iv), "_blank")}
                         >
                           Add to Outlook
@@ -887,6 +1209,57 @@ export default function InterviewScheduling() {
               Copy
             </Button>
             <Button onClick={() => setThankYouDialog({ open: false, text: "" })}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Prep Checklist dialog */}
+        <Dialog
+          open={checklistDialog.open}
+          onClose={() => setChecklistDialog({ open: false, items: [], interviewId: null })}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Preparation Checklist{checklistDialog.title ? ` — ${checklistDialog.title}` : ""}</DialogTitle>
+          <DialogContent>
+            <List>
+              {checklistDialog.items
+                .filter((it) => !(it.meta && it.meta.internal) && !String(it.id).endsWith("__meta"))
+                .map((it, idx) => (
+                <ListItem key={it.id} disableGutters>
+                  <FormControlLabel
+                    control={<Checkbox checked={!!it.done} onChange={(e) => {
+                      const copy = checklistDialog.items.map((x) => x.id === it.id ? { ...x, done: e.target.checked } : x);
+                      setChecklistDialog((s) => ({ ...s, items: copy }));
+                      // persist
+                      if (checklistDialog.interviewId) saveChecklistForInterview(checklistDialog.interviewId, copy);
+                      // handle post-followup creation when checked
+                      if (it.meta && it.meta.postFollowup && e.target.checked) {
+                        try {
+                          const followupsRaw = localStorage.getItem("sgt:interview_followups");
+                          const followups = followupsRaw ? (JSON.parse(followupsRaw) as any[]) : [];
+                          followups.push({
+                            id: `fu-${checklistDialog.interviewId}`,
+                            interviewId: checklistDialog.interviewId,
+                            title: `Send thank-you note: ${checklistDialog.title ?? "Interview"}`,
+                            due: new Date(new Date().getTime() + 24 * 3600 * 1000).toISOString(),
+                            done: false,
+                          });
+                          localStorage.setItem("sgt:interview_followups", JSON.stringify(followups));
+                        } catch {}
+                      }
+                    }} />} label={<ListItemText primary={it.text} />} />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+            <DialogActions>
+            <Button onClick={() => {
+              // mark all visible (non-internal) items as done, preserve internal meta items
+              const copy = checklistDialog.items.map((x) => (x.meta && x.meta.internal) || String(x.id).endsWith("__meta") ? x : { ...x, done: true });
+              if (checklistDialog.interviewId) saveChecklistForInterview(checklistDialog.interviewId, copy);
+              setChecklistDialog({ open: false, items: [], interviewId: null });
+            }}>Mark all done</Button>
+            <Button onClick={() => setChecklistDialog({ open: false, items: [], interviewId: null })}>Close</Button>
           </DialogActions>
         </Dialog>
 
