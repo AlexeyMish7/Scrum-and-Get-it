@@ -2099,6 +2099,58 @@ export async function getNetworkingAnalytics(
   }
 }
 
+/**
+ * GET SALARY ANALYTICS
+ * 
+ * Fetch comprehensive salary progression and negotiation analytics
+ * Calculates salary progression over time, negotiation success rates,
+ * compensation evolution, and career advancement impact on earnings
+ */
+export async function getSalaryAnalytics(
+  userId: string,
+  authToken: string,
+  timeRange: string = "all"
+): Promise<Result<unknown>> {
+  try {
+    const response = await fetch("http://localhost:8787/api/analytics/salary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ timeRange }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          message: errorData.error || "Failed to fetch salary analytics",
+          status: response.status,
+        },
+        status: response.status,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      data: result,
+      error: null,
+      status: response.status,
+    };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err.message || "Network error fetching salary analytics",
+        status: null,
+      },
+      status: null,
+    };
+  }
+}
+
 // =====================================================================
 // NETWORKING EVENTS (networking_events table)
 // =====================================================================

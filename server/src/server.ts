@@ -57,6 +57,7 @@ import {
   handleDeleteDraft,
 } from "./routes/index.js";
 import { post as handleNetworkingAnalytics } from "./routes/analytics/networking.js";
+import { post as handleSalaryAnalytics } from "./routes/analytics/salary.js";
 
 // ------------------------------------------------------------------
 // ENVIRONMENT LOADING
@@ -433,7 +434,15 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
-    // SALARY RESEARCH ENDPOINT (protected)
+    // SALARY ANALYTICS ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/salary") {
+      const userId = await requireAuth(req);
+      await handleSalaryAnalytics(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     // ------------------------------------------------------------------
     // SALARY RESEARCH ENDPOINT (protected)
     // ------------------------------------------------------------------

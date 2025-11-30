@@ -38,6 +38,7 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "@job_pipeline/pages/AnalyticsPage/BenchmarkCard";
+import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgressionCard/SalaryProgressionCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
 import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchCard/CompanyResearchCard";
 import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
@@ -765,6 +766,9 @@ export default function AnalyticsView() {
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12 }}>
+            <SalaryProgressionCard userId={user?.id || ""} timeRange="all" />
+          </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <SalaryResearchCard />
           </Grid>
