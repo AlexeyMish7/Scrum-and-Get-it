@@ -72,6 +72,9 @@ interface EncouragementPanelProps {
 // CONSTANTS
 // ============================================================================
 
+// Maximum quick messages to display
+const MAX_QUICK_MESSAGES = 3;
+
 const ENCOURAGEMENT_TYPES: {
   value: EncouragementType;
   label: string;
@@ -533,7 +536,7 @@ export function EncouragementPanel({
                 Quick messages:
               </Typography>
               <Stack direction="row" flexWrap="wrap" gap={1}>
-                {QUICK_MESSAGES[messageType]?.slice(0, 3).map((msg, idx) => (
+                {QUICK_MESSAGES[messageType]?.slice(0, MAX_QUICK_MESSAGES).map((msg, idx) => (
                   <Chip
                     key={idx}
                     label={msg.length > 30 ? msg.slice(0, 30) + "..." : msg}

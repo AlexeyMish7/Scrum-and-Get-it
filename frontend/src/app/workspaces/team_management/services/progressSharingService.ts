@@ -34,6 +34,14 @@ import type {
 } from "../types/progress.types";
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Activity level thresholds for progress reports
+const ACTIVITY_LEVEL_HIGH_THRESHOLD = 10;
+const ACTIVITY_LEVEL_MEDIUM_THRESHOLD = 5;
+
+// ============================================================================
 // SHARE SETTINGS OPERATIONS
 // ============================================================================
 
@@ -330,11 +338,12 @@ export async function checkAndCreateMilestones(
       (j) => j.job_status === "Offer" || j.job_status === "Accepted"
     ).length || 0;
 
-  // Get existing milestones
+  // Get existing milestones for this user and team
   const { data: existingMilestones } = await supabase
     .from("milestones")
     .select("milestone_type")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("team_id", teamId);
 
   const existingTypes = new Set(existingMilestones?.map((m) => m.milestone_type) || []);
   const newMilestones: MilestoneRow[] = [];
@@ -475,9 +484,9 @@ export async function generateProgressReport(
           (j) => j.job_status === "Offer" || j.job_status === "Accepted"
         ).length || 0,
       activity_level:
-        (jobs?.length || 0) > 10
+        (jobs?.length || 0) > ACTIVITY_LEVEL_HIGH_THRESHOLD
           ? "high"
-          : (jobs?.length || 0) > 5
+          : (jobs?.length || 0) > ACTIVITY_LEVEL_MEDIUM_THRESHOLD
           ? "medium"
           : (jobs?.length || 0) > 0
           ? "low"
@@ -546,9 +555,9 @@ function generateInsights(
 ): string[] {
   const insights: string[] = [];
 
-  if (applicationCount > 10) {
+  if (applicationCount > ACTIVITY_LEVEL_HIGH_THRESHOLD) {
     insights.push("Great job staying active with your applications this period!");
-  } else if (applicationCount > 5) {
+  } else if (applicationCount > ACTIVITY_LEVEL_MEDIUM_THRESHOLD) {
     insights.push("Steady progress on applications. Keep the momentum going!");
   } else if (applicationCount > 0) {
     insights.push(
