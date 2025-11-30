@@ -455,6 +455,44 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // COMPETITIVE BENCHMARKING ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/competitive/position") {
+      console.log("🎯 HIT COMPETITIVE ROUTE!");
+      try {
+        const { handleGetCompetitivePosition } = await import("./routes/analytics/competitive.js");
+        console.log("✅ Import successful, calling handler...");
+        await handleGetCompetitivePosition(req, res);
+        console.log("✅ Handler completed");
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in competitive route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // ADMIN BENCHMARK ENDPOINTS (protected, admin only in production)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/admin/compute-benchmarks") {
+      const userId = await requireAuth(req);
+      const { handleComputeBenchmarks } = await import("./routes/admin/benchmarks.js");
+      await handleComputeBenchmarks(req, res);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "GET" && pathname === "/api/admin/benchmark-status") {
+      const userId = await requireAuth(req);
+      const { handleBenchmarkStatus } = await import("./routes/admin/benchmarks.js");
+      await handleBenchmarkStatus(req, res);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
     // SALARY RESEARCH ENDPOINT (protected)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/salary-research") {
