@@ -15,6 +15,7 @@ import { Box, Container, Typography, Paper } from "@mui/material";
 import AppShell from "@shared/layouts/AppShell";
 import InterviewScheduling from "./components/InterviewScheduling";
 import InterviewQuestionBank from "./components/InterviewQuestionBank";
+import TechnicalPrep from "./components/TechnicalPrep";
 
 export default function InterviewHub() {
   return (
@@ -35,6 +36,10 @@ export default function InterviewHub() {
 
         <Paper elevation={0} sx={{ p: 3 }}>
           <InterviewQuestionBank />
+        </Paper>
+        
+        <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
+          <TechnicalPrep />
         </Paper>
       </Container>
     </AppShell>
