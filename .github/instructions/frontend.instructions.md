@@ -12,18 +12,24 @@ React 18 + TypeScript + Vite frontend with workspace-based architecture. Uses Ma
 frontend/src/
 ├── app/
 │   ├── shared/              # Shared utilities, components, services
+│   │   ├── assets/          # Static assets (images, icons)
 │   │   ├── components/      # Reusable UI components
+│   │   ├── constants/       # Application constants
 │   │   ├── context/         # React Context providers
 │   │   ├── hooks/           # Custom React hooks
 │   │   ├── layouts/         # Page layouts (AppShell, etc.)
 │   │   ├── services/        # API/database services
-│   │   ├── styles/          # Global styles, theme
-│   │   └── types/           # TypeScript type definitions
+│   │   ├── theme/           # MUI theme configuration
+│   │   ├── types/           # TypeScript type definitions
+│   │   └── utils/           # Utility functions
 │   └── workspaces/          # Feature-based modules
-│       ├── ai/              # AI generation features
-│       ├── job_pipeline/    # Job tracking (main feature)
+│       ├── ai_workspace/    # AI document generation & company research
+│       ├── interview_hub/   # Interview scheduling & preparation
+│       ├── job_pipeline/    # Job tracking Kanban board
+│       ├── network_hub/     # Contact & networking management
 │       ├── profile/         # User profile management
-│       └── interview_hub/   # Interview scheduling
+│       └── team_management/ # Team collaboration & mentoring
+├── pages/                   # Top-level pages (Analytics Dashboard)
 ├── main.tsx                 # App entry point
 ├── router.tsx               # Route definitions
 └── vite-env.d.ts           # Vite types
@@ -48,20 +54,130 @@ A **workspace** is a self-contained feature module with its own:
 ```
 workspaces/job_pipeline/
 ├── components/          # UI components specific to this workspace
-│   ├── analytics/      # Match analysis, job scoring
-│   ├── details/        # Job details drawer
-│   ├── dialogs/        # Job form dialog
-│   └── search/         # Search filters, archive toggle
-├── hooks/              # Custom hooks for job pipeline
-│   ├── useJobMatch.ts      # AI job matching hook
-│   └── useJobsPipeline.ts  # Main jobs state management
-├── pages/              # Full page components
-├── services/           # API calls specific to jobs
-│   ├── index.ts            # Main service exports
-│   ├── jobsService.ts      # CRUD operations for jobs
-│   └── analyticsCache.ts   # Analytics caching layer
-├── views/              # Composite views (not full pages)
-└── widgets/            # Sidebar widgets (calendar, stats)
+│   ├── analytics/       # Match analysis, job scoring
+│   ├── calendar/        # Calendar widget components
+│   ├── cards/           # Job card components
+│   ├── details/         # Job details drawer
+│   ├── dialogs/         # Job form dialog, confirmation dialogs
+│   ├── documents/       # Document-related job components
+│   ├── import/          # Job import components
+│   ├── search/          # Search filters, archive toggle
+│   └── timeline/        # Application timeline components
+├── hooks/               # Custom hooks for job pipeline
+│   ├── useJobsPipeline.ts  # Main jobs state management
+│   └── ...
+├── layouts/             # Layout components
+│   ├── JobPipelineLayout.tsx
+│   └── UnifiedJobsLayout.tsx
+├── pages/               # Full page components
+│   ├── ArchivedJobsPage.tsx
+│   ├── JobDetailsPage.tsx
+│   ├── NewJobPage.tsx
+│   └── ...
+├── services/            # API calls specific to jobs
+│   ├── index.ts         # Main service exports
+│   ├── jobsService.ts   # CRUD operations for jobs
+│   ├── pipelineService.ts # Pipeline stage operations
+│   └── analyticsCache.ts # Analytics caching layer
+├── types/               # TypeScript types
+├── views/               # Composite views
+│   ├── AnalyticsView/   # Analytics dashboard view
+│   └── PipelineView/    # Kanban pipeline view
+└── widgets/             # Sidebar widgets (calendar, stats)
+```
+
+### Example: ai_workspace (Document Generation)
+
+```
+workspaces/ai_workspace/
+├── components/
+│   ├── common/          # Shared AI workspace components
+│   ├── editor/          # Document editor components
+│   ├── hub/             # Hub/dashboard components
+│   ├── reviews/         # Document review components (UC-110)
+│   ├── templates/       # Template management components
+│   ├── themes/          # Theme management components
+│   ├── version/         # Version management components
+│   ├── versions/        # Version history components
+│   └── wizard/          # Generation wizard components
+├── context/             # AI workspace context providers
+├── hooks/               # AI-specific hooks
+├── layouts/             # AI workspace layouts
+│   └── AIWorkspaceLayout.tsx
+├── navigation/          # Navigation components
+├── pages/               # Full pages
+│   ├── AIWorkspaceHub/  # Main hub page
+│   ├── CompanyResearch/ # Company research page
+│   ├── DocumentEditorPage.tsx
+│   ├── DocumentLibrary/ # Document library page
+│   ├── GenerateCoverLetter/ # Cover letter generator
+│   ├── GenerateResume/  # Resume generator
+│   ├── Reviews/         # Document reviews page (UC-110)
+│   └── TemplateManager/ # Template management page
+├── services/            # AI services
+│   ├── aiGenerationService.ts
+│   ├── companyResearchService.ts
+│   ├── exportService.ts
+│   ├── reviewService.ts
+│   ├── templateService.ts
+│   ├── themeService.ts
+│   └── versionService.ts
+└── types/               # Type definitions
+    ├── document.types.ts
+    ├── generation.types.ts
+    ├── template.types.ts
+    └── version.types.ts
+```
+
+### Example: team_management workspace
+
+```
+workspaces/team_management/
+├── components/
+│   ├── AccountabilityTracker.tsx
+│   ├── CoachingInsights.tsx
+│   ├── CreateTeamDialog.tsx
+│   ├── EngagementMonitor.tsx
+│   ├── FeedbackPanel.tsx
+│   ├── InviteMemberDialog.tsx
+│   ├── MenteeDocumentsViewer.tsx
+│   ├── MenteeGoalsTracker.tsx
+│   └── MenteeProgressCard.tsx
+├── hooks/               # Team-specific hooks
+├── layouts/
+│   └── TeamLayout.tsx
+├── pages/
+│   ├── Invitations.tsx
+│   ├── MentorDashboard.tsx  # UC-109
+│   ├── TeamDashboard.tsx    # UC-108
+│   ├── TeamReports.tsx
+│   └── TeamSettings.tsx
+├── services/
+│   ├── mentorService.ts
+│   └── teamService.ts
+├── types/               # Team type definitions
+└── utils/               # Team utilities
+```
+
+### Example: network_hub workspace
+
+```
+workspaces/network_hub/
+├── components/
+│   ├── AddContact/
+│   ├── ContactDetails/
+│   ├── ContactFilters.tsx
+│   ├── ContactsList/
+│   ├── InformationInterview/
+│   ├── NetworkHubNavbar/
+│   ├── NetworkingEvents/
+│   ├── References/
+│   └── RelationshipMaintenance/
+└── pages/
+    ├── ContactsDashboard/
+    ├── Events/
+    ├── InformationalInterview/
+    └── TemplatesPage/
 ```
 
 ### Key Principle
@@ -83,7 +199,7 @@ Configured in `tsconfig.json` and `vite.config.ts`:
 @workspaces/*       → src/app/workspaces/*
 @job_pipeline/*     → src/app/workspaces/job_pipeline/*
 @profile/*          → src/app/workspaces/profile/*
-@ai/*               → src/app/workspaces/ai/*
+@ai_workspace/*     → src/app/workspaces/ai_workspace/*
 ```
 
 **Usage Example:**
@@ -94,6 +210,9 @@ import { useAuth } from "@shared/context/AuthContext";
 
 // Instead of: ../../services/jobsService
 import { jobsService } from "@job_pipeline/services";
+
+// AI workspace imports
+import { AIWorkspaceLayout } from "@ai_workspace/layouts/AIWorkspaceLayout";
 ```
 
 ---
@@ -187,7 +306,25 @@ export const jobsService = {
 };
 ```
 
-### 4. Data Mappers (Validation Layer)
+### 4. Shared Services Overview
+
+**Location:** `frontend/src/app/shared/services/`
+
+| Service               | Purpose                             |
+| --------------------- | ----------------------------------- |
+| `supabaseClient.ts`   | Supabase client initialization      |
+| `crud.ts`             | User-scoped CRUD operations         |
+| `dbMappers.ts`        | Form data validation/transformation |
+| `aiArtifacts.ts`      | AI artifact management              |
+| `documents.ts`        | Document CRUD operations            |
+| `cache.ts`            | Local caching utilities             |
+| `errorNotifier.ts`    | Error notification service          |
+| `fetchCompanyNews.ts` | Company news fetching               |
+| `jobMaterials.ts`     | Job materials service               |
+| `mockDataNotifier.ts` | Mock data notifications             |
+| `ai/`                 | AI-related services                 |
+
+### 5. Data Mappers (Validation Layer)
 
 **Location:** `frontend/src/app/shared/services/dbMappers.ts`
 
@@ -313,6 +450,43 @@ if (hasProfileChanged) {
 
 **Storage Key:** `profile_last_changed` in localStorage (ISO timestamp)
 
+### TeamContext
+
+**Location:** `frontend/src/app/shared/context/TeamContext.tsx`
+
+**Purpose:** Manage team state for multi-user collaboration features (UC-108, UC-109)
+
+```typescript
+import { useTeam } from "@shared/context/useTeam";
+
+const {
+  teams, // User's teams
+  currentTeam, // Currently selected team
+  role, // User's role in current team (admin/mentor/candidate)
+  assignedCandidates, // For mentors: their assigned candidates
+  loading,
+  selectTeam, // Switch between teams
+  refreshTeams, // Reload team data
+} = useTeam();
+
+// Check permissions
+if (role === "admin") {
+  // Show admin-only features
+}
+```
+
+### SidebarContext
+
+**Location:** `frontend/src/app/shared/context/SidebarContext.tsx`
+
+**Purpose:** Control sidebar collapse/expand state across the app
+
+```typescript
+import { useSidebar } from "@shared/context/useSidebar";
+
+const { isCollapsed, toggle, expand, collapse } = useSidebar();
+```
+
 ---
 
 ## Custom Hooks Pattern
@@ -377,13 +551,37 @@ const {
 } = useJobsPipeline();
 ```
 
+**useUserJobs** - Simple jobs fetching hook
+
+```typescript
+import { useUserJobs } from "@shared/hooks/useUserJobs";
+
+const { jobs, loading, error, refetch } = useUserJobs(userId);
+```
+
+**useDebounce** - Debounce values for search
+
+```typescript
+import { useDebounce } from "@shared/hooks/useDebounce";
+
+const debouncedSearch = useDebounce(searchTerm, 300);
+```
+
+**useAvatar** - User avatar management
+
+```typescript
+import { useAvatar } from "@shared/hooks/useAvatar";
+
+const { avatarUrl, loading, uploadAvatar, deleteAvatar } = useAvatar(userId);
+```
+
 ---
 
 ## Theme System
 
 ### Theme Structure
 
-**Location:** `frontend/src/app/shared/styles/theme.ts`
+**Location:** `frontend/src/app/shared/theme/`
 
 ```typescript
 const theme = createTheme({
@@ -680,33 +878,76 @@ import type { JobRow } from "@job_pipeline/types";
 
 **Location:** `frontend/src/router.tsx`
 
-```typescript
-import { createBrowserRouter } from "react-router-dom";
+The app uses React Router v6 with nested routes and lazy loading for performance.
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <AppShell />,
-    children: [
-      {
-        path: "/jobs",
-        element: (
-          <ProtectedRoute>
-            <PipelinePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/profile",
-        element: (
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        ),
-      },
-    ],
-  },
-]);
+**Main Route Structure:**
+
+```typescript
+// Public routes
+/                     → HomePage
+/login                → Login
+/register             → Register
+/forgot-password      → ForgotPassword
+/reset-password       → ResetPassword
+/auth/callback        → AuthCallback (OAuth)
+
+// Profile workspace (protected)
+/profile              → Dashboard (index)
+/profile/analytics    → ProfileAnalytics
+/profile/education    → EducationOverview
+/profile/skills       → SkillsOverview
+/profile/employment   → EmploymentHistoryList
+/profile/projects     → ProjectPortfolio
+/profile/projects/:id → ProjectDetails
+/profile/certifications → Certifications
+/profile/details      → ProfileDetails
+/profile/settings     → Settings
+
+// AI workspace (protected, lazy loaded)
+/ai                   → AIWorkspaceHub (index)
+/ai/library           → DocumentLibrary
+/ai/templates         → TemplateManager
+/ai/generate/resume   → GenerateResumePage
+/ai/generate/cover-letter → GenerateCoverLetterPage
+/ai/document/:documentId → DocumentEditorPage
+/ai/research          → CompanyResearchNew
+/ai/reviews           → MyReviewsPage (UC-110)
+/ai/reviews/:reviewId → DocumentReviewPage (UC-110)
+
+// Jobs workspace (protected, lazy loaded)
+/jobs                 → PipelineView (Kanban board, index)
+/jobs/analytics       → AnalyticsView
+
+// Interview Hub (protected, lazy loaded)
+/interviews           → InterviewHub
+
+// Network Hub (protected, lazy loaded)
+/network              → NetworkContacts
+/network/templates    → NetworkTemplatesPage
+/network/interviews   → NetworkInterviewsPage
+
+// Team Management (protected, lazy loaded)
+/team                 → TeamDashboard (index)
+/team/settings        → TeamSettings
+/team/invitations     → Invitations
+/team/reports         → TeamReports
+/team/mentor          → MentorDashboard (UC-109)
+```
+
+**Lazy Loading Pattern:**
+
+```typescript
+const AIWorkspaceHub = lazy(() => import("@ai_workspace/pages/AIWorkspaceHub"));
+
+// In routes:
+{
+  path: "hub",
+  element: (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <AIWorkspaceHub />
+    </Suspense>
+  ),
+}
 ```
 
 ### Navigation
@@ -740,6 +981,14 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 ```
+
+### Layout Components
+
+**AppShell** - Main application shell with sidebar navigation
+**ProfileLayout** - Layout for profile workspace pages
+**AIWorkspaceLayout** - Layout for AI workspace with specialized navigation
+**JobsLayout / UnifiedJobsLayout** - Layout for job pipeline views
+**TeamLayout** - Layout for team management pages
 
 ---
 

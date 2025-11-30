@@ -72,17 +72,24 @@ import {
   Description as DescriptionIcon,
   Refresh as RefreshIcon,
   ArrowBack as ArrowBackIcon,
+  ShowChart as ShowChartIcon,
+  Celebration as CelebrationIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
 import { useAuth } from "@shared/context/AuthContext";
 import * as mentorService from "../services/mentorService";
+import * as progressSharingService from "../services/progressSharingService";
 import type {
   MenteeWithProgress,
   MentorFeedback,
   CreateFeedbackData,
   CreateGoalData,
 } from "../services/mentorService";
+import type {
+  ProgressSnapshot,
+  AchievementCelebration,
+} from "../services/progressSharingService";
 
 // ============================================================================
 // COMPONENT TYPES
@@ -190,6 +197,15 @@ export function MentorDashboard() {
     description: "",
   });
 
+  // Progress sharing state - tracks mentee progress snapshots and achievements
+  const [menteeProgress, setMenteeProgress] = useState<
+    Map<string, ProgressSnapshot[]>
+  >(new Map());
+  const [menteeAchievements, setMenteeAchievements] = useState<
+    Map<string, AchievementCelebration[]>
+  >(new Map());
+  const [progressLoading, setProgressLoading] = useState(false);
+
   // Dashboard summary stats
   const [summary, setSummary] = useState<{
     totalMentees: number;
@@ -275,6 +291,64 @@ export function MentorDashboard() {
     }
     setLoading(false);
   };
+
+  /**
+   * Load progress data for all mentees
+   * Fetches progress snapshots and achievements to display in the Progress tab
+   */
+  const loadMenteeProgress = async () => {
+    if (!currentTeam || mentees.length === 0) return;
+
+    setProgressLoading(true);
+
+    try {
+      const progressMap = new Map<string, ProgressSnapshot[]>();
+      const achievementsMap = new Map<string, AchievementCelebration[]>();
+
+      // Load progress for each mentee in parallel
+      await Promise.all(
+        mentees.map(async (mentee) => {
+          // Get progress snapshots - last 4 weeks
+          const snapshotsResult =
+            await progressSharingService.getProgressSnapshots(
+              mentee.candidate_id,
+              currentTeam.id,
+              { limit: 4 }
+            );
+
+          if (snapshotsResult.data) {
+            progressMap.set(mentee.candidate_id, snapshotsResult.data);
+          }
+
+          // Get recent achievements
+          const achievementsResult =
+            await progressSharingService.getAchievements(
+              mentee.candidate_id,
+              currentTeam.id,
+              { limit: 5 }
+            );
+
+          if (achievementsResult.data) {
+            achievementsMap.set(mentee.candidate_id, achievementsResult.data);
+          }
+        })
+      );
+
+      setMenteeProgress(progressMap);
+      setMenteeAchievements(achievementsMap);
+    } catch (err) {
+      console.error("Failed to load mentee progress:", err);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  // Load mentee progress when tab changes to Progress tab
+  useEffect(() => {
+    if (tabValue === 3 && mentees.length > 0) {
+      loadMenteeProgress();
+    }
+  }, [tabValue, mentees.length]);
 
   // ============================================================================
   // FEEDBACK HANDLERS
@@ -541,6 +615,11 @@ export function MentorDashboard() {
             <Tab label="My Mentees" />
             <Tab label="Recent Feedback" />
             <Tab label="Coaching Insights" />
+            <Tab
+              label="Mentee Progress"
+              icon={<ShowChartIcon />}
+              iconPosition="start"
+            />
           </Tabs>
 
           {/* Mentees Tab */}
@@ -795,6 +874,190 @@ export function MentorDashboard() {
                 recommendations.
               </Typography>
             </Box>
+          </TabPanel>
+
+          {/* Mentee Progress Tab - Shows progress snapshots and achievements (UC-111) */}
+          <TabPanel value={tabValue} index={3}>
+            {progressLoading ? (
+              <Box display="flex" justifyContent="center" py={4}>
+                <CircularProgress />
+              </Box>
+            ) : mentees.length === 0 ? (
+              <Box textAlign="center" py={4}>
+                <ShowChartIcon
+                  sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
+                />
+                <Typography variant="h6" color="text.secondary">
+                  No Mentees Assigned
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Assign mentees to view their progress.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                {/* Link to full progress view */}
+                <Alert severity="info">
+                  <Typography variant="body2">
+                    Mentees can share detailed progress and achievements with
+                    you.{" "}
+                    <Button
+                      size="small"
+                      onClick={() => navigate("/team/progress")}
+                      sx={{ ml: 1 }}
+                    >
+                      View Full Progress Dashboard
+                    </Button>
+                  </Typography>
+                </Alert>
+
+                {/* Progress cards for each mentee */}
+                {mentees.map((mentee) => {
+                  const snapshots =
+                    menteeProgress.get(mentee.candidate_id) || [];
+                  const achievements =
+                    menteeAchievements.get(mentee.candidate_id) || [];
+                  const latestSnapshot = snapshots[0];
+
+                  return (
+                    <Card key={mentee.candidate_id} variant="outlined">
+                      <CardContent>
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={2}
+                          mb={2}
+                        >
+                          <Avatar sx={{ bgcolor: "primary.main" }}>
+                            {mentee.candidate_name?.[0]?.toUpperCase() || "?"}
+                          </Avatar>
+                          <Box flex={1}>
+                            <Typography variant="subtitle1">
+                              {mentee.candidate_name}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {latestSnapshot
+                                ? `Last snapshot: ${new Date(
+                                    latestSnapshot.createdAt
+                                  ).toLocaleDateString()}`
+                                : "No progress data yet"}
+                            </Typography>
+                          </Box>
+                          <EngagementBadge level={mentee.engagementLevel} />
+                        </Stack>
+
+                        {/* Latest snapshot metrics */}
+                        {latestSnapshot ? (
+                          <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid size={{ xs: 6, sm: 3 }}>
+                              <Box textAlign="center">
+                                <Typography variant="h5" color="primary">
+                                  {latestSnapshot.applicationsTotal}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Total Apps
+                                </Typography>
+                              </Box>
+                            </Grid>
+                            <Grid size={{ xs: 6, sm: 3 }}>
+                              <Box textAlign="center">
+                                <Typography variant="h5" color="info.main">
+                                  {latestSnapshot.applicationsByStatus
+                                    ?.interviewing || 0}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Interviewing
+                                </Typography>
+                              </Box>
+                            </Grid>
+                            <Grid size={{ xs: 6, sm: 3 }}>
+                              <Box textAlign="center">
+                                <Typography variant="h5" color="success.main">
+                                  {latestSnapshot.applicationsByStatus?.offer ||
+                                    0}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Offers
+                                </Typography>
+                              </Box>
+                            </Grid>
+                            <Grid size={{ xs: 6, sm: 3 }}>
+                              <Box textAlign="center">
+                                <Typography variant="h5" color="secondary">
+                                  {latestSnapshot.goalsCompleted}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Goals Done
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        ) : (
+                          <Alert severity="info" sx={{ mb: 2 }}>
+                            <Typography variant="body2">
+                              No progress snapshots available for this mentee
+                              yet.
+                            </Typography>
+                          </Alert>
+                        )}
+
+                        {/* Recent achievements */}
+                        {achievements.length > 0 && (
+                          <Box>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{ mb: 1 }}
+                            >
+                              Recent Achievements
+                            </Typography>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              flexWrap="wrap"
+                              useFlexGap
+                            >
+                              {achievements.slice(0, 3).map((achievement) => (
+                                <Chip
+                                  key={achievement.id}
+                                  icon={<CelebrationIcon />}
+                                  label={achievement.description}
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                />
+                              ))}
+                              {achievements.length > 3 && (
+                                <Chip
+                                  label={`+${achievements.length - 3} more`}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Stack>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            )}
           </TabPanel>
         </Paper>
       </Stack>
