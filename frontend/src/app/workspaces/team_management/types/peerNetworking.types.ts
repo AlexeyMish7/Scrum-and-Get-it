@@ -68,13 +68,20 @@ export interface PeerGroupRow {
 
 /**
  * Member privacy settings stored as JSONB
+ * Controls what information is shared with the peer group
  */
 export interface MemberPrivacySettings {
+  /** Whether to share job application statistics (count, status breakdown) with the group */
   share_job_stats: boolean;
+  /** Whether to allow sharing success stories with the group */
   share_success_stories: boolean;
+  /** Whether to share company names from job applications in stats/stories */
   share_company_names: boolean;
+  /** Whether to share salary information from offers in stats/stories */
   share_salary_info: boolean;
+  /** Whether to receive notifications when new referrals are shared in the group */
   receive_referral_alerts: boolean;
+  /** Whether to receive notifications for challenge updates and reminders */
   receive_challenge_notifications: boolean;
 }
 

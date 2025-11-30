@@ -40,6 +40,9 @@ import type {
   MemberProfileInfo,
 } from "../types";
 
+// PostgreSQL error codes
+const PG_UNIQUE_VIOLATION = "23505";
+
 // ============================================================================
 // PEER GROUP OPERATIONS
 // ============================================================================
@@ -464,7 +467,8 @@ export async function getGroupDiscussions(
   }
 
   if (options?.offset) {
-    query = query.range(options.offset, options.offset + (options.limit || 20));
+    // range() is inclusive, so end should be offset + limit - 1
+    query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
   }
 
   const { data, error } = await query;
@@ -584,7 +588,7 @@ export async function likeDiscussion(
 
   if (error) {
     // Unique constraint violation means already liked
-    if (error.code === "23505") {
+    if (error.code === PG_UNIQUE_VIOLATION) {
       return { data: true, error: null, status: 200 };
     }
     return {

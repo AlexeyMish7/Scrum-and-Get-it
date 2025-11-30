@@ -751,7 +751,7 @@ BEGIN
         updated_at = now()
     WHERE id = NEW.group_id;
     RETURN NEW;
-  ELSIF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND NEW.is_active = false AND OLD.is_active = true) THEN
+  ELSIF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND NEW.is_active = false AND OLD.is_active IS NOT DISTINCT FROM true) THEN
     UPDATE public.peer_groups
     SET member_count = GREATEST(0, member_count - 1),
         updated_at = now()
@@ -937,6 +937,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION get_user_peer_groups IS 'Get all peer groups a user is a member of';
 COMMENT ON FUNCTION search_peer_groups IS 'Search for public peer groups with optional filters';
+
+-- Increment member posts count when a discussion is created
+CREATE OR REPLACE FUNCTION increment_member_posts(p_group_id uuid, p_user_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.peer_group_members
+  SET posts_count = posts_count + 1,
+      last_active_at = now()
+  WHERE group_id = p_group_id
+    AND user_id = p_user_id
+    AND is_active = true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION increment_member_posts IS 'Increment member posts count and update last active timestamp';
 
 -- ============================================================================
 -- End of Migration
