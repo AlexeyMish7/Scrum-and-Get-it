@@ -8,5 +8,6 @@ export { TeamSettings } from "./TeamSettings";
 export { Invitations } from "./Invitations";
 export { TeamReports } from "./TeamReports";
 export { MentorDashboard } from "./MentorDashboard";
+export { PeerGroupsPage } from "./PeerGroupsPage";
 // export { TeamMessages } from "./TeamMessages";
 // export { SubscriptionPage } from "./SubscriptionPage";

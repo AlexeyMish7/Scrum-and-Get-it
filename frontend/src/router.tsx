@@ -147,6 +147,13 @@ const MentorDashboard = lazy(() =>
     })
   )
 );
+const PeerGroupsPage = lazy(() =>
+  import("@workspaces/team_management/pages/PeerGroupsPage").then(
+    (module) => ({
+      default: module.PeerGroupsPage,
+    })
+  )
+);
 
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
@@ -343,6 +350,22 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <MentorDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "groups",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PeerGroupsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "groups/:groupId",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PeerGroupsPage />
           </Suspense>
         ),
       },
