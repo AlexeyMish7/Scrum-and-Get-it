@@ -58,6 +58,7 @@ import {
 } from "./routes/index.js";
 import { post as handleNetworkingAnalytics } from "./routes/analytics/networking.js";
 import { post as handleSalaryAnalytics } from "./routes/analytics/salary.js";
+import { post as handleGoalsAnalytics } from "./routes/analytics/goals.js";
 
 // ------------------------------------------------------------------
 // ENVIRONMENT LOADING
@@ -439,6 +440,16 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/analytics/salary") {
       const userId = await requireAuth(req);
       await handleSalaryAnalytics(req, res, url, ctx.reqId, userId);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    // ------------------------------------------------------------------
+    // GOALS ANALYTICS ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/goals") {
+      const userId = await requireAuth(req);
+      await handleGoalsAnalytics(req, res, userId);
       ctx.logComplete(method, pathname, 200);
       return;
     }
