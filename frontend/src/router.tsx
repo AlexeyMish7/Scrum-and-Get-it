@@ -147,6 +147,13 @@ const MentorDashboard = lazy(() =>
     })
   )
 );
+const ProgressSharingPage = lazy(() =>
+  import("@workspaces/team_management/pages/ProgressSharingPage").then(
+    (module) => ({
+      default: module.ProgressSharingPage,
+    })
+  )
+);
 
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
@@ -343,6 +350,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <MentorDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "progress",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProgressSharingPage />
           </Suspense>
         ),
       },

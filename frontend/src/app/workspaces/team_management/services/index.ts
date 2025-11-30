@@ -7,3 +7,4 @@
 
 export * from "./teamService";
 export * from "./mentorService";
+export * from "./progressSharingService";

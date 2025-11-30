@@ -6,3 +6,4 @@
  */
 
 export * from "./team.types";
+export * from "./progress.types";

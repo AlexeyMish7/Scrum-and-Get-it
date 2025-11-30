@@ -58,6 +58,7 @@ import {
   Assignment as AssignmentIcon,
   EmojiEvents as EmojiEventsIcon,
   School as SchoolIcon,
+  Share as ShareIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
@@ -365,6 +366,14 @@ export function TeamDashboard() {
               Mentor Dashboard
             </Button>
           )}
+          <Button
+            variant="contained"
+            color="info"
+            startIcon={<ShareIcon />}
+            onClick={() => navigate("/team/progress")}
+          >
+            Progress Sharing
+          </Button>
           <Button
             variant="outlined"
             startIcon={<PeopleIcon />}
