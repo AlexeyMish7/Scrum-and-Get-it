@@ -15,6 +15,7 @@ import {
   Search as SearchIcon,
   Description as ResumeIcon,
   Email as CoverLetterIcon,
+  RateReview as ReviewsIcon,
 } from "@mui/icons-material";
 import type { NavigationTab, AIWorkspaceTab } from "../types";
 import ConfirmNavigationDialog from "../components/common/ConfirmNavigationDialog";
@@ -60,6 +61,12 @@ const NAVIGATION_TABS: NavigationTab[] = [
     icon: "search",
     path: "/ai/research",
   },
+  {
+    id: "reviews",
+    label: "Reviews",
+    icon: "reviews",
+    path: "/ai/reviews",
+  },
 ];
 
 /**
@@ -72,6 +79,7 @@ const ICON_MAP: Record<string, React.ComponentType> = {
   search: SearchIcon,
   resume: ResumeIcon,
   "cover-letter": CoverLetterIcon,
+  reviews: ReviewsIcon,
 };
 
 interface AINavBarProps {

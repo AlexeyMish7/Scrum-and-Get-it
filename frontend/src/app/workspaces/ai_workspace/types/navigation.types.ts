@@ -13,7 +13,8 @@ export type AIWorkspaceTab =
   | "templates"
   | "research"
   | "resume"
-  | "cover-letter";
+  | "cover-letter"
+  | "reviews";
 
 /**
  * AI workspace route paths
@@ -51,6 +52,12 @@ export const AI_ROUTES = {
 
   /** Export document */
   EXPORT: (id: string) => `/ai/document/${id}/export`,
+
+  /** Reviews dashboard */
+  REVIEWS: "/ai/reviews",
+
+  /** Single review */
+  REVIEW: (id: string) => `/ai/reviews/${id}`,
 } as const;
 
 /**

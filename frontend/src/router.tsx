@@ -59,6 +59,18 @@ const DocumentEditorPage = lazy(() =>
   }))
 );
 
+// Reviews (UC-110: Collaborative Document Review)
+const MyReviewsPage = lazy(() =>
+  import("@ai_workspace/pages/Reviews").then((module) => ({
+    default: module.MyReviewsPage,
+  }))
+);
+const DocumentReviewPage = lazy(() =>
+  import("@ai_workspace/pages/Reviews").then((module) => ({
+    default: module.DocumentReviewPage,
+  }))
+);
+
 // Jobs workspace pages (lazy loaded - legacy routes only)
 const NewJobPage = lazy(
   () => import("./app/workspaces/job_pipeline/pages/NewJobPage")
@@ -215,6 +227,23 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <CompanyResearchNew />
+          </Suspense>
+        ),
+      },
+      // Reviews (UC-110: Collaborative Document Review)
+      {
+        path: "reviews",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <MyReviewsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "reviews/:reviewId",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <DocumentReviewPage />
           </Suspense>
         ),
       },
