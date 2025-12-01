@@ -19,6 +19,8 @@ export { post as postCompanyResearch } from "./company-research.js";
 export { post as postRelationship } from "./relationship.js";
 export { post as postReferencePoints } from "./reference-points.js";
 export { post as postInterviewRequest } from "./interview-request.js";
+export { post as postInterviewQuestions } from "./interview-questions.js";
+export { post as postInterviewFeedback } from "./interview-feedback.js";
 export { post as postChecklist } from "./checklist.js";
 export type { GenerationCounters } from "./types.js";
 export { makePreview } from "./utils.js";

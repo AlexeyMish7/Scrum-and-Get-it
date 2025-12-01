@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -48,6 +49,7 @@ import {
   Language as WebsiteIcon,
   LocationOn as LocationIcon,
   CalendarToday as CalendarIcon,
+  Print as PrintIcon,
 } from "@mui/icons-material";
 import { companyResearch } from "@ai_workspace/services";
 
@@ -87,6 +89,11 @@ interface CompanyResearchData {
   products: string[];
   lastUpdated: string;
   source: string;
+  potentialInterviewers?: Array<{ role: string; name?: string | null }>;
+  competitors?: Array<{ name: string; note?: string }>;
+  marketPositioning?: string | null;
+  talkingPoints?: string[];
+  interviewQuestions?: string[];
 }
 
 export default function CompanyResearch() {
@@ -115,8 +122,9 @@ export default function CompanyResearch() {
     loadUserCompanies();
   }, []);
 
-  const handleSearch = async () => {
-    if (!companyName.trim()) {
+  const handleSearch = async (overrideName?: string) => {
+    const nameToUse = (overrideName !== undefined ? overrideName : companyName) ?? "";
+    if (!nameToUse.trim()) {
       setError("Please enter a company name");
       return;
     }
@@ -125,7 +133,7 @@ export default function CompanyResearch() {
     setError(null);
 
     try {
-      const data = await companyResearch.fetchCompanyResearch(companyName);
+  const data = await companyResearch.fetchCompanyResearch(nameToUse);
 
       if (!data) {
         setError("No research data available for this company");
@@ -141,6 +149,29 @@ export default function CompanyResearch() {
       setLoading(false);
     }
   };
+
+  // Auto-start search if we have a `name` query param (e.g., navigated from InterviewScheduling)
+  const location = useLocation();
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const q = params.get("name") || params.get("company") || "";
+      if (q && q.trim()) {
+        setCompanyName(q);
+        // start search immediately
+        (async () => {
+          try {
+            await handleSearch(q);
+          } catch (e) {
+            console.error("Auto search failed", e);
+          }
+        })();
+      }
+    } catch (e) {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const handleCopyToClipboard = () => {
     if (!research) return;
@@ -179,6 +210,114 @@ Source: ${research.source}
     `.trim();
 
     navigator.clipboard.writeText(text);
+  };
+
+  const handleExportMarkdown = () => {
+    if (!research) return;
+    const mdLines: string[] = [];
+    mdLines.push(`# ${research.companyName}\n`);
+    mdLines.push(`**Industry:** ${research.industry || "Unknown"}`);
+    mdLines.push(`**Size:** ${research.size || "Unknown"}`);
+    mdLines.push(`**Location:** ${research.location || "Unknown"}`);
+    mdLines.push(`**Founded:** ${research.founded || "Unknown"}`);
+    if (research.website) mdLines.push(`**Website:** ${research.website}`);
+    mdLines.push("\n## Mission\n");
+    mdLines.push(research.mission || "N/A");
+    mdLines.push("\n## Description\n");
+    mdLines.push(research.description || "N/A");
+    mdLines.push("\n## Recent News\n");
+    research.news.forEach((n) => mdLines.push(`- **${n.title}** (${new Date(n.date).toLocaleDateString()}): ${n.summary}`));
+    mdLines.push("\n## Culture\n");
+    mdLines.push(`- Type: ${research.culture.type}`);
+    mdLines.push(`- Remote: ${research.culture.remotePolicy || "Unknown"}`);
+    if (research.culture.values.length) mdLines.push(`- Values: ${research.culture.values.join(", ")}`);
+    if (research.culture.perks.length) mdLines.push(`- Perks: ${research.culture.perks.join(", ")}`);
+    mdLines.push("\n## Leadership\n");
+    research.leadership.forEach((l) => mdLines.push(`- ${l.name} — ${l.title}${l.bio ? ` — ${l.bio}` : ""}`));
+    if (research.potentialInterviewers && research.potentialInterviewers.length) {
+      mdLines.push("\n## Potential Interviewers\n");
+      research.potentialInterviewers.forEach((p) => mdLines.push(`- ${p.role}${p.name ? ` — ${p.name}` : ""}`));
+    }
+    if (research.competitors && research.competitors.length) {
+      mdLines.push("\n## Competitors & Market Positioning\n");
+      research.competitors.forEach((c) => mdLines.push(`- ${c.name}${c.note ? ` — ${c.note}` : ""}`));
+      if (research.marketPositioning) mdLines.push(`\n**Market positioning:** ${research.marketPositioning}`);
+    }
+    if (research.talkingPoints && research.talkingPoints.length) {
+      mdLines.push("\n## Talking Points\n");
+      research.talkingPoints.forEach((t) => mdLines.push(`- ${t}`));
+    }
+    if (research.interviewQuestions && research.interviewQuestions.length) {
+      mdLines.push("\n## Interview Questions\n");
+      research.interviewQuestions.forEach((q) => mdLines.push(`- ${q}`));
+    }
+
+    const blob = new Blob([mdLines.join("\n\n")], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${research.companyName.replace(/\s+/g, "_")}_research.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    if (!research) return;
+
+    // Build simple HTML from the markdown-like content for printing
+    const parts: string[] = [];
+    parts.push(`<h1>${research.companyName}</h1>`);
+    parts.push(`<p><strong>Industry:</strong> ${research.industry || "Unknown"}</p>`);
+    parts.push(`<p><strong>Size:</strong> ${research.size || "Unknown"}</p>`);
+    parts.push(`<p><strong>Location:</strong> ${research.location || "Unknown"}</p>`);
+    parts.push(`<p><strong>Founded:</strong> ${research.founded || "Unknown"}</p>`);
+    if (research.website) parts.push(`<p><strong>Website:</strong> <a href="${research.website}">${research.website}</a></p>`);
+    parts.push(`<h2>Mission</h2><p>${research.mission || "N/A"}</p>`);
+    parts.push(`<h2>Description</h2><p>${research.description || "N/A"}</p>`);
+    parts.push(`<h2>Recent News</h2>`);
+    parts.push(`<ul>${research.news.map(n => `<li><strong>${n.title}</strong> (${new Date(n.date).toLocaleDateString()}): ${n.summary}</li>`).join('')}</ul>`);
+    parts.push(`<h2>Culture</h2><p>Type: ${research.culture.type}</p><p>Remote: ${research.culture.remotePolicy || 'Unknown'}</p>`);
+    if (research.culture.values.length) parts.push(`<p>Values: ${research.culture.values.join(', ')}</p>`);
+    if (research.culture.perks.length) parts.push(`<p>Perks: ${research.culture.perks.join(', ')}</p>`);
+    parts.push(`<h2>Leadership</h2><ul>${research.leadership.map(l => `<li>${l.name} — ${l.title}${l.bio ? ` — ${l.bio}` : ''}</li>`).join('')}</ul>`);
+
+    if (research.potentialInterviewers && research.potentialInterviewers.length) {
+      parts.push(`<h2>Potential Interviewers</h2><ul>${research.potentialInterviewers.map(p => `<li>${p.role}${p.name ? ` — ${p.name}` : ''}</li>`).join('')}</ul>`);
+    }
+
+    if (research.competitors && research.competitors.length) {
+      parts.push(`<h2>Competitors</h2><ul>${research.competitors.map(c => `<li>${c.name}${c.note ? ` — ${c.note}` : ''}</li>`).join('')}</ul>`);
+    }
+    if (research.marketPositioning) parts.push(`<p><strong>Market positioning:</strong> ${research.marketPositioning}</p>`);
+
+    if (research.talkingPoints && research.talkingPoints.length) {
+      parts.push(`<h2>Talking Points</h2><ul>${research.talkingPoints.map(t => `<li>${t}</li>`).join('')}</ul>`);
+    }
+    if (research.interviewQuestions && research.interviewQuestions.length) {
+      parts.push(`<h2>Interview Questions</h2><ul>${research.interviewQuestions.map(q => `<li>${q}</li>`).join('')}</ul>`);
+    }
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${research.companyName} Research</title><style>body{font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; padding: 24px; color:#111} h1{font-size:22px} h2{font-size:16px; margin-top:18px}</style></head><body>${parts.join('')}</body></html>`;
+
+    const w: any = window.open('', '_blank');
+    if (!w) {
+      alert('Unable to open new window for PDF export. Please allow popups for this site.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    // Give browser a moment to render then open print dialog (user can Save as PDF)
+    setTimeout(() => {
+      try {
+        w.print();
+      } catch (e) {
+        console.error('Print failed', e);
+      }
+    }, 500);
   };
 
   const getCacheAge = () => {
@@ -309,6 +448,16 @@ Source: ${research.source}
               <Tooltip title="Copy to clipboard">
                 <IconButton onClick={handleCopyToClipboard}>
                   <CopyIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Export as Markdown">
+                <IconButton onClick={handleExportMarkdown}>
+                  <Typography variant="button" sx={{ fontSize: 12 }}>MD</Typography>
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Export as PDF">
+                <IconButton onClick={handleExportPDF}>
+                  <PrintIcon />
                 </IconButton>
               </Tooltip>
             </Stack>
@@ -582,6 +731,87 @@ Source: ${research.source}
                       <Chip key={idx} label={product} color="primary" />
                     ))}
                   </Stack>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Potential Interviewers */}
+            {research.potentialInterviewers && research.potentialInterviewers.length > 0 && (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Potential Interviewers
+                  </Typography>
+                  <List>
+                    {research.potentialInterviewers.map((p, idx) => (
+                      <ListItem key={idx} sx={{ px: 0 }}>
+                        <ListItemText primary={`${p.role}${p.name ? ` — ${p.name}` : ''}`} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Competitors & Market Positioning */}
+            {(research.competitors && research.competitors.length > 0) || research.marketPositioning ? (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Competitors & Market Positioning
+                  </Typography>
+                  {research.competitors && research.competitors.length > 0 && (
+                    <List>
+                      {research.competitors.map((c, idx) => (
+                        <ListItem key={idx} sx={{ px: 0 }}>
+                          <ListItemText primary={c.name} secondary={c.note} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                  {research.marketPositioning && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {research.marketPositioning}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {/* Talking Points */}
+            {research.talkingPoints && research.talkingPoints.length > 0 && (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Talking Points
+                  </Typography>
+                  <List>
+                    {research.talkingPoints.map((t, idx) => (
+                      <ListItem key={idx} sx={{ px: 0 }}>
+                        <ListItemText primary={t} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Interview Questions */}
+            {research.interviewQuestions && research.interviewQuestions.length > 0 && (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Smart Interview Questions
+                  </Typography>
+                  <List>
+                    {research.interviewQuestions.map((q, idx) => (
+                      <ListItem key={idx} sx={{ px: 0 }}>
+                        <ListItemText primary={q} />
+                      </ListItem>
+                    ))}
+                  </List>
                 </CardContent>
               </Card>
             )}
