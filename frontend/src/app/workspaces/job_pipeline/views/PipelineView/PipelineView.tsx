@@ -36,7 +36,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Work as WorkIcon,
   TrendingUp as TrendingUpIcon,
-  PersonAdd as PersonAddIcon,
+  Person as PersonIcon,
 } from "@mui/icons-material";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
@@ -842,8 +842,8 @@ export default function PipelineView() {
                                               "&:hover": { bgcolor: "action.selected" },
                                             }}
                                           >
-                                            <Tooltip title="Suggest Contacts">
-                                              <PersonAddIcon fontSize="small" />
+                                            <Tooltip title="Suggested Contacts">
+                                                <PersonIcon fontSize="small" />
                                             </Tooltip>
                                           </IconButton>
                                         </Stack>
