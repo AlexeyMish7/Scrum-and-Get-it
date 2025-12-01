@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS interviews (
   stage text, -- e.g., 'applied', 'phone_screen', 'onsite', 'offer'
   result boolean, -- true if offer received
   score integer, -- optional interviewer score (0-100)
+  company_culture text, -- e.g., 'startup', 'corporate', 'mid-size', 'remote-first', 'consulting'
   notes text,
   created_at timestamptz DEFAULT now()
 );

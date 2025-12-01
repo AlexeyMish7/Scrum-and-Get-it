@@ -42,7 +42,6 @@ import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgress
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
 import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchCard/CompanyResearchCard";
 import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
-import InterviewAnalyticsCard from "@job_pipeline/components/cards/InterviewAnalyticsCard/InterviewAnalyticsCard";
 import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
@@ -434,13 +433,6 @@ export default function AnalyticsView() {
                 {metrics.interviews}/{metrics.applied}
               </Typography>
             </Paper>
-          </Grid>
-        </Grid>
-
-        {/* Interview Performance Card */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12 }}>
-            <InterviewAnalyticsCard />
           </Grid>
         </Grid>
 

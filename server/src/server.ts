@@ -450,6 +450,35 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // INTERVIEW ANALYTICS ENDPOINTS (protected)
+    // ------------------------------------------------------------------
+    if (method === "GET" && pathname === "/api/analytics/overview") {
+      try {
+        const { get: handleAnalyticsOverview } = await import("./routes/analytics.js");
+        await handleAnalyticsOverview(req, res);
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (err: any) {
+        console.error("[analytics/overview] Error:", err);
+        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        return;
+      }
+    }
+
+    if (method === "GET" && pathname === "/api/analytics/trends") {
+      try {
+        const { getTrends: handleAnalyticsTrends } = await import("./routes/analytics.js");
+        await handleAnalyticsTrends(req, res);
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (err: any) {
+        console.error("[analytics/trends] Error:", err);
+        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // NETWORKING ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/analytics/networking") {
