@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   PieChart,
   Pie,
@@ -25,12 +25,33 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
   skills,
 }) => {
   const theme = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
+  
   const chartData = useMemo(
     () => skills.map((s) => ({ name: s.name, value: s.value })),
     [skills]
   );
 
   const total = chartData.reduce((sum, item) => sum + (item.value || 0), 0);
+
+  // Wait for container to have dimensions before rendering chart
+  useEffect(() => {
+    const checkReady = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        if (width > 0 && height > 0) {
+          setIsReady(true);
+        }
+      }
+    };
+    
+    // Check immediately and after a short delay (for layout settling)
+    checkReady();
+    const timeout = setTimeout(checkReady, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [total]);
 
   return (
     <Box
@@ -53,29 +74,34 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
           <Typography color="text.secondary">No skills to display</Typography>
         </Box>
       ) : (
-        <Box sx={{ width: "100%", height: 250 }}>
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                label
-              >
-                {chartData.map((s, index) => (
-                  <Cell
-                    key={`${s.name}-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <Box 
+          ref={containerRef}
+          sx={{ width: "100%", height: 250, minHeight: 250 }}
+        >
+          {isReady && (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  label
+                >
+                  {chartData.map((s, index) => (
+                    <Cell
+                      key={`${s.name}-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </Box>
       )}
     </Box>

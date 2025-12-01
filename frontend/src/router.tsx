@@ -174,6 +174,15 @@ const EnterpriseDashboard = lazy(() =>
   )
 );
 
+// External Advisors Dashboard (UC-115: External Advisor and Coach Integration)
+const AdvisorDashboard = lazy(() =>
+  import("@workspaces/team_management/pages/AdvisorDashboard").then(
+    (module) => ({
+      default: module.AdvisorDashboard,
+    })
+  )
+);
+
 // Loading fallback component for lazy-loaded routes
 const LazyLoadFallback = () => (
   <div
@@ -412,6 +421,15 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <EnterpriseDashboard />
+          </Suspense>
+        ),
+      },
+      // External Advisors (UC-115: External Advisor and Coach Integration)
+      {
+        path: "advisors",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <AdvisorDashboard />
           </Suspense>
         ),
       },

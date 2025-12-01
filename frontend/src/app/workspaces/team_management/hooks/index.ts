@@ -8,3 +8,8 @@ export { useProgressSharing } from "./useProgressSharing";
 // UC-114: Enterprise Career Services Hooks
 export { useEnterprise } from "./useEnterprise";
 export { useCohortManagement } from "./useCohortManagement";
+
+// UC-115: External Advisor Hooks
+export { useExternalAdvisors } from "./useExternalAdvisors";
+export { useAdvisorSessions } from "./useAdvisorSessions";
+export { useAdvisorRecommendations } from "./useAdvisorRecommendations";

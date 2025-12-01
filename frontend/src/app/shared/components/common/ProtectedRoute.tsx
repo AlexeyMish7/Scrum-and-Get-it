@@ -13,7 +13,12 @@ type Props = { children: React.ReactNode };
 export default function ProtectedRoute({ children }: Props) {
   const { user, loading } = useAuth();
 
+  // Show loading spinner while determining auth state
   if (loading) return <LoadingSpinner />;
+
+  // Redirect to login if no authenticated user
   if (!user) return <Navigate to="/login" replace />;
+
+  // User is authenticated, render protected content
   return <>{children}</>;
 }

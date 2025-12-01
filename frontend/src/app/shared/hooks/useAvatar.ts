@@ -96,8 +96,14 @@ export function useAvatar(userId: string | undefined): string | null {
     let active = true;
 
     const load = async () => {
+      console.log("🖼️ [useAvatar] Loading avatar for user:", userId);
       const res = await getUserProfile<ProfileRow>(userId);
-      if (res.error) return;
+      if (res.error) {
+        console.warn("🖼️ [useAvatar] Failed to fetch profile:", res.error);
+        return;
+      }
+
+      console.log("🖼️ [useAvatar] Profile data:", res.data);
 
       const metadata =
         (res.data?.metadata as
@@ -106,7 +112,10 @@ export function useAvatar(userId: string | undefined): string | null {
       const avatarPath = metadata?.avatar_path ?? null;
       const avatarBucket = metadata?.avatar_bucket ?? "avatars";
 
+      console.log("🖼️ [useAvatar] Avatar path:", avatarPath, "bucket:", avatarBucket);
+
       if (!avatarPath) {
+        console.log("🖼️ [useAvatar] No avatar path found in metadata");
         if (active) setAvatarUrl(null);
         return;
       }
@@ -114,18 +123,25 @@ export function useAvatar(userId: string | undefined): string | null {
       // Check cache first
       const cached = readCachedAvatar(avatarBucket, avatarPath);
       if (cached) {
+        console.log("🖼️ [useAvatar] Using cached URL");
         if (active) setAvatarUrl(cached);
         return;
       }
 
+      console.log("🖼️ [useAvatar] Cache miss, creating signed URL...");
+      
       // Cache miss: create signed URL
       const { data, error } = await supabase.storage
         .from(avatarBucket)
         .createSignedUrl(avatarPath, AVATAR_TTL_SECONDS);
 
+      console.log("🖼️ [useAvatar] Signed URL result:", { signedUrl: data?.signedUrl ? "✅ Got URL" : "❌ No URL", error });
+
       if (!error && data?.signedUrl && active) {
         setAvatarUrl(data.signedUrl);
         writeCachedAvatar(avatarBucket, avatarPath, data.signedUrl);
+      } else if (error) {
+        console.error("🖼️ [useAvatar] Failed to create signed URL:", error);
       }
     };
 

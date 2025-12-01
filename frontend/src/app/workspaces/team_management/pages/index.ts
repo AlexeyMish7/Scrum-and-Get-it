@@ -14,3 +14,6 @@ export { CandidateProgressPage } from "./CandidateProgressPage";
 
 // UC-114: Enterprise Career Services
 export { EnterpriseDashboard } from "./EnterpriseDashboard";
+
+// UC-115: External Advisor Dashboard
+export { AdvisorDashboard } from "./AdvisorDashboard";

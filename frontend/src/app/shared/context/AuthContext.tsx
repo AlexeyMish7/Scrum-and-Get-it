@@ -125,40 +125,64 @@ export function AuthContextProvider({ children }: ProviderProps) {
     supabase.auth
       .getSession()
       .then((resp) => {
-        if (mounted) setSession(resp.data.session ?? null); // set current session or null
+        if (mounted) {
+          setSession(resp.data.session ?? null); // set current session or null
+          setLoading(false); // finish loading after we have session state
+        }
       })
-      .finally(() => {
-        if (mounted) setLoading(false); // finish initial loading state
+      .catch((err) => {
+        console.error("Failed to get session:", err);
+        if (mounted) setLoading(false);
       });
 
     // Listen for login/logout/token refresh events in real time
+    // CRITICAL FIX: Must handle INITIAL_SESSION event!
+    // When the app loads with an existing session (page refresh/navigation),
+    // Supabase fires an INITIAL_SESSION event. If we ignore this, the session
+    // state won't be properly synchronized, causing ProtectedRoute to see null
+    // user and redirect to login even though the user is actually logged in.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, newSession: SupabaseSession | null) => {
-        setSession(newSession); // update session when user logs in or out
-        setLoading(false); // stop loading once event handled
+      (event: AuthChangeEvent, newSession: SupabaseSession | null) => {
+        if (!mounted) return;
+
+        // DEBUG: Log all auth events to track what's happening
+        console.log("🔐 [AuthContext] Auth event:", event, {
+          hasSession: !!newSession,
+          userId: newSession?.user?.id,
+          expiresAt: newSession?.expires_at,
+        });
+
+        // Handle auth events - but IGNORE TOKEN_REFRESHED to prevent infinite loops!
+        // Supabase handles token refresh internally; we don't need to react to it
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+          console.log("✅ [AuthContext] Processing auth event:", event);
+          setSession(newSession);
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          console.log("🚪 [AuthContext] User signed out");
+          setSession(null);
+          setLoading(false);
+        } else if (event === "USER_UPDATED") {
+          console.log("👤 [AuthContext] User updated");
+          setSession(newSession);
+        } else if (event === "TOKEN_REFRESHED") {
+          // DO NOT call setSession here! It causes infinite refresh loops
+          // Supabase manages the token internally, we just need to ignore this event
+          console.log(
+            "⏭️ [AuthContext] Token refreshed (ignoring to prevent loop)"
+          );
+        } else {
+          console.log("⏭️ [AuthContext] Ignoring auth event:", event);
+        }
       }
     );
-
-    // Proactive token refresh for demo stability
-    // Refresh token every 30 minutes to prevent expiry during demos
-    const refreshInterval = setInterval(async () => {
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-      if (currentSession) {
-        // Trigger a refresh to ensure token stays valid
-        await supabase.auth.refreshSession();
-        console.log("🔄 Token refreshed automatically");
-      }
-    }, 30 * 60 * 1000); // 30 minutes
 
     // Clean up listener and prevent updates after unmount
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearInterval(refreshInterval);
     };
   }, []); // run once on mount
 
@@ -227,7 +251,7 @@ export function AuthContextProvider({ children }: ProviderProps) {
         return { ok: false, message: msg };
       }
 
-      // Login successful — update session immediately when available to avoid
+      // Login successful — update session immediately to avoid
       // brief UI races before the onAuthStateChange listener fires.
       if (data?.session) {
         setSession(data.session);
@@ -253,7 +277,9 @@ export function AuthContextProvider({ children }: ProviderProps) {
       if (requestedProvider === "linkedin") requestedProvider = "linkedin_oidc";
 
       // For LinkedIn OIDC, request appropriate scopes
-      const options: any = { redirectTo: `${window.location.origin}/auth/callback` };
+      const options: any = {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      };
       if (requestedProvider === "linkedin_oidc") {
         options.scopes = "openid r_liteprofile r_emailaddress";
       }

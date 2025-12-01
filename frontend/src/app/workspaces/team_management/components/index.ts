@@ -26,3 +26,6 @@ export { TeamProgressOverview } from "./TeamProgressOverview";
 
 // UC-114: Enterprise Career Services Components
 export * from "./enterprise";
+
+// UC-115: External Advisor Components
+export * from "./advisors";
