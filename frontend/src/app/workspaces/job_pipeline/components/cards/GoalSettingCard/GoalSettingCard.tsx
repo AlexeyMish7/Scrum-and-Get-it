@@ -1,7 +1,7 @@
 /**
  * GoalSettingCard Component
  * Sprint 3 - UC-101: Goal Setting and Achievement Tracking
- * 
+ *
  * Comprehensive career goal management with SMART framework:
  * - Create and track SMART goals (Specific, Measurable, Achievable, Relevant, Time-bound)
  * - Monitor progress with visual indicators
@@ -200,8 +200,6 @@ export default function GoalSettingCard() {
         handleError(goalsResult.error.message);
       } else {
         const fetchedGoals = (goalsResult.data as any)?.goals || [];
-        console.log("🎯 GOALS FETCHED:", fetchedGoals);
-        console.log("🎯 GOALS COUNT:", fetchedGoals.length);
         setGoals(fetchedGoals);
       }
 
@@ -248,10 +246,6 @@ export default function GoalSettingCard() {
   }
 
   function openEditDialog(goal: CareerGoal) {
-    console.log("🔧 Opening edit dialog for goal:", goal);
-    console.log("🔧 goal.is_shared:", goal.is_shared);
-    console.log("🔧 goal.reminder_frequency:", goal.reminder_frequency);
-    console.log("🔧 goal.success_metrics:", (goal as any).success_metrics);
     setEditingGoal(goal);
     setForm({
       title: goal.title,
@@ -278,29 +272,16 @@ export default function GoalSettingCard() {
         target_value: m.target_value,
       })),
     });
-    console.log("🔧 Form state set, opening dialog");
     setDialogOpen(true);
   }
 
   async function handleSaveGoal() {
-    console.log("💾 handleSaveGoal called");
-    console.log("💾 User:", user?.id);
-    console.log("💾 Session token:", !!session?.access_token);
-    console.log("💾 Editing goal:", editingGoal?.id);
-    console.log("💾 Form data:", form);
-    
     if (!user || !session?.access_token) {
-      console.error("💾 No user or session token!");
       return;
     }
 
     try {
       if (editingGoal) {
-        console.log("💾 Updating existing goal:", editingGoal.id);
-        console.log("💾 form.is_shared:", form.is_shared);
-        console.log("💾 form.reminder_frequency:", form.reminder_frequency);
-        console.log("💾 form.success_metrics:", form.success_metrics);
-        
         const updatePayload = {
           title: form.title,
           description: form.description,
@@ -315,8 +296,7 @@ export default function GoalSettingCard() {
           success_metrics: form.success_metrics,
           milestones: form.milestones,
         };
-        console.log("💾 Update payload:", JSON.stringify(updatePayload, null, 2));
-        
+
         // Update existing goal
         const result = await updateGoal(
           user.id,
@@ -325,13 +305,9 @@ export default function GoalSettingCard() {
           updatePayload
         );
 
-        console.log("💾 Update result:", result);
-        
         if (result.error) {
-          console.error("💾 Update error:", result.error);
           handleError(result.error.message);
         } else {
-          console.log("💾 Update successful!");
           showSuccess("Goal updated successfully!");
           setDialogOpen(false);
           loadGoalsData();
@@ -373,31 +349,30 @@ export default function GoalSettingCard() {
     if (!user || !session?.access_token) return;
 
     try {
-      const result = await updateGoal(
-        user.id,
-        session.access_token,
-        goalId,
-        {
-          current_value: newValue,
-        }
-      );
+      const result = await updateGoal(user.id, session.access_token, goalId, {
+        current_value: newValue,
+      });
 
       if (result.error) {
         handleError(result.error.message);
       } else {
         const updatedGoal = (result.data as any)?.goal;
-        
+
         // Check for celebrations
         if (updatedGoal?.celebration_message) {
           showSuccess(updatedGoal.celebration_message);
-        } else if (updatedGoal?.achievements && updatedGoal.achievements.length > 0) {
+        } else if (
+          updatedGoal?.achievements &&
+          updatedGoal.achievements.length > 0
+        ) {
           // Show latest achievement
-          const latest = updatedGoal.achievements[updatedGoal.achievements.length - 1];
+          const latest =
+            updatedGoal.achievements[updatedGoal.achievements.length - 1];
           showSuccess(latest.message);
         } else {
           showSuccess("Progress updated!");
         }
-        
+
         loadGoalsData();
       }
     } catch (err: any) {
@@ -409,37 +384,66 @@ export default function GoalSettingCard() {
     // Create shareable text format
     const shareText = `
 🎯 Career Goal: ${goal.title}
-${goal.description ? `\n${goal.description}\n` : ''}
-📊 Progress: ${goal.current_value}/${goal.target_value} ${goal.unit} (${goal.progress_percentage}%)
-${goal.is_on_track ? '✅' : '⚠️'} Status: ${goal.is_on_track ? 'On Track' : 'Behind Schedule'}
-📅 Timeline: ${new Date(goal.start_date).toLocaleDateString()} - ${new Date(goal.target_date).toLocaleDateString()}
+${goal.description ? `\n${goal.description}\n` : ""}
+📊 Progress: ${goal.current_value}/${goal.target_value} ${goal.unit} (${
+      goal.progress_percentage
+    }%)
+${goal.is_on_track ? "✅" : "⚠️"} Status: ${
+      goal.is_on_track ? "On Track" : "Behind Schedule"
+    }
+📅 Timeline: ${new Date(goal.start_date).toLocaleDateString()} - ${new Date(
+      goal.target_date
+    ).toLocaleDateString()}
 ⏰ Days Remaining: ${goal.days_remaining}
 
-${goal.milestones.length > 0 ? `🎯 Milestones:\n${goal.milestones.map(m => `  ${m.completed ? '✅' : '⭕'} ${m.title} (${m.target_value})`).join('\n')}\n` : ''}
-${goal.achievements?.length > 0 ? `\n🏆 Achievements: ${goal.achievements.length}\n` : ''}
-${(goal as any).success_metrics?.applications_sent > 0 ? `\n📈 Impact:\n  • Applications: ${(goal as any).success_metrics.applications_sent}\n  • Interviews: ${(goal as any).success_metrics.interviews_scheduled}\n  • Offers: ${(goal as any).success_metrics.offers_received}\n` : ''}
+${
+  goal.milestones.length > 0
+    ? `🎯 Milestones:\n${goal.milestones
+        .map(
+          (m) => `  ${m.completed ? "✅" : "⭕"} ${m.title} (${m.target_value})`
+        )
+        .join("\n")}\n`
+    : ""
+}
+${
+  goal.achievements?.length > 0
+    ? `\n🏆 Achievements: ${goal.achievements.length}\n`
+    : ""
+}
+${
+  (goal as any).success_metrics?.applications_sent > 0
+    ? `\n📈 Impact:\n  • Applications: ${
+        (goal as any).success_metrics.applications_sent
+      }\n  • Interviews: ${
+        (goal as any).success_metrics.interviews_scheduled
+      }\n  • Offers: ${(goal as any).success_metrics.offers_received}\n`
+    : ""
+}
 ---
 Exported from FlowATS Career Goals
 ${new Date().toLocaleDateString()}
     `.trim();
 
     // Create downloadable file
-    const blob = new Blob([shareText], { type: 'text/plain' });
+    const blob = new Blob([shareText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `goal-${goal.title.replace(/\s+/g, '-').toLowerCase()}.txt`;
+    a.download = `goal-${goal.title.replace(/\s+/g, "-").toLowerCase()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
     // Also copy to clipboard
-    navigator.clipboard.writeText(shareText).then(() => {
-      showSuccess("Goal exported to file and copied to clipboard!");
-    }).catch(() => {
-      showSuccess("Goal exported to file!");
-    });
+    navigator.clipboard
+      .writeText(shareText)
+      .then(() => {
+        showSuccess("Goal exported to file and copied to clipboard!");
+      })
+      .catch(() => {
+        showSuccess("Goal exported to file!");
+      });
   }
 
   async function handleDeleteGoal(goalId: string) {
@@ -622,14 +626,17 @@ ${new Date().toLocaleDateString()}
                     </Box>
                   </Box>
                   <Box>
-                    <IconButton 
-                      size="small" 
+                    <IconButton
+                      size="small"
                       onClick={() => handleExportGoal(goal)}
                       title="Export/Share Goal"
                     >
                       <ShareIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => openEditDialog(goal)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => openEditDialog(goal)}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
@@ -704,7 +711,9 @@ ${new Date().toLocaleDateString()}
                     size="small"
                     variant="outlined"
                     onClick={() => {
-                      const input = document.getElementById(`progress-input-${goal.id}`) as HTMLInputElement;
+                      const input = document.getElementById(
+                        `progress-input-${goal.id}`
+                      ) as HTMLInputElement;
                       if (input) {
                         handleUpdateProgress(goal.id, Number(input.value));
                       }
@@ -724,15 +733,19 @@ ${new Date().toLocaleDateString()}
 
                 {/* Celebration Message */}
                 {goal.celebration_message && (
-                  <Alert severity="success" icon={<TrophyIcon />} sx={{ mt: 2 }}>
+                  <Alert
+                    severity="success"
+                    icon={<TrophyIcon />}
+                    sx={{ mt: 2 }}
+                  >
                     {goal.celebration_message}
                   </Alert>
                 )}
 
                 {/* Progress Adjustment Recommendations */}
                 {goal.motivation_notes && (
-                  <Alert 
-                    severity={goal.is_on_track ? "success" : "warning"} 
+                  <Alert
+                    severity={goal.is_on_track ? "success" : "warning"}
                     sx={{ mt: 2 }}
                   >
                     {goal.motivation_notes}
@@ -742,22 +755,43 @@ ${new Date().toLocaleDateString()}
                 {/* Achievements Display */}
                 {goal.achievements && goal.achievements.length > 0 && (
                   <Box sx={{ mt: 2 }}>
-                    <Typography variant="caption" fontWeight={600} color="text.secondary" display="block" gutterBottom>
+                    <Typography
+                      variant="caption"
+                      fontWeight={600}
+                      color="text.secondary"
+                      display="block"
+                      gutterBottom
+                    >
                       🏆 Recent Achievements
                     </Typography>
-                    {goal.achievements.slice(-3).reverse().map((achievement, idx) => (
-                      <Alert key={idx} severity="info" sx={{ mt: 1, py: 0.5 }}>
-                        {achievement.message}
-                        <Typography variant="caption" display="block" color="text.secondary">
-                          {new Date(achievement.achieved_at).toLocaleDateString()} • {achievement.progress_at_achievement.toFixed(0)}% complete
-                        </Typography>
-                      </Alert>
-                    ))}
+                    {goal.achievements
+                      .slice(-3)
+                      .reverse()
+                      .map((achievement, idx) => (
+                        <Alert
+                          key={idx}
+                          severity="info"
+                          sx={{ mt: 1, py: 0.5 }}
+                        >
+                          {achievement.message}
+                          <Typography
+                            variant="caption"
+                            display="block"
+                            color="text.secondary"
+                          >
+                            {new Date(
+                              achievement.achieved_at
+                            ).toLocaleDateString()}{" "}
+                            • {achievement.progress_at_achievement.toFixed(0)}%
+                            complete
+                          </Typography>
+                        </Alert>
+                      ))}
                   </Box>
                 )}
 
                 {/* Accountability & Impact Tracking Info */}
-                <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
                   {goal.is_shared && (
                     <Chip
                       icon={<span>🤝</span>}
@@ -767,26 +801,36 @@ ${new Date().toLocaleDateString()}
                       variant="outlined"
                     />
                   )}
-                  {goal.reminder_frequency && goal.reminder_frequency !== 'none' && (
-                    <Chip
-                      icon={<span>🔔</span>}
-                      label={`${goal.reminder_frequency.charAt(0).toUpperCase() + goal.reminder_frequency.slice(1)} Reminders`}
-                      size="small"
-                      variant="outlined"
-                    />
-                  )}
-                  {(goal as any).success_metrics && 
-                   ((goal as any).success_metrics.applications_sent > 0 || 
-                    (goal as any).success_metrics.interviews_scheduled > 0 || 
-                    (goal as any).success_metrics.offers_received > 0) && (
-                    <Chip
-                      icon={<span>📈</span>}
-                      label={`Impact: ${(goal as any).success_metrics.applications_sent} apps • ${(goal as any).success_metrics.interviews_scheduled} interviews • ${(goal as any).success_metrics.offers_received} offers`}
-                      size="small"
-                      color="success"
-                      variant="outlined"
-                    />
-                  )}
+                  {goal.reminder_frequency &&
+                    goal.reminder_frequency !== "none" && (
+                      <Chip
+                        icon={<span>🔔</span>}
+                        label={`${
+                          goal.reminder_frequency.charAt(0).toUpperCase() +
+                          goal.reminder_frequency.slice(1)
+                        } Reminders`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  {(goal as any).success_metrics &&
+                    ((goal as any).success_metrics.applications_sent > 0 ||
+                      (goal as any).success_metrics.interviews_scheduled > 0 ||
+                      (goal as any).success_metrics.offers_received > 0) && (
+                      <Chip
+                        icon={<span>📈</span>}
+                        label={`Impact: ${
+                          (goal as any).success_metrics.applications_sent
+                        } apps • ${
+                          (goal as any).success_metrics.interviews_scheduled
+                        } interviews • ${
+                          (goal as any).success_metrics.offers_received
+                        } offers`}
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                      />
+                    )}
                 </Box>
               </CardContent>
             </Card>
@@ -808,7 +852,12 @@ ${new Date().toLocaleDateString()}
             ))}
           </List>
 
-          <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ mt: 2 }}>
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            gutterBottom
+            sx={{ mt: 2 }}
+          >
             💡 Recommendations
           </Typography>
           <List dense>
@@ -852,7 +901,9 @@ ${new Date().toLocaleDateString()}
               rows={2}
             />
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+            >
               <TextField
                 select
                 label="Category *"
@@ -882,7 +933,13 @@ ${new Date().toLocaleDateString()}
               </TextField>
             </Box>
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 2,
+              }}
+            >
               <TextField
                 label="Target Value *"
                 type="number"
@@ -909,7 +966,9 @@ ${new Date().toLocaleDateString()}
               />
             </Box>
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+            >
               <TextField
                 label="Start Date *"
                 type="date"
@@ -949,10 +1008,15 @@ ${new Date().toLocaleDateString()}
                 }
                 label="Share this goal for accountability"
               />
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -1, mb: 2 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ ml: 4, mt: -1, mb: 2 }}
+              >
                 ✨ Sharing goals increases commitment and success rate by 65%
               </Typography>
-              
+
               <TextField
                 select
                 fullWidth
@@ -966,7 +1030,9 @@ ${new Date().toLocaleDateString()}
               >
                 <MenuItem value="daily">📅 Daily - Every day</MenuItem>
                 <MenuItem value="weekly">📆 Weekly - Every week</MenuItem>
-                <MenuItem value="biweekly">🗓️ Bi-weekly - Every 2 weeks</MenuItem>
+                <MenuItem value="biweekly">
+                  🗓️ Bi-weekly - Every 2 weeks
+                </MenuItem>
                 <MenuItem value="monthly">📊 Monthly - Every month</MenuItem>
                 <MenuItem value="none">🔕 None - No reminders</MenuItem>
               </TextField>
@@ -979,11 +1045,25 @@ ${new Date().toLocaleDateString()}
               <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                 📈 Impact Tracking (Optional)
               </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                Link this goal to your job applications to track how it impacts your job search success. Goals with tracked impact show 40% higher completion rates.
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                gutterBottom
+              >
+                Link this goal to your job applications to track how it impacts
+                your job search success. Goals with tracked impact show 40%
+                higher completion rates.
               </Typography>
-              
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mt: 2 }}>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: 2,
+                  mt: 2,
+                }}
+              >
                 <TextField
                   size="small"
                   type="number"
@@ -1036,10 +1116,12 @@ ${new Date().toLocaleDateString()}
                   }
                 />
               </Box>
-              
+
               <Alert severity="info" sx={{ mt: 2 }}>
                 <Typography variant="caption">
-                  💡 <strong>Pro Tip:</strong> Tracking these metrics helps you understand which goals drive the best results. You can adjust your strategy based on real data!
+                  💡 <strong>Pro Tip:</strong> Tracking these metrics helps you
+                  understand which goals drive the best results. You can adjust
+                  your strategy based on real data!
                 </Typography>
               </Alert>
             </Box>

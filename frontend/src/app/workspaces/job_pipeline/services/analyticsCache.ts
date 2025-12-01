@@ -171,9 +171,6 @@ export async function getAnalytics(
 
     // Check if expired
     if (new Date(data.expires_at) <= new Date(now)) {
-      console.log(
-        `[AnalyticsCache] Cache expired for job ${jobId} type ${type}`
-      );
       return null;
     }
 
@@ -182,9 +179,6 @@ export async function getAnalytics(
       data.profile_version &&
       data.profile_version !== currentProfileVersion
     ) {
-      console.log(
-        `[AnalyticsCache] Profile changed (${data.profile_version} → ${currentProfileVersion}), invalidating cache for job ${jobId}`
-      );
       return null;
     }
 
@@ -243,9 +237,6 @@ export async function setAnalytics(
       return null;
     }
 
-    console.log(
-      `[AnalyticsCache] Stored ${type} for job ${jobId} (expires: ${ttlDays}d, profile: ${payload.profile_version})`
-    );
     return result.data || null;
   } catch (err) {
     console.error("[AnalyticsCache] Unexpected error:", err);
@@ -283,9 +274,6 @@ export async function invalidateAnalytics(
       return false;
     }
 
-    console.log(
-      `[AnalyticsCache] Invalidated ${type || "all"} for job ${jobId}`
-    );
     return true;
   } catch (err) {
     console.error("[AnalyticsCache] Unexpected error:", err);

@@ -1,13 +1,13 @@
 /**
  * SALARY PROGRESSION CARD
- * 
+ *
  * Displays comprehensive salary and negotiation analytics:
  * - Salary progression timeline chart
  * - Negotiation success rates and outcomes
  * - Total compensation evolution
  * - Career impact on earnings
  * - AI-powered insights and recommendations
- * 
+ *
  * Integrates with existing SalaryResearchCard for market benchmarking
  */
 
@@ -103,18 +103,17 @@ interface SalaryProgressionCardProps {
   timeRange?: string;
 }
 
-export default function SalaryProgressionCard({ userId, timeRange = "all" }: SalaryProgressionCardProps) {
-  console.log('[SalaryProgressionCard] Rendering with userId:', userId, 'timeRange:', timeRange);
-  
+export default function SalaryProgressionCard({
+  userId,
+  timeRange = "all",
+}: SalaryProgressionCardProps) {
   const { session } = useAuth();
   const [analytics, setAnalytics] = useState<SalaryAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('[SalaryProgressionCard] useEffect - userId:', userId, 'session:', !!session);
     if (!userId || !session?.access_token) {
-      console.log('[SalaryProgressionCard] No userId or session, returning early');
       return;
     }
 
@@ -122,10 +121,16 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
       setLoading(true);
       setError(null);
       try {
-        const result = await getSalaryAnalytics(userId, session.access_token, timeRange);
-        
+        const result = await getSalaryAnalytics(
+          userId,
+          session.access_token,
+          timeRange
+        );
+
         if (result.error) {
-          throw new Error(result.error.message || "Failed to fetch salary analytics");
+          throw new Error(
+            result.error.message || "Failed to fetch salary analytics"
+          );
         }
 
         setAnalytics(result.data as SalaryAnalytics);
@@ -162,30 +167,50 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
     );
   }
 
-  if (!analytics || !analytics.salaryProgression || analytics.salaryProgression.totalOffers === 0) {
+  if (
+    !analytics ||
+    !analytics.salaryProgression ||
+    analytics.salaryProgression.totalOffers === 0
+  ) {
     return (
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <TrendingUp color="primary" />
-          <Typography variant="h6">Salary Progression & Negotiation Analytics</Typography>
+          <Typography variant="h6">
+            Salary Progression & Negotiation Analytics
+          </Typography>
         </Box>
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            <strong>No salary data yet.</strong> Start tracking your offers to unlock powerful analytics!
+            <strong>No salary data yet.</strong> Start tracking your offers to
+            unlock powerful analytics!
           </Typography>
           <Typography variant="body2">
-            To add offer data: Click on any job → Edit → Scroll to "Offer Details & Tracking" section → Fill in offer details → Save
+            To add offer data: Click on any job → Edit → Scroll to "Offer
+            Details & Tracking" section → Fill in offer details → Save
           </Typography>
         </Alert>
       </Paper>
     );
   }
 
-  const { salaryProgression, negotiationSuccess, compensationEvolution, careerImpact, insights, recommendations } = analytics;
+  const {
+    salaryProgression,
+    negotiationSuccess,
+    compensationEvolution,
+    careerImpact,
+    insights,
+    recommendations,
+  } = analytics;
 
   // Format salary timeline for chart
   const salaryChartData = salaryProgression.timeline.map((item) => ({
-    date: item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
+    date: item.date
+      ? new Date(item.date).toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        })
+      : "N/A",
     offered: item.offered,
     negotiated: item.negotiated,
     company: item.company,
@@ -202,10 +227,13 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
     <Paper sx={{ p: 3 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <TrendingUp color="primary" />
-        <Typography variant="h6">Salary Progression & Negotiation Analytics</Typography>
+        <Typography variant="h6">
+          Salary Progression & Negotiation Analytics
+        </Typography>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Track your compensation growth, negotiation success, and career advancement impact
+        Track your compensation growth, negotiation success, and career
+        advancement impact
       </Typography>
 
       {/* Summary Stats */}
@@ -264,25 +292,27 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
               <LineChart data={salaryChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <Tooltip 
+                <YAxis
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
                   formatter={(value: any) => `$${value.toLocaleString()}`}
                   labelFormatter={(label) => `Date: ${label}`}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="offered" 
-                  stroke="#1976d2" 
-                  strokeWidth={2} 
+                <Line
+                  type="monotone"
+                  dataKey="offered"
+                  stroke="#1976d2"
+                  strokeWidth={2}
                   name="Offered Salary"
                   dot={{ r: 4 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="negotiated" 
-                  stroke="#2e7d32" 
-                  strokeWidth={2} 
+                <Line
+                  type="monotone"
+                  dataKey="negotiated"
+                  stroke="#2e7d32"
+                  strokeWidth={2}
                   name="Negotiated Salary"
                   dot={{ r: 4 }}
                 />
@@ -299,23 +329,31 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
           Negotiation Outcomes
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-          {Object.entries(negotiationSuccess.outcomes).map(([outcome, count]) => (
-            <Chip 
-              key={outcome}
-              label={`${outcome}: ${count}`}
-              size="small"
-              color={outcome === "accepted" ? "success" : outcome === "declined" ? "error" : "default"}
-            />
-          ))}
+          {Object.entries(negotiationSuccess.outcomes).map(
+            ([outcome, count]) => (
+              <Chip
+                key={outcome}
+                label={`${outcome}: ${count}`}
+                size="small"
+                color={
+                  outcome === "accepted"
+                    ? "success"
+                    : outcome === "declined"
+                    ? "error"
+                    : "default"
+                }
+              />
+            )
+          )}
         </Stack>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="body2" color="text.secondary">
               Success Rate: {negotiationSuccess.successRate}%
             </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={Math.min(100, negotiationSuccess.successRate)} 
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(100, negotiationSuccess.successRate)}
               sx={{ mt: 1 }}
             />
           </Box>
@@ -337,8 +375,10 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
               <BarChart data={levelChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="level" />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <Tooltip 
+                <YAxis
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
                   formatter={(value: any) => `$${value.toLocaleString()}`}
                 />
                 <Bar dataKey="avgSalary" fill="#1976d2" name="Avg Salary" />
@@ -367,7 +407,9 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
                 <TableRow key={item.industry}>
                   <TableCell>{item.industry}</TableCell>
                   <TableCell align="right">{item.count}</TableCell>
-                  <TableCell align="right">${item.avgSalary.toLocaleString()}</TableCell>
+                  <TableCell align="right">
+                    ${item.avgSalary.toLocaleString()}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -394,7 +436,9 @@ export default function SalaryProgressionCard({ userId, timeRange = "all" }: Sal
                 <TableRow key={item.location}>
                   <TableCell>{item.location}</TableCell>
                   <TableCell align="right">{item.count}</TableCell>
-                  <TableCell align="right">${item.avgSalary.toLocaleString()}</TableCell>
+                  <TableCell align="right">
+                    ${item.avgSalary.toLocaleString()}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

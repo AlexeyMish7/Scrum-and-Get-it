@@ -140,9 +140,6 @@ export function useJobMatch(
       try {
         // Step 0: If force refresh requested, invalidate cache first
         if (forceRefresh) {
-          console.log(
-            `[useJobMatch] Force refresh requested for job ${jobId}, invalidating cache...`
-          );
           await invalidateAnalytics(userId, jobId, "match_score");
         }
 
@@ -151,12 +148,6 @@ export function useJobMatch(
           const cached = await getAnalytics(userId, jobId, "match_score");
 
           if (cached && cached.data) {
-            console.log(`[useJobMatch] Cache HIT for job ${jobId}`);
-            console.log(
-              `[useJobMatch] Cached scores - data.matchScore: ${
-                (cached.data as any).matchScore
-              }, match_score field: ${cached.match_score}`
-            );
             const cachedData = cached.data as unknown as MatchData;
             setData({
               ...cachedData,
@@ -170,16 +161,9 @@ export function useJobMatch(
           }
         }
 
-        console.log(
-          `[useJobMatch] Cache MISS for job ${jobId}, running AI analysis...`
-        );
-
         // Check if request is already in flight for this job
         const existingRequest = pendingRequests.get(cacheKey);
         if (existingRequest) {
-          console.log(
-            `[useJobMatch] Deduplicating request for job ${jobId} - waiting for existing request`
-          );
           const result = await existingRequest;
           setData(result);
           setLoading(false);
@@ -347,7 +331,6 @@ export function useJobMatch(
             result as unknown as Record<string, unknown>,
             7
           );
-          console.log(`[useJobMatch] Stored in cache for job ${jobId}`);
 
           // Step 4: Update jobs.match_score column for consistency
           try {
@@ -357,14 +340,7 @@ export function useJobMatch(
               { match_score: overall },
               { eq: { id: jobId } }
             );
-            console.log(
-              `[useJobMatch] Updated jobs.match_score to ${overall} for job ${jobId}`
-            );
-          } catch (updateErr) {
-            console.warn(
-              "[useJobMatch] Failed to update jobs.match_score:",
-              updateErr
-            );
+          } catch {
             // Non-fatal - continue even if update fails
           }
 

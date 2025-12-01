@@ -32,7 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import { useThemeContext } from "@shared/context/ThemeContext";
-import { useAvatar } from "@shared/hooks/useAvatar";
+import { useAvatarContext } from "@shared/context/AvatarContext";
 import logo from "@shared/assets/logos/logo-icon.png";
 
 type NavItem = {
@@ -171,7 +171,7 @@ export default function GlobalTopBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
 
-  const avatarUrl = useAvatar(user?.id);
+  const { avatarUrl } = useAvatarContext();
 
   const currentWorkspace = useMemo(() => {
     if (location.pathname.startsWith("/ai")) return "AI";

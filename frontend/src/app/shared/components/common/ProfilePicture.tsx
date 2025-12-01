@@ -191,7 +191,10 @@ const ProfilePicture: React.FC = () => {
       try {
         // If the stored avatar_path is an external URL (e.g. LinkedIn CDN),
         // use it directly instead of trying to sign a storage object.
-        if (typeof avatar_path === "string" && /^https?:\/\//.test(avatar_path)) {
+        if (
+          typeof avatar_path === "string" &&
+          /^https?:\/\//.test(avatar_path)
+        ) {
           setAvatarUrl(avatar_path);
           return;
         }
@@ -413,6 +416,9 @@ const ProfilePicture: React.FC = () => {
         }
       }
       setProgress(100);
+
+      // Notify other components (like GlobalTopBar) that avatar has been updated
+      window.dispatchEvent(new Event("avatar:updated"));
     } catch (err: unknown) {
       console.error("Avatar upload failed", err);
       handleError(err);
@@ -592,12 +598,12 @@ const ProfilePicture: React.FC = () => {
                   setPendingFile(null);
                   closeNotification();
                   // reload current avatar preview if available
-                    if (metaPath) {
-                      // If metaPath is an external URL, use it directly
-                      if (/^https?:\/\//.test(String(metaPath))) {
-                        setAvatarUrl(String(metaPath));
-                        return;
-                      }
+                  if (metaPath) {
+                    // If metaPath is an external URL, use it directly
+                    if (/^https?:\/\//.test(String(metaPath))) {
+                      setAvatarUrl(String(metaPath));
+                      return;
+                    }
                     // try to use cached signed url first
                     try {
                       const raw = localStorage.getItem(

@@ -610,8 +610,7 @@ export const DocumentEditorPage: React.FC = () => {
    * Handle export complete
    */
   const handleExportComplete = (filename: string, format: string) => {
-    console.log(`Exported ${filename} as ${format}`);
-    // TODO: Track export in analytics
+    // Export completed successfully
   };
 
   if (loading) {

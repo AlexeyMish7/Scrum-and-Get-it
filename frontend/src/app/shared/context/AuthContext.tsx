@@ -147,35 +147,19 @@ export function AuthContextProvider({ children }: ProviderProps) {
       (event: AuthChangeEvent, newSession: SupabaseSession | null) => {
         if (!mounted) return;
 
-        // DEBUG: Log all auth events to track what's happening
-        console.log("🔐 [AuthContext] Auth event:", event, {
-          hasSession: !!newSession,
-          userId: newSession?.user?.id,
-          expiresAt: newSession?.expires_at,
-        });
-
         // Handle auth events - but IGNORE TOKEN_REFRESHED to prevent infinite loops!
         // Supabase handles token refresh internally; we don't need to react to it
         if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-          console.log("✅ [AuthContext] Processing auth event:", event);
           setSession(newSession);
           setLoading(false);
         } else if (event === "SIGNED_OUT") {
-          console.log("🚪 [AuthContext] User signed out");
           setSession(null);
           setLoading(false);
         } else if (event === "USER_UPDATED") {
-          console.log("👤 [AuthContext] User updated");
           setSession(newSession);
-        } else if (event === "TOKEN_REFRESHED") {
-          // DO NOT call setSession here! It causes infinite refresh loops
-          // Supabase manages the token internally, we just need to ignore this event
-          console.log(
-            "⏭️ [AuthContext] Token refreshed (ignoring to prevent loop)"
-          );
-        } else {
-          console.log("⏭️ [AuthContext] Ignoring auth event:", event);
         }
+        // TOKEN_REFRESHED: DO NOT call setSession here! It causes infinite refresh loops
+        // Supabase manages the token internally, we just need to ignore this event
       }
     );
 

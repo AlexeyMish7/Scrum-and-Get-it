@@ -23,12 +23,10 @@ export default function TemplateManager() {
 
   const handleSelectTemplate = (template: Template) => {
     setSelectedTemplate(template);
-    console.log("Selected template:", template);
   };
 
   const handleSelectTheme = (theme: Theme) => {
     setSelectedTheme(theme);
-    console.log("Selected theme:", theme);
   };
 
   return (

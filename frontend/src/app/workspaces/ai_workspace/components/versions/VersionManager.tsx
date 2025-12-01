@@ -153,7 +153,6 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
 
       if (version1 && version2) {
         // TODO: Implement comparison dialog
-        console.log("Compare", version1, version2);
       }
     }
   };

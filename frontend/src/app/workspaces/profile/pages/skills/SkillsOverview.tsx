@@ -283,13 +283,10 @@ const SkillsOverview: React.FC = () => {
           });
         }
 
-        // Log payload in case devs need to inspect network requests.
-        console.debug("skills:update-payload", updatesPayload);
         const batchRes = await skillsService.batchUpdateSkills(
           user.id,
           updatesPayload
         );
-        console.debug("skills:update-response", batchRes);
         if (batchRes.error) {
           // Surface a friendly message and make the `catch` block restore UI
           handleErrorRef.current?.(
@@ -387,8 +384,8 @@ const SkillsOverview: React.FC = () => {
             );
             setCategories(mappedCats);
           }
-        } catch (e) {
-          console.debug("skills:merge-error", e);
+        } catch {
+          // Non-critical: merge failed, user can refresh to see updated data
         }
       } catch (err) {
         // rollback UI and surface error

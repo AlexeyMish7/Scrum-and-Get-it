@@ -82,14 +82,11 @@ export function ProfileChangeProvider({ children }: ProviderProps) {
     } catch (e) {
       console.warn("Failed to persist profile change timestamp:", e);
     }
-
-    console.log("[ProfileChange] Profile marked as changed at", now);
   }, []);
 
   const resetProfileChanged = useCallback(() => {
     setHasProfileChanged(false);
     // Keep lastChangedAt for reference, but clear the flag
-    console.log("[ProfileChange] Profile change flag reset");
   }, []);
 
   // Expose to window for debugging
