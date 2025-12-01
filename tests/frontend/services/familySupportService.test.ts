@@ -1,19 +1,10 @@
 /**
  * Tests for familySupportService.ts (UC-113: Family and Personal Support Integration)
- *
- * Coverage:
- * - Supporter CRUD operations (invite, update permissions, remove)
- * - Settings management
- * - Progress summaries
- * - Milestones
- * - Stress metrics and well-being analytics
- * - Support boundaries
- * - Family communications
- * - Dashboard aggregation
+ * Moved from frontend/src to tests/frontend to centralize tests.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import * as familySupportService from "./familySupportService";
+import * as familySupportService from "@workspaces/network_hub/services/familySupportService";
 import { supabase } from "@shared/services/supabaseClient";
 import type {
   FamilySupporterRow,
@@ -21,7 +12,7 @@ import type {
   FamilyMilestoneRow,
   StressMetricsRow,
   InviteSupporterData,
-} from "../types/familySupport.types";
+} from "@workspaces/network_hub/types/familySupport.types";
 
 // Mock Supabase client
 vi.mock("@shared/services/supabaseClient", () => ({
@@ -64,6 +55,9 @@ function createArrayMock(finalValue: { data: unknown; error: unknown }) {
   mock.contains = vi.fn().mockReturnValue(mock);
   mock.order = vi.fn().mockReturnValue(mock);
   mock.limit = vi.fn().mockResolvedValue(finalValue);
+  // Make the chain awaitable when service does `await query` without calling limit()
+  (mock as any).then = (resolve: (v: typeof finalValue) => unknown) =>
+    resolve(finalValue);
 
   return mock;
 }
@@ -77,9 +71,9 @@ describe("FamilySupportService", () => {
     vi.restoreAllMocks();
   });
 
-  // ==========================================================================
+  // ========================================================================
   // SUPPORTER MANAGEMENT
-  // ==========================================================================
+  // ========================================================================
 
   describe("getSupporters", () => {
     const mockSupporters: FamilySupporterRow[] = [
@@ -177,12 +171,10 @@ describe("FamilySupportService", () => {
     };
 
     it("should create a new supporter invitation", async () => {
-      // First call checks if supporter exists
       const existingCheckMock = createChainableMock({
         data: null,
         error: null,
       });
-      // Second call creates the supporter
       const createMock = createChainableMock({
         data: { id: "supporter-new", ...mockInviteData },
         error: null,
@@ -258,9 +250,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // SETTINGS MANAGEMENT
-  // ==========================================================================
+  // ========================================================================
 
   describe("getFamilySupportSettings", () => {
     const mockSettings: FamilySupportSettingsRow = {
@@ -299,12 +291,10 @@ describe("FamilySupportService", () => {
     });
 
     it("should create default settings if none exist", async () => {
-      // First call returns no existing settings
       const noSettingsMock = createChainableMock({
         data: null,
         error: { code: "PGRST116", message: "Not found" },
       });
-      // Second call creates defaults
       const createMock = createChainableMock({
         data: mockSettings,
         error: null,
@@ -328,12 +318,10 @@ describe("FamilySupportService", () => {
 
   describe("updateFamilySupportSettings", () => {
     it("should update settings successfully", async () => {
-      // Mock getFamilySupportSettings call first
       const getSettingsMock = createChainableMock({
         data: { id: "settings-001" },
         error: null,
       });
-      // Mock update call
       const updateMock = createChainableMock({
         data: { id: "settings-001", hide_salary_info: false },
         error: null,
@@ -356,9 +344,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // MILESTONES
-  // ==========================================================================
+  // ========================================================================
 
   describe("getMilestones", () => {
     const mockMilestones: FamilyMilestoneRow[] = [
@@ -464,9 +452,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // STRESS TRACKING
-  // ==========================================================================
+  // ========================================================================
 
   describe("getStressMetrics", () => {
     const mockMetrics: StressMetricsRow[] = [
@@ -560,9 +548,7 @@ describe("FamilySupportService", () => {
     };
 
     it("should create new check-in if none exists today", async () => {
-      // First check if exists
       const noExistingMock = createChainableMock({ data: null, error: null });
-      // Then create
       const createMock = createChainableMock({
         data: { id: "stress-new", ...checkInData },
         error: null,
@@ -585,12 +571,10 @@ describe("FamilySupportService", () => {
     });
 
     it("should update existing check-in", async () => {
-      // First check finds existing
       const existingMock = createChainableMock({
         data: { id: "stress-existing" },
         error: null,
       });
-      // Then update
       const updateMock = createChainableMock({
         data: { id: "stress-existing", ...checkInData },
         error: null,
@@ -674,9 +658,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // SUPPORT BOUNDARIES
-  // ==========================================================================
+  // ========================================================================
 
   describe("getBoundaries", () => {
     it("should get active boundaries for a user", async () => {
@@ -704,12 +688,10 @@ describe("FamilySupportService", () => {
 
   describe("createBoundary", () => {
     it("should create a boundary", async () => {
-      // First get count
       const countMock = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ count: 0, error: null }),
       };
-      // Then insert
       const insertMock = createChainableMock({
         data: {
           id: "boundary-new",
@@ -751,9 +733,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // RESOURCES
-  // ==========================================================================
+  // ========================================================================
 
   describe("getResources", () => {
     it("should get active resources", async () => {
@@ -786,9 +768,9 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // COMMUNICATIONS
-  // ==========================================================================
+  // ========================================================================
 
   describe("sendCommunication", () => {
     it("should send a communication", async () => {
@@ -815,21 +797,16 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // DASHBOARD
-  // ==========================================================================
+  // ========================================================================
 
   describe("getFamilySupportDashboard", () => {
     it("should aggregate dashboard data", async () => {
-      // Mock all the individual service calls
-      // This is complex since dashboard calls multiple functions
-      // We'll verify it returns a structured result
-
       const mockSettings = { id: "settings-001" };
       const mockSupporters: never[] = [];
       const mockMilestones: never[] = [];
 
-      // Each service call will be mocked
       const settingsMock = createChainableMock({
         data: mockSettings,
         error: null,
@@ -878,18 +855,15 @@ describe("FamilySupportService", () => {
     });
   });
 
-  // ==========================================================================
+  // ========================================================================
   // ERROR HANDLING
-  // ==========================================================================
+  // ========================================================================
 
   describe("error handling", () => {
     it("should handle unexpected exceptions", async () => {
       vi.mocked(supabase.from).mockImplementation(() => {
         throw new Error("Unexpected error");
       });
-
-      // The service should handle errors gracefully
-      // Most functions return Result types with error info
     });
 
     it("should handle null data gracefully", async () => {
@@ -898,7 +872,6 @@ describe("FamilySupportService", () => {
 
       const result = await familySupportService.getSupporters("user-123");
 
-      // Should still return a valid result
       expect(result).toBeDefined();
     });
   });
