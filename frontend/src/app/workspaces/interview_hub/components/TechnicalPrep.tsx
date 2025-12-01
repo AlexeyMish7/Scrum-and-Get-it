@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -8,6 +8,7 @@ import {
   Divider,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Paper,
   Stack,
@@ -33,6 +34,7 @@ export default function TechnicalPrep() {
   const [open, setOpen] = useState(false);
   const [timeStart, setTimeStart] = useState<number | null>(null);
   const [code, setCode] = useState("");
+  const [editingAttemptId, setEditingAttemptId] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<any[]>(() => {
     try {
       const raw = localStorage.getItem("sgt:technical_prep_attempts");
@@ -51,6 +53,8 @@ export default function TechnicalPrep() {
 
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [viewAttempt, setViewAttempt] = useState<any | null>(null);
+  const [openAttemptView, setOpenAttemptView] = useState(false);
 
   const technical = useMemo(() => {
     if (aiQuestions && aiQuestions.length) return aiQuestions.filter((q) => q.category === "technical");
@@ -77,6 +81,7 @@ export default function TechnicalPrep() {
     setSelected(withOrigin as InterviewQuestion);
     setCode("");
     setTimeStart(Date.now());
+    setEditingAttemptId(null);
     setOpen(true);
   }
 
@@ -91,6 +96,26 @@ export default function TechnicalPrep() {
       origin,
     };
     openChallenge(q as InterviewQuestion, origin);
+  }
+
+  function openAttemptForEdit(attempt: any) {
+    if (!attempt) return;
+    const q: any = {
+      id: attempt.questionId || makeLocalId("e"),
+      text: attempt.text || "(question)",
+      category: attempt.category || "technical",
+      difficulty: attempt.difficulty || "mid",
+      skillTags: attempt.skillTags || [],
+      companySpecific: !!attempt.companySpecific,
+    };
+
+    // Open the challenge dialog and populate the code with the previous answer
+    setSelected(q as InterviewQuestion);
+    setCode(attempt.code || "");
+    setEditingAttemptId(attempt.id || null);
+    // Don't start the timer automatically when editing an old attempt
+    setTimeStart(null);
+    setOpen(true);
   }
 
   async function generateFromAI() {
@@ -126,8 +151,72 @@ export default function TechnicalPrep() {
   }
 
   function submitAttempt(status = "completed") {
-    if (!selected || timeStart == null) return;
+    if (!selected) return;
     const now = Date.now();
+
+    // If editing an existing attempt, update it instead of creating a new one
+    if (editingAttemptId) {
+      const existing = attempts.find((a) => a.id === editingAttemptId) as any;
+      const elapsed = timeStart != null ? now - timeStart : existing?.elapsedMs ?? 0;
+      const rec: any = {
+        id: editingAttemptId,
+        questionId: existing?.questionId || selected.id,
+        text: selected.text,
+        category: selected.category,
+        origin: (selected as any).origin || existing?.origin,
+        practicedAt: new Date(now).toISOString(),
+        elapsedMs: elapsed,
+        code,
+        status,
+        feedback: null,
+        modelAnswer: null,
+      };
+
+      const next = [rec, ...attempts.filter((a) => a.id !== editingAttemptId)].slice(0, 50);
+      setAttempts(next);
+      try {
+        localStorage.setItem("sgt:technical_prep_attempts", JSON.stringify(next));
+      } catch {}
+
+      // reset editing state
+      setEditingAttemptId(null);
+      setOpen(false);
+      setSelected(null);
+      setTimeStart(null);
+
+      // Request updated AI feedback for the edited answer
+      (async () => {
+        if (!rec.code || !String(rec.code).trim()) return;
+        try {
+          const payload = await aiClient.postJson("/api/generate/interview-feedback", {
+            question: rec.text,
+            answer: rec.code,
+            category: rec.category,
+            jobTitle,
+            industry,
+            difficulty,
+          } as any);
+
+          const modelAnswer = (payload as any)?.modelAnswer ?? null;
+          const feedback = (payload as any)?.feedback ?? null;
+
+          setAttempts((prev) => {
+            const updated = prev.map((a) => (a.id === rec.id ? { ...a, modelAnswer, feedback } : a)).slice(0, 50);
+            try {
+              localStorage.setItem("sgt:technical_prep_attempts", JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        } catch (e) {
+          console.error("Failed to get feedback", e);
+        }
+      })();
+
+      return;
+    }
+
+    // Normal (new) attempt submission
+    if (timeStart == null) return; // guard for genuine timed attempts
     const elapsed = now - timeStart;
     const rec: any = {
       id: `${selected.id}_${now}`,
@@ -145,7 +234,9 @@ export default function TechnicalPrep() {
     // Persist immediately so UI is responsive; we'll patch feedback when ready
     const next = [rec, ...attempts].slice(0, 50);
     setAttempts(next);
-    localStorage.setItem("sgt:technical_prep_attempts", JSON.stringify(next));
+    try {
+      localStorage.setItem("sgt:technical_prep_attempts", JSON.stringify(next));
+    } catch {}
     setOpen(false);
     setSelected(null);
     setTimeStart(null);
@@ -231,8 +322,10 @@ export default function TechnicalPrep() {
             {attempts
               .filter((a) => a.category === "technical" && !String(a.questionId).startsWith("c"))
                 .map((a) => (
-                  <ListItem key={a.id}>
-                    <ListItemText primary={a.text} secondary={`${formatElapsed(a.elapsedMs)} — ${a.status}`} />
+                  <ListItem key={a.id} disablePadding>
+                    <ListItemButton onClick={() => { setViewAttempt(a); setOpenAttemptView(true); }}>
+                      <ListItemText primary={a.text} secondary={`${formatElapsed(a.elapsedMs)} — ${a.status}`} />
+                    </ListItemButton>
                   </ListItem>
                 ))}
           </List>
@@ -315,6 +408,62 @@ export default function TechnicalPrep() {
               Submit
             </Button>
           </Stack>
+        </DialogContent>
+      </Dialog>
+    
+      {/* Attempt viewer dialog: view a past attempt's answer, model feedback and model answer */}
+      <Dialog open={openAttemptView} onClose={() => setOpenAttemptView(false)} fullWidth maxWidth="md">
+        <DialogTitle>Attempt details</DialogTitle>
+        <DialogContent>
+          {viewAttempt ? (
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="subtitle1">Question</Typography>
+              <Typography sx={{ mb: 2 }}>{viewAttempt.text}</Typography>
+
+              <Typography variant="subtitle1">Your answer</Typography>
+              <Paper variant="outlined" sx={{ p: 1, whiteSpace: "pre-wrap", mb: 2 }}>
+                <Typography component="div">{viewAttempt.code || "(no answer provided)"}</Typography>
+              </Paper>
+
+              {viewAttempt.modelAnswer ? (
+                <>
+                  <Typography variant="subtitle1">Model answer</Typography>
+                  <Paper variant="outlined" sx={{ p: 1, whiteSpace: "pre-wrap", mb: 2 }}>
+                    <Typography component="div">{viewAttempt.modelAnswer}</Typography>
+                  </Paper>
+                </>
+              ) : null}
+
+              {Array.isArray(viewAttempt.feedback) && viewAttempt.feedback.length ? (
+                <>
+                  <Typography variant="subtitle1">Feedback</Typography>
+                  <List dense>
+                    {viewAttempt.feedback.map((f: string, i: number) => (
+                      <ListItem key={i}>
+                        <ListItemText primary={f} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </>
+              ) : null}
+
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                <Button onClick={() => setOpenAttemptView(false)}>Close</Button>
+                <Button
+                  variant="contained"
+                  sx={{ ml: 1 }}
+                  onClick={() => {
+                    setOpenAttemptView(false);
+                    openAttemptForEdit(viewAttempt);
+                  }}
+                >
+                  Edit
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Typography>No attempt selected.</Typography>
+          )}
         </DialogContent>
       </Dialog>
       {/* Feedback list removed — feedback viewed inline on attempts when available (no separate list) */}

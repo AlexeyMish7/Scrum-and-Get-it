@@ -33,6 +33,8 @@ export { post as postInterviewRequest } from "./generate/interview-request.js";
 export { post as postJobImport } from "./generate/job-import.js";
 export { post as postJobMatch } from "./generate/job-match.js";
 export { post as postProfileTips } from "./generate/profile-tips.js";
+export { post as postInterviewQuestions } from "./generate/interview-questions.js";
+export { post as postInterviewFeedback } from "./generate/interview-feedback.js";
 export type { GenerationCounters } from "./generate/types.js";
 
 // ===== ARTIFACTS =====
@@ -82,6 +84,8 @@ export { post as handleProfileTips } from "./generate/profile-tips.js";
 export { post as handleRelationship } from "./generate/relationship.js";
 export { post as handleReferencePoints } from "./generate/reference-points.js";
 export { post as handleGenerateInterviewRequest } from "./generate/interview-request.js";
+export { post as handleGenerateInterviewQuestions } from "./generate/interview-questions.js";
+export { post as handleGenerateInterviewFeedback } from "./generate/interview-feedback.js";
 export { get as handleListArtifacts } from "./artifacts/index.js";
 export { getById as handleGetArtifact } from "./artifacts/index.js";
 export { post as handleCreateJobMaterials } from "./artifacts/job-materials.js";
