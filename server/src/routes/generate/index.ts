@@ -17,6 +17,7 @@ export { post as postSkillsOptimization } from "./skills-optimization.js";
 export { post as postExperienceTailoring } from "./experience-tailoring.js";
 export { post as postCompanyResearch } from "./company-research.js";
 export { post as postRelationship } from "./relationship.js";
+export { post as postReferralRequest } from "./referral-request.js";
 export { post as postReferencePoints } from "./reference-points.js";
 export { post as postInterviewRequest } from "./interview-request.js";
 export { post as postInterviewQuestions } from "./interview-questions.js";
