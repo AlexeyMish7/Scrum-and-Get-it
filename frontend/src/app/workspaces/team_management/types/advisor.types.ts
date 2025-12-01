@@ -406,13 +406,13 @@ export interface AdvisorSession extends AdvisorSessionRow {
   job?: {
     id: number;
     company_name: string | null;
-    position_title: string | null;
+    job_title: string | null;
   } | null;
 
   document?: {
     id: string;
-    document_type: string;
-    file_name: string;
+    type: string;
+    name: string;
   } | null;
 }
 
@@ -444,14 +444,14 @@ export interface AdvisorSharedMaterial extends AdvisorSharedMaterialRow {
 
   document?: {
     id: string;
-    document_type: string;
-    file_name: string;
+    type: string;
+    name: string;
   } | null;
 
   job?: {
     id: number;
     company_name: string | null;
-    position_title: string | null;
+    job_title: string | null;
   } | null;
 }
 

@@ -1127,8 +1127,8 @@ export async function getSharedMaterials(
       `
       *,
       advisor:external_advisors(id, advisor_name),
-      document:documents(id, document_type, file_name),
-      job:jobs(id, company_name, position_title)
+      document:documents(id, type, name),
+      job:jobs(id, company_name, job_title)
     `
     )
     .eq("advisor_id", advisorId)

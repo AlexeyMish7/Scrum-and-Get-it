@@ -30,31 +30,58 @@ const Login = () => {
 
   const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // Prevent double-submission while already processing login
+    if (loading) {
+      console.log("Login already in progress, ignoring duplicate submission");
+      return;
+    }
+
     setLoginError("");
     setLoading(true);
 
     const res = await signIn(userEmail, userPassword);
-    setLoading(false);
 
     // Dev-only debug: keep console noise out of production
     if (import.meta.env.MODE === "development") {
-      console.debug("signIn result:", res);
+      console.debug("✍️ [Login] signIn result:", res);
     }
 
     if (!res.ok) {
-      // Show server-provided message when available (more informative)
-      setLoginError(
-        res.message ?? "Incorrect email or password. Please try again."
-      );
+      setLoading(false);
+      // Check for rate limit error and provide helpful message
+      const errorMessage =
+        res.message ?? "Incorrect email or password. Please try again.";
+
+      console.error("❌ [Login] Sign in failed:", errorMessage);
+
+      if (errorMessage.toLowerCase().includes("rate limit")) {
+        setLoginError(
+          "Too many login attempts. Please wait a minute and try again."
+        );
+      } else {
+        setLoginError(errorMessage);
+      }
+
       setUserPassword("");
       return;
     }
 
-    // Navigate to profile - session is already set in AuthContext
+    // Success! Log and navigate
+    console.log("✅ [Login] Sign in successful, navigating to /profile");
+
+    // Keep loading state true during navigation to prevent flicker
+    // Navigate to profile - session is set in AuthContext
     navigate("/profile");
   };
 
   const handleGoogle = async () => {
+    // Prevent multiple OAuth attempts while one is in progress
+    if (loading) {
+      console.log("OAuth already in progress, ignoring duplicate attempt");
+      return;
+    }
+
     setLoginError("");
     setLoading(true);
     const res = await signInWithOAuth("google");

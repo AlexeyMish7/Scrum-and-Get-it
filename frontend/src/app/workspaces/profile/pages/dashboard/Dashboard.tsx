@@ -72,8 +72,8 @@ function docsToActivities(
   if (!docs) return [];
   return docs.map((d) => ({
     id: d.id,
-    date: d.uploaded_at ?? new Date().toISOString(),
-    description: `Uploaded ${d.file_name ?? "file"}`,
+    date: d.created_at ?? new Date().toISOString(),
+    description: `Created ${d.name ?? "document"}`,
   }));
 }
 
@@ -312,8 +312,8 @@ const Dashboard: FC = () => {
         // Fetch documents, employment, skills and education in parallel using canonical table/column names
         const [docsRes, empRes, skillsRes, educationRes, projectsRes] =
           await Promise.all([
-            userCrud.listRows("documents", "id,file_name,uploaded_at", {
-              order: { column: "uploaded_at", ascending: false },
+            userCrud.listRows("documents", "id,name,created_at", {
+              order: { column: "created_at", ascending: false },
             }),
             userCrud.listRows(
               "employment",

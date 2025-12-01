@@ -204,11 +204,10 @@ export async function getAiArtifactForUser(userId: string, id: string) {
 export async function getDocumentForUser(userId: string, id: string) {
   const client = ensureClient();
 
+  // Updated to match new schema from 2025-11-17_ai_workspace_schema_redesign.sql
   const { data, error } = await client
     .from("documents")
-    .select(
-      "id, user_id, kind, file_name, file_path, mime_type, bytes, uploaded_at"
-    )
+    .select("id, user_id, type, name, status, created_at")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
