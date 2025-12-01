@@ -24,6 +24,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -77,6 +78,7 @@ export default function InterviewScheduling() {
 
   const { allJobs, loading: jobsLoading, refreshJobs } = useJobsPipeline();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notes, setNotes] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -1211,9 +1213,7 @@ export default function InterviewScheduling() {
                     <Button size="small" onClick={() => markCompleted(iv.id)}>
                       Mark Completed
                     </Button>
-                    <Button size="small" onClick={() => cancelInterview(iv.id)}>
-                      Cancel
-                    </Button>
+                    {/* Cancel button removed per UX request */}
                     <Button
                       size="small"
                       onClick={() =>
@@ -1248,6 +1248,35 @@ export default function InterviewScheduling() {
                           }}
                         >
                           Follow-ups
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            // Resolve likely company name from linked job or fallback to interviewer/title
+                            let company = "";
+                            try {
+                              const match = allJobs?.find((j: any) => String(j.id) === String(iv.linkedJob));
+                              company = match?.company_name ?? (iv.linkedJob || "");
+                            } catch {
+                              company = iv.linkedJob || "";
+                            }
+                            // If still empty, try to infer from title (common pattern: 'Role at Company')
+                            if (!company && iv.title) {
+                              const atMatch = iv.title.match(/at\s+(.+)$/i);
+                              if (atMatch && atMatch[1]) company = atMatch[1].trim();
+                            }
+                            // Fallback to interviewer as last resort
+                            if (!company) company = iv.interviewer || "";
+
+                            if (!company) {
+                              // If we can't infer a company, open the generic research page
+                              navigate(`/ai/research`);
+                            } else {
+                              navigate(`/ai/research?name=${encodeURIComponent(company)}`);
+                            }
+                          }}
+                        >
+                          Company Research
                         </Button>
                         <Button
                           size="small"
