@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -21,6 +21,8 @@ import * as db from "@shared/services/dbMappers";
 type Props = {
   open?: boolean;
   onClose: () => void;
+  initialContact?: Record<string, any> | null;
+  initialJob?: Record<string, any> | null;
 };
 
 function AIPlaceholder({ label }: { label: string }) {
@@ -34,11 +36,12 @@ function AIPlaceholder({ label }: { label: string }) {
   );
 }
 
-export default function InformationInterviewDialog({ open, onClose }: Props) {
+export default function InformationInterviewDialog({ open, onClose, initialContact, initialJob }: Props) {
   const isOpen = !!open;
 
-  // number of steps currently revealed (starts with 1)
-  const [revealed, setRevealed] = useState(1);
+  // number of steps currently revealed (we render all steps by default so users
+  // can jump to any step immediately)
+  const [revealed, setRevealed] = useState(4);
 
   // Step data
   const [contactId, setContactId] = useState<string>("");
@@ -71,6 +74,38 @@ export default function InformationInterviewDialog({ open, onClose }: Props) {
     onClose();
   }
 
+  // Accept initial contact/job when used by parent components
+  // (e.g., opened from a job or contact details dialog)
+  // We set initial selected contact/job when props change.
+  // NOTE: keep this lightweight — we don't overwrite user selections once they've been made.
+  useEffect(() => {
+    if (initialContact && !selectedContact && !contactId) {
+      setSelectedContact(initialContact);
+      const idStr = String(initialContact.id ?? initialContact.contact_id ?? initialContact.uid ?? "");
+      if (idStr) setContactId(idStr);
+    }
+
+    if (initialJob && !selectedJob && !jobId) {
+      setSelectedJob(initialJob);
+      const jid = String(initialJob.id ?? initialJob.job_id ?? "");
+      if (jid) setJobId(jid);
+    }
+  }, [initialContact, initialJob]);
+
+  // If selection happens via any path (user pick or parent props), ensure steps advance.
+  // Keep effects so revealed can still be advanced if other logic changes it elsewhere
+  useEffect(() => {
+    if (selectedContact) {
+      setRevealed((r) => Math.max(r, 4));
+    }
+  }, [selectedContact]);
+
+  useEffect(() => {
+    if (selectedJob) {
+      setRevealed((r) => Math.max(r, 4));
+    }
+  }, [selectedJob]);
+
   if (!isOpen) return null;
 
   return (
@@ -92,17 +127,25 @@ export default function InformationInterviewDialog({ open, onClose }: Props) {
             </Typography>
             {/* Contact picker component */}
             <InformationInterviewContactPicker
-              initialQuery={contactId}
+              // Do not prefill the contact picker with the internal id. If we have
+              // a selected contact, prefer their display name so the input shows
+              // a human-readable value instead of an id string.
+              initialQuery={
+                selectedContact
+                  ? (selectedContact.first_name ?? selectedContact.full_name ?? "")
+                  : ""
+              }
               onSelect={(row: any) => {
                 // store full row for richer AI prompt
                 setSelectedContact(row);
                 setContactId(String(row.id ?? row.contact_id ?? row.uid ?? ""));
-                setRevealed((r) => Math.max(r, 2));
+                // keep all steps visible
+                setRevealed(4);
               }}
             />
             {selectedContact && (
               <Box sx={{ mt: 1 }}>
-                <Typography variant="body2">Selected: {`${selectedContact.first_name ?? ""} ${selectedContact.last_name ?? ""}`.trim() || selectedContact.full_name || contactId}</Typography>
+                <Typography variant="body2">Selected: {`${selectedContact.first_name ?? ""} ${selectedContact.last_name ?? ""}`.trim() || selectedContact.full_name}</Typography>
               </Box>
             )}
           </Box>
@@ -116,7 +159,11 @@ export default function InformationInterviewDialog({ open, onClose }: Props) {
               </Typography>
 
               <InformationInterviewJobPicker
-                initialQuery={jobId}
+                initialQuery={
+                  selectedJob
+                    ? (selectedJob.job_title ?? selectedJob.title ?? selectedJob.position ?? selectedJob.company_name ?? "")
+                    : ""
+                }
                 initialTopic={topic}
                 onSelectJob={(row) => {
                   setSelectedJob(row ?? null);
@@ -125,9 +172,11 @@ export default function InformationInterviewDialog({ open, onClose }: Props) {
                 onChangeTopic={(t) => setTopic(t)}
               />
 
-              <Box sx={{ mt: 1 }}>
-                <QuickActionButton label="Continue" onClick={() => setRevealed((r) => Math.max(r, 3))} size="small" />
-              </Box>
+              {selectedJob && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">Selected: {selectedJob.job_title ?? selectedJob.title ?? selectedJob.position ?? selectedJob.company_name}</Typography>
+                </Box>
+              )}
             </Box>
           )}
 
@@ -149,7 +198,6 @@ export default function InformationInterviewDialog({ open, onClose }: Props) {
               />
 
               <Box sx={{ mt: 1 }}>
-                <QuickActionButton label="Continue" onClick={() => setRevealed((r) => Math.max(r, 4))} size="small" />
               </Box>
             </Box>
           )}
