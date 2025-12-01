@@ -22,6 +22,7 @@ import type { InterviewQuestion } from "../hooks/useInterviewQuestionBank";
 import aiClient from "@shared/services/ai/client";
 import { useAuth } from "@shared/context/AuthContext";
 import { createPreparationActivity } from "@shared/services/dbMappers";
+import MockInterview from "./MockInterview";
 
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);

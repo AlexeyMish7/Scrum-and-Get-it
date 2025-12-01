@@ -441,6 +441,14 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/mock-interview-summary") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/generate/mock-interview-summary.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/reference-points") {
       const userId = await requireAuth(req);
       const { handleReferencePoints } = await import("./routes/index.js");
