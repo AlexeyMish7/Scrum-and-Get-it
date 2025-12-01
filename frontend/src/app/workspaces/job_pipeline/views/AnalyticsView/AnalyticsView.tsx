@@ -43,6 +43,7 @@ import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCar
 import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchCard/CompanyResearchCard";
 import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
 import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
+import MarketIntelligenceCard from "@job_pipeline/components/cards/MarketIntelligenceCard/MarketIntelligenceCard";
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
@@ -725,6 +726,9 @@ export default function AnalyticsView() {
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <CompanyResearchCard />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <MarketIntelligenceCard />
           </Grid>
         </Grid>
 

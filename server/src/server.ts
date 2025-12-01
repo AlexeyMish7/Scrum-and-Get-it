@@ -544,6 +544,25 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // MARKET INTELLIGENCE ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/market/intelligence") {
+      console.log("🎯 HIT MARKET INTELLIGENCE ROUTE!");
+      try {
+        const { handleGetMarketIntelligence } = await import("./routes/analytics/market-intelligence.js");
+        console.log("✅ Import successful, calling handler...");
+        await handleGetMarketIntelligence(req, res);
+        console.log("✅ Handler completed");
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in market intelligence route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // PATTERN RECOGNITION ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/analytics/pattern-recognition") {
