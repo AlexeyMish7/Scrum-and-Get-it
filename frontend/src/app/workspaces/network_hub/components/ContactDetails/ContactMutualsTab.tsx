@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, List, ListItem, ListItemText, Stack, CircularProgress, ListItemAvatar, Avatar } from "@mui/material";
+import MutualsGraph from "../Mutuals/MutualsGraph";
 import { useAuth } from "@shared/context/AuthContext";
 import * as db from "@shared/services/dbMappers";
 import type { Result } from "@shared/services/types";
@@ -75,6 +76,9 @@ export default function ContactMutualsTab({ contactId, onSave: _onSave, onSaved 
                         )}
                     </List>
                 )}
+
+                {/* Graph view of mutuals */}
+                <MutualsGraph contactId={contactId} />
             </Stack>
         </Box>
     );

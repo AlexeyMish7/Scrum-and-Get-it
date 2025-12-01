@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -13,10 +13,9 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Link,
   Tooltip,
 } from "@mui/material";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import PersonIcon from "@mui/icons-material/Person";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useAuth } from "@shared/context/AuthContext";
@@ -193,8 +192,8 @@ export default function SuggestContacts({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <PersonAddIcon />
-        Suggest Contacts
+        <PersonIcon />
+        Suggested Contacts
       </DialogTitle>
       <DialogContent dividers>
         <Box sx={{ mb: 1 }}>
