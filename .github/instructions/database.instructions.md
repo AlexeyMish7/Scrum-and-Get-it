@@ -4,13 +4,14 @@
 
 PostgreSQL database hosted on Supabase with Row Level Security (RLS) policies. All tables enforce user-level isolation - users can only access their own data.
 
-**Database Statistics (as of 2025-11-20):**
+**Database Statistics (as of 2025-11-30):**
 
-- **19 tables** with data in production
-- **5 custom ENUM types** for data validation
-- **23 database functions** (including RLS helpers, cleanup jobs, company research)
-- **18 triggers** for auto-updating timestamps and maintaining data integrity
+- **25+ tables** with data in production
+- **8 custom ENUM types** for data validation
+- **25+ database functions** (including RLS helpers, cleanup jobs, company research)
+- **20+ triggers** for auto-updating timestamps and maintaining data integrity
 - **Shared company data** - Companies table accessible to all users (no user_id isolation)
+- **Team collaboration** - Team tables support multi-user access with role-based permissions
 
 ---
 
@@ -116,6 +117,66 @@ CREATE TYPE verification_status_enum AS ENUM (
   'verified',
   'rejected'
 );
+
+-- Team member roles (UC-108)
+CREATE TYPE team_role_enum AS ENUM (
+  'admin',
+  'mentor',
+  'candidate'
+);
+
+-- Team invitation status
+CREATE TYPE invitation_status_enum AS ENUM (
+  'pending',
+  'accepted',
+  'declined',
+  'expired',
+  'cancelled'
+);
+
+-- Team subscription tiers
+CREATE TYPE subscription_tier_enum AS ENUM (
+  'free',
+  'starter',
+  'professional',
+  'enterprise'
+);
+
+-- Document review status (UC-110)
+CREATE TYPE review_status_enum AS ENUM (
+  'pending',
+  'in_progress',
+  'completed',
+  'expired',
+  'cancelled'
+);
+
+-- Document review types
+CREATE TYPE review_type_enum AS ENUM (
+  'feedback',
+  'approval',
+  'peer_review',
+  'mentor_review'
+);
+
+-- Review access levels
+CREATE TYPE review_access_enum AS ENUM (
+  'view',
+  'comment',
+  'suggest',
+  'approve'
+);
+
+-- Comment types for reviews
+CREATE TYPE comment_type_enum AS ENUM (
+  'comment',
+  'suggestion',
+  'praise',
+  'change_request',
+  'question',
+  'approval',
+  'rejection'
+);
 ```
 
 ---
@@ -137,10 +198,12 @@ auth.users (Supabase managed)
       ├─ documents (1:many) - Resumes/cover letters
       │   ├─ document_versions (1:many) - Git-like versioning
       │   ├─ export_history (1:many) - PDF/DOCX exports
-      │   └─ document_jobs (many) - Links to job applications
+      │   ├─ document_jobs (many) - Links to job applications
+      │   └─ document_reviews (many) - Review requests (UC-110)
       ├─ generation_sessions (1:many) - AI generation tracking
       ├─ analytics_cache (1:many) - Cached AI analysis
-      └─ user_company_notes (1:many) - Private company notes
+      ├─ user_company_notes (1:many) - Private company notes
+      └─ team membership (via team_members)
 
 companies (shared data - NO user_id)
   ├─ jobs (many) - Jobs link to companies
@@ -156,6 +219,20 @@ themes (system + user)
   ├─ documents (many)
   ├─ document_versions (many)
   └─ generation_sessions (many)
+
+teams (UC-108: Team Account Management)
+  ├─ team_members (many) - User memberships with roles
+  ├─ team_invitations (many) - Pending invitations
+  ├─ team_member_assignments (many) - Mentor-candidate pairings
+  ├─ team_activity_log (many) - Audit trail
+  ├─ team_messages (many) - Internal communication
+  ├─ team_subscriptions (1:1) - Billing status
+  ├─ team_settings (1:1) - Configuration
+  └─ mentor_feedback (many) - UC-109: Mentor feedback
+      └─ mentee_goals (many) - UC-109: Candidate goals
+
+document_reviews (UC-110: Collaborative Review)
+  └─ review_comments (many) - Threaded comments
 ```
 
 ---
@@ -1077,6 +1154,164 @@ CREATE TYPE proficiency_level_enum AS ENUM ('Beginner', 'Intermediate', 'Advance
 CREATE TYPE education_level_enum AS ENUM ('High School', 'Associate', 'Bachelor', 'Master', 'Doctorate');
 CREATE TYPE verification_status_enum AS ENUM ('unverified', 'pending', 'verified', 'expired');
 CREATE TYPE project_status_enum AS ENUM ('planned', 'active', 'completed', 'archived');
+CREATE TYPE team_role_enum AS ENUM ('admin', 'mentor', 'candidate');
+CREATE TYPE invitation_status_enum AS ENUM ('pending', 'accepted', 'declined', 'expired', 'cancelled');
+CREATE TYPE review_status_enum AS ENUM ('pending', 'in_progress', 'completed', 'expired', 'cancelled');
+CREATE TYPE review_type_enum AS ENUM ('feedback', 'approval', 'peer_review', 'mentor_review');
+```
+
+---
+
+## Team Management Tables (UC-108, UC-109)
+
+### teams - Team accounts for collaborative coaching
+
+```sql
+CREATE TABLE public.teams (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  owner_id uuid NOT NULL REFERENCES profiles(id),
+  settings jsonb DEFAULT '{...}'::jsonb,  -- allow_member_invites, notification_preferences
+  total_members integer DEFAULT 1,
+  total_candidates integer DEFAULT 0,
+  total_mentors integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+```
+
+### team_members - User membership with roles
+
+```sql
+CREATE TABLE public.team_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  user_id uuid NOT NULL REFERENCES profiles(id),
+  role team_role_enum NOT NULL DEFAULT 'candidate',  -- admin/mentor/candidate
+  invited_by uuid REFERENCES profiles(id),
+  joined_at timestamptz DEFAULT now(),
+  is_active boolean DEFAULT true,
+  custom_permissions jsonb DEFAULT '{...}'::jsonb,
+  UNIQUE (team_id, user_id)
+);
+```
+
+### team_invitations - Pending team invitations
+
+```sql
+CREATE TABLE public.team_invitations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  invited_by uuid NOT NULL REFERENCES profiles(id),
+  invitee_email text NOT NULL,
+  invitee_user_id uuid REFERENCES profiles(id),
+  role team_role_enum DEFAULT 'candidate',
+  invitation_token text NOT NULL UNIQUE,
+  status invitation_status_enum DEFAULT 'pending',
+  expires_at timestamptz DEFAULT (now() + '7 days'::interval),
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### team_member_assignments - Mentor-candidate pairings
+
+```sql
+CREATE TABLE public.team_member_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  mentor_id uuid NOT NULL REFERENCES profiles(id),
+  candidate_id uuid NOT NULL REFERENCES profiles(id),
+  assigned_by uuid NOT NULL REFERENCES profiles(id),
+  is_active boolean DEFAULT true,
+  notes text,
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT different_users CHECK (mentor_id != candidate_id)
+);
+```
+
+### mentor_feedback - Mentor coaching feedback (UC-109)
+
+```sql
+CREATE TABLE public.mentor_feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  mentor_id uuid NOT NULL REFERENCES profiles(id),
+  candidate_id uuid NOT NULL REFERENCES profiles(id),
+  feedback_type text NOT NULL,  -- application/interview/resume/cover_letter/general/goal/milestone
+  feedback_text text NOT NULL,
+  related_job_id bigint REFERENCES jobs(id),
+  related_document_id uuid REFERENCES document_versions(id),
+  is_read boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### mentee_goals - Candidate goal tracking (UC-109)
+
+```sql
+CREATE TABLE public.mentee_goals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  candidate_id uuid NOT NULL REFERENCES profiles(id),
+  mentor_id uuid REFERENCES profiles(id),
+  goal_type text NOT NULL,  -- weekly_applications/monthly_applications/interview_prep/resume_update/networking/skill_development/custom
+  title text NOT NULL,
+  description text,
+  target_value integer,
+  current_value integer DEFAULT 0,
+  start_date date DEFAULT CURRENT_DATE,
+  due_date date,
+  status text DEFAULT 'active',  -- active/completed/missed/cancelled
+  created_at timestamptz DEFAULT now()
+);
+```
+
+---
+
+## Document Review Tables (UC-110)
+
+### document_reviews - Review requests
+
+```sql
+CREATE TABLE public.document_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id uuid NOT NULL REFERENCES documents(id),
+  version_id uuid REFERENCES document_versions(id),
+  owner_id uuid NOT NULL REFERENCES profiles(id),
+  reviewer_id uuid NOT NULL REFERENCES profiles(id),
+  team_id uuid REFERENCES teams(id),
+  review_type review_type_enum DEFAULT 'feedback',
+  access_level review_access_enum DEFAULT 'comment',
+  status review_status_enum DEFAULT 'pending',
+  due_date timestamptz,
+  is_approved boolean,
+  request_message text,
+  total_comments integer DEFAULT 0,
+  unresolved_comments integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT different_owner_reviewer CHECK (owner_id != reviewer_id)
+);
+```
+
+### review_comments - Threaded comments on documents
+
+```sql
+CREATE TABLE public.review_comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_id uuid NOT NULL REFERENCES document_reviews(id),
+  user_id uuid NOT NULL REFERENCES profiles(id),
+  parent_comment_id uuid REFERENCES review_comments(id),
+  comment_text text NOT NULL,
+  comment_type comment_type_enum DEFAULT 'comment',
+  section_path text,  -- e.g., "experience.0.bullets.2"
+  selection_range jsonb,  -- { start: number, end: number }
+  is_resolved boolean DEFAULT false,
+  resolved_by uuid REFERENCES profiles(id),
+  resolution_note text,
+  created_at timestamptz DEFAULT now()
+);
 ```
 
 ---
@@ -1279,14 +1514,17 @@ auth.users (Supabase)
       ├─ documents (1:many)
       │   ├─ document_versions (1:many)
       │   ├─ export_history (1:many)
-      │   └─ document_jobs (many)
+      │   ├─ document_jobs (many)
+      │   └─ document_reviews (many) ← UC-110
       ├─ generation_sessions (1:many)
       ├─ analytics_cache (1:many)
-      └─ user_company_notes (1:many)
+      ├─ user_company_notes (1:many)
+      └─ team_members (many) ← UC-108
 
 companies (shared data)
   ├─ jobs (many)
-  └─ user_company_notes (many)
+  ├─ user_company_notes (many)
+  └─ company_research_cache (1:1)
 
 templates (system + user)
   ├─ documents (many)
@@ -1297,6 +1535,20 @@ themes (system + user)
   ├─ documents (many)
   ├─ document_versions (many)
   └─ generation_sessions (many)
+
+teams (UC-108)
+  ├─ team_members (many)
+  ├─ team_invitations (many)
+  ├─ team_member_assignments (many)
+  ├─ team_activity_log (many)
+  ├─ team_messages (many)
+  ├─ team_subscriptions (1:1)
+  ├─ team_settings (1:1)
+  ├─ mentor_feedback (many) ← UC-109
+  └─ mentee_goals (many) ← UC-109
+
+document_reviews (UC-110)
+  └─ review_comments (many)
 ```
 
 ---

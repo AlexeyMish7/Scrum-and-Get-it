@@ -2,7 +2,7 @@
 
 ## Overview
 
-Node.js + Express + TypeScript backend server for AI-powered resume/cover letter generation. Handles OpenAI API calls, prompt management, and serves as middleware between frontend and AI services.
+Node.js + Express + TypeScript backend server for AI-powered resume/cover letter generation, company research, job matching, and analytics. Handles OpenAI API calls, prompt management, web scraping, and serves as middleware between frontend and AI services.
 
 ---
 
@@ -11,29 +11,64 @@ Node.js + Express + TypeScript backend server for AI-powered resume/cover letter
 ```
 server/
 ├── src/
-│   ├── index.ts                 # Entry point, Express app setup
+│   ├── index.ts                 # Entry point, loads env, starts server
+│   ├── server.ts                # HTTP server setup and routing
 │   ├── routes/                  # API route handlers
-│   │   ├── generate.ts          # AI generation endpoints
-│   │   └── health.ts            # Health check endpoint
+│   │   ├── index.ts             # Route exports
+│   │   ├── health.ts            # Health check endpoint
+│   │   ├── analytics.ts         # Interview analytics endpoints
+│   │   ├── analytics/
+│   │   │   └── networking.ts    # Networking analytics
+│   │   ├── artifacts/
+│   │   │   ├── index.ts         # AI artifacts CRUD
+│   │   │   └── job-materials.ts # Job materials endpoints
+│   │   ├── company/
+│   │   │   ├── research.ts      # Company research endpoint
+│   │   │   └── user-companies.ts # User's companies from employment
+│   │   ├── cover-letter/
+│   │   │   └── drafts.ts        # Cover letter drafts CRUD
+│   │   ├── generate/            # AI generation endpoints
+│   │   │   ├── company-research.ts
+│   │   │   ├── cover-letter.ts
+│   │   │   ├── experience-tailoring.ts
+│   │   │   ├── interview-request.ts
+│   │   │   ├── job-import.ts
+│   │   │   ├── job-match.ts
+│   │   │   ├── profile-tips.ts
+│   │   │   ├── reference-points.ts
+│   │   │   ├── relationship.ts
+│   │   │   ├── resume.ts
+│   │   │   └── skills-optimization.ts
+│   │   ├── predict/
+│   │   │   └── job-search.ts    # Job search predictions
+│   │   └── salary/
+│   │       └── research.ts      # Salary research endpoint
 │   ├── services/                # Business logic layer
-│   │   ├── openai.service.ts    # OpenAI client wrapper
-│   │   └── prompt.service.ts    # Prompt loading/rendering
+│   │   ├── aiClient.ts          # OpenAI client wrapper
+│   │   ├── analyticsService.ts  # Analytics calculations
+│   │   ├── companyResearchService.ts # Company research logic
+│   │   ├── coverLetterDraftsService.ts
+│   │   ├── extractionStrategies.ts # Job import extraction
+│   │   ├── feedbackNlp.ts       # NLP for feedback analysis
+│   │   ├── orchestrator.ts      # AI generation orchestration
+│   │   ├── prediction.service.ts # Prediction algorithms
+│   │   ├── scraper.ts           # Web scraping (Puppeteer)
+│   │   └── supabaseAdmin.ts     # Supabase admin client
 │   ├── middleware/              # Express middleware
 │   │   ├── auth.ts              # JWT verification (Supabase)
-│   │   └── error.ts             # Global error handler
+│   │   ├── cors.ts              # CORS configuration
+│   │   ├── error.ts             # Global error handler
+│   │   └── logging.ts           # Request logging
 │   └── types/                   # TypeScript type definitions
-│       └── generation.types.ts  # Request/response types
-├── prompts/                     # Prompt templates (Handlebars)
-│   ├── resume/
-│   │   ├── chronological.hbs
-│   │   ├── functional.hbs
-│   │   ├── hybrid.hbs
-│   │   └── base.hbs             # Shared prompt fragments
-│   └── cover-letter/
-│       ├── professional.hbs
-│       └── creative.hbs
+├── prompts/                     # Prompt templates
+│   ├── companyResearch.ts
+│   ├── coverLetter.ts
+│   ├── experienceTailoring.ts
+│   ├── resume.ts
+│   └── skillsOptimization.ts
 ├── utils/                       # Helper utilities
-│   └── logger.ts                # Winston logger
+│   ├── errors.ts                # ApiError class
+│   └── logger.ts                # Logging utilities
 ├── tests/                       # Unit tests
 └── package.json
 ```
@@ -45,34 +80,66 @@ server/
 **File:** `server/src/index.ts`
 
 ```typescript
-import express from "express";
-import cors from "cors";
-import { generateRouter } from "./routes/generate";
-import { healthRouter } from "./routes/health";
-import { errorHandler } from "./middleware/error";
+import { config } from "dotenv";
+config(); // Load .env
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+import { createServer } from "./server.js";
 
-// Middleware
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true,
-  })
-);
-app.use(express.json({ limit: "10mb" }));
+const PORT = process.env.PORT || 8787;
 
-// Routes
-app.use("/api/health", healthRouter);
-app.use("/api/generate", generateRouter);
+const server = createServer();
 
-// Error handling (must be last)
-app.use(errorHandler);
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`AI Mode: ${process.env.FAKE_AI === "true" ? "MOCK" : "REAL"}`);
+  console.log(
+    `Auth Mode: ${process.env.ALLOW_DEV_AUTH === "true" ? "DEV" : "PRODUCTION"}`
+  );
 });
+```
+
+**File:** `server/src/server.ts`
+
+The server uses native Node.js `http` module (not Express) with manual routing.
+
+```typescript
+import http from "http";
+
+export function createServer(): http.Server {
+  loadEnvFromFiles();
+  validateConfiguration();
+
+  return http.createServer(handleRequest);
+}
+
+async function handleRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+) {
+  // CORS preflight
+  if (req.method === "OPTIONS") {
+    handleCorsPreflight(req, res);
+    return;
+  }
+
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+  const method = req.method || "GET";
+
+  // Route matching
+  if (method === "GET" && pathname === "/api/health") {
+    await handleHealth(url, res, { startedAt, counters });
+    return;
+  }
+
+  if (method === "POST" && pathname === "/api/generate/resume") {
+    const userId = await requireAuth(req);
+    await handleGenerateResume(req, res, url, reqId, userId, counters);
+    return;
+  }
+
+  // ... more routes
+}
 ```
 
 ---
@@ -95,548 +162,300 @@ app.listen(PORT, () => {
                                           8. Return to Frontend
 ```
 
-### Detailed Flow
+### AI Client Service
 
-**Step 1: Frontend Request**
+**File:** `server/src/services/aiClient.ts`
 
-```typescript
-// Frontend makes POST request
-const response = await fetch('http://localhost:3001/api/generate/resume', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`
-  },
-  body: JSON.stringify({
-    templateType: 'chronological',
-    profile: { ... },
-    skills: [ ... ],
-    employment: [ ... ],
-    education: [ ... ],
-    jobDetails: { ... },
-    options: {
-      tone: 'professional',
-      length: 'standard',
-      focusAreas: ['leadership']
-    }
-  })
-});
-```
-
-**Step 2: Auth Middleware**
+The AI client handles communication with OpenAI:
 
 ```typescript
-// server/src/middleware/auth.ts
-export async function requireAuth(req, res, next) {
-  const token = req.headers.authorization?.split("Bearer ")[1];
-  if (!token) return res.status(401).json({ error: "No token" });
-
-  try {
-    // Verify JWT with Supabase
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
-    if (error || !user) throw new Error("Invalid token");
-
-    req.user = user; // Attach user to request
-    next();
-  } catch (err) {
-    res.status(401).json({ error: "Unauthorized" });
-  }
-}
-```
-
-**Step 3: Route Handler**
-
-```typescript
-// server/src/routes/generate.ts
-import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
-import { generateResume } from "../services/openai.service";
-
-const router = Router();
-
-router.post("/resume", requireAuth, async (req, res, next) => {
-  try {
-    const {
-      templateType,
-      profile,
-      skills,
-      employment,
-      education,
-      jobDetails,
-      options,
-    } = req.body;
-
-    // Validate required fields
-    if (!templateType || !profile) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Call AI service
-    const result = await generateResume({
-      templateType,
-      profile,
-      skills,
-      employment,
-      education,
-      jobDetails,
-      options,
-      userId: req.user.id,
-    });
-
-    res.json(result);
-  } catch (err) {
-    next(err); // Pass to error handler
-  }
-});
-
-export { router as generateRouter };
-```
-
-**Step 4-6: Prompt Service**
-
-```typescript
-// server/src/services/prompt.service.ts
-import Handlebars from "handlebars";
-import fs from "fs/promises";
-import path from "path";
-
-export class PromptService {
-  private templateCache = new Map<string, HandlebarsTemplateDelegate>();
-
-  async loadTemplate(
-    type: "resume" | "cover-letter",
-    subtype: string
-  ): Promise<HandlebarsTemplateDelegate> {
-    const cacheKey = `${type}/${subtype}`;
-
-    // Check cache first
-    if (this.templateCache.has(cacheKey)) {
-      return this.templateCache.get(cacheKey)!;
-    }
-
-    // Load from filesystem
-    const templatePath = path.join(
-      __dirname,
-      "../../prompts",
-      type,
-      `${subtype}.hbs`
-    );
-    const templateSource = await fs.readFile(templatePath, "utf-8");
-
-    // Compile Handlebars template
-    const template = Handlebars.compile(templateSource);
-
-    // Cache for reuse
-    this.templateCache.set(cacheKey, template);
-
-    return template;
-  }
-
-  async renderPrompt(
-    type: "resume" | "cover-letter",
-    subtype: string,
-    data: any
-  ): Promise<string> {
-    const template = await this.loadTemplate(type, subtype);
-
-    // Render template with user data
-    return template(data);
-  }
-}
-```
-
-**Step 7-8: OpenAI Service**
-
-```typescript
-// server/src/services/openai.service.ts
 import OpenAI from "openai";
-import { PromptService } from "./prompt.service";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.AI_API_KEY,
 });
 
-const promptService = new PromptService();
+export async function generateCompletion(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: { temperature?: number; maxTokens?: number }
+) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: options?.temperature ?? 0.7,
+    max_tokens: options?.maxTokens ?? 2000,
+  });
 
-export async function generateResume(
-  input: GenerateResumeInput
-): Promise<GenerateResumeOutput> {
-  const startTime = Date.now();
+  return response.choices[0]?.message?.content;
+}
+```
+
+### Fake AI Mode
+
+For development without using OpenAI credits:
+
+```bash
+# In server/.env
+FAKE_AI=true
+```
+
+When enabled, the server returns mock responses for all AI endpoints.
+
+---
+
+## Prompt System
+
+### Prompt Templates
+
+**Location:** `server/prompts/`
+
+Prompts are defined as TypeScript template functions:
+
+```typescript
+// prompts/resume.ts
+export function buildResumePrompt(data: ResumePromptData): string {
+  return `
+You are an expert resume writer. Generate a professional resume.
+
+## User Profile
+Name: ${data.profile.full_name}
+Title: ${data.profile.professional_title}
+
+## Employment History
+${data.employment
+  .map(
+    (job) => `
+- ${job.job_title} at ${job.company_name}
+  ${job.start_date} - ${job.end_date || "Present"}
+`
+  )
+  .join("\n")}
+
+## Skills
+${data.skills
+  .map((s) => `- ${s.skill_name} (${s.proficiency_level})`)
+  .join("\n")}
+
+## Target Job
+${
+  data.jobDetails
+    ? `
+Title: ${data.jobDetails.job_title}
+Company: ${data.jobDetails.company_name}
+Description: ${data.jobDetails.job_description}
+`
+    : "No specific target job provided."
+}
+
+Generate a tailored resume in JSON format.
+`;
+}
+```
+
+---
+
+## Web Scraping Service
+
+**File:** `server/src/services/scraper.ts`
+
+Used for job importing and company research:
+
+```typescript
+import puppeteer, { Browser } from "puppeteer";
+
+let browser: Browser | null = null;
+
+// Lazy initialization with connection pooling
+export async function getBrowser(): Promise<Browser> {
+  if (!browser || !browser.connected) {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+  }
+  return browser;
+}
+
+export async function scrapeJobPosting(url: string): Promise<JobData> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
 
   try {
-    // Step 1: Render prompt template
-    const systemPrompt = await promptService.renderPrompt(
-      "resume",
-      input.templateType,
-      input
-    );
+    await page.goto(url, { waitUntil: "networkidle0" });
 
-    // Step 2: Call OpenAI API
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: `Generate a ${input.templateType} resume for ${
-            input.profile.full_name
-          }. Tone: ${input.options?.tone || "professional"}. Length: ${
-            input.options?.length || "standard"
-          }.`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" }, // Force JSON output
+    // Extract job data from page
+    const jobData = await page.evaluate(() => {
+      // ... extraction logic
     });
 
-    // Step 3: Extract and parse response
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("No content in OpenAI response");
+    return jobData;
+  } finally {
+    await page.close();
+  }
+}
 
-    const resumeData = JSON.parse(content);
-
-    // Step 4: Return with metadata
-    return {
-      success: true,
-      data: resumeData,
-      metadata: {
-        model: response.model,
-        tokensUsed: response.usage?.total_tokens || 0,
-        generationTimeMs: Date.now() - startTime,
-        templateType: input.templateType,
-      },
-    };
-  } catch (error) {
-    console.error("[generateResume] Error:", error);
-
-    return {
-      success: false,
-      error: {
-        message: error.message || "Failed to generate resume",
-        code: "GENERATION_FAILED",
-      },
-    };
+// Graceful shutdown
+export async function closeBrowser() {
+  if (browser) {
+    await browser.close();
+    browser = null;
   }
 }
 ```
 
 ---
 
-## Prompt System (Handlebars Templates)
+## Company Research Service
 
-### Why Handlebars?
+**File:** `server/src/services/companyResearchService.ts`
 
-- **Templating**: Dynamic prompts based on user data
-- **Reusability**: Shared fragments across templates
-- **Maintainability**: Easier to edit than string concatenation
-
-### Template Structure
-
-**Base Template:** `server/prompts/resume/base.hbs`
-
-```handlebars
-{{! Shared instructions for all resume types }}
-You are an expert resume writer. Generate a professional resume in JSON format.
-## Output Format Return ONLY a valid JSON object with this structure: {
-"header": { "name": "{{profile.full_name}}", "title": "{{profile.professional_title}}",
-"email": "{{profile.email}}", "phone": "{{profile.phone}}", "location": "{{profile.city}},
-{{profile.state}}" }, "summary": "Professional summary text (3-4 sentences)",
-"experience": [ { "title": "Job Title", "company": "Company Name", "location":
-"City, State", "startDate": "MM/YYYY", "endDate": "MM/YYYY or Present",
-"bullets": ["Achievement 1", "Achievement 2"] } ], "education": [...], "skills":
-{ "technical": ["Skill 1", "Skill 2"], "soft": ["Skill 1", "Skill 2"] } } ##
-Tone
-{{#if options.tone}}
-  Use a
-  {{options.tone}}
-  tone throughout.
-{{else}}
-  Use a professional tone throughout.
-{{/if}}
-
-## Focus Areas
-{{#if options.focusAreas}}
-  Emphasize the following areas:
-  {{#each options.focusAreas}}
-    -
-    {{this}}
-  {{/each}}
-{{/if}}
-```
-
-**Chronological Template:** `server/prompts/resume/chronological.hbs`
-
-```handlebars
-{{> base}}
-
-## Resume Type: Chronological
-Focus on work history in reverse chronological order.
-
-## User Data
-
-### Profile
-Name: {{profile.full_name}}
-Title: {{profile.professional_title}}
-{{#if profile.summary}}
-Current Summary: {{profile.summary}}
-{{/if}}
-
-### Employment History
-{{#each employment}}
-**{{this.job_title}}** at {{this.company_name}}
-Location: {{this.location}}
-Duration: {{this.start_date}} to {{#if this.current_position}}Present{{else}}{{this.end_date}}{{/if}}
-
-{{#if this.job_description}}
-Description: {{this.job_description}}
-{{/if}}
-
-{{#if this.achievements}}
-Achievements:
-{{#each this.achievements}}
-- {{this}}
-{{/each}}
-{{/if}}
-
-{{/each}}
-
-### Skills
-{{#each skills}}
-- {{this.skill_name}} ({{this.proficiency_level}})
-{{/each}}
-
-### Education
-{{#each education}}
-{{this.degree_type}} in {{this.field_of_study}}
-{{this.institution_name}}
-Graduated: {{this.graduation_date}}
-{{#if this.gpa}}GPA: {{this.gpa}}{{/if}}
-{{/each}}
-
-{{#if jobDetails}}
-## Target Job
-Title: {{jobDetails.job_title}}
-Company: {{jobDetails.company_name}}
-{{#if jobDetails.job_description}}
-Description: {{jobDetails.job_description}}
-{{/if}}
-
-Tailor the resume to match this job posting.
-{{/if}}
-```
-
-### Handlebars Helpers
-
-**Register custom helpers:**
+Fetches and caches company information:
 
 ```typescript
-// server/src/services/prompt.service.ts
-import Handlebars from "handlebars";
+import { supabaseAdmin } from "./supabaseAdmin";
 
-// Helper to format dates
-Handlebars.registerHelper("formatDate", (date: string) => {
-  if (!date) return "Present";
-  const d = new Date(date);
-  return `${d.getMonth() + 1}/${d.getFullYear()}`;
-});
+export async function getCompanyResearch(
+  companyName: string
+): Promise<CompanyResearch> {
+  // Check cache first
+  const { data: cached } = await supabaseAdmin
+    .from("company_research_cache")
+    .select("*")
+    .eq("company_name", companyName)
+    .gt("expires_at", new Date().toISOString())
+    .single();
 
-// Helper to limit array length
-Handlebars.registerHelper("limit", (array: any[], limit: number) => {
-  return array.slice(0, limit);
-});
+  if (cached) {
+    // Update access stats
+    await supabaseAdmin
+      .from("company_research_cache")
+      .update({
+        access_count: cached.access_count + 1,
+        last_accessed_at: new Date().toISOString(),
+      })
+      .eq("id", cached.id);
 
-// Helper for conditional bullets
-Handlebars.registerHelper("hasBullets", (achievements: string[]) => {
-  return achievements && achievements.length > 0;
-});
+    return cached.research_data;
+  }
+
+  // Generate new research using AI
+  const research = await generateCompanyResearch(companyName);
+
+  // Cache for 7 days
+  await saveCompanyResearch(companyName, research);
+
+  return research;
+}
 ```
 
-**Usage in templates:**
+---
 
-```handlebars
-{{formatDate employment.start_date}}
-to
-{{formatDate employment.end_date}}
+## Prediction Service
 
-{{#each (limit skills 10)}}
-  -
-  {{this.skill_name}}
-{{/each}}
+**File:** `server/src/services/prediction.service.ts`
 
-{{#if (hasBullets employment.achievements)}}
-  Achievements:
-  {{#each employment.achievements}}
-    -
-    {{this}}
-  {{/each}}
-{{/if}}
+Predicts job search outcomes based on user data and historical patterns:
+
+```typescript
+export async function predictJobSearchTimeline(
+  userId: string,
+  targetRole: string,
+  applicationRate: number
+): Promise<PredictionResult> {
+  // Analyze user's profile strength
+  const profileScore = await calculateProfileScore(userId);
+
+  // Calculate expected conversion rates
+  const baseConversionRate = getBaseConversionRate(targetRole);
+  const adjustedRate = baseConversionRate * (profileScore / 100);
+
+  // Monte Carlo simulation for timeline
+  const simulations = runMonteCarloSimulation(applicationRate, adjustedRate);
+
+  return {
+    estimatedWeeks: simulations.median,
+    confidence: simulations.confidence,
+    recommendations: generateRecommendations(profileScore, adjustedRate),
+  };
+}
 ```
 
 ---
 
 ## API Endpoints
 
-### POST /api/generate/resume
+### Health Check
 
-**Purpose:** Generate AI resume
-
-**Request:**
-
-```typescript
-{
-  templateType: 'chronological' | 'functional' | 'hybrid' | 'creative',
-  profile: {
-    full_name: string;
-    professional_title: string;
-    email: string;
-    phone?: string;
-    summary?: string;
-    // ... other profile fields
-  },
-  skills: Array<{
-    skill_name: string;
-    proficiency_level: string;
-    skill_category: string;
-  }>,
-  employment: Array<{
-    job_title: string;
-    company_name: string;
-    start_date: string;
-    end_date?: string;
-    current_position: boolean;
-    achievements?: string[];
-  }>,
-  education: Array<{
-    institution_name: string;
-    degree_type: string;
-    field_of_study: string;
-    graduation_date?: string;
-  }>,
-  jobDetails?: {
-    job_title: string;
-    company_name: string;
-    job_description?: string;
-    required_skills?: string[];
-  },
-  options?: {
-    tone?: 'professional' | 'casual' | 'enthusiastic';
-    length?: 'concise' | 'standard' | 'detailed';
-    focusAreas?: string[];
-  }
-}
+```
+GET /api/health
 ```
 
-**Response:**
+Returns server health, uptime, and request counters.
 
-```typescript
-{
-  success: true,
-  data: {
-    header: { name, title, email, phone, location },
-    summary: string,
-    experience: [...],
-    education: [...],
-    skills: { technical: [...], soft: [...] }
-  },
-  metadata: {
-    model: 'gpt-4',
-    tokensUsed: 1234,
-    generationTimeMs: 5678,
-    templateType: 'chronological'
-  }
-}
+### AI Generation Endpoints (Protected)
+
+All require `Authorization: Bearer <jwt_token>` header.
+
+```
+POST /api/generate/resume
+POST /api/generate/cover-letter
+POST /api/generate/skills-optimization
+POST /api/generate/experience-tailoring
+POST /api/generate/company-research
+POST /api/generate/job-import
+POST /api/generate/job-match
+POST /api/generate/profile-tips
+POST /api/generate/relationship
+POST /api/generate/reference-points
+POST /api/generate/interview-request
 ```
 
-### POST /api/generate/cover-letter
+### Artifacts Endpoints (Protected)
 
-**Purpose:** Generate AI cover letter
-
-**Request:**
-
-```typescript
-{
-  templateType: 'professional' | 'creative' | 'enthusiastic',
-  profile: { ... },
-  jobDetails: {
-    job_title: string;
-    company_name: string;
-    job_description?: string;
-    hiring_manager_name?: string;
-  },
-  relevantExperience: Array<{
-    job_title: string;
-    company_name: string;
-    achievements: string[];
-  }>,
-  relevantSkills: string[],
-  options?: {
-    tone?: string;
-    length?: 'short' | 'medium' | 'long';
-    includeCallToAction?: boolean;
-  }
-}
+```
+GET  /api/artifacts              # List all artifacts
+GET  /api/artifacts/:id          # Get single artifact
+POST /api/job-materials          # Create job materials
+GET  /api/jobs/:jobId/materials  # List materials for job
 ```
 
-**Response:**
+### Cover Letter Drafts (Protected)
 
-```typescript
-{
-  success: true,
-  data: {
-    greeting: string,
-    opening: string,
-    body: string[],  // Array of paragraphs
-    closing: string,
-    signature: string
-  },
-  metadata: { ... }
-}
+```
+GET    /api/cover-letter/drafts        # List drafts
+GET    /api/cover-letter/drafts/:id    # Get draft
+POST   /api/cover-letter/drafts        # Create draft
+PATCH  /api/cover-letter/drafts/:id    # Update draft
+DELETE /api/cover-letter/drafts/:id    # Delete draft
 ```
 
-### POST /api/generate/job-match
+### Company Research (Protected)
 
-**Purpose:** Analyze job match score
-
-**Request:**
-
-```typescript
-{
-  profile: { ... },
-  skills: [...],
-  employment: [...],
-  jobDetails: {
-    job_title: string;
-    job_description: string;
-    required_skills?: string[];
-    preferred_skills?: string[];
-  }
-}
+```
+GET /api/company/research        # Get company research (with caching)
+GET /api/company/user-companies  # Get companies from user's employment
 ```
 
-**Response:**
+### Salary Research (Protected)
 
-```typescript
-{
-  success: true,
-  data: {
-    matchScore: 85,  // 0-100
-    breakdown: {
-      skills: { score: 90, matched: [...], missing: [...] },
-      experience: { score: 80, relevant: [...] },
-      education: { score: 85, requirement: string }
-    },
-    strengths: ["Strong Python skills", "Relevant leadership experience"],
-    gaps: ["Missing AWS certification", "No GraphQL experience"],
-    recommendations: ["Learn GraphQL", "Get AWS certification"]
-  }
-}
+```
+POST /api/salary-research        # Research salary data for role/location
+```
+
+### Analytics (Protected)
+
+```
+POST /api/analytics/networking   # Log networking analytics
+```
+
+### Predictions (Protected)
+
+```
+POST /api/predict/job-search     # Predict job search timeline
 ```
 
 ---
@@ -732,16 +551,22 @@ export async function generateResume(
 
 ```bash
 # Server
-PORT=3001
+PORT=8787
 NODE_ENV=development
-CLIENT_URL=http://localhost:5173
 
-# OpenAI
-OPENAI_API_KEY=sk-...
+# CORS
+CORS_ORIGIN=http://localhost:5173
 
-# Supabase (for auth verification)
+# AI Provider
+AI_API_KEY=sk-...
+FAKE_AI=false                    # Set true for mock responses
+
+# Supabase (for auth verification and database)
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Auth
+ALLOW_DEV_AUTH=false             # Set true to bypass auth in dev
 
 # Logging
 LOG_LEVEL=info
@@ -750,15 +575,12 @@ LOG_LEVEL=info
 **Loading:**
 
 ```typescript
-import dotenv from "dotenv";
-dotenv.config();
+import { config } from "dotenv";
+config();
 
-const config = {
-  port: process.env.PORT || 3001,
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  supabaseUrl: process.env.SUPABASE_URL,
-  clientUrl: process.env.CLIENT_URL,
-};
+// Access via process.env
+const port = process.env.PORT || 8787;
+const fakeAi = process.env.FAKE_AI === "true";
 ```
 
 ---

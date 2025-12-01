@@ -76,6 +76,7 @@ function deadlineColor(days: number) {
 export default function CalendarWidget() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [interviews, setInterviews] = useState<any[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
@@ -133,6 +134,19 @@ export default function CalendarWidget() {
     }
   };
 
+  // Load interviews from localStorage (local scheduling persisted in InterviewScheduling)
+  const loadInterviews = () => {
+    try {
+      const raw = localStorage.getItem("sgt:interviews");
+      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      // keep only scheduled interviews (exclude cancelled)
+      const scheduled = arr.filter((iv) => iv && iv.status !== "cancelled");
+      setInterviews(scheduled);
+    } catch {
+      setInterviews([]);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -144,10 +158,23 @@ export default function CalendarWidget() {
       if (mounted) loadJobs();
     };
     window.addEventListener("jobs-updated", handleJobsUpdated);
+    // Listen for interview updates from InterviewScheduling
+    const handleInterviewsUpdated = () => {
+      if (mounted) loadInterviews();
+    };
+    window.addEventListener("interviews-updated", handleInterviewsUpdated as EventListener);
+
+    // listen to storage events (other tabs) to keep interviews in sync
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key === "sgt:interviews") loadInterviews();
+    };
+    window.addEventListener("storage", onStorage);
 
     return () => {
       mounted = false;
       window.removeEventListener("jobs-updated", handleJobsUpdated);
+      window.removeEventListener("interviews-updated", handleInterviewsUpdated as EventListener);
+      window.removeEventListener("storage", onStorage);
     };
   }, [user]);
 
@@ -157,6 +184,11 @@ export default function CalendarWidget() {
       loadJobs();
     }
   }, [drawerOpen]);
+
+  // Load interviews on mount and when user changes
+  useEffect(() => {
+    loadInterviews();
+  }, [user]);
 
   // Calculate current display month
   const now = new Date();
@@ -168,31 +200,54 @@ export default function CalendarWidget() {
 
   // Get next 5 deadlines
   const upcomingDeadlines = useMemo(() => {
-    return jobs
+    const jobEvents = jobs
       .map((j) => ({
-        ...j,
-        deadline: j.application_deadline
-          ? new Date(String(j.application_deadline))
-          : null,
+        type: "job",
+        id: j.id,
+        title: j.job_title,
+        company: j.company_name,
+        city: j.city_name,
+        deadline: j.application_deadline ? new Date(String(j.application_deadline)) : null,
       }))
-      .filter((j) => j.deadline)
+      .filter((j) => j.deadline);
+
+    const interviewEvents = interviews
+      .map((iv) => ({
+        type: "interview",
+        id: iv.id,
+        title: iv.title,
+        company: iv.linkedJob ?? null,
+        deadline: iv.start ? new Date(String(iv.start)) : null,
+      }))
+      .filter((i) => i.deadline);
+
+    return [...jobEvents, ...interviewEvents]
       .sort((a, b) => a.deadline!.getTime() - b.deadline!.getTime())
       .slice(0, 5);
-  }, [jobs]);
+  }, [jobs, interviews]);
 
-  // Group jobs by date
-  const jobsByDate = useMemo(() => {
-    const map = new Map<string, JobRow[]>();
+  // Group events (jobs + interviews) by date
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, any[]>();
+    const push = (d: Date, item: any) => {
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const arr = map.get(key) ?? [];
+      arr.push(item);
+      map.set(key, arr);
+    };
+
     for (const j of jobs) {
       if (!j.application_deadline) continue;
       const d = new Date(String(j.application_deadline));
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const arr = map.get(key) ?? [];
-      arr.push(j);
-      map.set(key, arr);
+      push(d, { type: "job", ...j });
+    }
+    for (const iv of interviews) {
+      if (!iv.start) continue;
+      const d = new Date(String(iv.start));
+      push(d, { type: "interview", ...iv });
     }
     return map;
-  }, [jobs]);
+  }, [jobs, interviews]);
 
   function dayKey(dayNum: number) {
     return `${year}-${month}-${dayNum}`;
@@ -246,23 +301,74 @@ export default function CalendarWidget() {
             </Typography>
           ) : (
             <List dense disablePadding sx={{ mb: 2 }}>
-              {upcomingDeadlines.map((j) => {
-                const days = j.deadline ? daysUntil(j.deadline) : null;
+              {upcomingDeadlines.map((evt) => {
+                const days = evt.deadline ? daysUntil(evt.deadline) : null;
+                // Render differently for job deadlines vs interviews
+                if (evt.type === "job") {
+                  return (
+                    <ListItem
+                      key={`job-${String(evt.id)}`}
+                      sx={{
+                        py: 0.5,
+                        cursor: "pointer",
+                        "&:hover": { bgcolor: "action.hover" },
+                      }}
+                      onClick={() => handleJobClick(evt.id)}
+                    >
+                      <ListItemText
+                        primary={String(evt.title ?? "Untitled")}
+                        secondary={`${evt.company ?? "Unknown"}${
+                          evt.city ? ` · ${evt.city}` : ""
+                        }`}
+                        primaryTypographyProps={{ variant: "body2" }}
+                        secondaryTypographyProps={{ variant: "caption" }}
+                      />
+                      {days !== null && (
+                        <Chip
+                          label={
+                            days < 0 ? `Overdue ${Math.abs(days)}d` : `${days}d`
+                          }
+                          color={
+                            deadlineColor(days) as "error" | "warning" | "success"
+                          }
+                          size="small"
+                        />
+                      )}
+                    </ListItem>
+                  );
+                }
+
+                // interview event
+                const interview = evt as any;
+                // try to resolve linked job/company if it's an id
+                let companyLabel = "";
+                if (interview.company) {
+                  const matched = jobs.find((j) => String(j.id) === String(interview.company));
+                  if (matched) {
+                    companyLabel = `${matched.company_name ?? ""}${matched.job_title ? ` — ${matched.job_title}` : ""}`;
+                  } else {
+                    companyLabel = String(interview.company);
+                  }
+                }
                 return (
                   <ListItem
-                    key={String(j.id)}
+                    key={`iv-${String(interview.id)}`}
                     sx={{
                       py: 0.5,
                       cursor: "pointer",
                       "&:hover": { bgcolor: "action.hover" },
                     }}
-                    onClick={() => handleJobClick(j.id)}
+                    onClick={() => {
+                      // lightweight: show details summary for interview
+                      try {
+                        const when = interview.deadline ? interview.deadline.toLocaleString() : "";
+                        window.alert(`${interview.title ?? "Interview"}\n${when}${companyLabel ? `\n${companyLabel}` : ""}`);
+                      } catch {}
+                    }}
                   >
                     <ListItemText
-                      primary={String(j.job_title ?? "Untitled")}
-                      secondary={`${j.company_name ?? "Unknown"}${
-                        j.city_name ? ` · ${j.city_name}` : ""
-                      }`}
+                      primary={String(interview.title ?? "Untitled")}
+                      secondary={companyLabel}
                       primaryTypographyProps={{ variant: "body2" }}
                       secondaryTypographyProps={{ variant: "caption" }}
                     />
@@ -345,7 +451,7 @@ export default function CalendarWidget() {
             {Array.from({ length: days }).map((_, idx) => {
               const dayNum = idx + 1;
               const key = dayKey(dayNum);
-              const list = jobsByDate.get(key) ?? [];
+              const list = eventsByDate.get(key) ?? [];
               const dateObj = new Date(year, month, dayNum);
               const isToday = isSameDate(dateObj, new Date());
 
@@ -372,7 +478,19 @@ export default function CalendarWidget() {
                   }}
                   onClick={() => {
                     if (list.length === 1) {
-                      handleJobClick(list[0].id);
+                      const item = list[0];
+                      if (item.type === "job") {
+                        handleJobClick(item.id);
+                      } else if (item.type === "interview") {
+                        // For interviews, open a small summary or navigate to the Interview hub in future
+                        try {
+                          const t = item.title ?? "Interview";
+                          const when = item.start ? new Date(item.start).toLocaleString() : "";
+                          // lightweight UI: show an alert with details for now
+                          // NOTE: could be replaced with a drawer or navigation to the Interview Hub
+                          window.alert(`${t}\n${when}${item.linkedJob ? `\nLinked job: ${item.linkedJob}` : ""}`);
+                        } catch {}
+                      }
                     }
                   }}
                 >

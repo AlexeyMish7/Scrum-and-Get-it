@@ -118,6 +118,16 @@ const NetworkInterviewsPage = lazy(
     )
 );
 
+// Peer Groups (UC-112: Peer Networking and Support Groups)
+const PeerGroupsHub = lazy(
+  () => import("@workspaces/network_hub/pages/PeerGroupsHub")
+);
+
+// Family Support (UC-113: Family and Personal Support Integration)
+const FamilySupportHub = lazy(
+  () => import("@workspaces/network_hub/pages/FamilySupportHub")
+);
+
 // Team Management workspace
 import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
 const TeamDashboard = lazy(() =>
@@ -144,6 +154,22 @@ const MentorDashboard = lazy(() =>
   import("@workspaces/team_management/pages/MentorDashboard").then(
     (module) => ({
       default: module.MentorDashboard,
+    })
+  )
+);
+const CandidateProgressPage = lazy(() =>
+  import("@workspaces/team_management/pages/CandidateProgressPage").then(
+    (module) => ({
+      default: module.CandidateProgressPage,
+    })
+  )
+);
+
+// Enterprise Dashboard (UC-114: Corporate Career Services Integration)
+const EnterpriseDashboard = lazy(() =>
+  import("@workspaces/team_management/pages/EnterpriseDashboard").then(
+    (module) => ({
+      default: module.EnterpriseDashboard,
     })
   )
 );
@@ -297,6 +323,32 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  // Peer Groups Hub (UC-112: Peer Networking and Support Groups)
+  {
+    path: "/network/peer-groups",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <PeerGroupsHub />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
+  // Family Support Hub (UC-113: Family and Personal Support Integration)
+  {
+    path: "/network/family-support",
+    element: (
+      <ProtectedRoute>
+        <AppShell>
+          <Suspense fallback={<LazyLoadFallback />}>
+            <FamilySupportHub />
+          </Suspense>
+        </AppShell>
+      </ProtectedRoute>
+    ),
+  },
   // Team Management workspace
   {
     path: "/team",
@@ -343,6 +395,23 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <MentorDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "progress",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <CandidateProgressPage />
+          </Suspense>
+        ),
+      },
+      // Enterprise Dashboard (UC-114: Corporate Career Services Integration)
+      {
+        path: "enterprise",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <EnterpriseDashboard />
           </Suspense>
         ),
       },

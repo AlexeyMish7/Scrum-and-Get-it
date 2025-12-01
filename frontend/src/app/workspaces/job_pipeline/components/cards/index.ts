@@ -13,3 +13,4 @@ export { default as TimeToHireCard } from "./TimeToHireCard/TimeToHireCard";
 export { default as ResponseRateCard } from "./ResponseRateCard/ResponseRateCard";
 export { default as BenchmarkCard } from "./BenchmarkCard/BenchmarkCard";
 export { default as GoalSettingCard } from "./GoalSettingCard/GoalSettingCard";
+export { default as CompetitivePositioningCard } from "./CompetitivePositioningCard/CompetitivePositioningCard";
