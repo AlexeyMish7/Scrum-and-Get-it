@@ -9,6 +9,7 @@ import JobSearch from "../References/JobSearch";
 import GenerateReferenceGuide from "../References/GenerateReferenceGuide";
 import AddReferenceHistory from "../References/AddReferenceHistory";
 import ReferenceHistory from "../References/ReferenceHistory";
+import InformationInterviewDialog from "../InformationInterview/InformationInterviewDialog";
 
 type ContactRow = {
     id?: string;
@@ -32,6 +33,8 @@ export default function ContactDetailsDialog({
     onUpdate,
     onDelete,
     onRefresh,
+    initialSelectedJob,
+    initialTabKey,
 }: {
     open: boolean;
     contact?: ContactRow | null;
@@ -39,11 +42,14 @@ export default function ContactDetailsDialog({
     onUpdate?: (payload: Record<string, unknown>) => Promise<void> | void;
     onDelete?: (id?: string) => Promise<void> | void;
     onRefresh?: () => void;
+    initialSelectedJob?: Record<string, any> | null;
+    initialTabKey?: string | number | null;
 }) {
     const [tab, setTab] = useState(0);
     const [contactData, setContactData] = useState<ContactRow | undefined>(contact ?? undefined);
     const [selectedJob, setSelectedJob] = useState<Record<string, any> | null>(null);
     const [addRefOpen, setAddRefOpen] = useState(false);
+    const [infoInterviewOpen, setInfoInterviewOpen] = useState(false);
 
     useEffect(() => {
         if (!open) setTab(0);
@@ -56,9 +62,13 @@ export default function ContactDetailsDialog({
         { key: "reminders", label: "Reminders" },
         { key: "relationship", label: "Relationship Actions" },
     ];
-    if (contactData?.is_professional_reference) {
+    // Include 'request' tab if contact is a professional reference OR parent requested initialTabKey='request'
+    if (contactData?.is_professional_reference || initialTabKey === "request") {
         tabsDef.push({ key: "request", label: "Reference Requests" });
     }
+
+    // Add informational tab after conditional request tab so it appears later in order
+    tabsDef.push({ key: "informational", label: "Informational Interview" });
 
     // Ensure current tab index remains valid if tabs change (e.g. request tab appears/disappears)
     useEffect(() => {
@@ -69,13 +79,38 @@ export default function ContactDetailsDialog({
         setContactData(contact ?? undefined);
     }, [contact]);
 
+    // Apply initial selected job and initial tab when provided by parent
+    useEffect(() => {
+        if (initialSelectedJob) {
+            setSelectedJob(initialSelectedJob);
+        }
+
+        if (initialTabKey) {
+            const idx = tabsDef.findIndex((t) => t.key === String(initialTabKey));
+            if (idx >= 0) setTab(idx);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialSelectedJob, initialTabKey]);
+
+    // Open/close the informational interview dialog when the informational tab is selected
+    useEffect(() => {
+        const key = tabsDef[tab]?.key;
+        if (key === "informational") setInfoInterviewOpen(true);
+        else setInfoInterviewOpen(false);
+    }, [tab, tabsDef.length, contactData, selectedJob]);
+
+    // If parent provides an initial selected job or initial tab, apply them
+    useEffect(() => {
+        // no-op if not provided via props
+    }, []);
+
     if (!contactData) return null;
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
             <DialogTitle>{`${contactData.first_name ?? ''} ${contactData.last_name ?? ''}`.trim() || 'Contact'}</DialogTitle>
             <DialogContent dividers>
-                <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+                <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
                     {tabsDef.map((t) => (
                         <Tab key={t.key} label={t.label} />
                     ))}
@@ -103,6 +138,23 @@ export default function ContactDetailsDialog({
                         )}
                         {tabsDef[tab]?.key === "relationship" && (
                             <RelationshipActionsTab contact={contactData} onRefresh={() => { onRefresh?.(); }} />
+                        )}
+                        {tabsDef[tab]?.key === "informational" && (
+                            <Box>
+                                {/* Render the informational interview dialog and pass the selected contact/job */}
+                                <InformationInterviewDialog
+                                    open={infoInterviewOpen}
+                                    onClose={() => setInfoInterviewOpen(false)}
+                                    initialContact={contactData}
+                                    initialJob={initialSelectedJob ?? selectedJob}
+                                />
+                                {/* Provide a small hint while the dialog is visible as a modal */}
+                                {!infoInterviewOpen && (
+                                    <Box sx={{ p: 2 }}>
+                                        <Button variant="contained" onClick={() => setInfoInterviewOpen(true)}>Open Informational Interview</Button>
+                                    </Box>
+                                )}
+                            </Box>
                         )}
                         {tabsDef[tab]?.key === "request" && (
                             <Box>
