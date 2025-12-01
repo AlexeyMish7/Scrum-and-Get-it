@@ -28,8 +28,8 @@ export default defineConfig({
         statements: 80,
       },
     },
-    include: ["**/*.test.ts"],
-    setupFiles: ["./setup.ts"],
+    include: ["server/**/*.test.ts"],
+    setupFiles: [resolve(__dirname, "./setup.ts")],
   },
   resolve: {
     alias: {

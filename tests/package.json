@@ -1,0 +1,18 @@
+{
+  "name": "tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "jsdom": "^27.2.0",
+    "typescript": "^5.9.3",
+    "vitest": "^0.34.6"
+  },
+  "scripts": {
+    "test:server": "vitest --config ./server/vitest.config.ts",
+    "test:frontend": "vitest --config ./frontend/vitest.config.ts",
+    "test:all": "npm run test:server && npm run test:frontend",
+    "test": "npm run test:all"
+  }
+}

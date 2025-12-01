@@ -172,6 +172,38 @@ npm run dev
 
 ## Documentation
 
+## Testing
+
+Run all tests from the repo root using the PowerShell helper:
+
+```powershell
+.\u005cscriptsrun-tests.ps1
+```
+
+Suite-specific runs:
+
+```powershell
+# Frontend only (jsdom)
+.\u005cscriptsrun-tests.ps1 -Suite frontend
+
+# Server only (node)
+.\u005cscriptsrun-tests.ps1 -Suite server
+```
+
+Alternatively, run directly in the tests workspace:
+
+```powershell
+Push-Location .\tests
+$env:NODE_ENV = "test"
+npm run test:all
+Pop-Location
+```
+
+Notes:
+
+- The script sets `NODE_ENV=test` for stable test output.
+- All test files live under `tests/` with separate configs for frontend and server.
+
 Comprehensive documentation is available in the `docs/` folder:
 
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - How the entire system works together

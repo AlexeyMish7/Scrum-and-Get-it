@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM"],
+    "moduleResolution": "Node",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "types": ["vitest", "node"],
+    "paths": {
+      "vitest": [
+        "../frontend/node_modules/vitest",
+        "../server/node_modules/vitest"
+      ],
+      "@/*": ["../frontend/src/*"],
+      "@app/*": ["../frontend/src/app/*"],
+      "@shared/*": ["../frontend/src/app/shared/*"],
+      "@components/*": ["../frontend/src/app/shared/components/*"],
+      "@services/*": ["../frontend/src/app/shared/services/*"],
+      "@context/*": ["../frontend/src/app/shared/context/*"],
+      "@hooks/*": ["../frontend/src/app/shared/hooks/*"],
+      "@utils/*": ["../frontend/src/app/shared/utils/*"],
+      "@workspaces/*": ["../frontend/src/app/workspaces/*"],
+      "@profile/*": ["../frontend/src/app/workspaces/profile/*"],
+      "@ai/*": ["../frontend/src/app/workspaces/ai/*"],
+      "@jobs/*": ["../frontend/src/app/workspaces/jobs/*"],
+      "@job_pipeline/*": ["../frontend/src/app/workspaces/job_pipeline/*"],
+      "@ai_workspace/*": ["../frontend/src/app/workspaces/ai_workspace/*"],
+      "@profileTypes/*": ["../frontend/src/app/workspaces/profile/types/*"],
+      "@aiTypes/*": ["../frontend/src/app/workspaces/ai/types/*"],
+      "@jobsTypes/*": ["../frontend/src/app/workspaces/jobs/types/*"],
+      "@jobPipelineTypes/*": [
+        "../frontend/src/app/workspaces/job_pipeline/types/*"
+      ],
+      "@aiWorkspaceTypes/*": [
+        "../frontend/src/app/workspaces/ai_workspace/types/*"
+      ],
+      "@componentsShared/*": ["../frontend/src/app/shared/components/*"],
+      "@types/*": ["../frontend/src/types/*"],
+      "@assets/*": ["../frontend/src/app/assets/*"],
+      "@theme": ["../frontend/src/app/shared/theme/index.ts"],
+
+      "@server/*": ["../server/src/*"],
+      "@serverUtils/*": ["../server/utils/*"]
+    }
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"]
+}

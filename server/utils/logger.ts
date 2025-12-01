@@ -74,6 +74,11 @@ function writeLog(
 
   const output = JSON.stringify(logEntry);
 
+  // Enable colors only in TTY and non-test environments
+  const ENABLE_COLOR =
+    process.env.NODE_ENV !== "test" &&
+    typeof process !== "undefined" &&
+    !!(process.stdout && (process.stdout as any).isTTY);
   // ANSI color codes for better visibility
   const colors = {
     reset: "\x1b[0m",
@@ -83,13 +88,11 @@ function writeLog(
   };
 
   if (level === "error") {
-    // Red text for errors
     // eslint-disable-next-line no-console
-    console.error(colors.red + output + colors.reset);
+    console.error(ENABLE_COLOR ? colors.red + output + colors.reset : output);
   } else if (level === "warn") {
-    // Yellow text for warnings
     // eslint-disable-next-line no-console
-    console.log(colors.yellow + output + colors.reset);
+    console.log(ENABLE_COLOR ? colors.yellow + output + colors.reset : output);
   } else {
     // eslint-disable-next-line no-console
     console.log(output);
