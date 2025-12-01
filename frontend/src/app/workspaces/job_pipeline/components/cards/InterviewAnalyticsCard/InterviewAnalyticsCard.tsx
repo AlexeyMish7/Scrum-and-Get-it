@@ -45,16 +45,16 @@ import {
   EmojiEvents as SuccessIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
-import crud from "@shared/services/crud";
+import { listInterviews, listConfidenceLogs, listInterviewFeedback } from "@shared/services/dbMappers";
 
 interface InterviewMetrics {
   totalInterviews: number;
-  phoneScreens: number;
-  onSiteInterviews: number;
-  offers: number;
-  phoneToInterview: number;
-  interviewToOffer: number;
-  overallSuccess: number;
+  byFormat: Record<string, number>;
+  byType: Record<string, number>;
+  byIndustry: Record<string, number>;
+  averageScore: number;
+  offerRate: number;
+  improvementTrend: number;
 }
 
 interface CompanyPerformance {
@@ -62,16 +62,43 @@ interface CompanyPerformance {
   interviews: number;
   offers: number;
   successRate: number;
+  averageScore: number;
 }
 
-interface JobRecord {
-  id: number;
-  job_title?: string;
-  company_name?: string;
-  industry?: string;
-  job_status?: string;
-  created_at?: string;
-  status_changed_at?: string;
+interface InterviewRecord {
+  id: string;
+  user_id: string;
+  company: string | null;
+  industry: string | null;
+  role: string | null;
+  interview_date: string;
+  format: string | null;
+  interview_type: string | null;
+  stage: string | null;
+  result: boolean | null;
+  score: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+interface ConfidenceLog {
+  id: string;
+  user_id: string;
+  interview_id: string | null;
+  logged_at: string;
+  confidence_level: number | null;
+  anxiety_level: number | null;
+  notes: string | null;
+}
+
+interface FeedbackRecord {
+  id: string;
+  interview_id: string;
+  provider: string | null;
+  feedback_text: string | null;
+  themes: string[];
+  rating: number | null;
+  created_at: string;
 }
 
 export default function InterviewAnalyticsCard() {
@@ -80,7 +107,9 @@ export default function InterviewAnalyticsCard() {
   // State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
+  const [interviews, setInterviews] = useState<InterviewRecord[]>([]);
+  const [confidenceLogs, setConfidenceLogs] = useState<ConfidenceLog[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Map<string, FeedbackRecord[]>>(new Map());
   const [practiceRecords, setPracticeRecords] = useState<{
     id: string;
     questionId: string;
@@ -88,26 +117,45 @@ export default function InterviewAnalyticsCard() {
     draftResponse?: string;
   }[]>([]);
 
-  // Load jobs data
+  // Load interview data
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadJobs = async () => {
+    const loadData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const userCrud = crud.withUser(user.id);
-        const result = await userCrud.listRows<JobRecord>(
-          "jobs",
-          "id, job_title, company_name, industry, job_status, created_at, status_changed_at"
-        );
+        // Load interviews
+        const interviewsResult = await listInterviews(user.id);
+        if (interviewsResult.error) {
+          throw new Error(interviewsResult.error.message);
+        }
+        const interviewData = (interviewsResult.data || []) as InterviewRecord[];
+        setInterviews(interviewData);
 
-        if (result.error) {
-          throw new Error(result.error.message);
+        // Load confidence logs
+        const confidenceResult = await listConfidenceLogs(user.id);
+        if (!confidenceResult.error) {
+          setConfidenceLogs((confidenceResult.data || []) as ConfidenceLog[]);
         }
 
-        setJobs(result.data || []);
+        // Load feedback for each interview
+        const feedbackPromises = interviewData.map(async (interview) => {
+          const feedbackResult = await listInterviewFeedback(user.id, interview.id);
+          if (!feedbackResult.error) {
+            return { interviewId: interview.id, feedback: feedbackResult.data as FeedbackRecord[] };
+          }
+          return { interviewId: interview.id, feedback: [] };
+        });
+
+        const allFeedback = await Promise.all(feedbackPromises);
+        const feedbackMapNew = new Map<string, FeedbackRecord[]>();
+        allFeedback.forEach(({ interviewId, feedback }) => {
+          feedbackMapNew.set(interviewId, feedback);
+        });
+        setFeedbackMap(feedbackMapNew);
+
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load interview data"
@@ -117,7 +165,7 @@ export default function InterviewAnalyticsCard() {
       }
     };
 
-    loadJobs();
+    loadData();
   }, [user?.id]);
 
   // Load practice records from localStorage and listen for storage events
@@ -213,51 +261,94 @@ export default function InterviewAnalyticsCard() {
 
   // Calculate interview metrics
   const metrics: InterviewMetrics = useMemo(() => {
-    const statusLower = (job: JobRecord) =>
-      (job.job_status || "").toLowerCase();
+    const byFormat: Record<string, number> = {};
+    const byType: Record<string, number> = {};
+    const byIndustry: Record<string, number> = {};
+    let totalScore = 0;
+    let scoredInterviews = 0;
+    let offers = 0;
 
-    const phoneScreens = jobs.filter((j) =>
-      ["phone screen", "interview", "offer"].includes(statusLower(j))
-    ).length;
+    interviews.forEach((interview) => {
+      // Count by format
+      const format = interview.format || 'unknown';
+      byFormat[format] = (byFormat[format] || 0) + 1;
 
-    const interviews = jobs.filter((j) =>
-      ["interview", "offer"].includes(statusLower(j))
-    ).length;
+      // Count by type
+      const type = interview.interview_type || 'unknown';
+      byType[type] = (byType[type] || 0) + 1;
 
-    const offers = jobs.filter((j) => statusLower(j) === "offer").length;
+      // Count by industry
+      const industry = interview.industry || 'unknown';
+      byIndustry[industry] = (byIndustry[industry] || 0) + 1;
+
+      // Average score
+      if (interview.score !== null) {
+        totalScore += interview.score;
+        scoredInterviews += 1;
+      }
+
+      // Offers
+      if (interview.result === true) {
+        offers += 1;
+      }
+    });
+
+    const averageScore = scoredInterviews > 0 ? totalScore / scoredInterviews : 0;
+    const offerRate = interviews.length > 0 ? offers / interviews.length : 0;
+
+    // Calculate improvement trend (compare last 30 days vs previous 30 days)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const recentInterviews = interviews.filter((i) => new Date(i.interview_date) >= thirtyDaysAgo);
+    const previousInterviews = interviews.filter((i) => {
+      const date = new Date(i.interview_date);
+      return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+    });
+
+    const recentOffers = recentInterviews.filter((i) => i.result === true).length;
+    const previousOffers = previousInterviews.filter((i) => i.result === true).length;
+
+    const recentRate = recentInterviews.length > 0 ? recentOffers / recentInterviews.length : 0;
+    const previousRate = previousInterviews.length > 0 ? previousOffers / previousInterviews.length : 0;
+
+    const improvementTrend = previousRate > 0 ? (recentRate - previousRate) / previousRate : 0;
 
     return {
-      totalInterviews: interviews + phoneScreens,
-      phoneScreens,
-      onSiteInterviews: interviews,
-      offers,
-      phoneToInterview: phoneScreens > 0 ? interviews / phoneScreens : 0,
-      interviewToOffer: interviews > 0 ? offers / interviews : 0,
-      overallSuccess: phoneScreens > 0 ? offers / phoneScreens : 0,
+      totalInterviews: interviews.length,
+      byFormat,
+      byType,
+      byIndustry,
+      averageScore,
+      offerRate,
+      improvementTrend,
     };
-  }, [jobs]);
+  }, [interviews]);
 
   // Performance by company
   const companyPerformance: CompanyPerformance[] = useMemo(() => {
     const companyMap = new Map<
       string,
-      { interviews: number; offers: number }
+      { interviews: number; offers: number; totalScore: number; scoredCount: number }
     >();
 
-    jobs.forEach((job) => {
-      const company = job.company_name || "Unknown";
-      const status = (job.job_status || "").toLowerCase();
+    interviews.forEach((interview) => {
+      const company = interview.company || "Unknown";
+      const data = companyMap.get(company) || { interviews: 0, offers: 0, totalScore: 0, scoredCount: 0 };
+      
+      data.interviews += 1;
 
-      if (["phone screen", "interview", "offer"].includes(status)) {
-        const data = companyMap.get(company) || { interviews: 0, offers: 0 };
-        data.interviews += 1;
-
-        if (status === "offer") {
-          data.offers += 1;
-        }
-
-        companyMap.set(company, data);
+      if (interview.result === true) {
+        data.offers += 1;
       }
+
+      if (interview.score !== null) {
+        data.totalScore += interview.score;
+        data.scoredCount += 1;
+      }
+
+      companyMap.set(company, data);
     });
 
     return Array.from(companyMap.entries())
@@ -266,48 +357,89 @@ export default function InterviewAnalyticsCard() {
         interviews: data.interviews,
         offers: data.offers,
         successRate: data.interviews > 0 ? data.offers / data.interviews : 0,
+        averageScore: data.scoredCount > 0 ? data.totalScore / data.scoredCount : 0,
       }))
       .sort((a, b) => b.successRate - a.successRate)
       .slice(0, 10);
-  }, [jobs]);
+  }, [interviews]);
 
   // AI-powered interview tips based on metrics
   const aiTips = useMemo(() => {
     const tips: string[] = [];
 
-    // Phone to interview conversion
-    if (metrics.phoneToInterview < 0.4 && metrics.phoneScreens >= 3) {
+    // Offer rate analysis
+    if (metrics.offerRate < 0.2 && metrics.totalInterviews >= 5) {
       tips.push(
-        "🎯 Low phone screen → interview rate. Focus on: (1) Demonstrating enthusiasm and culture fit, (2) Asking insightful questions about the role, (3) Clearly articulating your value proposition."
+        "📊 Your offer rate is below 20%. Focus on: (1) Thorough company research before interviews, (2) Practicing behavioral STAR responses, (3) Following up with thank-you notes, (4) Requesting feedback after rejections."
       );
-    } else if (metrics.phoneToInterview >= 0.6) {
+    } else if (metrics.offerRate >= 0.4) {
       tips.push(
-        "✅ Strong phone screen performance! You're effectively communicating your fit during initial conversations."
-      );
-    }
-
-    // Interview to offer conversion
-    if (metrics.interviewToOffer < 0.25 && metrics.onSiteInterviews >= 3) {
-      tips.push(
-        "📚 Interview → offer conversion needs improvement. Tips: (1) Practice behavioral STAR responses, (2) Research company deeply before interviews, (3) Follow up with thoughtful thank-you notes, (4) Ask for feedback after rejections."
-      );
-    } else if (metrics.interviewToOffer >= 0.4) {
-      tips.push(
-        "🌟 Excellent interview-to-offer rate! Your interview skills are a strong asset."
+        "🌟 Excellent offer rate! Your interview skills are strong. Keep leveraging your current preparation strategy."
       );
     }
 
-    // Overall performance
-    if (metrics.overallSuccess >= 0.2 && metrics.phoneScreens >= 5) {
+    // Improvement trend
+    if (metrics.improvementTrend > 0.2) {
       tips.push(
-        "🚀 Outstanding overall success rate! Your preparation and presentation are working well. Keep applying your current strategy."
+        "📈 Your interview performance is improving! Recent success rate is 20%+ higher than before. Whatever you're doing, keep it up!"
+      );
+    } else if (metrics.improvementTrend < -0.2) {
+      tips.push(
+        "📉 Recent interviews show declining success. Consider: (1) Taking a break to reset, (2) Reviewing feedback themes, (3) Practicing with mock interviews."
+      );
+    }
+
+    // Format-specific advice
+    const phoneInterviews = metrics.byFormat['phone'] || 0;
+    const onsiteInterviews = metrics.byFormat['onsite'] || 0;
+    if (phoneInterviews > onsiteInterviews * 2) {
+      tips.push(
+        "📞 You're getting many phone screens but fewer onsites. Work on: (1) Conveying enthusiasm, (2) Asking strategic questions, (3) Clearly demonstrating role fit."
+      );
+    }
+
+    // Confidence analysis
+    if (confidenceLogs.length > 0) {
+      const avgConfidence = confidenceLogs.reduce((sum, log) => sum + (log.confidence_level || 0), 0) / confidenceLogs.length;
+      const avgAnxiety = confidenceLogs.reduce((sum, log) => sum + (log.anxiety_level || 0), 0) / confidenceLogs.length;
+
+      if (avgConfidence < 5) {
+        tips.push(
+          "💪 Your confidence tracking shows room for improvement. Consider: (1) More mock interviews, (2) Visualization exercises, (3) Reviewing past successes."
+        );
+      }
+
+      if (avgAnxiety > 7) {
+        tips.push(
+          "🧘 High anxiety levels detected. Try: (1) Deep breathing before interviews, (2) Arriving early to settle in, (3) Reframing nerves as excitement."
+        );
+      }
+    }
+
+    // Feedback themes analysis
+    const allThemes = new Map<string, number>();
+    feedbackMap.forEach((feedbackList) => {
+      feedbackList.forEach((feedback) => {
+        (feedback.themes || []).forEach((theme) => {
+          allThemes.set(theme, (allThemes.get(theme) || 0) + 1);
+        });
+      });
+    });
+
+    const topThemes = Array.from(allThemes.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2);
+
+    if (topThemes.length > 0) {
+      tips.push(
+        `🎯 Common feedback themes: ${topThemes.map(([theme]) => theme).join(", ")}. Focus improvement efforts here.`
       );
     }
 
     // Generic advice if no specific patterns
     if (tips.length === 0) {
       tips.push(
-        "💡 Build interview data by applying to more positions and requesting feedback after each interview to identify improvement areas."
+        "💡 Track more interviews with feedback to get personalized insights and identify patterns in your performance."
       );
       tips.push(
         "📖 Prepare STAR stories (Situation, Task, Action, Result) for common behavioral questions to improve interview performance."
@@ -315,7 +447,7 @@ export default function InterviewAnalyticsCard() {
     }
 
     return tips;
-  }, [metrics]);
+  }, [metrics, confidenceLogs, feedbackMap]);
 
   // Export as JSON
   const handleExportJSON = () => {
@@ -411,8 +543,7 @@ export default function InterviewAnalyticsCard() {
 
       {!loading && metrics.totalInterviews === 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          No interview data available yet. Keep applying and updating job
-          statuses to track your interview performance.
+          No interview data available yet. Start tracking interviews by adding records in the Interview Hub.
         </Alert>
       )}
 
@@ -424,28 +555,13 @@ export default function InterviewAnalyticsCard() {
               <Card variant="outlined">
                 <CardContent>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <PhoneIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary">
-                      Phone Screens
-                    </Typography>
-                  </Stack>
-                  <Typography variant="h5" fontWeight={600}>
-                    {metrics.phoneScreens}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
                     <InterviewIcon fontSize="small" color="action" />
                     <Typography variant="caption" color="text.secondary">
-                      Interviews
+                      Total Interviews
                     </Typography>
                   </Stack>
                   <Typography variant="h5" fontWeight={600}>
-                    {metrics.onSiteInterviews}
+                    {metrics.totalInterviews}
                   </Typography>
                 </CardContent>
               </Card>
@@ -456,15 +572,15 @@ export default function InterviewAnalyticsCard() {
                   <Stack direction="row" alignItems="center" spacing={1}>
                     <OfferIcon fontSize="small" color="success" />
                     <Typography variant="caption" color="text.secondary">
-                      Offers
+                      Offer Rate
                     </Typography>
                   </Stack>
                   <Typography
                     variant="h5"
                     fontWeight={600}
-                    color="success.main"
+                    color={metrics.offerRate >= 0.3 ? "success.main" : "text.primary"}
                   >
-                    {metrics.offers}
+                    {(metrics.offerRate * 100).toFixed(0)}%
                   </Typography>
                 </CardContent>
               </Card>
@@ -475,11 +591,33 @@ export default function InterviewAnalyticsCard() {
                   <Stack direction="row" alignItems="center" spacing={1}>
                     <SuccessIcon fontSize="small" color="warning" />
                     <Typography variant="caption" color="text.secondary">
-                      Success Rate
+                      Avg Score
                     </Typography>
                   </Stack>
                   <Typography variant="h5" fontWeight={600}>
-                    {(metrics.overallSuccess * 100).toFixed(0)}%
+                    {metrics.averageScore > 0 ? metrics.averageScore.toFixed(1) : "—"}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <TrendingIcon 
+                      fontSize="small" 
+                      color={metrics.improvementTrend > 0 ? "success" : metrics.improvementTrend < 0 ? "error" : "action"} 
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      30-Day Trend
+                    </Typography>
+                  </Stack>
+                  <Typography 
+                    variant="h5" 
+                    fontWeight={600}
+                    color={metrics.improvementTrend > 0 ? "success.main" : metrics.improvementTrend < 0 ? "error.main" : "text.primary"}
+                  >
+                    {metrics.improvementTrend > 0 ? "+" : ""}{(metrics.improvementTrend * 100).toFixed(0)}%
                   </Typography>
                 </CardContent>
               </Card>
@@ -511,7 +649,7 @@ export default function InterviewAnalyticsCard() {
             </Button>
           </Stack>
 
-          {/* Conversion Funnel */}
+          {/* Performance by Format & Type */}
           <Box sx={{ mb: 3 }}>
             <Stack
               direction="row"
@@ -521,53 +659,161 @@ export default function InterviewAnalyticsCard() {
             >
               <TrendingIcon color="info" />
               <Typography variant="subtitle1" fontWeight={600}>
-                Conversion Funnel
+                Performance Breakdown
               </Typography>
             </Stack>
 
-            <Stack spacing={2}>
-              <Box>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 0.5 }}
-                >
-                  <Typography variant="body2">
-                    Phone Screen → Interview
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {(metrics.phoneToInterview * 100).toFixed(1)}%
-                  </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  By Format
+                </Typography>
+                <Stack spacing={1}>
+                  {Object.entries(metrics.byFormat)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([format, count]) => (
+                      <Box key={format}>
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          sx={{ mb: 0.5 }}
+                        >
+                          <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
+                            {format}
+                          </Typography>
+                          <Typography variant="caption" fontWeight={600}>
+                            {count}
+                          </Typography>
+                        </Stack>
+                        <LinearProgress
+                          variant="determinate"
+                          value={(count / metrics.totalInterviews) * 100}
+                          sx={{ height: 4, borderRadius: 1 }}
+                        />
+                      </Box>
+                    ))}
                 </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={metrics.phoneToInterview * 100}
-                  sx={{ height: 8, borderRadius: 1 }}
-                />
-              </Box>
+              </Grid>
 
-              <Box>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 0.5 }}
-                >
-                  <Typography variant="body2">Interview → Offer</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {(metrics.interviewToOffer * 100).toFixed(1)}%
-                  </Typography>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  By Type
+                </Typography>
+                <Stack spacing={1}>
+                  {Object.entries(metrics.byType)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([type, count]) => (
+                      <Box key={type}>
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          sx={{ mb: 0.5 }}
+                        >
+                          <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
+                            {type}
+                          </Typography>
+                          <Typography variant="caption" fontWeight={600}>
+                            {count}
+                          </Typography>
+                        </Stack>
+                        <LinearProgress
+                          variant="determinate"
+                          value={(count / metrics.totalInterviews) * 100}
+                          sx={{ height: 4, borderRadius: 1 }}
+                          color="secondary"
+                        />
+                      </Box>
+                    ))}
                 </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={metrics.interviewToOffer * 100}
-                  sx={{ height: 8, borderRadius: 1 }}
-                  color="success"
-                />
-              </Box>
-            </Stack>
+              </Grid>
+            </Grid>
           </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Confidence & Anxiety Tracking */}
+          {confidenceLogs.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Confidence & Anxiety Management
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Average Confidence (1-10)
+                    </Typography>
+                    <Typography variant="h4">
+                      {(confidenceLogs.reduce((sum, log) => sum + (log.confidence_level || 0), 0) / confidenceLogs.length).toFixed(1)}
+                    </Typography>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(confidenceLogs.reduce((sum, log) => sum + (log.confidence_level || 0), 0) / confidenceLogs.length / 10) * 100}
+                      sx={{ mt: 1, height: 8, borderRadius: 1 }}
+                      color="success"
+                    />
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Average Anxiety (1-10)
+                    </Typography>
+                    <Typography variant="h4">
+                      {(confidenceLogs.reduce((sum, log) => sum + (log.anxiety_level || 0), 0) / confidenceLogs.length).toFixed(1)}
+                    </Typography>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(confidenceLogs.reduce((sum, log) => sum + (log.anxiety_level || 0), 0) / confidenceLogs.length / 10) * 100}
+                      sx={{ mt: 1, height: 8, borderRadius: 1 }}
+                      color="warning"
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Based on {confidenceLogs.length} confidence log{confidenceLogs.length > 1 ? 's' : ''}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Feedback Themes */}
+          {feedbackMap.size > 0 && (() => {
+            const allThemes = new Map<string, number>();
+            feedbackMap.forEach((feedbackList) => {
+              feedbackList.forEach((feedback) => {
+                (feedback.themes || []).forEach((theme) => {
+                  allThemes.set(theme, (allThemes.get(theme) || 0) + 1);
+                });
+              });
+            });
+            const sortedThemes = Array.from(allThemes.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+            return sortedThemes.length > 0 ? (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  Common Feedback Themes
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {sortedThemes.map(([theme, count]) => (
+                    <Chip 
+                      key={theme} 
+                      label={`${theme} (${count})`} 
+                      size="small" 
+                      sx={{ mb: 1 }}
+                    />
+                  ))}
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Focus improvement efforts on frequently mentioned themes
+                </Typography>
+              </Box>
+            ) : null;
+          })()}
 
           <Divider sx={{ my: 3 }} />
 
@@ -575,7 +821,7 @@ export default function InterviewAnalyticsCard() {
           {companyPerformance.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                Performance by Company
+                Performance by Company & Industry
               </Typography>
               <Table size="small">
                 <TableBody>
@@ -588,6 +834,13 @@ export default function InterviewAnalyticsCard() {
                       </TableCell>
                       <TableCell align="right">
                         {perf.offers} offer{perf.offers > 1 ? "s" : ""}
+                      </TableCell>
+                      <TableCell align="right">
+                        {perf.averageScore > 0 ? (
+                          <Typography variant="caption">
+                            Avg: {perf.averageScore.toFixed(1)}
+                          </Typography>
+                        ) : "—"}
                       </TableCell>
                       <TableCell align="right">
                         <Chip
