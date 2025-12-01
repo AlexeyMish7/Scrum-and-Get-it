@@ -43,6 +43,7 @@ import {
   handleCompanyResearch,
   handleRelationship,
   handleProfileTips,
+  handleReferralRequest,
   handleJobImport,
   handleJobMatch,
   handleSalaryResearch,
@@ -405,6 +406,13 @@ async function handleRequest(
         userId,
         counters as any
       );
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/referral-request") {
+      const userId = await requireAuth(req);
+      await handleReferralRequest(req, res, url, ctx.reqId, userId, counters as any);
       ctx.logComplete(method, pathname, 200);
       return;
     }

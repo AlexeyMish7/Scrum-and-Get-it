@@ -7,9 +7,11 @@ import type { Result } from "@shared/services/types";
 type Props = {
     onSelectJob?: (job: Record<string, unknown>) => void;
     selectedJob?: Record<string, unknown> | null;
+    /** When false, do not render the selected-job preview box below the search */
+    showPreview?: boolean;
 };
 
-const JobSearch: React.FC<Props> = ({ onSelectJob, selectedJob }) => {
+const JobSearch: React.FC<Props> = ({ onSelectJob, selectedJob, showPreview = true }) => {
     const { user, loading } = useAuth();
     const [jobs, setJobs] = useState<any[]>([]);
     const [query, setQuery] = useState("");
@@ -71,7 +73,7 @@ const JobSearch: React.FC<Props> = ({ onSelectJob, selectedJob }) => {
 
             {showList && <PaperList jobs={filtered} loading={loadingData} onSelect={onSelectJob} selectedJob={selectedJob} />}
 
-            {selectedJob && (
+            {showPreview && selectedJob && (
                 <Box sx={{ mt: 1, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
                     <Typography variant="subtitle1">{String((selectedJob as any).job_title ?? (selectedJob as any).title ?? '')}</Typography>
                     <Typography variant="caption" color="text.secondary">{String((selectedJob as any).company_name ?? '')}</Typography>

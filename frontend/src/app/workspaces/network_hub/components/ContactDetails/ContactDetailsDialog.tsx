@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Tabs, Tab, Box } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Tabs, Tab, Box, Typography } from "@mui/material";
 import ContactEditTab from "./ContactEditTab";
 import ContactInteractionsTab from "./ContactInteractions/ContactInteractionsTab";
 import ContactMutualsTab from "./ContactMutualsTab";
@@ -10,6 +10,7 @@ import GenerateReferenceGuide from "../References/GenerateReferenceGuide";
 import AddReferenceHistory from "../References/AddReferenceHistory";
 import ReferenceHistory from "../References/ReferenceHistory";
 import InformationInterviewDialog from "../InformationInterview/InformationInterviewDialog";
+import ReferralRequest from "../Referral/ReferralRequest";
 
 type ContactRow = {
     id?: string;
@@ -67,7 +68,12 @@ export default function ContactDetailsDialog({
         tabsDef.push({ key: "request", label: "Reference Requests" });
     }
 
-    // Add informational tab after conditional request tab so it appears later in order
+    // Add a dedicated Referral Requests tab (visible when a contact exists or explicitly requested)
+    if (contactData || initialTabKey === "referral") {
+        tabsDef.push({ key: "referral", label: "Referral Requests" });
+    }
+
+    // Add informational tab after conditional tabs so it appears later in order
     tabsDef.push({ key: "informational", label: "Informational Interview" });
 
     // Ensure current tab index remains valid if tabs change (e.g. request tab appears/disappears)
@@ -181,6 +187,13 @@ export default function ContactDetailsDialog({
                                         onRefresh?.();
                                     }}
                                 />
+                            </Box>
+                        )}
+
+                        {tabsDef[tab]?.key === "referral" && (
+                            <Box>
+                                {/* Referral tab renders the ReferralRequest component which includes job selection and listing */}
+                                <ReferralRequest contactId={contactData.id} initialSelectedJob={selectedJob ?? initialSelectedJob} />
                             </Box>
                         )}
                     </Box>
