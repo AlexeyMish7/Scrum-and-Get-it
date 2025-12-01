@@ -112,6 +112,13 @@ export {
   createDocumentJob,
   updateDocumentJob,
   deleteDocumentJob,
+  // Referral requests
+  mapReferralRequest,
+  listReferralRequests,
+  getReferralRequest,
+  createReferralRequest,
+  updateReferralRequest,
+  deleteReferralRequest,
 } from "./dbMappers";
 
 // =====================================================================

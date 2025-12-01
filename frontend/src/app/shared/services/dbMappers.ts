@@ -307,6 +307,7 @@ export const mapCertification = (
 // --- Jobs mapping + helpers ---
 import type { Result, ListOptions } from "./types";
 import { withUser } from "./crud";
+import { supabase } from "./supabaseClient";
 
 export const mapJob = (
   formData: Record<string, unknown>
@@ -2047,6 +2048,140 @@ export async function deleteContactReminder(
 }
 
 // =====================================================================
+// REFERRAL REQUESTS (referral_requests table)
+// =====================================================================
+
+/**
+ * mapReferralRequest()
+ * Normalize and validate referral request payloads from UI forms.
+ */
+export const mapReferralRequest = (
+  formData: Record<string, unknown>
+): MapperResult<Record<string, unknown>> => {
+  const contact_id = (
+    formData.contact_id ?? formData.contactId ?? formData.contact
+  ) as string | undefined;
+  const job_id = formData.job_id ?? formData.jobId ?? null;
+
+  // Require at least a contact or job identifier to make a referral request meaningful
+  if (!contact_id && (job_id == null || job_id === "")) {
+    return { error: "Provide at least a contact_id or job_id for the referral" };
+  }
+
+  // Parse timestamptz-like values into full ISO strings
+  function toIso(v: unknown): string | null {
+    if (v == null) return null;
+    try {
+      const d = v instanceof Date ? v : new Date(String(v));
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  const payload: Record<string, unknown> = {
+    job_id: job_id == null ? null : Number(job_id) || null,
+    contact_id: contact_id ?? null,
+    // Created at / request date: DB column is `created_at` (timestamptz)
+    // Map incoming `request_date` / `requestDate` to `created_at` so inserts/updates use the correct column
+    created_at: toIso(formData.request_date ?? formData.requestDate ?? formData.created_at ?? formData.createdAt),
+    responded_at: toIso(formData.responded_at ?? formData.respondedAt),
+    completed_at: toIso(formData.completed_at ?? formData.completedAt),
+    // `status` is a textual column in `referral_requests` (changed to text/varchar in DB).
+    // Coerce to string when present; otherwise leave null so DB defaults apply.
+    status: formData.status != null ? String(formData.status) : null,
+    referral_message:
+      (formData.referral_message as string) ??
+      (formData.referralMessage as string) ??
+      (formData.message as string) ??
+      null,
+    referral_notes:
+      (formData.referral_notes as string) ??
+      (formData.referralNotes as string) ??
+      (formData.notes as string) ??
+      null,
+  };
+
+  return { payload };
+};
+
+// Referral Requests CRUD helpers (user-scoped)
+export async function listReferralRequests(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("referral_requests", "*", opts);
+}
+
+export async function getReferralRequest(
+  userId: string,
+  id: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("referral_requests", "*", {
+    eq: { id },
+    single: true,
+  });
+}
+
+export async function createReferralRequest(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapReferralRequest(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("referral_requests", mapped.payload ?? {});
+}
+
+export async function updateReferralRequest(
+  userId: string,
+  id: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+
+  // If core identifying fields are present, validate via mapper
+  if (
+    formData.contact_id != null ||
+    formData.contactId != null ||
+    formData.job_id != null ||
+    formData.jobId != null ||
+    formData.referral_message != null ||
+    formData.referralMessage != null
+  ) {
+    const mapped = mapReferralRequest(formData);
+    if (mapped.error) {
+      return {
+        data: null,
+        error: { message: mapped.error, status: null },
+        status: null,
+      } as Result<unknown>;
+    }
+    return userCrud.updateRow("referral_requests", mapped.payload ?? {}, { eq: { id } });
+  }
+
+  // Partial update
+  return userCrud.updateRow("referral_requests", formData, { eq: { id } });
+}
+
+export async function deleteReferralRequest(
+  userId: string,
+  id: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("referral_requests", { eq: { id } });
+}
+
+// =====================================================================
 // NETWORKING ANALYTICS
 // =====================================================================
 
@@ -2890,5 +3025,196 @@ export async function deletePreparationActivity(
 ): Promise<Result<null>> {
   const userCrud = withUser(userId);
   return userCrud.deleteRow("preparation_activities", { eq: { id } });
+}
+
+// ===============================================
+// Interview Analytics Functions
+// ===============================================
+
+/**
+ * Map interview form data to database schema
+ */
+function mapInterview(formData: Record<string, unknown>): { payload?: Record<string, unknown>; error?: string } {
+  const format = formData.format as string | null;
+  const interviewType = formData.interview_type ?? formData.interviewType as string | null;
+
+  // Convert interview_date to ISO string for timestamptz
+  let interviewDate = formData.interview_date ?? formData.interviewDate ?? new Date();
+  if (typeof interviewDate === 'string') {
+    // If it's already a string from datetime-local input, ensure it's ISO format
+    interviewDate = new Date(interviewDate).toISOString();
+  } else if (interviewDate instanceof Date) {
+    interviewDate = interviewDate.toISOString();
+  }
+
+  // No strict validation required - all fields are optional except interview_date
+  const payload: Record<string, unknown> = {
+    company: (formData.company as string) ?? null,
+    industry: (formData.industry as string) ?? null,
+    role: (formData.role as string) ?? null,
+    company_culture: (formData.company_culture as string) ?? null,
+    interview_date: interviewDate,
+    format,
+    interview_type: interviewType,
+    stage: (formData.stage as string) ?? null,
+    result: formData.result ?? null,
+    score: formData.score ?? null,
+    notes: (formData.notes as string) ?? null,
+  };
+
+  return { payload };
+}
+
+/**
+ * List all interviews for a user
+ */
+export async function listInterviews(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("interviews", "*", opts);
+}
+
+/**
+ * Get a single interview by ID
+ */
+export async function getInterview(
+  userId: string,
+  id: string
+): Promise<Result<unknown | null>> {
+  const userCrud = withUser(userId);
+  return userCrud.getRow("interviews", "*", { eq: { id }, single: true });
+}
+
+/**
+ * Create a new interview record
+ */
+export async function createInterview(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const mapped = mapInterview(formData);
+  if (mapped.error) {
+    return {
+      data: null,
+      error: { message: mapped.error, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  
+  const payload = { ...mapped.payload, user_id: userId };
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("interviews", payload);
+}
+
+/**
+ * Update an existing interview
+ */
+export async function updateInterview(
+  userId: string,
+  id: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const userCrud = withUser(userId);
+  
+  // Partial update allowed
+  return userCrud.updateRow("interviews", formData, { eq: { id } });
+}
+
+/**
+ * Delete an interview
+ */
+export async function deleteInterview(
+  userId: string,
+  id: string
+): Promise<Result<null>> {
+  const userCrud = withUser(userId);
+  return userCrud.deleteRow("interviews", { eq: { id } });
+}
+
+/**
+ * List feedback for an interview
+ */
+export async function listInterviewFeedback(
+  userId: string,
+  interviewId: string
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("interview_feedback", "*", { eq: { interview_id: interviewId } });
+}
+
+/**
+ * Create feedback for an interview
+ */
+export async function createInterviewFeedback(
+  userId: string,
+  interviewId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const payload = {
+    interview_id: interviewId,
+    provider: (formData.provider as string) ?? 'self',
+    feedback_text: (formData.feedback_text ?? formData.feedbackText ?? formData.feedback) as string,
+    themes: formData.themes ?? [],
+    rating: formData.rating ?? null,
+  };
+  
+  console.log('[createInterviewFeedback] Attempting to insert:', payload);
+  
+  // Use supabase client directly instead of withUser wrapper
+  // This ensures proper auth context for RLS policies
+  const { data, error } = await supabase
+    .from("interview_feedback")
+    .insert([payload])
+    .select()
+    .single();
+  
+  console.log('[createInterviewFeedback] Insert result:', { data, error });
+  
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    } as Result<unknown>;
+  }
+  
+  return {
+    data,
+    error: null,
+    status: 201,
+  } as Result<unknown>;
+}
+
+/**
+ * List confidence logs for a user
+ */
+export async function listConfidenceLogs(
+  userId: string,
+  opts?: ListOptions
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("confidence_logs", "*", opts);
+}
+
+/**
+ * Create a confidence log entry
+ */
+export async function createConfidenceLog(
+  userId: string,
+  formData: Record<string, unknown>
+): Promise<Result<unknown>> {
+  const payload = {
+    user_id: userId,
+    interview_id: (formData.interview_id ?? formData.interviewId) as string | null,
+    logged_at: formatToSqlDate(formData.logged_at ?? formData.loggedAt ?? new Date()),
+    confidence_level: formData.confidence_level ?? formData.confidenceLevel ?? null,
+    anxiety_level: formData.anxiety_level ?? formData.anxietyLevel ?? null,
+    notes: (formData.notes as string) ?? null,
+  };
+  
+  const userCrud = withUser(userId);
+  return userCrud.insertRow("confidence_logs", payload);
 }
 

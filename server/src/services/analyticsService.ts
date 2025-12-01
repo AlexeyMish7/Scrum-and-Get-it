@@ -286,7 +286,7 @@ export async function computeTrends(userId: string) {
   // Fetch interviews with dates and results
   const { data: interviews, error: interviewsErr } = await client
     .from("interviews")
-    .select("interview_date, result, industry")
+    .select("interview_date, result, industry, company_culture")
     .eq("user_id", userId)
     .order("interview_date", { ascending: true });
   if (interviewsErr) throw interviewsErr;
@@ -332,20 +332,44 @@ export async function computeTrends(userId: string) {
   // Industry comparison
   const industryMap: Record<string, { interviews: number; offers: number }> = {};
   (interviews ?? []).forEach((r: any) => {
-    const ind = r.industry ?? "unknown";
+    const rawIndustry = r.industry ?? "";
+    const ind = rawIndustry.trim().toLowerCase() || "unknown";
     if (!industryMap[ind]) industryMap[ind] = { interviews: 0, offers: 0 };
     industryMap[ind].interviews += 1;
     if (r.result === true) industryMap[ind].offers += 1;
   });
-  const industryComparison = Object.entries(industryMap).map(([industry, v]) => ({
-    industry,
-    conversion: v.interviews > 0 ? v.offers / v.interviews : 0,
-  }));
+  const industryComparison = Object.entries(industryMap)
+    .filter(([industry]) => industry !== "unknown")
+    .map(([industry, v]) => ({
+      industry,
+      conversion: v.interviews > 0 ? v.offers / v.interviews : 0,
+    }));
+
+  // Company culture comparison
+  console.log("[analyticsService/computeTrends] Sample interview data:", interviews?.[0]);
+  const cultureMap: Record<string, { interviews: number; offers: number }> = {};
+  (interviews ?? []).forEach((r: any) => {
+    const rawCulture = r.company_culture ?? "";
+    console.log("[analyticsService/computeTrends] Processing culture:", rawCulture, "from interview:", r);
+    const culture = rawCulture.trim().toLowerCase() || "unknown";
+    if (!cultureMap[culture]) cultureMap[culture] = { interviews: 0, offers: 0 };
+    cultureMap[culture].interviews += 1;
+    if (r.result === true) cultureMap[culture].offers += 1;
+  });
+  console.log("[analyticsService/computeTrends] Culture map:", cultureMap);
+  const cultureComparison = Object.entries(cultureMap)
+    .filter(([culture]) => culture !== "unknown")
+    .map(([culture, v]) => ({
+      culture,
+      conversion: v.interviews > 0 ? v.offers / v.interviews : 0,
+    }));
+  console.log("[analyticsService/computeTrends] Culture comparison result:", cultureComparison);
 
   return {
     conversionTimeseries,
     confidenceTimeseries,
     industryComparison,
+    cultureComparison,
   };
 }
 

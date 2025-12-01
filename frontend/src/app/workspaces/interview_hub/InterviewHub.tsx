@@ -17,6 +17,7 @@ import InterviewScheduling from "./components/InterviewScheduling";
 import InterviewQuestionBank from "./components/InterviewQuestionBank";
 import TechnicalPrep from "./components/TechnicalPrep";
 import SalaryPrep from "./components/SalaryPrep";
+import MockInterview from "./components/MockInterview";
 
 export default function InterviewHub() {
   return (
@@ -41,6 +42,10 @@ export default function InterviewHub() {
         
         <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
           <TechnicalPrep />
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
+          <MockInterview />
         </Paper>
         
         <Paper elevation={0} sx={{ p: 3, mt: 3 }}>

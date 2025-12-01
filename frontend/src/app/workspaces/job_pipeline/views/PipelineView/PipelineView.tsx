@@ -36,6 +36,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Work as WorkIcon,
   TrendingUp as TrendingUpIcon,
+  PersonAdd as PersonAddIcon,
 } from "@mui/icons-material";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
@@ -56,6 +57,7 @@ import { useJobMatch } from "@job_pipeline/hooks/useJobMatch";
 import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import PipelineAnalytics from "@job_pipeline/components/analytics/PipelineAnalytics/PipelineAnalytics";
 import JobAnalyticsDialog from "@job_pipeline/components/dialogs/JobAnalyticsDialog";
+import SuggestContacts from "@job_pipeline/components/contacts/SuggestContacts";
 
 const STAGES = [
   "Interested",
@@ -131,6 +133,16 @@ export default function PipelineView() {
 
   // Add job dialog
   const [addJobOpen, setAddJobOpen] = useState(false);
+  const [suggestContactsOpen, setSuggestContactsOpen] = useState(false);
+  const [suggestJobTitle, setSuggestJobTitle] = useState<string | null>(
+    null
+  );
+  const [suggestCompanyName, setSuggestCompanyName] = useState<string | null>(
+    null
+  );
+  const [suggestAlumniSchool, setSuggestAlumniSchool] = useState<string | null>(
+    null
+  );
 
   const [filter, setFilter] = useState<"All" | Stage | "Selected">("All");
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -488,6 +500,7 @@ export default function PipelineView() {
           >
             {showFilters ? "Hide" : "Show"} Filters
           </Button>
+          {/* suggest contacts moved into per-job action buttons */}
           {selectedCount > 0 && (
             <Button
               variant="outlined"
@@ -804,6 +817,35 @@ export default function PipelineView() {
                                               <TrendingUpIcon fontSize="small" />
                                             </Tooltip>
                                           </IconButton>
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedJobId(String(job.id));
+                                              setSuggestJobTitle(
+                                                String(
+                                                  job.job_title ?? job.title ?? ""
+                                                )
+                                              );
+                                              setSuggestCompanyName(
+                                                String(
+                                                  job.company_name ?? job.company ?? ""
+                                                )
+                                              );
+                                              setSuggestAlumniSchool(
+                                                user?.institution_name ?? null
+                                              );
+                                              setSuggestContactsOpen(true);
+                                            }}
+                                            sx={{
+                                              bgcolor: "action.hover",
+                                              "&:hover": { bgcolor: "action.selected" },
+                                            }}
+                                          >
+                                            <Tooltip title="Suggest Contacts">
+                                              <PersonAddIcon fontSize="small" />
+                                            </Tooltip>
+                                          </IconButton>
                                         </Stack>
                                       </Box>
 
@@ -1062,6 +1104,16 @@ export default function PipelineView() {
           setAnalyticsOpen(false);
           setAnalyticsJobId(null);
         }}
+      />
+
+      {/* Suggest Contacts Dialog */}
+      <SuggestContacts
+        open={suggestContactsOpen}
+        onClose={() => setSuggestContactsOpen(false)}
+        jobTitle={suggestJobTitle}
+        companyName={suggestCompanyName}
+        alumniSchool={suggestAlumniSchool}
+        job={allJobs.find((j) => String(j.id) === String(selectedJobId))}
       />
 
       <ErrorSnackbar notification={notification} onClose={closeNotification} />

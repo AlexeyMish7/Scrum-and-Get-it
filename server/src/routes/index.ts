@@ -28,6 +28,7 @@ export { post as postSkillsOptimization } from "./generate/skills-optimization.j
 export { post as postExperienceTailoring } from "./generate/experience-tailoring.js";
 export { post as postCompanyResearch } from "./generate/company-research.js";
 export { post as postRelationship } from "./generate/relationship.js";
+export { post as postReferralRequest } from "./generate/referral-request.js";
 export { post as postReferencePoints } from "./generate/reference-points.js";
 export { post as postInterviewRequest } from "./generate/interview-request.js";
 export { post as postJobImport } from "./generate/job-import.js";
@@ -82,6 +83,7 @@ export { post as handleJobImport } from "./generate/job-import.js";
 export { post as handleJobMatch } from "./generate/job-match.js";
 export { post as handleProfileTips } from "./generate/profile-tips.js";
 export { post as handleRelationship } from "./generate/relationship.js";
+export { post as handleReferralRequest } from "./generate/referral-request.js";
 export { post as handleReferencePoints } from "./generate/reference-points.js";
 export { post as handleGenerateInterviewRequest } from "./generate/interview-request.js";
 export { post as handleGenerateInterviewQuestions } from "./generate/interview-questions.js";

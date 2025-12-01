@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, IconButton, Avatar, Tooltip } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 type ContactRow = {
@@ -39,9 +39,9 @@ const ContactsListItem: React.FC<Props> = ({ contact, onEdit, onDelete }) => {
 			</Box>
 
 			<Box>
-				<Tooltip title="Edit">
+				<Tooltip title="Open">
 					<IconButton size="small" onClick={() => onEdit?.(contact)}>
-						<EditIcon fontSize="small" />
+						<OpenInFullIcon fontSize="small" />
 					</IconButton>
 				</Tooltip>
 				<Tooltip title="Delete">

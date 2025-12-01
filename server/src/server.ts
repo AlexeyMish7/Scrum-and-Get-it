@@ -43,6 +43,7 @@ import {
   handleCompanyResearch,
   handleRelationship,
   handleProfileTips,
+  handleReferralRequest,
   handleJobImport,
   handleJobMatch,
   handleSalaryResearch,
@@ -409,6 +410,13 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/referral-request") {
+      const userId = await requireAuth(req);
+      await handleReferralRequest(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/profile-tips") {
       const userId = await requireAuth(req);
       const { handleProfileTips } = await import("./routes/index.js");
@@ -441,12 +449,49 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/mock-interview-summary") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/generate/mock-interview-summary.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 201);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/reference-points") {
       const userId = await requireAuth(req);
       const { handleReferencePoints } = await import("./routes/index.js");
       await handleReferencePoints(req, res, url, ctx.reqId, userId, counters as any);
       ctx.logComplete(method, pathname, 200);
       return;
+    }
+
+    // ------------------------------------------------------------------
+    // INTERVIEW ANALYTICS ENDPOINTS (protected)
+    // ------------------------------------------------------------------
+    if (method === "GET" && pathname === "/api/analytics/overview") {
+      try {
+        const { get: handleAnalyticsOverview } = await import("./routes/analytics.js");
+        await handleAnalyticsOverview(req, res);
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (err: any) {
+        console.error("[analytics/overview] Error:", err);
+        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        return;
+      }
+    }
+
+    if (method === "GET" && pathname === "/api/analytics/trends") {
+      try {
+        const { getTrends: handleAnalyticsTrends } = await import("./routes/analytics.js");
+        await handleAnalyticsTrends(req, res);
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (err: any) {
+        console.error("[analytics/trends] Error:", err);
+        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        return;
+      }
     }
 
     // ------------------------------------------------------------------
