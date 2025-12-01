@@ -109,6 +109,7 @@ const NETWORK_TOOL_ITEMS: ToolItem[] = [
 const TEAM_TOOL_ITEMS: NavItem[] = [
   { label: "Team Dashboard", path: "/team" },
   { label: "Mentor Dashboard", path: "/team/mentor" },
+  { label: "External Advisors", path: "/team/advisors" },
   { label: "Enterprise", path: "/team/enterprise" },
   { label: "Team Settings", path: "/team/settings" },
   { label: "Team Reports", path: "/team/reports" },

@@ -11,3 +11,6 @@ export * from "./progressSharingService";
 
 // UC-114: Enterprise Career Services
 export * from "./enterpriseService";
+
+// UC-115: External Advisor Services
+export * from "./advisorService";
