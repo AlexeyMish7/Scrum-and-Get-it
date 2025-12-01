@@ -1302,6 +1302,26 @@ export async function handleCompanyResearch(req: {
         : Array.isArray(researchData.offerings)
         ? researchData.offerings
         : [],
+      potentialInterviewers: Array.isArray(researchData.potentialInterviewers)
+        ? researchData.potentialInterviewers
+        : Array.isArray(researchData.interviewers)
+        ? researchData.interviewers
+        : [],
+      competitors: Array.isArray(researchData.competitors)
+        ? researchData.competitors
+        : [],
+      marketPositioning:
+        researchData.marketPositioning || researchData.market_positioning || null,
+      talkingPoints: Array.isArray(researchData.talkingPoints)
+        ? researchData.talkingPoints
+        : Array.isArray(researchData.talking_points)
+        ? researchData.talking_points
+        : [],
+      interviewQuestions: Array.isArray(researchData.interviewQuestions)
+        ? researchData.interviewQuestions
+        : Array.isArray(researchData.interview_questions)
+        ? researchData.interview_questions
+        : [],
       rating:
         researchData.rating ||
         researchData.glassdoor ||

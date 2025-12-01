@@ -55,6 +55,12 @@ export interface CompanyResearch {
   products: string[];
   lastUpdated: string;
   source: string;
+  // Interview prep fields (optional)
+  potentialInterviewers?: Array<{ role: string; name?: string | null }>;
+  competitors?: Array<{ name: string; note?: string }>;
+  marketPositioning?: string | null;
+  talkingPoints?: string[];
+  interviewQuestions?: string[];
 }
 
 /**

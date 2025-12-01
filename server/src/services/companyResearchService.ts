@@ -532,6 +532,16 @@ If you DO find the company, return a JSON object with this EXACT structure:
     }
   ],
   "products": ["product1", "product2"]
+  ,
+  "potentialInterviewers": [
+    { "role": "Hiring Manager | Team Lead | Recruiter", "name": "Full Name or null" }
+  ],
+  "competitors": [
+    { "name": "Competitor Name", "note": "1-2 sentence competitive note" }
+  ],
+  "marketPositioning": "Short 1-2 sentence summary of company's position in market vs competitors",
+  "talkingPoints": [ "short talking point 1", "talking point 2" ],
+  "interviewQuestions": [ "intelligent question 1", "question 2" ]
 }
 
 CRITICAL REQUIREMENTS:

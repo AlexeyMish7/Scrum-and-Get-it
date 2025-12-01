@@ -108,6 +108,10 @@ RESEARCH PRIORITIES:
 6. Find CEO/founder and 1-2 key executives with brief backgrounds
 7. List 3-5 main products or services
 8. Look for Glassdoor or similar employee ratings (if publicly available)
+9. Identify likely interviewers and interviewer roles for the typical hiring process (e.g., "Engineering Manager", "Senior Product Manager", "Recruiter"). When specific names are publicly available (team pages, LinkedIn, or job posting), include them.
+10. Provide a concise competitive landscape: list 3-5 direct competitors and include a 1-2 sentence market positioning summary (how the company compares to competitors).
+11. Generate 4-8 tailored talking points a candidate can use in interviews (achievement-focused, tied to company priorities).
+12. Generate 4-8 intelligent interview questions the candidate can ask (specific to the company, product, or strategy).
 
 ACCURACY GUIDELINES:
 - Use only factual, verifiable information
@@ -124,6 +128,14 @@ RESPONSE FORMAT:
 
 Research ${companyName} now and provide the structured JSON response.`;
 }
+
+// Note: Preferred additional fields (optional) that improve interview prep
+// If available, include these keys in the top-level JSON: 
+// "potentialInterviewers": [ { "role": "Hiring Manager | Team Lead | Recruiter", "name": "Full Name or null" } ],
+// "competitors": [ { "name": "Competitor Name", "note": "1-2 sentence competitive note" } ],
+// "marketPositioning": "Short 1-2 sentence summary of company's position in market vs competitors",
+// "talkingPoints": [ "short talking point 1", "talking point 2" ],
+// "interviewQuestions": [ "intelligent question 1", "question 2" ]
 
 /**
  * Validate company research AI response
