@@ -1,9 +1,9 @@
 /**
  * Pattern Recognition Analysis Endpoint
- * 
+ *
  * Analyzes user's job search patterns to identify successful strategies,
  * optimal timing, preparation correlations, and predictive insights.
- * 
+ *
  * Acceptance Criteria:
  * 1. Identify patterns in successful applications, interviews, and offers
  * 2. Analyze correlation between preparation activities and positive outcomes
@@ -80,10 +80,13 @@ interface StrategyEffectiveness {
 
 /**
  * POST /api/analytics/pattern-recognition
- * 
+ *
  * Analyze user's job search patterns and generate insights
  */
-export async function handleGetPatternRecognition(req: IncomingMessage, res: ServerResponse) {
+export async function handleGetPatternRecognition(
+  req: IncomingMessage,
+  res: ServerResponse
+) {
   try {
     const userId = (req as any).userId;
 
@@ -92,11 +95,8 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
     }
 
     if (!supabaseAdmin) {
-      console.error("[handleGetPatternRecognition] supabaseAdmin is not initialized");
       return sendJson(res, 500, { error: "Database connection not available" });
     }
-
-    console.log("[handleGetPatternRecognition] Starting pattern analysis for user:", userId);
 
     // Fetch all user's jobs with details
     const { data: jobs, error: jobsError } = await supabaseAdmin
@@ -107,12 +107,10 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
       .order("created_at", { ascending: false });
 
     if (jobsError) {
-      console.error("[handleGetPatternRecognition] Error fetching jobs:", jobsError);
       return sendJson(res, 500, { error: "Failed to fetch job data" });
     }
 
     if (!jobs || jobs.length === 0) {
-      console.log("[handleGetPatternRecognition] No jobs found for user");
       return sendJson(res, 200, {
         success: true,
         message: "No job data available for pattern analysis",
@@ -120,21 +118,24 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
       });
     }
 
-    console.log(`[handleGetPatternRecognition] Analyzing ${jobs.length} jobs`);
-
     // 1. Identify patterns in successful applications, interviews, and offers
     const applicationPatterns = await identifyApplicationPatterns(userId, jobs);
     const interviewPatterns = await identifyInterviewPatterns(userId, jobs);
     const offerPatterns = await identifyOfferPatterns(userId, jobs);
 
     // 2. Analyze correlation between preparation activities and outcomes
-    const preparationCorrelations = await analyzePreparationCorrelations(userId);
+    const preparationCorrelations = await analyzePreparationCorrelations(
+      userId
+    );
 
     // 3. Monitor timing patterns for optimal career move execution
     const timingPatterns = await analyzeTimingPatterns(userId, jobs);
 
     // 4. Track strategy effectiveness across market conditions
-    const strategyEffectiveness = await analyzeStrategyEffectiveness(userId, jobs);
+    const strategyEffectiveness = await analyzeStrategyEffectiveness(
+      userId,
+      jobs
+    );
 
     // 5. Generate insights on personal success factors
     const successFactors = await generateSuccessFactors(
@@ -146,7 +147,11 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
     );
 
     // 6. Include predictive modeling for future opportunity success
-    const predictiveInsights = await generatePredictiveInsights(userId, jobs, successFactors);
+    const predictiveInsights = await generatePredictiveInsights(
+      userId,
+      jobs,
+      successFactors
+    );
 
     // 7. Provide recommendations based on historical success patterns
     const recommendations = await generatePatternRecommendations(
@@ -167,10 +172,15 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
       data: {
         summary: {
           totalJobs: jobs.length,
-          patternsIdentified: applicationPatterns.length + interviewPatterns.length + offerPatterns.length,
-          highConfidencePatterns: [...applicationPatterns, ...interviewPatterns, ...offerPatterns].filter(
-            (p) => p.confidence_score >= 0.7
-          ).length,
+          patternsIdentified:
+            applicationPatterns.length +
+            interviewPatterns.length +
+            offerPatterns.length,
+          highConfidencePatterns: [
+            ...applicationPatterns,
+            ...interviewPatterns,
+            ...offerPatterns,
+          ].filter((p) => p.confidence_score >= 0.7).length,
           topSuccessRate: Math.max(
             ...applicationPatterns.map((p) => p.success_rate),
             ...interviewPatterns.map((p) => p.success_rate),
@@ -193,7 +203,8 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
   } catch (error: unknown) {
     console.error("[handleGetPatternRecognition] Error:", error);
     return sendJson(res, 500, {
-      error: error instanceof Error ? error.message : "Failed to analyze patterns",
+      error:
+        error instanceof Error ? error.message : "Failed to analyze patterns",
     });
   }
 }
@@ -201,7 +212,10 @@ export async function handleGetPatternRecognition(req: IncomingMessage, res: Ser
 /**
  * Identify patterns in successful applications
  */
-async function identifyApplicationPatterns(userId: string, jobs: Job[]): Promise<SuccessPattern[]> {
+async function identifyApplicationPatterns(
+  userId: string,
+  jobs: Job[]
+): Promise<SuccessPattern[]> {
   const patterns: SuccessPattern[] = [];
 
   // Filter jobs that got responses
@@ -234,10 +248,15 @@ async function identifyApplicationPatterns(userId: string, jobs: Job[]): Promise
 /**
  * Identify patterns in successful interviews
  */
-async function identifyInterviewPatterns(userId: string, jobs: Job[]): Promise<SuccessPattern[]> {
+async function identifyInterviewPatterns(
+  userId: string,
+  jobs: Job[]
+): Promise<SuccessPattern[]> {
   const patterns: SuccessPattern[] = [];
 
-  const interviewJobs = jobs.filter((j) => ["Interview", "Offer"].includes(j.job_status));
+  const interviewJobs = jobs.filter((j) =>
+    ["Interview", "Offer"].includes(j.job_status)
+  );
 
   if (interviewJobs.length < 3) {
     return patterns;
@@ -247,18 +266,26 @@ async function identifyInterviewPatterns(userId: string, jobs: Job[]): Promise<S
   const progressionPattern: SuccessPattern = {
     pattern_type: "interview_success",
     pattern_name: "Interview to Offer Progression",
-    success_rate: interviewJobs.filter((j) => j.job_status === "Offer").length / interviewJobs.length,
+    success_rate:
+      interviewJobs.filter((j) => j.job_status === "Offer").length /
+      interviewJobs.length,
     confidence_score: calculateConfidence(interviewJobs.length),
     sample_size: interviewJobs.length,
     pattern_attributes: {
-      avg_companies_size: getMostCommon(interviewJobs.map((j) => j.company_size)),
-      common_industries: getTopN(interviewJobs.map((j) => j.industry), 3),
+      avg_companies_size: getMostCommon(
+        interviewJobs.map((j) => j.company_size)
+      ),
+      common_industries: getTopN(
+        interviewJobs.map((j) => j.industry),
+        3
+      ),
     },
     recommendations: [
       {
         action: "Focus on similar company profiles",
         reason: `${(
-          (interviewJobs.filter((j) => j.job_status === "Offer").length / interviewJobs.length) *
+          (interviewJobs.filter((j) => j.job_status === "Offer").length /
+            interviewJobs.length) *
           100
         ).toFixed(0)}% of your interviews convert to offers`,
         priority: "high",
@@ -275,7 +302,10 @@ async function identifyInterviewPatterns(userId: string, jobs: Job[]): Promise<S
 /**
  * Identify patterns in successful offers
  */
-async function identifyOfferPatterns(userId: string, jobs: Job[]): Promise<SuccessPattern[]> {
+async function identifyOfferPatterns(
+  userId: string,
+  jobs: Job[]
+): Promise<SuccessPattern[]> {
   const patterns: SuccessPattern[] = [];
 
   const offerJobs = jobs.filter((j) => j.job_status === "Offer");
@@ -290,7 +320,8 @@ async function identifyOfferPatterns(userId: string, jobs: Job[]): Promise<Succe
     .map((j) => (j.start_salary_range! + j.end_salary_range!) / 2);
 
   if (salaryRanges.length >= 2) {
-    const avgSalary = salaryRanges.reduce((a, b) => a + b, 0) / salaryRanges.length;
+    const avgSalary =
+      salaryRanges.reduce((a, b) => a + b, 0) / salaryRanges.length;
 
     const salaryPattern: SuccessPattern = {
       pattern_type: "offer_success",
@@ -307,7 +338,9 @@ async function identifyOfferPatterns(userId: string, jobs: Job[]): Promise<Succe
       },
       recommendations: [
         {
-          action: `Target roles in the $${(avgSalary / 1000).toFixed(0)}K range`,
+          action: `Target roles in the $${(avgSalary / 1000).toFixed(
+            0
+          )}K range`,
           reason: "Aligns with your successful offer history",
           priority: "high",
           expected_impact: 0.4,
@@ -334,7 +367,8 @@ async function analyzePreparationCorrelations(userId: string) {
   if (!activities || activities.length === 0) {
     return {
       correlations: [],
-      insights: "No preparation activities tracked yet. Start logging your prep work to see correlations.",
+      insights:
+        "No preparation activities tracked yet. Start logging your prep work to see correlations.",
     };
   }
 
@@ -348,17 +382,24 @@ async function analyzePreparationCorrelations(userId: string) {
   }> = [];
 
   // Group by activity type
-  const activityTypes = [...new Set(activities.map((a: PrepActivity) => a.activity_type))] as string[];
+  const activityTypes = [
+    ...new Set(activities.map((a: PrepActivity) => a.activity_type)),
+  ] as string[];
 
   for (const activityType of activityTypes) {
-    const typeActivities = activities.filter((a: PrepActivity) => a.activity_type === activityType);
+    const typeActivities = activities.filter(
+      (a: PrepActivity) => a.activity_type === activityType
+    );
 
     const responseRate =
-      typeActivities.filter((a: PrepActivity) => a.led_to_response).length / typeActivities.length;
+      typeActivities.filter((a: PrepActivity) => a.led_to_response).length /
+      typeActivities.length;
     const interviewRate =
-      typeActivities.filter((a: PrepActivity) => a.led_to_interview).length / typeActivities.length;
+      typeActivities.filter((a: PrepActivity) => a.led_to_interview).length /
+      typeActivities.length;
     const offerRate =
-      typeActivities.filter((a: PrepActivity) => a.led_to_offer).length / typeActivities.length;
+      typeActivities.filter((a: PrepActivity) => a.led_to_offer).length /
+      typeActivities.length;
 
     correlations.push({
       activity: activityType,
@@ -382,7 +423,10 @@ async function analyzePreparationCorrelations(userId: string) {
 /**
  * Analyze timing patterns
  */
-async function analyzeTimingPatterns(userId: string, jobs: Job[]): Promise<TimingPattern[]> {
+async function analyzeTimingPatterns(
+  userId: string,
+  jobs: Job[]
+): Promise<TimingPattern[]> {
   const patterns: TimingPattern[] = [];
 
   // Analyze day of week patterns
@@ -462,12 +506,20 @@ async function generateSuccessFactors(
       },
       {
         factor: "Pattern Consistency",
-        value: applicationPatterns.length + interviewPatterns.length + offerPatterns.length,
+        value:
+          applicationPatterns.length +
+          interviewPatterns.length +
+          offerPatterns.length,
         importance: "high",
         trend: "emerging",
       },
     ],
-    strengthAreas: identifyStrengthAreas(jobs, applicationPatterns, interviewPatterns, offerPatterns),
+    strengthAreas: identifyStrengthAreas(
+      jobs,
+      applicationPatterns,
+      interviewPatterns,
+      offerPatterns
+    ),
     improvementAreas: identifyImprovementAreas(
       jobs,
       applicationPatterns,
@@ -479,7 +531,11 @@ async function generateSuccessFactors(
 /**
  * Generate predictive insights
  */
-async function generatePredictiveInsights(userId: string, jobs: Job[], successFactors: any) {
+async function generatePredictiveInsights(
+  userId: string,
+  jobs: Job[],
+  successFactors: any
+) {
   // @ts-ignore
   const { data: models } = await supabaseAdmin
     .from("predictive_models")
@@ -488,9 +544,10 @@ async function generatePredictiveInsights(userId: string, jobs: Job[], successFa
     .eq("is_active", true);
 
   const recentJobs = jobs.slice(0, 10); // Last 10 jobs
-  const successRate = recentJobs.filter((j) =>
-    ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
-  ).length / recentJobs.length;
+  const successRate =
+    recentJobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / recentJobs.length;
 
   return {
     nextApplicationProbability: Math.min(successRate * 1.1, 0.95), // Slightly optimistic
@@ -501,7 +558,8 @@ async function generatePredictiveInsights(userId: string, jobs: Job[], successFa
       confidence: 0.65,
     },
     recommendedStrategy: determineRecommendedStrategy(successRate, jobs),
-    confidenceLevel: models && models.length > 0 ? models[0].model_reliability_score : 0.5,
+    confidenceLevel:
+      models && models.length > 0 ? models[0].model_reliability_score : 0.5,
     predictionBasis: "Historical pattern analysis and success rate trends",
   };
 }
@@ -532,11 +590,16 @@ async function generatePatternRecommendations(
     recommendations.push({
       category: "Application Strategy",
       title: `Focus on ${topPattern.pattern_name}`,
-      description: topPattern.recommendations[0]?.reason || "This pattern shows high success",
+      description:
+        topPattern.recommendations[0]?.reason ||
+        "This pattern shows high success",
       priority: "high",
-      expectedImpact: `${(topPattern.success_rate * 100).toFixed(0)}% success rate`,
+      expectedImpact: `${(topPattern.success_rate * 100).toFixed(
+        0
+      )}% success rate`,
       actionSteps: [
-        topPattern.recommendations[0]?.action || "Apply this pattern to future applications",
+        topPattern.recommendations[0]?.action ||
+          "Apply this pattern to future applications",
         "Track results to validate pattern",
         "Refine approach based on outcomes",
       ],
@@ -549,7 +612,9 @@ async function generatePatternRecommendations(
     recommendations.push({
       category: "Timing Optimization",
       title: `Apply during ${optimalTiming.timing_value}`,
-      description: `${(optimalTiming.relative_performance * 100 - 100).toFixed(0)}% better performance during this time`,
+      description: `${(optimalTiming.relative_performance * 100 - 100).toFixed(
+        0
+      )}% better performance during this time`,
       priority: "medium",
       expectedImpact: "15-30% improvement",
       actionSteps: [
@@ -564,7 +629,8 @@ async function generatePatternRecommendations(
   recommendations.push({
     category: "Preparation Focus",
     title: "Prioritize High-Impact Activities",
-    description: "Focus on preparation activities with proven correlation to success",
+    description:
+      "Focus on preparation activities with proven correlation to success",
     priority: "high",
     expectedImpact: "20-40% improvement",
     actionSteps: [
@@ -627,9 +693,16 @@ async function trackPatternEvolution(userId: string) {
       adaptations: e.adaptations_applied?.length || 0,
     })),
     trends: {
-      successRateTrend: calculateTrend(evolution.map((e: any) => e.success_rate)),
-      confidenceTrend: calculateTrend(evolution.map((e: any) => e.confidence_score)),
-      adaptationCount: evolution.reduce((sum: number, e: any) => sum + (e.adaptations_applied?.length || 0), 0),
+      successRateTrend: calculateTrend(
+        evolution.map((e: any) => e.success_rate)
+      ),
+      confidenceTrend: calculateTrend(
+        evolution.map((e: any) => e.confidence_score)
+      ),
+      adaptationCount: evolution.reduce(
+        (sum: number, e: any) => sum + (e.adaptations_applied?.length || 0),
+        0
+      ),
     },
     insights: generateEvolutionInsights(evolution),
   };
@@ -650,13 +723,20 @@ function getEmptyPatternData() {
     applicationPatterns: [],
     interviewPatterns: [],
     offerPatterns: [],
-    preparationCorrelations: { correlations: [], insights: "No data available" },
+    preparationCorrelations: {
+      correlations: [],
+      insights: "No data available",
+    },
     timingPatterns: [],
     strategyEffectiveness: [],
     successFactors: { keyFactors: [], strengthAreas: [], improvementAreas: [] },
     predictiveInsights: {},
     recommendations: [],
-    patternEvolution: { snapshots: [], trends: {}, insights: "Start tracking patterns" },
+    patternEvolution: {
+      snapshots: [],
+      trends: {},
+      insights: "Start tracking patterns",
+    },
   };
 }
 
@@ -667,8 +747,13 @@ function calculateConfidence(sampleSize: number): number {
   return 0.4;
 }
 
-function analyzeCompanySizePattern(successJobs: Job[], allJobs: Job[]): SuccessPattern | null {
-  const companySizes = successJobs.filter((j) => j.company_size).map((j) => j.company_size!);
+function analyzeCompanySizePattern(
+  successJobs: Job[],
+  allJobs: Job[]
+): SuccessPattern | null {
+  const companySizes = successJobs
+    .filter((j) => j.company_size)
+    .map((j) => j.company_size!);
 
   if (companySizes.length < 3) return null;
 
@@ -689,7 +774,9 @@ function analyzeCompanySizePattern(successJobs: Job[], allJobs: Job[]): SuccessP
     recommendations: [
       {
         action: `Target more ${mostCommonSize} companies`,
-        reason: `${(successRate * 100).toFixed(0)}% response rate with this company size`,
+        reason: `${(successRate * 100).toFixed(
+          0
+        )}% response rate with this company size`,
         priority: "high",
         expected_impact: successRate - 0.2, // Impact relative to baseline
       },
@@ -697,16 +784,25 @@ function analyzeCompanySizePattern(successJobs: Job[], allJobs: Job[]): SuccessP
   };
 }
 
-function analyzeIndustryPattern(successJobs: Job[], allJobs: Job[]): SuccessPattern | null {
-  const industries = successJobs.filter((j) => j.industry).map((j) => j.industry!);
+function analyzeIndustryPattern(
+  successJobs: Job[],
+  allJobs: Job[]
+): SuccessPattern | null {
+  const industries = successJobs
+    .filter((j) => j.industry)
+    .map((j) => j.industry!);
 
   if (industries.length < 3) return null;
 
   const topIndustries = getTopN(industries, 2);
   const avgSuccessRate =
     topIndustries.reduce((sum, industry) => {
-      const industrySuccess = successJobs.filter((j) => j.industry === industry).length;
-      const industryTotal = allJobs.filter((j) => j.industry === industry).length;
+      const industrySuccess = successJobs.filter(
+        (j) => j.industry === industry
+      ).length;
+      const industryTotal = allJobs.filter(
+        (j) => j.industry === industry
+      ).length;
       return sum + industrySuccess / industryTotal;
     }, 0) / topIndustries.length;
 
@@ -730,7 +826,10 @@ function analyzeIndustryPattern(successJobs: Job[], allJobs: Job[]): SuccessPatt
   };
 }
 
-function analyzeSkillMatchPattern(successJobs: Job[], allJobs: Job[]): SuccessPattern | null {
+function analyzeSkillMatchPattern(
+  successJobs: Job[],
+  allJobs: Job[]
+): SuccessPattern | null {
   const skillCounts = successJobs.map((j) => j.required_skills?.length || 0);
 
   if (skillCounts.length < 3) return null;
@@ -760,7 +859,15 @@ function analyzeSkillMatchPattern(successJobs: Job[], allJobs: Job[]): SuccessPa
 function analyzeDayOfWeekPattern(jobs: Job[]): TimingPattern | null {
   if (jobs.length < 5) return null;
 
-  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
   const daySuccess: Record<string, { total: number; success: number }> = {};
 
   jobs.forEach((job) => {
@@ -779,7 +886,10 @@ function analyzeDayOfWeekPattern(jobs: Job[]): TimingPattern | null {
 
   if (!bestDay.day) return null;
 
-  const overallRate = jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length;
+  const overallRate =
+    jobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / jobs.length;
 
   return {
     timing_type: "day_of_week",
@@ -795,7 +905,20 @@ function analyzeDayOfWeekPattern(jobs: Job[]): TimingPattern | null {
 function analyzeMonthPattern(jobs: Job[]): TimingPattern | null {
   if (jobs.length < 10) return null;
 
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   const monthSuccess: Record<string, { total: number; success: number }> = {};
 
   jobs.forEach((job) => {
@@ -807,14 +930,22 @@ function analyzeMonthPattern(jobs: Job[]): TimingPattern | null {
     }
   });
 
-  const bestMonth = Object.entries(monthSuccess).reduce((best, [month, stats]) => {
-    const rate = stats.success / stats.total;
-    return rate > (best.rate || 0) && stats.total >= 2 ? { month, rate, total: stats.total } : best;
-  }, {} as { month?: string; rate?: number; total?: number });
+  const bestMonth = Object.entries(monthSuccess).reduce(
+    (best, [month, stats]) => {
+      const rate = stats.success / stats.total;
+      return rate > (best.rate || 0) && stats.total >= 2
+        ? { month, rate, total: stats.total }
+        : best;
+    },
+    {} as { month?: string; rate?: number; total?: number }
+  );
 
   if (!bestMonth.month) return null;
 
-  const overallRate = jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length;
+  const overallRate =
+    jobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / jobs.length;
 
   return {
     timing_type: "month_of_year",
@@ -841,22 +972,34 @@ function analyzeSeasonPattern(jobs: Job[]): TimingPattern | null {
 
   jobs.forEach((job) => {
     const month = new Date(job.created_at).getMonth();
-    const season = Object.entries(seasons).find(([_, months]) => months.includes(month))?.[0] || "Unknown";
-    if (!seasonSuccess[season]) seasonSuccess[season] = { total: 0, success: 0 };
+    const season =
+      Object.entries(seasons).find(([_, months]) =>
+        months.includes(month)
+      )?.[0] || "Unknown";
+    if (!seasonSuccess[season])
+      seasonSuccess[season] = { total: 0, success: 0 };
     seasonSuccess[season].total++;
     if (["Phone Screen", "Interview", "Offer"].includes(job.job_status)) {
       seasonSuccess[season].success++;
     }
   });
 
-  const bestSeason = Object.entries(seasonSuccess).reduce((best, [season, stats]) => {
-    const rate = stats.success / stats.total;
-    return rate > (best.rate || 0) && stats.total >= 3 ? { season, rate, total: stats.total } : best;
-  }, {} as { season?: string; rate?: number; total?: number });
+  const bestSeason = Object.entries(seasonSuccess).reduce(
+    (best, [season, stats]) => {
+      const rate = stats.success / stats.total;
+      return rate > (best.rate || 0) && stats.total >= 3
+        ? { season, rate, total: stats.total }
+        : best;
+    },
+    {} as { season?: string; rate?: number; total?: number }
+  );
 
   if (!bestSeason.season) return null;
 
-  const overallRate = jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length;
+  const overallRate =
+    jobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / jobs.length;
 
   return {
     timing_type: "season",
@@ -876,11 +1019,17 @@ function generateDefaultStrategies(jobs: Job[]): StrategyEffectiveness[] {
     strategies.push({
       strategy_name: "Direct Application",
       strategy_type: "application_approach",
-      success_rate: jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length,
+      success_rate:
+        jobs.filter((j) =>
+          ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+        ).length / jobs.length,
       times_used: jobs.length,
       market_condition: "moderate_hiring",
       effectiveness_trend: "stable",
-      recommended_use_cases: ["When applying to multiple companies", "For well-matched positions"],
+      recommended_use_cases: [
+        "When applying to multiple companies",
+        "For well-matched positions",
+      ],
     });
   }
 
@@ -893,9 +1042,16 @@ function identifyStrengthAreas(
   intPatterns: SuccessPattern[],
   offerPatterns: SuccessPattern[]
 ): Array<{ area: string; description: string; strength: string }> {
-  const strengths: Array<{ area: string; description: string; strength: string }> = [];
+  const strengths: Array<{
+    area: string;
+    description: string;
+    strength: string;
+  }> = [];
 
-  const responseRate = jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length;
+  const responseRate =
+    jobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / jobs.length;
 
   if (responseRate > 0.25) {
     strengths.push({
@@ -929,9 +1085,16 @@ function identifyImprovementAreas(
   appPatterns: SuccessPattern[],
   prepCorrelations: any
 ): Array<{ area: string; suggestion: string; priority: string }> {
-  const improvements: Array<{ area: string; suggestion: string; priority: string }> = [];
+  const improvements: Array<{
+    area: string;
+    suggestion: string;
+    priority: string;
+  }> = [];
 
-  const responseRate = jobs.filter((j) => ["Phone Screen", "Interview", "Offer"].includes(j.job_status)).length / jobs.length;
+  const responseRate =
+    jobs.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status)
+    ).length / jobs.length;
 
   if (responseRate < 0.2) {
     improvements.push({
@@ -952,7 +1115,8 @@ function identifyImprovementAreas(
   if (prepCorrelations.correlations.length === 0) {
     improvements.push({
       area: "Preparation Tracking",
-      suggestion: "Start tracking preparation activities to identify what works",
+      suggestion:
+        "Start tracking preparation activities to identify what works",
       priority: "low",
     });
   }
@@ -961,24 +1125,34 @@ function identifyImprovementAreas(
 }
 
 function calculateEstimatedTimeToOffer(jobs: Job[]): number {
-  const offerJobs = jobs.filter((j) => j.job_status === "Offer" && j.status_changed_at);
+  const offerJobs = jobs.filter(
+    (j) => j.job_status === "Offer" && j.status_changed_at
+  );
 
   if (offerJobs.length === 0) return 30; // Default estimate
 
   const avgDays =
     offerJobs.reduce((sum, job) => {
       const days =
-        (new Date(job.status_changed_at!).getTime() - new Date(job.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        (new Date(job.status_changed_at!).getTime() -
+          new Date(job.created_at).getTime()) /
+        (1000 * 60 * 60 * 24);
       return sum + days;
     }, 0) / offerJobs.length;
 
   return Math.round(avgDays);
 }
 
-function determineRecommendedStrategy(successRate: number, jobs: Job[]): string {
-  if (successRate > 0.3) return "Continue current approach with minor optimizations";
-  if (successRate > 0.15) return "Refine targeting and increase preparation depth";
-  if (jobs.length < 10) return "Increase application volume to gather more data";
+function determineRecommendedStrategy(
+  successRate: number,
+  jobs: Job[]
+): string {
+  if (successRate > 0.3)
+    return "Continue current approach with minor optimizations";
+  if (successRate > 0.15)
+    return "Refine targeting and increase preparation depth";
+  if (jobs.length < 10)
+    return "Increase application volume to gather more data";
   return "Consider strategy pivot - analyze patterns for major adjustments";
 }
 
@@ -986,19 +1160,26 @@ function generatePreparationInsights(correlations: any[]): string {
   if (correlations.length === 0) return "No preparation data available yet";
 
   const topActivity = correlations[0];
-  return `${topActivity.activity} shows ${(topActivity.offerCorrelation * 100).toFixed(0)}% correlation with offers. Focus on high-impact preparation activities.`;
+  return `${topActivity.activity} shows ${(
+    topActivity.offerCorrelation * 100
+  ).toFixed(
+    0
+  )}% correlation with offers. Focus on high-impact preparation activities.`;
 }
 
 function generateEvolutionInsights(evolution: any[]): string {
-  if (evolution.length < 2) return "Continue tracking patterns to see evolution trends";
+  if (evolution.length < 2)
+    return "Continue tracking patterns to see evolution trends";
 
   const recent = evolution[0];
   const previous = evolution[1];
 
   const change = recent.success_rate - previous.success_rate;
 
-  if (change > 0.05) return "Success rate improving - current strategies are working well";
-  if (change < -0.05) return "Success rate declining - consider strategy adjustments";
+  if (change > 0.05)
+    return "Success rate improving - current strategies are working well";
+  if (change < -0.05)
+    return "Success rate declining - consider strategy adjustments";
   return "Success rate stable - look for optimization opportunities";
 }
 

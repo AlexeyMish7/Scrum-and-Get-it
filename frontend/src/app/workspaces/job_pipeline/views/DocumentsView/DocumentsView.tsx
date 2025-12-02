@@ -92,13 +92,6 @@ export default function DocumentsView() {
   const { handleError, showSuccess } = useErrorHandler();
   const { currentTeam, loading: teamLoading, userTeams } = useTeam();
 
-  // Debug: Log team state
-  console.log("[DocumentsView] Team state:", {
-    currentTeam: currentTeam?.name,
-    teamLoading,
-    userTeamsCount: userTeams.length,
-  });
-
   // State
   const [activeTab, setActiveTab] = useState<DocumentTab>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");

@@ -1,10 +1,10 @@
 /**
  * Competitive Benchmarking & Market Positioning API
- * 
+ *
  * Purpose: Provide comprehensive competitive analysis comparing user's job search
  * performance, skills, and career progression against anonymized peer data and
  * industry standards.
- * 
+ *
  * Features:
  * - Peer benchmark comparison (application rates, response rates, offer rates)
  * - Competitive positioning assessment (percentile rankings)
@@ -14,10 +14,10 @@
  * - Competitive advantage recommendations (strategic improvements)
  * - Differentiation strategy insights (unique strengths to leverage)
  * - Market position optimization (actionable visibility improvements)
- * 
+ *
  * Endpoints:
  * - POST /api/analytics/competitive/position
- * 
+ *
  * Dependencies:
  * - Supabase admin client for database queries
  * - Analytics cache for historical job search data
@@ -49,8 +49,8 @@ interface PeerBenchmark {
   avg_offer_rate: number;
   avg_time_to_first_interview_days: number;
   avg_time_to_offer_days: number;
-  top_required_skills: Array<{skill: string; frequency: number}>;
-  top_missing_skills: Array<{skill: string; frequency: number}>;
+  top_required_skills: Array<{ skill: string; frequency: number }>;
+  top_missing_skills: Array<{ skill: string; frequency: number }>;
   avg_skills_per_profile: number;
   median_salary: number;
   sample_size: number;
@@ -63,7 +63,10 @@ interface IndustryStandard {
   standard_interview_rate: number;
   standard_offer_rate: number;
   standard_time_to_hire_days: number;
-  salary_benchmarks: Record<string, {min: number; max: number; median: number}>;
+  salary_benchmarks: Record<
+    string,
+    { min: number; max: number; median: number }
+  >;
   required_skills_by_level: Record<string, string[]>;
 }
 
@@ -81,9 +84,9 @@ interface CareerPath {
 
 /**
  * POST /api/analytics/competitive/position
- * 
+ *
  * Calculate and return comprehensive competitive positioning analysis
- * 
+ *
  * Request body: empty (uses authenticated user)
  * Response: {
  *   percentileRankings: {...},
@@ -100,22 +103,20 @@ export async function handleGetCompetitivePosition(
   req: IncomingMessage,
   res: ServerResponse
 ) {
-  console.log("[CompetitivePosition] Handler called!");
-  
   try {
     // Check Supabase is configured
     if (!supabaseAdmin) {
       return sendJson(res, 500, {
-        error: "Database not configured - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables",
+        error:
+          "Database not configured - check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables",
       });
     }
-    
+
     // Create non-null reference for TypeScript
     const db = supabaseAdmin;
 
     // Authentication
     const userId = await requireAuth(req);
-    console.log("[CompetitivePosition] User authenticated:", userId);
 
     // Real analysis enabled - comment out this section to use mock data for testing
     // console.log("[CompetitivePosition] Sending mock response...");
@@ -141,32 +142,36 @@ export async function handleGetCompetitivePosition(
     const experienceLevel = profile.experience_level || "mid";
     // @ts-ignore
     const professionalTitle = profile.professional_title || "";
-    console.log("[CompetitivePosition] User segment:", { industry, experienceLevel, professionalTitle });
 
     // Normalize title to category (simplified)
     const titleCategory = normalizeTitleCategory(professionalTitle);
 
     // 2. Calculate user's current metrics
-    console.log("[CompetitivePosition] Calculating user metrics...");
     const userMetrics = await calculateUserMetrics(userId);
-    console.log("[CompetitivePosition] User metrics:", userMetrics);
 
     // 3. Fetch peer benchmark for user's segment
-    console.log("[CompetitivePosition] Fetching peer benchmark...");
-    const peerBenchmark = await getPeerBenchmark(industry, experienceLevel, titleCategory);
-    console.log("[CompetitivePosition] Peer benchmark:", peerBenchmark?.sample_size || 0, "users");
+    const peerBenchmark = await getPeerBenchmark(
+      industry,
+      experienceLevel,
+      titleCategory
+    );
 
     // 4. Fetch industry standards
-    console.log("[CompetitivePosition] Fetching industry standards...");
     const industryStandard = await getIndustryStandard(industry);
 
     // 5. Fetch career progression patterns
-    console.log("[CompetitivePosition] Fetching career paths...");
-    const careerPaths = await getCareerProgressionPaths(professionalTitle, industry);
+    const careerPaths = await getCareerProgressionPaths(
+      professionalTitle,
+      industry
+    );
 
     // 6. Analyze skill gaps against peer data
-    console.log("[CompetitivePosition] Analyzing skill gaps...");
-    const skillGapAnalysis = await analyzeSkillGaps(userId, industry, experienceLevel, peerBenchmark);
+    const skillGapAnalysis = await analyzeSkillGaps(
+      userId,
+      industry,
+      experienceLevel,
+      peerBenchmark
+    );
 
     // 7. Calculate percentile rankings
     const percentileRankings = calculatePercentiles(userMetrics, peerBenchmark);
@@ -228,7 +233,8 @@ export async function handleGetCompetitivePosition(
         percentileRankings,
         peerComparison: {
           benchmark: {
-            applicationsPerMonth: peerBenchmark?.avg_applications_per_month || 0,
+            applicationsPerMonth:
+              peerBenchmark?.avg_applications_per_month || 0,
             responseRate: peerBenchmark?.avg_response_rate || 0,
             interviewRate: peerBenchmark?.avg_interview_rate || 0,
             offerRate: peerBenchmark?.avg_offer_rate || 0,
@@ -260,13 +266,16 @@ export async function handleGetCompetitivePosition(
           },
         },
         industryStandards: {
-          applicationsPerMonth: industryStandard?.standard_applications_per_month || 0,
+          applicationsPerMonth:
+            industryStandard?.standard_applications_per_month || 0,
           responseRate: industryStandard?.standard_response_rate || 0,
           interviewRate: industryStandard?.standard_interview_rate || 0,
           offerRate: industryStandard?.standard_offer_rate || 0,
           timeToHire: industryStandard?.standard_time_to_hire_days || 0,
-          salaryRange: industryStandard?.salary_benchmarks?.[experienceLevel] || null,
-          requiredSkills: industryStandard?.required_skills_by_level?.[experienceLevel] || [],
+          salaryRange:
+            industryStandard?.salary_benchmarks?.[experienceLevel] || null,
+          requiredSkills:
+            industryStandard?.required_skills_by_level?.[experienceLevel] || [],
         },
         careerProgression: {
           currentTitle: professionalTitle,
@@ -287,7 +296,10 @@ export async function handleGetCompetitivePosition(
   } catch (error: unknown) {
     console.error("[handleGetCompetitivePosition] Error:", error);
     return sendJson(res, 500, {
-      error: error instanceof Error ? error.message : "Failed to generate competitive analysis",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to generate competitive analysis",
     });
   }
 }
@@ -313,33 +325,35 @@ async function calculateUserMetrics(userId: string): Promise<UserMetrics> {
   // Calculate application volume (last 3 months)
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  const recentJobs = jobs?.filter((j) => new Date(j.created_at) >= threeMonthsAgo) || [];
+  const recentJobs =
+    jobs?.filter((j) => new Date(j.created_at) >= threeMonthsAgo) || [];
   const applicationsPerMonth = recentJobs.length / 3;
 
   // Calculate conversion rates
-  const appliedJobs = jobs?.filter((j) =>
-    ["Applied", "Phone Screen", "Interview", "Offer", "Rejected"].includes(
-      j.job_status || ""
-    )
-  ) || [];
+  const appliedJobs =
+    jobs?.filter((j) =>
+      ["Applied", "Phone Screen", "Interview", "Offer", "Rejected"].includes(
+        j.job_status || ""
+      )
+    ) || [];
 
-  const respondedJobs = jobs?.filter((j) =>
-    ["Phone Screen", "Interview", "Offer"].includes(
-      j.job_status || ""
-    )
-  ) || [];
+  const respondedJobs =
+    jobs?.filter((j) =>
+      ["Phone Screen", "Interview", "Offer"].includes(j.job_status || "")
+    ) || [];
 
-  const interviewJobs = jobs?.filter((j) =>
-    ["Interview", "Offer"].includes(j.job_status || "")
-  ) || [];
+  const interviewJobs =
+    jobs?.filter((j) => ["Interview", "Offer"].includes(j.job_status || "")) ||
+    [];
 
-  const offerJobs = jobs?.filter((j) =>
-    j.job_status === "Offer"
-  ) || [];
+  const offerJobs = jobs?.filter((j) => j.job_status === "Offer") || [];
 
-  const responseRate = appliedJobs.length > 0 ? respondedJobs.length / appliedJobs.length : 0;
-  const interviewRate = appliedJobs.length > 0 ? interviewJobs.length / appliedJobs.length : 0;
-  const offerRate = appliedJobs.length > 0 ? offerJobs.length / appliedJobs.length : 0;
+  const responseRate =
+    appliedJobs.length > 0 ? respondedJobs.length / appliedJobs.length : 0;
+  const interviewRate =
+    appliedJobs.length > 0 ? interviewJobs.length / appliedJobs.length : 0;
+  const offerRate =
+    appliedJobs.length > 0 ? offerJobs.length / appliedJobs.length : 0;
 
   // Get skills count
   // @ts-ignore - supabaseAdmin checked at handler entry
@@ -360,8 +374,8 @@ async function calculateUserMetrics(userId: string): Promise<UserMetrics> {
     responseRate,
     interviewRate,
     offerRate,
-    avgTimeToInterview: 0,  // TODO: Calculate from status_changed_at
-    avgTimeToOffer: 0,  // TODO: Calculate from status_changed_at
+    avgTimeToInterview: 0, // TODO: Calculate from status_changed_at
+    avgTimeToOffer: 0, // TODO: Calculate from status_changed_at
     totalSkills,
     skillsByCategory,
   };
@@ -394,7 +408,9 @@ async function getPeerBenchmark(
 /**
  * Fetch industry standard
  */
-async function getIndustryStandard(industry: string): Promise<IndustryStandard | null> {
+async function getIndustryStandard(
+  industry: string
+): Promise<IndustryStandard | null> {
   const { data, error } = await supabaseAdmin!
     .from("industry_standards")
     .select("*")
@@ -453,7 +469,9 @@ async function analyzeSkillGaps(
     .select("skill_name")
     .eq("user_id", userId);
 
-  const userSkillSet = new Set((userSkills || []).map((s) => s.skill_name.toLowerCase()));
+  const userSkillSet = new Set(
+    (userSkills || []).map((s) => s.skill_name.toLowerCase())
+  );
 
   // Get industry required skills
   // @ts-ignore - supabaseAdmin checked at handler entry
@@ -463,7 +481,9 @@ async function analyzeSkillGaps(
     .eq("industry", industry)
     .single();
 
-  const requiredSkills = (industryStandard?.required_skills_by_level?.[experienceLevel] || []) as string[];
+  const requiredSkills = (industryStandard?.required_skills_by_level?.[
+    experienceLevel
+  ] || []) as string[];
 
   // Calculate missing skills
   const missingSkills = requiredSkills.filter(
@@ -484,9 +504,10 @@ async function analyzeSkillGaps(
   const matchedSkills = requiredSkills.filter((skill) =>
     userSkillSet.has(skill.toLowerCase())
   );
-  const skillMatchPercentage = requiredSkills.length > 0
-    ? (matchedSkills.length / requiredSkills.length) * 100
-    : 0;
+  const skillMatchPercentage =
+    requiredSkills.length > 0
+      ? (matchedSkills.length / requiredSkills.length) * 100
+      : 0;
 
   return {
     missingSkills,
@@ -494,7 +515,10 @@ async function analyzeSkillGaps(
     skillMatchPercentage,
     skillsDepth,
     topMissingAcrossPeers: peerMissingSkills.slice(0, 10),
-    recommendations: generateSkillRecommendations(missingSkills, peerMissingSkills),
+    recommendations: generateSkillRecommendations(
+      missingSkills,
+      peerMissingSkills
+    ),
   };
 }
 
@@ -516,7 +540,10 @@ function calculatePercentiles(
   }
 
   // Simple percentile calculation (in production, use proper statistical distribution)
-  const calculatePercentile = (userValue: number, benchmarkValue: number): number => {
+  const calculatePercentile = (
+    userValue: number,
+    benchmarkValue: number
+  ): number => {
     if (benchmarkValue === 0) return 50;
     const ratio = userValue / benchmarkValue;
     // Convert ratio to approximate percentile (50 = at benchmark)
@@ -555,32 +582,56 @@ function generateCompetitiveAdvantages(
   peerBenchmark: PeerBenchmark | null,
   industryStandard: IndustryStandard | null,
   skillGapAnalysis: any
-): Array<{type: string; advantage: string; action: string; impact: string}> {
-  const advantages: Array<{type: string; advantage: string; action: string; impact: string}> = [];
+): Array<{ type: string; advantage: string; action: string; impact: string }> {
+  const advantages: Array<{
+    type: string;
+    advantage: string;
+    action: string;
+    impact: string;
+  }> = [];
 
   // Response rate advantage
-  if (peerBenchmark && userMetrics.responseRate > peerBenchmark.avg_response_rate * 1.2) {
+  if (
+    peerBenchmark &&
+    userMetrics.responseRate > peerBenchmark.avg_response_rate * 1.2
+  ) {
     advantages.push({
       type: "performance",
-      advantage: `Your response rate (${(userMetrics.responseRate * 100).toFixed(1)}%) is ${((userMetrics.responseRate / peerBenchmark.avg_response_rate - 1) * 100).toFixed(0)}% above peer average`,
-      action: "Maintain current application quality and continue early submissions",
+      advantage: `Your response rate (${(
+        userMetrics.responseRate * 100
+      ).toFixed(1)}%) is ${(
+        (userMetrics.responseRate / peerBenchmark.avg_response_rate - 1) *
+        100
+      ).toFixed(0)}% above peer average`,
+      action:
+        "Maintain current application quality and continue early submissions",
       impact: "high",
     });
-  } else if (peerBenchmark && userMetrics.responseRate < peerBenchmark.avg_response_rate * 0.8) {
+  } else if (
+    peerBenchmark &&
+    userMetrics.responseRate < peerBenchmark.avg_response_rate * 0.8
+  ) {
     advantages.push({
       type: "improvement",
-      advantage: `Your response rate (${(userMetrics.responseRate * 100).toFixed(1)}%) is below peer average`,
-      action: "Review resume with AI optimization, apply earlier in posting cycle, tailor each application",
+      advantage: `Your response rate (${(
+        userMetrics.responseRate * 100
+      ).toFixed(1)}%) is below peer average`,
+      action:
+        "Review resume with AI optimization, apply earlier in posting cycle, tailor each application",
       impact: "high",
     });
   }
 
   // Interview conversion
-  if (peerBenchmark && userMetrics.interviewRate > peerBenchmark.avg_interview_rate * 1.15) {
+  if (
+    peerBenchmark &&
+    userMetrics.interviewRate > peerBenchmark.avg_interview_rate * 1.15
+  ) {
     advantages.push({
       type: "strength",
       advantage: "Strong interview conversion rate",
-      action: "Document your successful interview preparation methods to replicate",
+      action:
+        "Document your successful interview preparation methods to replicate",
       impact: "medium",
     });
   }
@@ -589,25 +640,38 @@ function generateCompetitiveAdvantages(
   if (skillGapAnalysis.skillMatchPercentage >= 80) {
     advantages.push({
       type: "strength",
-      advantage: `Excellent skill match (${skillGapAnalysis.skillMatchPercentage.toFixed(0)}% of required skills)`,
-      action: "Highlight this comprehensive skill set prominently in applications",
+      advantage: `Excellent skill match (${skillGapAnalysis.skillMatchPercentage.toFixed(
+        0
+      )}% of required skills)`,
+      action:
+        "Highlight this comprehensive skill set prominently in applications",
       impact: "high",
     });
   } else if (skillGapAnalysis.skillMatchPercentage < 50) {
     advantages.push({
       type: "gap",
-      advantage: `Skill coverage below target (${skillGapAnalysis.skillMatchPercentage.toFixed(0)}%)`,
-      action: `Focus on learning: ${skillGapAnalysis.missingSkills.slice(0, 3).join(", ")}`,
+      advantage: `Skill coverage below target (${skillGapAnalysis.skillMatchPercentage.toFixed(
+        0
+      )}%)`,
+      action: `Focus on learning: ${skillGapAnalysis.missingSkills
+        .slice(0, 3)
+        .join(", ")}`,
       impact: "high",
     });
   }
 
   // Application volume
-  if (peerBenchmark && userMetrics.applicationsPerMonth < peerBenchmark.avg_applications_per_month * 0.5) {
+  if (
+    peerBenchmark &&
+    userMetrics.applicationsPerMonth <
+      peerBenchmark.avg_applications_per_month * 0.5
+  ) {
     advantages.push({
       type: "volume",
       advantage: "Low application volume may limit opportunities",
-      action: `Increase to ${Math.ceil(peerBenchmark.avg_applications_per_month)} applications/month (peer average)`,
+      action: `Increase to ${Math.ceil(
+        peerBenchmark.avg_applications_per_month
+      )} applications/month (peer average)`,
       impact: "high",
     });
   }
@@ -622,8 +686,12 @@ function generateDifferentiationStrategies(
   userMetrics: UserMetrics,
   skillGapAnalysis: any,
   careerPaths: CareerPath[]
-): Array<{strategy: string; rationale: string; actions: string[]}> {
-  const strategies: Array<{strategy: string; rationale: string; actions: string[]}> = [];
+): Array<{ strategy: string; rationale: string; actions: string[] }> {
+  const strategies: Array<{
+    strategy: string;
+    rationale: string;
+    actions: string[];
+  }> = [];
 
   // Skill-based differentiation
   if (skillGapAnalysis.matchedSkills.length > 0) {
@@ -639,9 +707,13 @@ function generateDifferentiationStrategies(
   }
 
   // Niche specialization
-  if (userMetrics.skillsByCategory && Object.keys(userMetrics.skillsByCategory).length <= 2) {
-    const topCategory = Object.entries(userMetrics.skillsByCategory)
-      .sort(([, a], [, b]) => b - a)[0];
+  if (
+    userMetrics.skillsByCategory &&
+    Object.keys(userMetrics.skillsByCategory).length <= 2
+  ) {
+    const topCategory = Object.entries(userMetrics.skillsByCategory).sort(
+      ([, a], [, b]) => b - a
+    )[0];
     if (topCategory) {
       strategies.push({
         strategy: "Position as Specialist",
@@ -662,7 +734,9 @@ function generateDifferentiationStrategies(
       strategy: "Demonstrate Career Trajectory",
       rationale: `Position yourself for ${nextPath.to_title} progression`,
       actions: [
-        `Acquire key skills: ${nextPath.skills_acquired.slice(0, 3).join(", ")}`,
+        `Acquire key skills: ${nextPath.skills_acquired
+          .slice(0, 3)
+          .join(", ")}`,
         `Highlight experiences matching success factors: ${nextPath.success_factors[0]}`,
         "Frame current role as stepping stone to senior position",
       ],
@@ -714,12 +788,17 @@ function generateMarketOptimization(
 
   if (skillGapAnalysis.skillMatchPercentage < 70) {
     optimization.visibility.push(
-      `Add missing high-demand skills to LinkedIn: ${skillGapAnalysis.missingSkills.slice(0, 3).join(", ")}`
+      `Add missing high-demand skills to LinkedIn: ${skillGapAnalysis.missingSkills
+        .slice(0, 3)
+        .join(", ")}`
     );
   }
 
   // Targeting recommendations
-  if (peerBenchmark && userMetrics.responseRate < peerBenchmark.avg_response_rate) {
+  if (
+    peerBenchmark &&
+    userMetrics.responseRate < peerBenchmark.avg_response_rate
+  ) {
     optimization.targeting.push(
       "Target companies where your skill set is better aligned (80%+ match)",
       "Focus on roles 1-2 levels below your aspirational target to improve response",
@@ -739,9 +818,14 @@ function generateMarketOptimization(
     "Follow up 7-10 days after application if no response"
   );
 
-  if (peerBenchmark && userMetrics.applicationsPerMonth < peerBenchmark.avg_applications_per_month) {
+  if (
+    peerBenchmark &&
+    userMetrics.applicationsPerMonth < peerBenchmark.avg_applications_per_month
+  ) {
     optimization.timing.push(
-      `Increase application frequency to ${Math.ceil(peerBenchmark.avg_applications_per_month)} per month (peer average)`
+      `Increase application frequency to ${Math.ceil(
+        peerBenchmark.avg_applications_per_month
+      )} per month (peer average)`
     );
   }
 
@@ -766,9 +850,19 @@ function generateMarketOptimization(
  */
 function generateSkillRecommendations(
   missingSkills: string[],
-  peerMissingSkills: Array<{skill: string; frequency: number}>
-): Array<{skill: string; priority: string; reason: string; resources: string[]}> {
-  const recommendations: Array<{skill: string; priority: string; reason: string; resources: string[]}> = [];
+  peerMissingSkills: Array<{ skill: string; frequency: number }>
+): Array<{
+  skill: string;
+  priority: string;
+  reason: string;
+  resources: string[];
+}> {
+  const recommendations: Array<{
+    skill: string;
+    priority: string;
+    reason: string;
+    resources: string[];
+  }> = [];
 
   // Prioritize skills missing by many peers (high demand)
   const highDemandSkills = peerMissingSkills
@@ -826,45 +920,53 @@ async function cacheCompetitivePosition(
 
   // Add skill gaps
   if (skillGaps.missingSkills.length > 0) {
-    competitiveGaps.push(`Missing ${skillGaps.missingSkills.length} key skills for target roles`);
+    competitiveGaps.push(
+      `Missing ${skillGaps.missingSkills.length} key skills for target roles`
+    );
   }
 
   // @ts-ignore - supabaseAdmin checked at handler entry
   const { error } = await supabaseAdmin
     .from("user_competitive_position")
-    .upsert({
-      user_id: userId,
-      industry,
-      experience_level: experienceLevel,
-      job_title_category: titleCategory,
-      application_volume_percentile: percentiles.applicationVolume,
-      response_rate_percentile: percentiles.responseRate,
-      interview_rate_percentile: percentiles.interviewRate,
-      offer_rate_percentile: percentiles.offerRate,
-      skills_depth_percentile: percentiles.skillsDepth,
-      skills_relevance_percentile: skillGaps.skillMatchPercentage,
-      vs_peer_application_rate: peerBenchmark
-        ? userMetrics.applicationsPerMonth / peerBenchmark.avg_applications_per_month
-        : 1,
-      vs_peer_response_rate: peerBenchmark
-        ? userMetrics.responseRate / peerBenchmark.avg_response_rate
-        : 1,
-      vs_peer_interview_rate: peerBenchmark
-        ? userMetrics.interviewRate / peerBenchmark.avg_interview_rate
-        : 1,
-      vs_peer_offer_rate: peerBenchmark
-        ? userMetrics.offerRate / peerBenchmark.avg_offer_rate
-        : 1,
-      competitive_strengths: competitiveStrengths,
-      competitive_gaps: competitiveGaps,
-      differentiation_factors: [],  // TODO: Extract from strategies
-      positioning_recommendations: advantages,
-      profile_version: profileVersion,
-      generated_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-    }, {
-      onConflict: "user_id",
-    });
+    .upsert(
+      {
+        user_id: userId,
+        industry,
+        experience_level: experienceLevel,
+        job_title_category: titleCategory,
+        application_volume_percentile: percentiles.applicationVolume,
+        response_rate_percentile: percentiles.responseRate,
+        interview_rate_percentile: percentiles.interviewRate,
+        offer_rate_percentile: percentiles.offerRate,
+        skills_depth_percentile: percentiles.skillsDepth,
+        skills_relevance_percentile: skillGaps.skillMatchPercentage,
+        vs_peer_application_rate: peerBenchmark
+          ? userMetrics.applicationsPerMonth /
+            peerBenchmark.avg_applications_per_month
+          : 1,
+        vs_peer_response_rate: peerBenchmark
+          ? userMetrics.responseRate / peerBenchmark.avg_response_rate
+          : 1,
+        vs_peer_interview_rate: peerBenchmark
+          ? userMetrics.interviewRate / peerBenchmark.avg_interview_rate
+          : 1,
+        vs_peer_offer_rate: peerBenchmark
+          ? userMetrics.offerRate / peerBenchmark.avg_offer_rate
+          : 1,
+        competitive_strengths: competitiveStrengths,
+        competitive_gaps: competitiveGaps,
+        differentiation_factors: [], // TODO: Extract from strategies
+        positioning_recommendations: advantages,
+        profile_version: profileVersion,
+        generated_at: new Date().toISOString(),
+        expires_at: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000
+        ).toISOString(), // 7 days
+      },
+      {
+        onConflict: "user_id",
+      }
+    );
 
   if (error) {
     console.error("Error caching competitive position:", error);
@@ -877,7 +979,8 @@ async function cacheCompetitivePosition(
 
 function normalizeTitleCategory(title: string): string {
   const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes("engineer") || lowerTitle.includes("developer")) return "Software Engineer";
+  if (lowerTitle.includes("engineer") || lowerTitle.includes("developer"))
+    return "Software Engineer";
   if (lowerTitle.includes("manager")) return "Manager";
   if (lowerTitle.includes("analyst")) return "Analyst";
   if (lowerTitle.includes("designer")) return "Designer";
@@ -902,13 +1005,16 @@ function getDefaultMetrics(): UserMetrics {
   };
 }
 
-function getFallbackPeerBenchmark(industry: string, experienceLevel: string): PeerBenchmark {
+function getFallbackPeerBenchmark(
+  industry: string,
+  experienceLevel: string
+): PeerBenchmark {
   // Fallback values when no peer data exists
   return {
     industry,
     experience_level: experienceLevel,
     avg_applications_per_month: 10,
-    avg_response_rate: 0.20,
+    avg_response_rate: 0.2,
     avg_interview_rate: 0.12,
     avg_offer_rate: 0.06,
     avg_time_to_first_interview_days: 14,

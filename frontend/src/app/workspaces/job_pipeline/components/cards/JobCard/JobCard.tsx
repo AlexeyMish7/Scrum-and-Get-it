@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
@@ -31,8 +32,9 @@ type Props = {
  * Simple JobCard used across the Jobs workspace.
  * Shows title, company, location, salary start and deadline.
  * Optionally displays AI match score when showMatchScore=true.
+ * Wrapped in React.memo to prevent unnecessary re-renders in kanban lists.
  */
-export default function JobCard({
+const JobCard = memo(function JobCard({
   job,
   onOpen,
   showMatchScore = false,
@@ -196,4 +198,6 @@ export default function JobCard({
       </CardContent>
     </Card>
   );
-}
+});
+
+export default JobCard;

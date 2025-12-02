@@ -313,7 +313,6 @@ export function TeamActivityFeed({
         }
       } catch {
         // Silently ignore achievement fetch errors - show activity log only
-        console.log("Could not fetch achievements, showing activity log only");
         setMilestones([]);
       }
 
