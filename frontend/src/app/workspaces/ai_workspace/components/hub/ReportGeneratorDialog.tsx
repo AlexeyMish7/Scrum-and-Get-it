@@ -16,8 +16,9 @@ import Chip from "@mui/material/Chip";
 import jsPDF from "jspdf";
 import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
+import * as db from "@shared/services/dbMappers";
 import {
-  //JobRecord,
+  type JobRecord,
   computeSuccessRates,
   computeAvgResponseDays,
   compareToBenchmarks,
@@ -50,6 +51,9 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
   const [industriesOptions, setIndustriesOptions] = useState<string[]>([]);
 
   const [jobs, setJobs] = useState<JobRecord[]>([]);
+  const [contactsOptions, setContactsOptions] = useState<any[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
   // Load jobs and populate filter options
   useEffect(() => {
@@ -91,6 +95,31 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     }
 
     loadJobOptions();
+    // load contacts for sharing
+    async function loadContacts() {
+      if (!user?.id) return;
+      setLoadingContacts(true);
+      try {
+        const res = await db.listContacts(user.id);
+        if (!res.error && Array.isArray(res.data)) {
+          setContactsOptions(
+            (res.data as any[]).map((c) => ({
+              id: c.id,
+              label: `${(c.first_name || "").trim()} ${(c.last_name || "").trim()}${c.email ? ` <${c.email}>` : ""}`.trim(),
+              raw: c,
+            }))
+          );
+        } else {
+          setContactsOptions([]);
+        }
+      } catch (err) {
+        console.error("Failed to load contacts:", err);
+      } finally {
+        setLoadingContacts(false);
+      }
+    }
+
+    loadContacts();
   }, [user?.id]);
 
   // --- Generate PDF ---
@@ -179,7 +208,68 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     doc.setFontSize(11);
     //aiInsights.forEach(i => { doc.text(`- ${i}`, margin, y); y += 12; });
 
-    doc.save(`custom_report_${new Date().toISOString().slice(0,10)}.pdf`);
+    // Output PDF as blob so we can record metadata and optionally share
+    const fileName = `custom_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    const blob = doc.output("blob");
+
+    // Trigger browser download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    // Persist export metadata and create contact interactions for shared recipients
+    (async () => {
+      if (!user?.id) return;
+      try {
+        await db.createExportHistory(user.id, {
+          document_id: "custom_report",
+          version_id: new Date().toISOString(),
+          format: "pdf",
+          file_name: fileName,
+          file_size_bytes: blob.size,
+          storage_path: null,
+          storage_url: null,
+          export_options: {
+            filters: { companies, roles, industries },
+            metrics: {
+              applicationMetrics: applicationMetricsChecked,
+              interviewMetrics: interviewMetricsChecked,
+              offerMetrics: offerMetricsChecked,
+            },
+            shared_with: selectedContacts.map((c) => c.id),
+          },
+          status: "completed",
+        });
+
+        for (const c of selectedContacts) {
+          try {
+            await db.createContactInteraction(user.id, {
+              contact_id: c.id,
+              interaction_type: "share",
+              notes: `Shared report ${fileName}`,
+              occurred_at: new Date().toISOString(),
+              tags: ["report_share"],
+            });
+          } catch (err) {
+            console.warn("Failed to create contact interaction for", c, err);
+          }
+        }
+
+        if (selectedContacts.length > 0) {
+          alert(`Report generated and shared with ${selectedContacts.length} contact(s).`);
+        } else {
+          alert("Report generated.");
+        }
+      } catch (err) {
+        console.error("Failed to save export metadata:", err);
+        alert("Report generated, but failed to save share metadata.");
+      }
+    })();
   };
 
   return (
@@ -210,7 +300,7 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={companiesOptions}
             value={companies}
             onChange={(_, v) => setCompanies(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({ index })} />)}
+            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
             renderInput={(params) => <TextField {...params} label="Companies" placeholder="Add companies" fullWidth />}
           />
           <Autocomplete
@@ -219,7 +309,7 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={rolesOptions}
             value={roles}
             onChange={(_, v) => setRoles(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({ index })} />)}
+            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
             renderInput={(params) => <TextField {...params} label="Roles" placeholder="Add roles" fullWidth />}
           />
           <Autocomplete
@@ -228,8 +318,20 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={industriesOptions}
             value={industries}
             onChange={(_, v) => setIndustries(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip key={index} label={option} {...getTagProps({ index })} />)}
+            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
             renderInput={(params) => <TextField {...params} label="Industries" placeholder="Add industries" fullWidth />}
+          />
+
+          <Typography variant="subtitle1">Share</Typography>
+          <Autocomplete
+            multiple
+            options={contactsOptions}
+            getOptionLabel={(opt) => (opt?.label ? opt.label : String(opt))}
+            value={selectedContacts}
+            onChange={(_, v) => setSelectedContacts(v as any[])}
+            loading={loadingContacts}
+            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option.label} {...getTagProps({ index })} />)}
+            renderInput={(params) => <TextField {...params} label="Share with contacts" placeholder="Select contacts to share with" fullWidth />}
           />
         </Stack>
       </DialogContent>
