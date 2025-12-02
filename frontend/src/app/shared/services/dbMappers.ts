@@ -2903,7 +2903,9 @@ export const mapInformationalInterview = (
       (formData.preparationNotes as Record<string, unknown>) ??
       (formData.preparation_notes as Record<string, unknown>) ??
       {},
-    interview_date: toIso(formData.interview_date ?? formData.interviewDate ?? null),
+    interview_date: toIso(
+      formData.interview_date ?? formData.interviewDate ?? null
+    ),
     // Note: 'completed_at' column removed from DB schema; do not include it here
     additional_notes:
       (formData.additional_notes as string) ??
@@ -2949,7 +2951,8 @@ export async function createInformationalInterview(
     // action persists user-entered data instead of failing silently.
     function toIso(v: unknown): string | null {
       if (v == null) return null;
-      if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+      if (v instanceof Date && !Number.isNaN(v.getTime()))
+        return v.toISOString();
       const s = String(v).trim();
       if (!s) return null;
       const d = new Date(s);
@@ -2960,11 +2963,13 @@ export async function createInformationalInterview(
       contact_id: formData.contact_id ?? formData.contactId ?? null,
       request_template:
         (formData.request_template as Record<string, unknown>) ??
-        (formData.requestTemplate as Record<string, unknown>) ?? {},
+        (formData.requestTemplate as Record<string, unknown>) ??
+        {},
       prepartion_notes:
         (formData.prepartion_notes as Record<string, unknown>) ??
         (formData.preparationNotes as Record<string, unknown>) ??
-        (formData.preparation_notes as Record<string, unknown>) ?? {},
+        (formData.preparation_notes as Record<string, unknown>) ??
+        {},
       interview_date: toIso(
         formData.interview_date ?? formData.interviewDate ?? null
       ),
@@ -2991,7 +2996,8 @@ export async function updateInformationalInterview(
   // without running the full mapper which requires `contact_id` and other
   // identity fields.
   const keys = Object.keys(formData || {});
-  const statusOnlyKeys = keys.length > 0 && keys.every((k) => ["status"].includes(k));
+  const statusOnlyKeys =
+    keys.length > 0 && keys.every((k) => ["status"].includes(k));
 
   if (statusOnlyKeys) {
     const payload: Record<string, unknown> = {};
@@ -3193,11 +3199,12 @@ export async function deletePreparationActivity(
 }
 
 // ===============================================
-// Interview Analytics Functions
+// Interview Analytics & Scheduling Functions
 // ===============================================
 
 /**
  * Map interview form data to database schema
+ * Supports both analytics fields (past interviews) and scheduling fields (upcoming)
  */
 function mapInterview(formData: Record<string, unknown>): {
   payload?: Record<string, unknown>;
@@ -3209,7 +3216,10 @@ function mapInterview(formData: Record<string, unknown>): {
 
   // Convert interview_date to ISO string for timestamptz
   let interviewDate =
-    formData.interview_date ?? formData.interviewDate ?? new Date();
+    formData.interview_date ??
+    formData.interviewDate ??
+    formData.start ??
+    new Date();
   if (typeof interviewDate === "string") {
     // If it's already a string from datetime-local input, ensure it's ISO format
     interviewDate = new Date(interviewDate).toISOString();
@@ -3217,22 +3227,52 @@ function mapInterview(formData: Record<string, unknown>): {
     interviewDate = interviewDate.toISOString();
   }
 
-  // No strict validation required - all fields are optional except interview_date
+  // Build payload with all supported fields (analytics + scheduling)
   const payload: Record<string, unknown> = {
+    // Analytics fields
     company: (formData.company as string) ?? null,
     industry: (formData.industry as string) ?? null,
     role: (formData.role as string) ?? null,
     company_culture: (formData.company_culture as string) ?? null,
     interview_date: interviewDate,
-    format,
+    format: format ?? (formData.type as string) ?? null,
     interview_type: interviewType,
     stage: (formData.stage as string) ?? null,
     result: formData.result ?? null,
     score: formData.score ?? null,
     notes: (formData.notes as string) ?? null,
+    // Scheduling fields
+    title: (formData.title as string) ?? null,
+    interviewer: (formData.interviewer as string) ?? null,
+    duration_minutes: formData.duration_minutes ?? formData.duration ?? null,
+    reminder_minutes:
+      formData.reminder_minutes ?? formData.reminderMinutes ?? null,
+    location: (formData.location as string) ?? null,
+    linked_job_id: formData.linked_job_id ?? formData.linkedJob ?? null,
+    status: (formData.status as string) ?? "scheduled",
+    outcome: (formData.outcome as string) ?? null,
   };
 
+  // Clean up null linked_job_id if it's not a valid number
+  if (payload.linked_job_id) {
+    const jobId = Number(payload.linked_job_id);
+    payload.linked_job_id = !isNaN(jobId) && jobId > 0 ? jobId : null;
+  }
+
   return { payload };
+}
+
+/**
+ * List scheduled (upcoming) interviews for a user
+ */
+export async function listScheduledInterviews(
+  userId: string
+): Promise<Result<unknown[]>> {
+  const userCrud = withUser(userId);
+  return userCrud.listRows("interviews", "*", {
+    eq: { status: "scheduled" },
+    order: { column: "interview_date", ascending: true },
+  });
 }
 
 /**

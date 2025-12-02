@@ -408,32 +408,25 @@ export async function handleGetMarketIntelligence(
       experienceLevel,
     });
 
-    console.log("[market-intelligence] Calling AI with prompt length:", prompt.length);
     const aiResult = await aiClient.generate("market_intelligence", prompt);
-    console.log("[market-intelligence] AI result received:", { hasJson: !!aiResult?.json, hasText: !!aiResult?.text });
 
     let aiData: MarketIntelligenceData | null = null;
     if (aiResult?.json) {
-      console.log("[market-intelligence] Using aiResult.json");
       aiData = aiResult.json as MarketIntelligenceData;
     } else if (typeof aiResult?.text === "string") {
-      console.log("[market-intelligence] Parsing aiResult.text");
       try {
         aiData = JSON.parse(aiResult.text) as MarketIntelligenceData;
-      } catch (parseErr) {
-        console.error("[market-intelligence] JSON parse error:", parseErr);
-        console.error("[market-intelligence] Text that failed to parse:", aiResult.text?.substring(0, 200));
+      } catch {
+        // JSON parse error - aiData remains null
       }
     }
 
     if (!aiData) {
-      console.error("[market-intelligence] No valid AI data after parsing");
       return sendJson(res, 500, {
         success: false,
         error: "AI returned invalid market intelligence payload",
       });
     }
-    console.log("[market-intelligence] Successfully parsed AI data");
 
     const payload: MarketIntelligenceResponseBody = {
       ai: aiData,
@@ -445,7 +438,6 @@ export async function handleGetMarketIntelligence(
       data: payload,
     });
   } catch (err: any) {
-    console.error("[market-intelligence] Unexpected error:", err);
     return sendJson(res, 500, {
       success: false,
       error: err?.message || "Unexpected server error",

@@ -35,7 +35,13 @@ import aiClient from "@shared/services/ai/client";
 import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import { pipelineService } from "@job_pipeline/services";
 import { useAuth } from "@shared/context/AuthContext";
-import { createPreparationActivity } from "@shared/services/dbMappers";
+import {
+  createPreparationActivity,
+  listScheduledInterviews,
+  createInterview,
+  updateInterview,
+  deleteInterview,
+} from "@shared/services/dbMappers";
 import { getUserStorage } from "@shared/utils/userStorage";
 
 type Interview = {
@@ -150,20 +156,47 @@ export default function InterviewScheduling() {
     text: string;
   }>({ open: false, text: "" });
 
-  // Load interviews from user-scoped storage when user becomes available
+  // Load interviews from database when user becomes available
   useEffect(() => {
     if (!user?.id) return;
-    const storage = getUserStorage(user.id);
-    const stored = storage.get<Interview[]>(STORAGE_KEYS.interviews, []);
-    setInterviews(stored);
-    setStorageLoaded(true);
+
+    async function loadInterviews() {
+      try {
+        const result = await listScheduledInterviews(user!.id);
+        if (!result.error && result.data) {
+          // Map database format to component format
+          const dbInterviews = (result.data as any[]).map((iv: any) => ({
+            id: iv.id,
+            title: iv.title || iv.role || "Interview",
+            interviewer: iv.interviewer,
+            type: (iv.format as Interview["type"]) || "video",
+            start: iv.interview_date,
+            end: new Date(
+              new Date(iv.interview_date).getTime() +
+                (iv.duration_minutes || 45) * 60000
+            ).toISOString(),
+            reminderMinutes: iv.reminder_minutes || 30,
+            location: iv.location,
+            linkedJob: iv.linked_job_id ? String(iv.linked_job_id) : undefined,
+            notes: iv.notes,
+            status: iv.status || "scheduled",
+            outcome: iv.outcome,
+          }));
+          setInterviews(dbInterviews);
+        }
+      } catch {
+        // Fallback to empty if database fails
+        setInterviews([]);
+      }
+      setStorageLoaded(true);
+    }
+
+    loadInterviews();
   }, [user?.id]);
 
-  // Persist interviews to user-scoped storage
+  // Notify calendar when interviews change (no longer persisting to localStorage)
   useEffect(() => {
     if (!user?.id || !storageLoaded) return;
-    const storage = getUserStorage(user.id);
-    storage.set(STORAGE_KEYS.interviews, interviews);
     // Dispatch event so CalendarWidget can refresh
     window.dispatchEvent(new CustomEvent("interviews-updated"));
   }, [interviews, user?.id, storageLoaded]);
@@ -273,30 +306,58 @@ export default function InterviewScheduling() {
     }
 
     if (editingId) {
-      setInterviews((cur) =>
-        cur.map((iv) =>
-          iv.id === editingId
-            ? {
-                ...iv,
-                title,
-                interviewer,
-                type,
-                start: s.toISOString(),
-                end: e.toISOString(),
-                reminderMinutes: reminder,
-                notes,
-                location,
-                linkedJob,
-              }
-            : iv
-        )
-      );
-      // notify calendar/widgets that interviews changed
-      try {
-        window.dispatchEvent(new CustomEvent("interviews-updated"));
-      } catch {}
-      setSnack({ open: true, msg: "Interview rescheduled", sev: "success" });
-      setEditingId(null);
+      // Update interview in database
+      const updatePayload = {
+        title,
+        interviewer,
+        format: type,
+        interview_date: s.toISOString(),
+        duration_minutes: duration,
+        reminder_minutes: reminder,
+        notes,
+        location,
+        linked_job_id:
+          linkedJob && !isNaN(Number(linkedJob)) ? Number(linkedJob) : null,
+      };
+
+      updateInterview(user!.id, editingId, updatePayload).then((result) => {
+        if (result.error) {
+          setSnack({
+            open: true,
+            msg: "Failed to update interview",
+            sev: "error",
+          });
+          return;
+        }
+
+        // Update local state
+        setInterviews((cur) =>
+          cur.map((iv) =>
+            iv.id === editingId
+              ? {
+                  ...iv,
+                  title,
+                  interviewer,
+                  type,
+                  start: s.toISOString(),
+                  end: e.toISOString(),
+                  reminderMinutes: reminder,
+                  notes,
+                  location,
+                  linkedJob,
+                }
+              : iv
+          )
+        );
+
+        // notify calendar/widgets that interviews changed
+        try {
+          window.dispatchEvent(new CustomEvent("interviews-updated"));
+        } catch {}
+        setSnack({ open: true, msg: "Interview rescheduled", sev: "success" });
+        setEditingId(null);
+      });
+
       // If edited interview now links to a job id, try to move it to Interview stage
       try {
         const linked = linkedJob || "";
@@ -321,123 +382,158 @@ export default function InterviewScheduling() {
                 });
               }
             } catch (e) {
-              console.error("Failed to move linked job to Interview stage", e);
+              // Silent fail for job stage update
             }
           })();
         }
       } catch (e) {}
     } else {
-      const newIv: Interview = {
-        id: uid(),
+      // Create new interview in database
+      const interviewPayload = {
         title,
         interviewer,
-        type,
-        start: s.toISOString(),
-        end: e.toISOString(),
-        reminderMinutes: reminder,
+        format: type,
+        interview_date: s.toISOString(),
+        duration_minutes: duration,
+        reminder_minutes: reminder,
         notes,
         location,
-        linkedJob,
+        linked_job_id:
+          linkedJob && !isNaN(Number(linkedJob)) ? Number(linkedJob) : null,
         status: "scheduled",
       };
-      setInterviews((cur) => [newIv, ...cur]);
-      try {
-        const checklist = generatePrepChecklist(newIv);
-        saveChecklistForInterview(newIv.id, checklist);
-        // asynchronously enrich checklist with AI suggestions (non-blocking)
-        (async () => {
-          try {
-            await enrichChecklistWithAI(newIv, newIv.id, checklist);
-          } catch {}
-        })();
-      } catch {}
-      // notify calendar/widgets that interviews changed
-      try {
-        window.dispatchEvent(new CustomEvent("interviews-updated"));
-      } catch {}
-      setSnack({ open: true, msg: "Interview scheduled", sev: "success" });
 
-      // schedule standard reminders: 24 hours and 2 hours before
-      try {
-        if (!user?.id) throw new Error("No user");
-        const storage = getUserStorage(user.id);
-        const rems = storage.get<any[]>(STORAGE_KEYS.reminders, []);
-        const add = (minsBefore: number, label: string) => {
-          const when = new Date(s.getTime() - minsBefore * 60000);
-          if (when.getTime() > Date.now()) {
-            const r = {
-              id: `${newIv.id}-rem-${minsBefore}`,
-              interviewId: newIv.id,
-              title: newIv.title,
-              when: when.toISOString(),
-              message: `${label} reminder for interview starting at ${new Date(
-                newIv.start
-              ).toLocaleString()}`,
-            };
-            rems.push(r);
-            scheduleReminderTimeout(r);
-          }
-        };
-        add(24 * 60, "24 hour");
-        add(2 * 60, "2 hour");
-        storage.set(STORAGE_KEYS.reminders, rems);
-      } catch {}
-      // auto-generate and show prep tasks
-      try {
-        const tasks = generatePrepTasks(newIv);
-        setPrepDialog({ open: true, tasks, title: newIv.title });
-
-        // Save prep tasks to database for pattern recognition
-        if (user?.id && tasks.length > 0) {
-          const linkedJobId = newIv.linkedJob ? Number(newIv.linkedJob) : null;
-          const daysBeforeInterview = Math.ceil(
-            (s.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-          );
-
-          createPreparationActivity(user.id, {
-            activity_type: "interview_prep",
-            job_id: linkedJobId && !isNaN(linkedJobId) ? linkedJobId : null,
-            activity_description: `Interview prep for: ${newIv.title}`,
-            time_spent_minutes: 0, // Will be updated when tasks completed
-            completion_quality: null,
-            days_before_application:
-              daysBeforeInterview > 0 ? daysBeforeInterview : null,
-            activity_date: new Date(),
-            notes: `Prep tasks generated: ${tasks.join("; ")}`,
-          }).catch((err) => {
-            console.error("Failed to save prep activity to database:", err);
+      createInterview(user!.id, interviewPayload).then((result) => {
+        if (result.error) {
+          setSnack({
+            open: true,
+            msg: "Failed to schedule interview",
+            sev: "error",
           });
+          return;
         }
-      } catch {}
-      // If this interview is linked to a tracked job id, move that job to Interview stage
-      try {
-        const jobIdNum = Number(newIv.linkedJob);
-        if (newIv.linkedJob && !Number.isNaN(jobIdNum) && user) {
+
+        const dbInterview = result.data as any;
+        const newIv: Interview = {
+          id: dbInterview.id,
+          title,
+          interviewer,
+          type,
+          start: s.toISOString(),
+          end: e.toISOString(),
+          reminderMinutes: reminder,
+          notes,
+          location,
+          linkedJob,
+          status: "scheduled",
+        };
+
+        setInterviews((cur) => [newIv, ...cur]);
+
+        try {
+          const checklist = generatePrepChecklist(newIv);
+          saveChecklistForInterview(newIv.id, checklist);
+          // asynchronously enrich checklist with AI suggestions (non-blocking)
           (async () => {
             try {
-              const res = await pipelineService.moveJob(
-                user.id,
-                jobIdNum,
-                "Interview"
-              );
-              if (!res.error) {
-                // notify pipeline components to refresh
-                window.dispatchEvent(new CustomEvent("jobs-updated"));
-                try {
-                  refreshJobs();
-                } catch {}
-                setSnack({
-                  open: true,
-                  msg: "Linked job moved to Interview column",
-                  sev: "success",
-                });
-              }
-            } catch (e) {
-              console.error("Failed to move linked job to Interview stage", e);
-            }
+              await enrichChecklistWithAI(newIv, newIv.id, checklist);
+            } catch {}
           })();
-        }
-      } catch (e) {}
+        } catch {}
+
+        // notify calendar/widgets that interviews changed
+        try {
+          window.dispatchEvent(new CustomEvent("interviews-updated"));
+        } catch {}
+        setSnack({ open: true, msg: "Interview scheduled", sev: "success" });
+
+        // schedule standard reminders: 24 hours and 2 hours before (keep in localStorage for now - client-side only)
+        try {
+          if (!user?.id) throw new Error("No user");
+          const storage = getUserStorage(user.id);
+          const rems = storage.get<any[]>(STORAGE_KEYS.reminders, []);
+          const add = (minsBefore: number, label: string) => {
+            const when = new Date(s.getTime() - minsBefore * 60000);
+            if (when.getTime() > Date.now()) {
+              const r = {
+                id: `${newIv.id}-rem-${minsBefore}`,
+                interviewId: newIv.id,
+                title: newIv.title,
+                when: when.toISOString(),
+                message: `${label} reminder for interview starting at ${new Date(
+                  newIv.start
+                ).toLocaleString()}`,
+              };
+              rems.push(r);
+              scheduleReminderTimeout(r);
+            }
+          };
+          add(24 * 60, "24 hour");
+          add(2 * 60, "2 hour");
+          storage.set(STORAGE_KEYS.reminders, rems);
+        } catch {}
+        // auto-generate and show prep tasks
+        try {
+          const tasks = generatePrepTasks(newIv);
+          setPrepDialog({ open: true, tasks, title: newIv.title });
+
+          // Save prep tasks to database for pattern recognition
+          if (user?.id && tasks.length > 0) {
+            const linkedJobId = newIv.linkedJob
+              ? Number(newIv.linkedJob)
+              : null;
+            const daysBeforeInterview = Math.ceil(
+              (s.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            );
+
+            createPreparationActivity(user.id, {
+              activity_type: "interview_prep",
+              job_id: linkedJobId && !isNaN(linkedJobId) ? linkedJobId : null,
+              activity_description: `Interview prep for: ${newIv.title}`,
+              time_spent_minutes: 0, // Will be updated when tasks completed
+              completion_quality: null,
+              days_before_application:
+                daysBeforeInterview > 0 ? daysBeforeInterview : null,
+              activity_date: new Date(),
+              notes: `Prep tasks generated: ${tasks.join("; ")}`,
+            }).catch((err) => {
+              console.error("Failed to save prep activity to database:", err);
+            });
+          }
+        } catch {}
+        // If this interview is linked to a tracked job id, move that job to Interview stage
+        try {
+          const jobIdNum = Number(newIv.linkedJob);
+          if (newIv.linkedJob && !Number.isNaN(jobIdNum) && user) {
+            (async () => {
+              try {
+                const res = await pipelineService.moveJob(
+                  user.id,
+                  jobIdNum,
+                  "Interview"
+                );
+                if (!res.error) {
+                  // notify pipeline components to refresh
+                  window.dispatchEvent(new CustomEvent("jobs-updated"));
+                  try {
+                    refreshJobs();
+                  } catch {}
+                  setSnack({
+                    open: true,
+                    msg: "Linked job moved to Interview column",
+                    sev: "success",
+                  });
+                }
+              } catch (e) {
+                console.error(
+                  "Failed to move linked job to Interview stage",
+                  e
+                );
+              }
+            })();
+          }
+        } catch (e) {}
+      });
     }
 
     // reset form
@@ -598,11 +694,29 @@ export default function InterviewScheduling() {
   }
 
   function removeInterview(id: string) {
-    setInterviews((cur) => cur.filter((iv) => iv.id !== id));
-    try {
-      window.dispatchEvent(new CustomEvent("interviews-updated"));
-    } catch {}
-    setSnack({ open: true, msg: "Interview removed", sev: "info" });
+    // Delete from database
+    if (user?.id) {
+      deleteInterview(user.id, id).then((result) => {
+        if (result.error) {
+          setSnack({
+            open: true,
+            msg: "Failed to remove interview",
+            sev: "error",
+          });
+          return;
+        }
+
+        setInterviews((cur) => cur.filter((iv) => iv.id !== id));
+        try {
+          window.dispatchEvent(new CustomEvent("interviews-updated"));
+        } catch {}
+        setSnack({ open: true, msg: "Interview removed", sev: "info" });
+      });
+    } else {
+      // Fallback for edge case
+      setInterviews((cur) => cur.filter((iv) => iv.id !== id));
+      setSnack({ open: true, msg: "Interview removed", sev: "info" });
+    }
   }
 
   // Follow-up persistence and tracking (user-scoped localStorage)

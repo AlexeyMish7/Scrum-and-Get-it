@@ -282,12 +282,6 @@ async function handleRequest(
 ) {
   counters.requests_total++;
 
-  // Skip logging health checks to reduce clutter
-  const isHealthCheck = req.url === "/api/health";
-  if (!isHealthCheck) {
-    console.log("🧭 Incoming request:", req.method, req.url);
-  }
-
   const ctx = createRequestContext(req);
 
   try {
@@ -617,14 +611,11 @@ async function handleRequest(
       method === "POST" &&
       pathname === "/api/analytics/competitive/position"
     ) {
-      console.log("🎯 HIT COMPETITIVE ROUTE!");
       try {
         const { handleGetCompetitivePosition } = await import(
           "./routes/analytics/competitive.js"
         );
-        console.log("✅ Import successful, calling handler...");
         await handleGetCompetitivePosition(req, res);
-        console.log("✅ Handler completed");
         ctx.logComplete(method, pathname, 200);
         return;
       } catch (error) {
@@ -637,13 +628,15 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // MARKET INTELLIGENCE ENDPOINT (protected)
     // ------------------------------------------------------------------
-    if (method === "POST" && pathname === "/api/analytics/market/intelligence") {
-      console.log("🎯 HIT MARKET INTELLIGENCE ROUTE!");
+    if (
+      method === "POST" &&
+      pathname === "/api/analytics/market/intelligence"
+    ) {
       try {
-        const { handleGetMarketIntelligence } = await import("./routes/analytics/market-intelligence.js");
-        console.log("✅ Import successful, calling handler...");
+        const { handleGetMarketIntelligence } = await import(
+          "./routes/analytics/market-intelligence.js"
+        );
         await handleGetMarketIntelligence(req, res);
-        console.log("✅ Handler completed");
         ctx.logComplete(method, pathname, 200);
         return;
       } catch (error) {
@@ -658,7 +651,9 @@ async function handleRequest(
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/time-entries") {
       try {
-        const { handleCreateTimeEntry } = await import("./routes/time-entries/create.js");
+        const { handleCreateTimeEntry } = await import(
+          "./routes/time-entries/create.js"
+        );
         await handleCreateTimeEntry(req, res);
         ctx.logComplete(method, pathname, 201);
         return;
@@ -672,13 +667,15 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // TIME INVESTMENT & PRODUCTIVITY ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
-    if (method === "POST" && pathname === "/api/analytics/productivity/time-investment") {
-      console.log("🎯 HIT TIME INVESTMENT ROUTE!");
+    if (
+      method === "POST" &&
+      pathname === "/api/analytics/productivity/time-investment"
+    ) {
       try {
-        const { handleTimeInvestmentAnalytics } = await import("./routes/analytics/productivity/timeInvestment.js");
-        console.log("✅ Import successful, calling handler...");
+        const { handleTimeInvestmentAnalytics } = await import(
+          "./routes/analytics/productivity/timeInvestment.js"
+        );
         await handleTimeInvestmentAnalytics(req, res);
-        console.log("✅ Handler completed");
         ctx.logComplete(method, pathname, 200);
         return;
       } catch (error) {
@@ -695,16 +692,13 @@ async function handleRequest(
       method === "POST" &&
       pathname === "/api/analytics/pattern-recognition"
     ) {
-      console.log("🎯 HIT PATTERN RECOGNITION ROUTE!");
       try {
         const userId = await requireAuth(req);
         (req as any).userId = userId;
         const { handleGetPatternRecognition } = await import(
           "./routes/analytics/pattern-recognition.js"
         );
-        console.log("✅ Import successful, calling handler...");
         await handleGetPatternRecognition(req, res);
-        console.log("✅ Handler completed");
         ctx.logComplete(method, pathname, 200);
         return;
       } catch (error) {

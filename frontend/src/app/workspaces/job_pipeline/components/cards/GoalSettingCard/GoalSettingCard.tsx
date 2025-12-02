@@ -350,7 +350,6 @@ export default function GoalSettingCard() {
     if (!user || !session?.access_token) return;
 
     try {
-      console.log("[GoalSettingCard] Updating progress:", { goalId, newValue });
       const result = await updateGoal(user.id, session.access_token, goalId, {
         current_value: newValue,
       });
@@ -360,7 +359,6 @@ export default function GoalSettingCard() {
         handleError(result.error.message);
       } else {
         const updatedGoal = (result.data as any)?.goal;
-        console.log("[GoalSettingCard] Updated goal:", updatedGoal);
 
         // Check for celebrations
         if (updatedGoal?.celebration_message) {
@@ -377,7 +375,6 @@ export default function GoalSettingCard() {
           showSuccess("Progress updated!");
         }
 
-        console.log("[GoalSettingCard] Reloading goals data...");
         loadGoalsData();
       }
     } catch (err: any) {
@@ -801,8 +798,8 @@ ${new Date().toLocaleDateString()}
                               {new Date(
                                 achievement.achieved_at
                               ).toLocaleDateString()}{" "}
-                              • {achievement.progress_at_achievement.toFixed(0)}%
-                              complete
+                              • {achievement.progress_at_achievement.toFixed(0)}
+                              % complete
                             </Typography>
                           </Box>
                         </Alert>

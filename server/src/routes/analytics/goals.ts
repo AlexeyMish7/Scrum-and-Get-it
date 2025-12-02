@@ -1,7 +1,7 @@
 /**
  * Career Goals Analytics Endpoint
  * Sprint 3 - UC-101: Goal Setting and Achievement Tracking
- * 
+ *
  * Features:
  * - Get all goals with progress calculations
  * - Create new SMART goals
@@ -109,19 +109,14 @@ export async function post(
   res: ServerResponse,
   userId: string
 ): Promise<void> {
-  console.log("\n🎯 [goals] POST endpoint called");
-  console.log("[goals] User ID:", userId);
   try {
     // Parse request body
     const data = (await readJson(req)) as any;
-    console.log("[goals] Request data:", JSON.stringify(data));
     const { action } = data;
-    console.log("[goals] Action:", action);
 
     // Route to appropriate handler
     switch (action) {
       case "get":
-        console.log("[goals] Routing to handleGetGoals");
         await handleGetGoals(userId, data, res);
         break;
       case "create":
@@ -137,15 +132,26 @@ export async function post(
         await handleGetAnalytics(userId, data, res);
         break;
       default:
-        res.writeHead(400, { "Content-Type": "application/json", ...getCorsHeaders() });
+        res.writeHead(400, {
+          "Content-Type": "application/json",
+          ...getCorsHeaders(),
+        });
         res.end(
-          JSON.stringify({ error: "Invalid action. Use: get, create, update, delete, analytics" })
+          JSON.stringify({
+            error:
+              "Invalid action. Use: get, create, update, delete, analytics",
+          })
         );
     }
   } catch (error: any) {
     console.error("[goals] Error:", error);
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
-    res.end(JSON.stringify({ error: error.message || "Internal server error" }));
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
+    res.end(
+      JSON.stringify({ error: error.message || "Internal server error" })
+    );
   }
 }
 
@@ -158,9 +164,6 @@ async function handleGetGoals(
   data: any,
   res: ServerResponse
 ): Promise<void> {
-  console.log("=== [goals] handleGetGoals START ===");
-  console.log("[goals] User ID:", userId);
-  console.log("[goals] Filters:", JSON.stringify(data));
   const { status, category } = data;
 
   // Build query
@@ -171,36 +174,35 @@ async function handleGetGoals(
     .order("target_date", { ascending: true });
 
   if (status) {
-    console.log("[goals] Filtering by status:", status);
     query = query.eq("status", status);
   }
 
   if (category) {
-    console.log("[goals] Filtering by category:", category);
     query = query.eq("category", category);
   }
 
-  console.log("[goals] Executing Supabase query...");
   const { data: goals, error } = await query;
 
   if (error) {
     console.error("[goals] ❌ Supabase error:", error);
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: error.message }));
     return;
   }
 
-  console.log("[goals] ✅ Found", goals?.length || 0, "goals");
-  
   // Enhance goals with progress calculations
   const goalsWithProgress = (goals || []).map((goal) =>
     calculateGoalProgress(goal)
   );
 
-  console.log("[goals] Sending response with", goalsWithProgress.length, "goals");
-  res.writeHead(200, { "Content-Type": "application/json", ...getCorsHeaders() });
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    ...getCorsHeaders(),
+  });
   res.end(JSON.stringify({ goals: goalsWithProgress }));
-  console.log("=== [goals] handleGetGoals END ===");
 }
 
 async function handleCreateGoal(
@@ -208,8 +210,11 @@ async function handleCreateGoal(
   data: any,
   res: ServerResponse
 ): Promise<void> {
-  console.error("[goals] handleCreateGoal called with data:", JSON.stringify(data, null, 2));
-  
+  console.error(
+    "[goals] handleCreateGoal called with data:",
+    JSON.stringify(data, null, 2)
+  );
+
   const {
     title,
     description,
@@ -233,9 +238,15 @@ async function handleCreateGoal(
   // Validation
   if (!title || !category || !target_value || !target_date) {
     console.error("[goals] Validation failed - missing required fields");
-    res.writeHead(400, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(400, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(
-      JSON.stringify({ error: "Missing required fields: title, category, target_value, target_date" })
+      JSON.stringify({
+        error:
+          "Missing required fields: title, category, target_value, target_date",
+      })
     );
     return;
   }
@@ -269,7 +280,10 @@ async function handleCreateGoal(
 
   if (error) {
     console.error("[goals] Supabase error:", error);
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: error.message }));
     return;
   }
@@ -277,7 +291,10 @@ async function handleCreateGoal(
   console.error("[goals] Goal created successfully:", newGoal);
   const goalWithProgress = calculateGoalProgress(newGoal);
 
-  res.writeHead(200, { "Content-Type": "application/json", ...getCorsHeaders() });
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    ...getCorsHeaders(),
+  });
   res.end(JSON.stringify({ goal: goalWithProgress }));
 }
 
@@ -290,7 +307,10 @@ async function handleUpdateGoal(
   const { goal_id, action, ...updates } = data;
 
   if (!goal_id) {
-    res.writeHead(400, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(400, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: "Missing goal_id" }));
     return;
   }
@@ -299,38 +319,57 @@ async function handleUpdateGoal(
   if (updates.current_value !== undefined) {
     const { data: goal } = await supabase
       .from("career_goals")
-      .select("target_value, milestones, achievements, start_date, target_date, current_value, title, unit")
+      .select(
+        "target_value, milestones, achievements, start_date, target_date, current_value, title, unit"
+      )
       .eq("id", goal_id)
       .eq("user_id", userId)
       .single();
 
     if (goal) {
-      const progressPercentage = (updates.current_value / goal.target_value) * 100;
+      const progressPercentage =
+        (updates.current_value / goal.target_value) * 100;
       const today = new Date();
       const startDate = new Date(goal.start_date);
       const targetDate = new Date(goal.target_date);
-      const totalDays = Math.ceil((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const daysElapsed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const totalDays = Math.ceil(
+        (targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const daysElapsed = Math.ceil(
+        (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
       const expectedProgress = (daysElapsed / totalDays) * 100;
-      
+
       // Auto-complete if reached target
       if (updates.current_value >= goal.target_value) {
         updates.status = "completed";
         updates.completion_date = new Date().toISOString().split("T")[0];
-        const daysAhead = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const daysAhead = Math.ceil(
+          (targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
         if (daysAhead > 0) {
           updates.celebration_message = `🎉 Amazing! You completed "${goal.title}" ${daysAhead} days early! Your dedication is inspiring!`;
         } else {
           updates.celebration_message = `🎉 Congratulations! You've achieved your goal: "${goal.title}"! Time to celebrate and set new challenges!`;
         }
-      } 
+      }
       // Progress-based adjustment recommendations
       else if (progressPercentage < expectedProgress - 30) {
         // Significantly behind - suggest adjustment
-        updates.motivation_notes = `💡 Adjustment Tip: You're ${Math.round(expectedProgress - progressPercentage)}% behind schedule. Consider: 1) Breaking this into smaller milestones, 2) Extending your deadline by ${Math.ceil((expectedProgress - progressPercentage) / 100 * totalDays)} days, or 3) Reducing target to ${Math.round(goal.target_value * 0.7)} to maintain momentum.`;
+        updates.motivation_notes = `💡 Adjustment Tip: You're ${Math.round(
+          expectedProgress - progressPercentage
+        )}% behind schedule. Consider: 1) Breaking this into smaller milestones, 2) Extending your deadline by ${Math.ceil(
+          ((expectedProgress - progressPercentage) / 100) * totalDays
+        )} days, or 3) Reducing target to ${Math.round(
+          goal.target_value * 0.7
+        )} to maintain momentum.`;
       } else if (progressPercentage < expectedProgress - 15) {
         // Moderately behind - motivation needed
-        updates.motivation_notes = `⚡ Keep Pushing: You're a bit behind pace but can catch up! Try increasing daily effort by ${Math.ceil(((expectedProgress - progressPercentage) / 100 * goal.target_value) / 7)} ${goal.unit || 'units'} per day this week.`;
+        updates.motivation_notes = `⚡ Keep Pushing: You're a bit behind pace but can catch up! Try increasing daily effort by ${Math.ceil(
+          (((expectedProgress - progressPercentage) / 100) *
+            goal.target_value) /
+            7
+        )} ${goal.unit || "units"} per day this week.`;
       } else if (progressPercentage > expectedProgress + 20) {
         // Ahead of schedule - celebrate and encourage
         updates.motivation_notes = `🌟 Excellent Progress! You're ahead of schedule! Your consistency is paying off. Consider setting a stretch goal once you complete this one!`;
@@ -345,17 +384,20 @@ async function handleUpdateGoal(
         "You're doing awesome!",
         "Keep it up!",
         "Nice progress!",
-        "Well done!"
+        "Well done!",
       ];
-      
+
       milestones.forEach((m: Milestone) => {
         // Mark milestone as completed if progress reaches target
         if (!m.completed && updates.current_value >= m.target_value) {
           m.completed = true;
           m.completed_at = new Date().toISOString();
-          
-          const motivationMsg = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-          
+
+          const motivationMsg =
+            motivationalMessages[
+              Math.floor(Math.random() * motivationalMessages.length)
+            ];
+
           // Add achievement
           achievements.push({
             milestone: m.title,
@@ -363,7 +405,7 @@ async function handleUpdateGoal(
             message: `🎯 ${m.title} achieved! ${motivationMsg}`,
             progress_at_achievement: (m.target_value / goal.target_value) * 100,
           });
-          
+
           // Set celebration message
           updates.celebration_message = `🎊 ${m.title} achieved! ${motivationMsg}`;
         }
@@ -391,20 +433,29 @@ async function handleUpdateGoal(
     .single();
 
   if (error) {
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: error.message }));
     return;
   }
 
   if (!updatedGoal) {
-    res.writeHead(404, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(404, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: "Goal not found" }));
     return;
   }
 
   const goalWithProgress = calculateGoalProgress(updatedGoal);
 
-  res.writeHead(200, { "Content-Type": "application/json", ...getCorsHeaders() });
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    ...getCorsHeaders(),
+  });
   res.end(JSON.stringify({ goal: goalWithProgress }));
 }
 
@@ -416,7 +467,10 @@ async function handleDeleteGoal(
   const { goal_id } = data;
 
   if (!goal_id) {
-    res.writeHead(400, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(400, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: "Missing goal_id" }));
     return;
   }
@@ -428,12 +482,18 @@ async function handleDeleteGoal(
     .eq("user_id", userId);
 
   if (error) {
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: error.message }));
     return;
   }
 
-  res.writeHead(200, { "Content-Type": "application/json", ...getCorsHeaders() });
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    ...getCorsHeaders(),
+  });
   res.end(JSON.stringify({ success: true }));
 }
 
@@ -449,7 +509,10 @@ async function handleGetAnalytics(
     .eq("user_id", userId);
 
   if (error) {
-    res.writeHead(500, { "Content-Type": "application/json", ...getCorsHeaders() });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...getCorsHeaders(),
+    });
     res.end(JSON.stringify({ error: error.message }));
     return;
   }
@@ -460,15 +523,23 @@ async function handleGetAnalytics(
   const summary = {
     total_goals: goals?.length || 0,
     active_goals: goalsWithProgress.filter((g) => g.status === "active").length,
-    completed_goals: goalsWithProgress.filter((g) => g.status === "completed").length,
-    on_track: goalsWithProgress.filter((g) => g.is_on_track && g.status === "active").length,
-    behind_schedule: goalsWithProgress.filter((g) => !g.is_on_track && g.status === "active").length,
-    avg_progress: calculateAvgProgress(goalsWithProgress.filter((g) => g.status === "active")),
+    completed_goals: goalsWithProgress.filter((g) => g.status === "completed")
+      .length,
+    on_track: goalsWithProgress.filter(
+      (g) => g.is_on_track && g.status === "active"
+    ).length,
+    behind_schedule: goalsWithProgress.filter(
+      (g) => !g.is_on_track && g.status === "active"
+    ).length,
+    avg_progress: calculateAvgProgress(
+      goalsWithProgress.filter((g) => g.status === "active")
+    ),
     completed_this_month: goalsWithProgress.filter(
       (g) =>
         g.status === "completed" &&
         g.completion_date &&
-        new Date(g.completion_date) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        new Date(g.completion_date) >=
+          new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     ).length,
   };
 
@@ -486,7 +557,10 @@ async function handleGetAnalytics(
 
   const impact = calculateGoalImpact(goalsWithProgress, jobsData || []);
 
-  res.writeHead(200, { "Content-Type": "application/json", ...getCorsHeaders() });
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    ...getCorsHeaders(),
+  });
   res.end(
     JSON.stringify({
       summary,
@@ -522,9 +596,11 @@ function calculateGoalProgress(goal: CareerGoal): GoalWithProgress {
   const total_days = Math.floor(
     (target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const expected_progress = total_days > 0 ? (days_elapsed / total_days) * 100 : 0;
+  const expected_progress =
+    total_days > 0 ? (days_elapsed / total_days) * 100 : 0;
 
-  const is_on_track = progress_percentage >= expected_progress || goal.status === "completed";
+  const is_on_track =
+    progress_percentage >= expected_progress || goal.status === "completed";
 
   // Find next incomplete milestone
   const next_milestone =
@@ -532,7 +608,10 @@ function calculateGoalProgress(goal: CareerGoal): GoalWithProgress {
 
   return {
     ...goal,
-    progress_percentage: Math.min(100, Math.round(progress_percentage * 100) / 100),
+    progress_percentage: Math.min(
+      100,
+      Math.round(progress_percentage * 100) / 100
+    ),
     days_remaining,
     days_elapsed,
     is_on_track,
@@ -550,7 +629,9 @@ function generateInsights(goals: GoalWithProgress[], summary: any): string[] {
   const insights: string[] = [];
 
   if (summary.active_goals === 0) {
-    insights.push("No active goals set. Start by creating your first career goal!");
+    insights.push(
+      "No active goals set. Start by creating your first career goal!"
+    );
   } else {
     if (summary.on_track > 0) {
       insights.push(
@@ -607,13 +688,22 @@ function generateInsights(goals: GoalWithProgress[], summary: any): string[] {
   return insights;
 }
 
-function generateRecommendations(goals: GoalWithProgress[], summary: any): string[] {
+function generateRecommendations(
+  goals: GoalWithProgress[],
+  summary: any
+): string[] {
   const recommendations: string[] = [];
 
   if (summary.active_goals === 0) {
-    recommendations.push("Set your first SMART goal to track career progress effectively");
-    recommendations.push("Start with a short-term goal (1-3 months) to build momentum");
-    recommendations.push("Consider goals for application volume, networking, or skill development");
+    recommendations.push(
+      "Set your first SMART goal to track career progress effectively"
+    );
+    recommendations.push(
+      "Start with a short-term goal (1-3 months) to build momentum"
+    );
+    recommendations.push(
+      "Consider goals for application volume, networking, or skill development"
+    );
   } else {
     if (summary.active_goals > 5) {
       recommendations.push(
@@ -622,10 +712,16 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     // Goal adjustment recommendations based on progress patterns
-    const behindSchedule = goals.filter(g => !g.is_on_track && g.status === "active");
+    const behindSchedule = goals.filter(
+      (g) => !g.is_on_track && g.status === "active"
+    );
     if (behindSchedule.length > 0) {
-      behindSchedule.forEach(goal => {
-        const percentBehind = Math.round(((goal.days_elapsed / (goal.days_elapsed + goal.days_remaining)) * 100) - goal.progress_percentage);
+      behindSchedule.forEach((goal) => {
+        const percentBehind = Math.round(
+          (goal.days_elapsed / (goal.days_elapsed + goal.days_remaining)) *
+            100 -
+            goal.progress_percentage
+        );
         if (percentBehind > 30) {
           recommendations.push(
             `Consider adjusting "${goal.title}" - target may be too ambitious. Break into smaller milestones or extend deadline.`
@@ -639,7 +735,10 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     // Recommend milestone addition for goals without them
-    const goalsWithoutMilestones = goals.filter(g => g.status === "active" && (!g.milestones || g.milestones.length === 0));
+    const goalsWithoutMilestones = goals.filter(
+      (g) =>
+        g.status === "active" && (!g.milestones || g.milestones.length === 0)
+    );
     if (goalsWithoutMilestones.length > 0) {
       recommendations.push(
         `Add milestones to ${goalsWithoutMilestones.length} goal(s) for better tracking and motivation`
@@ -647,10 +746,16 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     // Recommend celebrating achievements
-    const completedGoals = goals.filter(g => g.status === "completed" && g.achievements && g.achievements.length > 0);
+    const completedGoals = goals.filter(
+      (g) =>
+        g.status === "completed" && g.achievements && g.achievements.length > 0
+    );
     if (completedGoals.length > 0) {
       recommendations.push(
-        `You've achieved ${completedGoals.reduce((sum, g) => sum + g.achievements.length, 0)} milestones! Share your success or set new stretch goals.`
+        `You've achieved ${completedGoals.reduce(
+          (sum, g) => sum + g.achievements.length,
+          0
+        )} milestones! Share your success or set new stretch goals.`
       );
     }
 
@@ -675,7 +780,9 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     if (!hasInterviewGoal && summary.active_goals < 5) {
-      recommendations.push("Track interview success rate as a goal to measure quality improvement");
+      recommendations.push(
+        "Track interview success rate as a goal to measure quality improvement"
+      );
     }
 
     // Optimal goal-setting strategies based on patterns
@@ -686,7 +793,9 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     // Recommend sharing for accountability
-    const unsharedGoals = goals.filter(g => g.status === "active" && !g.is_shared);
+    const unsharedGoals = goals.filter(
+      (g) => g.status === "active" && !g.is_shared
+    );
     if (unsharedGoals.length >= 2) {
       recommendations.push(
         `Share ${unsharedGoals.length} goals with an accountability partner to increase commitment and success rate.`
@@ -694,8 +803,12 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
     }
 
     // Time-based insights
-    const longTermGoals = goals.filter(g => g.timeframe === "long_term" && g.status === "active");
-    const shortTermGoals = goals.filter(g => g.timeframe === "short_term" && g.status === "active");
+    const longTermGoals = goals.filter(
+      (g) => g.timeframe === "long_term" && g.status === "active"
+    );
+    const shortTermGoals = goals.filter(
+      (g) => g.timeframe === "short_term" && g.status === "active"
+    );
     if (longTermGoals.length > 0 && shortTermGoals.length === 0) {
       recommendations.push(
         "Add short-term goals (1-3 months) to create immediate wins and build momentum toward long-term objectives."
@@ -707,8 +820,12 @@ function generateRecommendations(goals: GoalWithProgress[], summary: any): strin
 }
 
 function calculateGoalImpact(goals: GoalWithProgress[], jobs: any[]): any {
-  const applicationGoals = goals.filter((g) => g.category === "application_volume");
-  const interviewGoals = goals.filter((g) => g.category === "interview_success");
+  const applicationGoals = goals.filter(
+    (g) => g.category === "application_volume"
+  );
+  const interviewGoals = goals.filter(
+    (g) => g.category === "interview_success"
+  );
 
   const totalApplications = jobs.length;
   const interviewStageJobs = jobs.filter((j) =>
@@ -718,8 +835,11 @@ function calculateGoalImpact(goals: GoalWithProgress[], jobs: any[]): any {
   return {
     total_applications: totalApplications,
     interview_stage_count: interviewStageJobs,
-    application_goals_active: applicationGoals.filter((g) => g.status === "active").length,
-    interview_goals_active: interviewGoals.filter((g) => g.status === "active").length,
+    application_goals_active: applicationGoals.filter(
+      (g) => g.status === "active"
+    ).length,
+    interview_goals_active: interviewGoals.filter((g) => g.status === "active")
+      .length,
     goals_driving_action:
       applicationGoals.filter((g) => g.status === "active").length > 0 ||
       interviewGoals.filter((g) => g.status === "active").length > 0,
