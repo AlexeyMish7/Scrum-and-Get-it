@@ -50,6 +50,7 @@ import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/Goal
 import CompetitivePositioningCard from "@job_pipeline/components/cards/CompetitivePositioningCard/CompetitivePositioningCard";
 import PatternRecognitionCard from "@job_pipeline/components/cards/PatternRecognitionCard/PatternRecognitionCard";
 import TimeInvestmentCard from "@job_pipeline/components/cards/TimeInvestmentCard/TimeInvestmentCard";
+import ApplicationAnalyticsCard from "@job_pipeline/components/cards/ApplicationAnalyticsCard/ApplicationAnalyticsCard";
 import TimeEntryForm from "@job_pipeline/components/forms/TimeEntryForm/TimeEntryForm";
 import {
   computeSuccessRates,
@@ -679,6 +680,17 @@ export default function AnalyticsView() {
                 </TableBody>
               </Table>
             </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Application Analytics */}
+        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 3 }}>
+          Application Success Analytics
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={12}>
+            <ApplicationAnalyticsCard jobs={jobs} />
           </Grid>
         </Grid>
 
