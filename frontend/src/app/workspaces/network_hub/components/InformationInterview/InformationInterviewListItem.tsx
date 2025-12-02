@@ -17,7 +17,10 @@ import {
 } from "@mui/material";
 import * as db from "@shared/services/dbMappers";
 import { useAuth } from "@shared/context/AuthContext";
+import IconButton from '@mui/material/IconButton';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AddReminders from "../RelationshipMaintenance/Reminders/AddReminders";
+import AddInteractionsTab from "../ContactDetails/ContactInteractions/AddInteractionsTab";
 
 type Props = {
 	row: any;
@@ -80,15 +83,36 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 				<ListItemText
 					primary={
 						<span>
-							{subject} {status ? <Chip label={String(status).toUpperCase()} size="small" color={status === "confirmed" ? "success" : "default"} sx={{ ml: 1 }} /> : null}
+							{subject} {status ? <Chip label={String(status).toUpperCase()} size="small" color={(status === "confirmed" || status === "completed") ? "success" : "default"} sx={{ ml: 1 }} /> : null}
 						</span>
 					}
 					secondary={<Typography component="span" variant="body2">{contactName} — {interviewDate ? new Date(interviewDate).toLocaleString() : "No date"}</Typography>}
 				/>
 
-				<Stack direction="row" spacing={1}>
-					<Button size="small" onClick={() => setOpen(true)}>View</Button>
-					</Stack>
+				<Stack direction="row" spacing={1} alignItems="center">
+					<Button size="small" onClick={() => { setOpen(true); setTab(0); }}>View</Button>
+					{status === 'completed' ? (
+						<CheckCircleOutlineIcon color="success" sx={{ ml: 1 }} />
+					) : (
+						<IconButton size="small" aria-label="mark-completed" onClick={async () => {
+							// mark completed in DB, then open the dialog on the Completed tab with interactions prefilled
+							try {
+								if (user && id) {
+									await db.updateInformationalInterview(user.id, id, { status: 'completed', completed_at: (interviewDate ?? new Date().toISOString()) });
+								}
+							} catch (err) {
+								console.error('Failed to mark interview completed', err);
+							}
+							setStatus('completed');
+							// open dialog and show interactions tab
+							setOpen(true);
+							setTab(2);
+							if (onUpdated) onUpdated();
+						}}>
+							<CheckCircleOutlineIcon />
+						</IconButton>
+					)}
+				</Stack>
 			</ListItem>
 
 			<Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md">
@@ -140,6 +164,37 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 										if (onUpdated) onUpdated();
 									}}
 								/>
+						</Box>
+					)}
+
+					{/* Completed tab: allow adding an interaction tied to this contact/interview */}
+					{tab === 2 && (
+						<Box>
+							<AddInteractionsTab
+								contactId={row?.contact_id ?? row?.contact?.id}
+								initialType={"Informational Interview"}
+								initialOccurredAt={interviewDate}
+								onAdded={async () => {
+									// mark as completed in the DB (if possible), then update UI and notify parent
+									try {
+										if (user && id) {
+											const upd = await db.updateInformationalInterview(user.id, id, { status: "completed", completed_at: new Date().toISOString() });
+											if (upd && !upd.error) {
+												setStatus("completed");
+											} else {
+												// fallback: still set locally
+												setStatus("completed");
+											}
+										} else {
+											setStatus("completed");
+										}
+									} catch (err) {
+										console.error("Failed to update informational interview status", err);
+										setStatus("completed");
+									}
+									if (onUpdated) onUpdated();
+								}}
+							/>
 						</Box>
 					)}
 				</DialogContent>

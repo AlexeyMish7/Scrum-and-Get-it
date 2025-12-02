@@ -28,7 +28,7 @@ import { useErrorHandler } from '@shared/hooks/useErrorHandler';
 import { useConfirmDialog } from '@shared/hooks/useConfirmDialog';
 import JobSearch from "../References/JobSearch";
 import { listReferralRequests, getJob, createReferralRequest, updateReferralRequest } from "@shared/services";
-import { getContact, updateContact } from "@shared/services/dbMappers";
+import { getContact, updateContact, createContactInteraction, listContactReminders, updateContactReminder } from "@shared/services/dbMappers";
 import { aiClient } from "@shared/services/ai/client";
 import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -160,6 +160,42 @@ export default function ReferralRequest({ contactId, initialSelectedJob }: { con
 			const res = await updateReferralRequest(user.id, String(item.id), payload);
 			if (res.error) throw new Error(res.error.message || "Failed to update");
 
+			// Create a contact interaction for this completed referral and mark related reminders completed
+			try {
+				if (item.contact_id) {
+					const occurred = payload.completed_at as string;
+					await createContactInteraction(user.id, {
+						contact_id: String(item.contact_id),
+						interaction_type: "Referral",
+						occurred_at: occurred,
+						referral_generated: true,
+						notes: `Referral ${item.id} completed`,
+					});
+
+					// Mark any outstanding reminders for this contact that look like referral reminders as completed
+					try {
+						const rr = await listContactReminders(user.id, { eq: { contact_id: String(item.contact_id) } });
+						const rows = !rr.error && rr.data ? (Array.isArray(rr.data) ? rr.data : [rr.data]) : [];
+						const completedAt = occurred;
+						for (const r of rows as any[]) {
+							if (!r || r.completed_at) continue;
+							const type = (r.reminder_type ?? "").toLowerCase();
+							if (type === "referral" || type.includes("referral") || type === "") {
+								try {
+									await updateContactReminder(user.id, String(r.id), { completed_at: completedAt });
+								} catch (e) {
+									/* non-fatal */
+								}
+							}
+						}
+					} catch (e) {
+						/* non-fatal */
+					}
+				}
+			} catch (e) {
+				console.error("Failed to create interaction or update reminders after completing referral", e);
+			}
+
 			// If this referral relates to a contact, bump their relationship_strength by 2 up to a ceiling of 10
 			if (item.contact_id) {
 				try {
@@ -233,6 +269,41 @@ export default function ReferralRequest({ contactId, initialSelectedJob }: { con
 
 			const res = await updateReferralRequest(user.id, String(editing.id), payload);
 			if (res.error) throw new Error(res.error.message || "Failed to update referral");
+
+			// If we set completed_at, create a contact interaction and mark related reminders completed
+			try {
+				if (payload.completed_at && editing.contact_id) {
+					const occurred = payload.completed_at as string;
+					await createContactInteraction(user.id, {
+						contact_id: String(editing.contact_id),
+						interaction_type: "Referral",
+						occurred_at: occurred,
+						referral_generated: true,
+						notes: `Referral ${editing.id} completed`,
+					});
+
+					try {
+						const rr = await listContactReminders(user.id, { eq: { contact_id: String(editing.contact_id) } });
+						const rows = !rr.error && rr.data ? (Array.isArray(rr.data) ? rr.data : [rr.data]) : [];
+						for (const r of rows as any[]) {
+							if (!r || r.completed_at) continue;
+							const type = (r.reminder_type ?? "").toLowerCase();
+							if (type === "referral" || type.includes("referral") || type === "") {
+								try {
+									await updateContactReminder(user.id, String(r.id), { completed_at: occurred });
+								} catch (e) {
+									/* non-fatal */
+								}
+							}
+						}
+					} catch (e) {
+						/* non-fatal */
+					}
+				}
+			} catch (e) {
+				console.error("Failed to create interaction or update reminders after editing referral", e);
+			}
+
 			setEditing(null);
 			await fetchItems();
 		} catch (e: any) {
@@ -391,7 +462,7 @@ export default function ReferralRequest({ contactId, initialSelectedJob }: { con
 					)}
 					<List>
 						{suggestions.map((s, idx) => (
-							<ListItem key={idx} alignItems="flex-start">
+							<ListItem key={idx} alignItems="flex-start" sx={{ alignItems: 'flex-start' }}>
 								<ListItemText
 									primary={`Suggestion ${idx + 1}`}
 									secondary={(
@@ -404,9 +475,10 @@ export default function ReferralRequest({ contactId, initialSelectedJob }: { con
 											)}
 									</>
 									)}
+									sx={{ pr: 10 }}
 								/>
 								<ListItemSecondaryAction>
-									<Button onClick={() => { setEditMessage(s.message); setSuggestionsOpen(false); setOpenAdd(true); }}>Use</Button>
+									<Button size="small" variant="outlined" onClick={() => { setEditMessage(s.message); setSuggestionsOpen(false); setOpenAdd(true); }}>Use</Button>
 								</ListItemSecondaryAction>
 							</ListItem>
 						))}

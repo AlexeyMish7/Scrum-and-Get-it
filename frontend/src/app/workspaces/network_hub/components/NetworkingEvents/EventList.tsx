@@ -90,7 +90,7 @@ export default function EventList() {
             <InputLabel>Sort</InputLabel>
             <Select value={sortDir} label="Sort" onChange={(e) => setSortDir((e.target.value as any) ?? "asc")}>
               <MenuItem value="asc">Upcoming first</MenuItem>
-              <MenuItem value="desc">Past first</MenuItem>
+              <MenuItem value="desc">Upcoming last</MenuItem>
             </Select>
           </FormControl>
         </Stack>
@@ -107,19 +107,13 @@ export default function EventList() {
       ) : filtered.length === 0 ? (
         <Typography color="text.secondary">No events found. Create one using Add Event.</Typography>
       ) : (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        <Stack spacing={2}>
           {filtered.map((ev) => (
-            <Box
-              key={ev.id}
-              sx={{
-                flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 8px)", md: "1 1 calc(33.333% - 16px)" },
-                minWidth: 260,
-              }}
-            >
+            <Box key={ev.id} sx={{ width: '100%' }}>
               <EventCard event={ev} onChanged={fetchEvents} />
             </Box>
           ))}
-        </Box>
+        </Stack>
       )}
     </Box>
   );
