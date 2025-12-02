@@ -24,23 +24,45 @@ import {
   ToggleButtonGroup,
   ToggleButton,
 } from "@mui/material";
-import { Search, Description, Article, Visibility } from "@mui/icons-material";
+import {
+  Search,
+  Description,
+  Article,
+  Visibility,
+  Share as ShareIcon,
+} from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { withUser } from "@shared/services/crud";
+import { useTeam } from "@shared/context/useTeam";
+import { ShareDocumentDialog } from "../../../ai_workspace/components/reviews";
 import type { DocumentRow } from "@shared/types/database";
 
 export default function DocumentLibrary() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notification, closeNotification, handleError } = useErrorHandler();
+  const { notification, closeNotification, handleError, showSuccess } =
+    useErrorHandler();
+  const { currentTeam } = useTeam();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<
     "all" | "resume" | "cover-letter"
   >("all");
+
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [documentToShare, setDocumentToShare] = useState<DocumentRow | null>(
+    null
+  );
+
+  // Handle share button click
+  function handleShareDocument(doc: DocumentRow) {
+    setDocumentToShare(doc);
+    setShareDialogOpen(true);
+  }
 
   // Fetch documents from database
   useEffect(() => {
@@ -102,6 +124,24 @@ export default function DocumentLibrary() {
       <Typography variant="body1" color="text.secondary" paragraph>
         View and manage all your resumes and cover letters in one place.
       </Typography>
+
+      {/* Team sharing tip - only show when not in a team */}
+      {!currentTeam && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="body2">
+            <strong>Want to share documents for review?</strong> Join or create
+            a team to enable collaborative review features with mentors and
+            peers.{" "}
+            <Button
+              size="small"
+              onClick={() => navigate("/team")}
+              sx={{ textTransform: "none" }}
+            >
+              Go to Team Dashboard
+            </Button>
+          </Typography>
+        </Alert>
+      )}
 
       {/* Filters */}
       <Stack spacing={2} sx={{ mb: 4 }}>
@@ -239,6 +279,15 @@ export default function DocumentLibrary() {
                       >
                         View
                       </Button>
+                      {currentTeam && (
+                        <Button
+                          size="small"
+                          startIcon={<ShareIcon />}
+                          onClick={() => handleShareDocument(doc)}
+                        >
+                          Share
+                        </Button>
+                      )}
                     </CardActions>
                   </Card>
                 </Grid>
@@ -268,6 +317,20 @@ export default function DocumentLibrary() {
       )}
 
       <ErrorSnackbar notification={notification} onClose={closeNotification} />
+
+      {/* Share Document Dialog for collaborative review (UC-110) */}
+      <ShareDocumentDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        documentId={documentToShare?.id || ""}
+        documentName={documentToShare?.name || "Document"}
+        teamId={currentTeam?.id || ""}
+        onSuccess={() => {
+          showSuccess("Review request sent successfully!");
+          setShareDialogOpen(false);
+          setDocumentToShare(null);
+        }}
+      />
     </Container>
   );
 }
