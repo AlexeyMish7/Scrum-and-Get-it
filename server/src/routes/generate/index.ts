@@ -24,11 +24,8 @@ export { post as postInterviewQuestions } from "./interview-questions.js";
 export { post as postInterviewFeedback } from "./interview-feedback.js";
 export { post as postMockInterviewSummary } from "./mock-interview-summary.js";
 export { post as postChecklist } from "./checklist.js";
-<<<<<<< HEAD
 export { post as postCoachingInsights } from "./coaching-insights.js";
-=======
 export { post as postSuggestContacts } from "./suggest-contacts.js";
 export { post as postEventContacts } from "./event-contacts.js";
->>>>>>> ec4d5d0 (fixes and ai integration for contacts)
 export type { GenerationCounters } from "./types.js";
 export { makePreview } from "./utils.js";
