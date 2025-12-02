@@ -49,6 +49,8 @@ import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/Re
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
 import CompetitivePositioningCard from "@job_pipeline/components/cards/CompetitivePositioningCard/CompetitivePositioningCard";
 import PatternRecognitionCard from "@job_pipeline/components/cards/PatternRecognitionCard/PatternRecognitionCard";
+import TimeInvestmentCard from "@job_pipeline/components/cards/TimeInvestmentCard/TimeInvestmentCard";
+import TimeEntryForm from "@job_pipeline/components/forms/TimeEntryForm/TimeEntryForm";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -765,6 +767,20 @@ export default function AnalyticsView() {
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <ResponseRateCard />
+          </Grid>
+        </Grid>
+
+        {/* Productivity & Time Management */}
+        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 3 }}>
+          Productivity & Time Management
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TimeEntryForm />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <TimeInvestmentCard />
           </Grid>
         </Grid>
 
