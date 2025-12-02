@@ -1024,7 +1024,11 @@ async function logTeamActivity(
 /**
  * Get aggregate team progress insights
  * Shows total applications, interviews, offers for all team members
- * Note: Due to RLS, this may only show data for the current user's jobs
+ *
+ * Note: Due to RLS, each user can only see their own jobs. To get team-wide stats,
+ * we query the current user's jobs and use progress_snapshots for other members
+ * if available. This provides accurate data for the logged-in user while
+ * showing aggregate team data from shared progress snapshots.
  */
 export async function getTeamInsights(
   userId: string,
@@ -1055,41 +1059,91 @@ export async function getTeamInsights(
   }
 
   const members = membersResult.data || [];
+  const memberIds = members.map((m) => m.user_id);
 
-  // Note: Due to RLS on the jobs table, we can only see the current user's jobs
-  // For team-wide insights, we would need a security definer function
-  // For now, we'll just show data for the current user or return zeros for others
-  const { data: jobs, error: jobError } = await supabase
+  // Get current user's jobs (RLS allows this)
+  const { data: currentUserJobs, error: jobError } = await supabase
     .from("jobs")
     .select("user_id, job_status")
     .eq("user_id", userId);
 
-  // If query fails, just return empty data instead of erroring
-  // This allows the dashboard to still load
-  const userJobs = jobError ? [] : jobs || [];
+  const userJobs = jobError ? [] : currentUserJobs || [];
 
-  // Calculate metrics for current user only (RLS limitation)
+  // Try to get progress snapshots for team members (shared progress data)
+  // This table has team-based RLS so we can see team member snapshots
+  const { data: snapshots } = await supabase
+    .from("progress_snapshots")
+    .select("user_id, applications_total, applications_by_status")
+    .eq("team_id", teamId)
+    .in("user_id", memberIds)
+    .order("created_at", { ascending: false });
+
+  // Build a map of latest snapshot per user
+  const latestSnapshots = new Map<
+    string,
+    {
+      applications: number;
+      interviews: number;
+      offers: number;
+    }
+  >();
+
+  if (snapshots) {
+    for (const snapshot of snapshots) {
+      // Only keep the first (latest) snapshot per user
+      if (!latestSnapshots.has(snapshot.user_id)) {
+        const byStatus =
+          (snapshot.applications_by_status as Record<string, number>) || {};
+        latestSnapshots.set(snapshot.user_id, {
+          applications: snapshot.applications_total || 0,
+          interviews:
+            (byStatus.interviewing || 0) +
+            (byStatus.phone_screen || 0) +
+            (byStatus.Interview || 0) +
+            (byStatus["Phone Screen"] || 0),
+          offers:
+            (byStatus.offer || 0) +
+            (byStatus.accepted || 0) +
+            (byStatus.Offer || 0) +
+            (byStatus.Accepted || 0),
+        });
+      }
+    }
+  }
+
+  // Calculate metrics - use current user's actual jobs, snapshots for others
   const memberActivity = members.map((member) => {
-    // Only the current user's jobs are visible due to RLS
     const isCurrentUser = member.user_id === userId;
-    const memberJobs = isCurrentUser ? userJobs : [];
 
-    const applications = memberJobs.length;
-    const interviews = memberJobs.filter(
-      (job) =>
-        job.job_status === "Interview" || job.job_status === "Phone Screen"
-    ).length;
-    const offers = memberJobs.filter(
-      (job) => job.job_status === "Offer" || job.job_status === "Accepted"
-    ).length;
+    if (isCurrentUser) {
+      // Use real job data for current user
+      const applications = userJobs.length;
+      const interviews = userJobs.filter(
+        (job) =>
+          job.job_status === "Interview" || job.job_status === "Phone Screen"
+      ).length;
+      const offers = userJobs.filter(
+        (job) => job.job_status === "Offer" || job.job_status === "Accepted"
+      ).length;
 
-    return {
-      userId: member.user_id,
-      name: member.profile?.full_name || "Unknown",
-      applications,
-      interviews,
-      offers,
-    };
+      return {
+        userId: member.user_id,
+        name: member.profile?.full_name || "Unknown",
+        applications,
+        interviews,
+        offers,
+      };
+    } else {
+      // Use snapshot data for other team members
+      const snapshot = latestSnapshots.get(member.user_id);
+      return {
+        userId: member.user_id,
+        name: member.profile?.full_name || "Unknown",
+        applications: snapshot?.applications || 0,
+        interviews: snapshot?.interviews || 0,
+        offers: snapshot?.offers || 0,
+      };
+    }
   });
 
   const totalApplications = memberActivity.reduce(

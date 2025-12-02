@@ -26,6 +26,8 @@ import {
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useAuth } from "@shared/context/AuthContext";
+import { getUserStorage } from "@shared/utils/userStorage";
 // CheckIcon not used yet
 
 type Interview = {
@@ -41,21 +43,16 @@ type Interview = {
   outcome?: string;
 };
 
-const STORAGE_KEY = "sgt:interviews";
+const STORAGE_KEY = "interviews";
 
 function uid(prefix = "i") {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export default function InterviewScheduling() {
-  const [interviews, setInterviews] = useState<Interview[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Interview[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { user } = useAuth();
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
   const [title, setTitle] = useState("");
   const [interviewer, setInterviewer] = useState("");
@@ -81,9 +78,23 @@ export default function InterviewScheduling() {
     title?: string;
   }>({ open: false, tasks: [] });
 
+  // Load interviews from user-scoped storage when user becomes available
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(interviews));
-  }, [interviews]);
+    if (!user?.id) return;
+    const storage = getUserStorage(user.id);
+    const stored = storage.get<Interview[]>(STORAGE_KEY, []);
+    setInterviews(stored);
+    setStorageLoaded(true);
+  }, [user?.id]);
+
+  // Persist interviews to user-scoped storage
+  useEffect(() => {
+    if (!user?.id || !storageLoaded) return;
+    const storage = getUserStorage(user.id);
+    storage.set(STORAGE_KEY, interviews);
+    // Dispatch event so CalendarWidget can refresh
+    window.dispatchEvent(new CustomEvent("interviews-updated"));
+  }, [interviews, user?.id, storageLoaded]);
 
   function detectConflict(
     newStartISO: string,

@@ -14,6 +14,10 @@ export { EngagementMonitor } from "./EngagementMonitor";
 export { AccountabilityTracker } from "./AccountabilityTracker";
 export { TeamActivityFeed } from "./TeamActivityFeed";
 export { TeamPerformanceBenchmark } from "./TeamPerformanceBenchmark";
+export { ShareJobWithTeamButton } from "./ShareJobWithTeamButton";
+export { ShareJobFromPipelineDialog } from "./ShareJobFromPipelineDialog";
+export { SharedJobCard } from "./SharedJobCard";
+export type { SharedJobData, JobComment } from "./SharedJobCard";
 
 // UC-111: Progress Sharing Components
 export { ProgressSharingSettings } from "./ProgressSharingSettings";

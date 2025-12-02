@@ -24,6 +24,8 @@ import * as crud from "@shared/services/crud";
 import type { Result } from "@shared/services/types";
 import type { JobRow } from "@shared/types/database";
 import type { PipelineStage } from "@job_pipeline/types";
+import { supabase } from "@shared/services/supabaseClient";
+import { checkAndCreateAchievement } from "../../team_management/services/progressSharingService";
 
 /**
  * MOVE JOB: Update job status to move between pipeline stages.
@@ -57,7 +59,51 @@ const moveJob = async (
     status_changed_at: new Date().toISOString(),
   };
 
-  return await userCrud.updateRow("jobs", payload, { eq: { id: jobId } }, "*");
+  const result = await userCrud.updateRow(
+    "jobs",
+    payload,
+    { eq: { id: jobId } },
+    "*"
+  );
+
+  // Trigger achievement check for milestone events
+  if (result.data && !result.error) {
+    try {
+      const { data: teamMember } = await supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
+      if (teamMember?.team_id) {
+        // Map pipeline stage to achievement event type
+        let eventType: string | null = null;
+        if (newStage === "Interview" || newStage === "Phone Screen") {
+          eventType = "interview_scheduled";
+        } else if (newStage === "Offer") {
+          eventType = "offer_received";
+        } else if (newStage === "Accepted") {
+          eventType = "offer_accepted";
+        }
+
+        if (eventType) {
+          checkAndCreateAchievement(
+            userId,
+            teamMember.team_id,
+            eventType
+          ).catch((err) => {
+            console.error("Failed to check achievement:", err);
+          });
+        }
+      }
+    } catch {
+      // Silently fail - achievement is optional
+    }
+  }
+
+  return result;
 };
 
 /**

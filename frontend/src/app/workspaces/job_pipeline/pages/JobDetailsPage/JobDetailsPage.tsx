@@ -58,6 +58,7 @@ import JobOverviewTab from "./JobOverviewTab";
 import JobMaterialsTab from "./JobMaterialsTab";
 import JobNotesTab from "./JobNotesTab";
 import JobHistoryTab from "./JobHistoryTab";
+import { ShareJobWithTeamButton } from "@workspaces/team_management/components";
 
 type TabValue = "overview" | "materials" | "notes" | "history";
 
@@ -234,7 +235,10 @@ export default function JobDetailsPage() {
             )}
           </Stack>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {/* Share with Team button */}
+          <ShareJobWithTeamButton job={job} variant="icon" />
+
           {job.job_link && (
             <IconButton
               component="a"

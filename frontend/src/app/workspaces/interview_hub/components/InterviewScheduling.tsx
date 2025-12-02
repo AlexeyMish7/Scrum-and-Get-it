@@ -36,6 +36,7 @@ import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import { pipelineService } from "@job_pipeline/services";
 import { useAuth } from "@shared/context/AuthContext";
 import { createPreparationActivity } from "@shared/services/dbMappers";
+import { getUserStorage } from "@shared/utils/userStorage";
 
 type Interview = {
   id: string;
@@ -74,21 +75,22 @@ type FollowupRecord = {
   category?: string;
 };
 
-const STORAGE_KEY = "sgt:interviews";
+// Storage keys for user-scoped localStorage
+const STORAGE_KEYS = {
+  interviews: "interviews",
+  reminders: "interview_reminders",
+  followups: "interview_followups",
+  prep: "interview_prep",
+};
 
 function uid(prefix = "i") {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export default function InterviewScheduling() {
-  const [interviews, setInterviews] = useState<Interview[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Interview[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Start with empty state - load from user-scoped storage when user is available
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
   const [title, setTitle] = useState("");
   const [interviewer, setInterviewer] = useState("");
@@ -148,14 +150,30 @@ export default function InterviewScheduling() {
     text: string;
   }>({ open: false, text: "" });
 
-  // reminders stored separately so we can trigger notifications
-  const REMINDERS_KEY = "sgt:interview_reminders";
+  // Load interviews from user-scoped storage when user becomes available
+  useEffect(() => {
+    if (!user?.id) return;
+    const storage = getUserStorage(user.id);
+    const stored = storage.get<Interview[]>(STORAGE_KEYS.interviews, []);
+    setInterviews(stored);
+    setStorageLoaded(true);
+  }, [user?.id]);
+
+  // Persist interviews to user-scoped storage
+  useEffect(() => {
+    if (!user?.id || !storageLoaded) return;
+    const storage = getUserStorage(user.id);
+    storage.set(STORAGE_KEYS.interviews, interviews);
+    // Dispatch event so CalendarWidget can refresh
+    window.dispatchEvent(new CustomEvent("interviews-updated"));
+  }, [interviews, user?.id, storageLoaded]);
 
   useEffect(() => {
+    if (!user?.id) return;
     // schedule any upcoming reminders for the current session
     try {
-      const raw = localStorage.getItem(REMINDERS_KEY);
-      const list = raw ? (JSON.parse(raw) as any[]) : [];
+      const storage = getUserStorage(user.id);
+      const list = storage.get<any[]>(STORAGE_KEYS.reminders, []);
       for (const r of list) {
         scheduleReminderTimeout(r);
       }
@@ -165,7 +183,7 @@ export default function InterviewScheduling() {
       refreshJobs();
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   function scheduleReminderTimeout(rem: any) {
     const when = new Date(rem.when).getTime();
@@ -193,10 +211,6 @@ export default function InterviewScheduling() {
       } catch {}
     }
   }
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(interviews));
-  }, [interviews]);
 
   function detectConflict(
     newStartISO: string,
@@ -345,8 +359,9 @@ export default function InterviewScheduling() {
 
       // schedule standard reminders: 24 hours and 2 hours before
       try {
-        const remsRaw = localStorage.getItem(REMINDERS_KEY);
-        const rems = remsRaw ? (JSON.parse(remsRaw) as any[]) : [];
+        if (!user?.id) throw new Error("No user");
+        const storage = getUserStorage(user.id);
+        const rems = storage.get<any[]>(STORAGE_KEYS.reminders, []);
         const add = (minsBefore: number, label: string) => {
           const when = new Date(s.getTime() - minsBefore * 60000);
           if (when.getTime() > Date.now()) {
@@ -365,7 +380,7 @@ export default function InterviewScheduling() {
         };
         add(24 * 60, "24 hour");
         add(2 * 60, "2 hour");
-        localStorage.setItem(REMINDERS_KEY, JSON.stringify(rems));
+        storage.set(STORAGE_KEYS.reminders, rems);
       } catch {}
       // auto-generate and show prep tasks
       try {
@@ -497,8 +512,9 @@ export default function InterviewScheduling() {
     setSnack({ open: true, msg: "Interview outcome recorded", sev: "success" });
     // Add a follow-up action: send thank-you note (due next day)
     try {
-      const followupsRaw = localStorage.getItem("sgt:interview_followups");
-      const followups = followupsRaw ? (JSON.parse(followupsRaw) as any[]) : [];
+      if (!user?.id) throw new Error("No user");
+      const storage = getUserStorage(user.id);
+      const followups = storage.get<any[]>(STORAGE_KEYS.followups, []);
       const iv = interviews.find((x) => x.id === id);
       if (iv) {
         followups.push({
@@ -510,10 +526,7 @@ export default function InterviewScheduling() {
           ).toISOString(),
           done: false,
         });
-        localStorage.setItem(
-          "sgt:interview_followups",
-          JSON.stringify(followups)
-        );
+        storage.set(STORAGE_KEYS.followups, followups);
       }
     } catch {}
   }
@@ -592,13 +605,14 @@ export default function InterviewScheduling() {
     setSnack({ open: true, msg: "Interview removed", sev: "info" });
   }
 
-  // Follow-up persistence and tracking (localStorage)
+  // Follow-up persistence and tracking (user-scoped localStorage)
   function saveFollowupRecord(record: any) {
     try {
-      const raw = localStorage.getItem("sgt:interview_followups");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      if (!user?.id) return;
+      const storage = getUserStorage(user.id);
+      const arr = storage.get<any[]>(STORAGE_KEYS.followups, []);
       arr.push(record);
-      localStorage.setItem("sgt:interview_followups", JSON.stringify(arr));
+      storage.set(STORAGE_KEYS.followups, arr);
       try {
         window.dispatchEvent(new CustomEvent("interview-followups-updated"));
       } catch {}
@@ -609,12 +623,13 @@ export default function InterviewScheduling() {
 
   function updateFollowupRecord(id: string, patch: Partial<any>) {
     try {
-      const raw = localStorage.getItem("sgt:interview_followups");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      if (!user?.id) return;
+      const storage = getUserStorage(user.id);
+      const arr = storage.get<any[]>(STORAGE_KEYS.followups, []);
       const idx = arr.findIndex((x) => x.id === id);
       if (idx >= 0) {
         arr[idx] = { ...arr[idx], ...patch };
-        localStorage.setItem("sgt:interview_followups", JSON.stringify(arr));
+        storage.set(STORAGE_KEYS.followups, arr);
         try {
           window.dispatchEvent(new CustomEvent("interview-followups-updated"));
         } catch {}
@@ -626,8 +641,9 @@ export default function InterviewScheduling() {
 
   function loadFollowupsForInterview(interviewId: string) {
     try {
-      const raw = localStorage.getItem("sgt:interview_followups");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      if (!user?.id) return [];
+      const storage = getUserStorage(user.id);
+      const arr = storage.get<any[]>(STORAGE_KEYS.followups, []);
       return arr.filter((x) => x.interviewId === interviewId);
     } catch {
       return [];
@@ -1061,11 +1077,12 @@ export default function InterviewScheduling() {
     items: { id: string; text: string; done: boolean; meta?: any }[]
   ) {
     try {
-      const raw = localStorage.getItem("sgt:interview_prep");
-      const map = raw ? (JSON.parse(raw) as Record<string, any>) : {};
+      if (!user?.id) return;
+      const storage = getUserStorage(user.id);
+      const map = storage.get<Record<string, any>>(STORAGE_KEYS.prep, {});
       // store object with items + meta for future compatibility
       map[interviewId] = { items, meta: { savedAt: new Date().toISOString() } };
-      localStorage.setItem("sgt:interview_prep", JSON.stringify(map));
+      storage.set(STORAGE_KEYS.prep, map);
       // notify other components
       try {
         window.dispatchEvent(new CustomEvent("interviews-updated"));
@@ -1077,8 +1094,9 @@ export default function InterviewScheduling() {
 
   function loadChecklistForInterview(interviewId: string, iv?: Interview) {
     try {
-      const raw = localStorage.getItem("sgt:interview_prep");
-      const map = raw ? (JSON.parse(raw) as Record<string, any>) : {};
+      if (!user?.id) return null;
+      const storage = getUserStorage(user.id);
+      const map = storage.get<Record<string, any>>(STORAGE_KEYS.prep, {});
       const entry = map[interviewId];
       if (!entry) return null;
       // backward-compat: if entry is array, return it
@@ -1843,12 +1861,12 @@ export default function InterviewScheduling() {
                               e.target.checked
                             ) {
                               try {
-                                const followupsRaw = localStorage.getItem(
-                                  "sgt:interview_followups"
+                                if (!user?.id) throw new Error("No user");
+                                const storage = getUserStorage(user.id);
+                                const followups = storage.get<any[]>(
+                                  STORAGE_KEYS.followups,
+                                  []
                                 );
-                                const followups = followupsRaw
-                                  ? (JSON.parse(followupsRaw) as any[])
-                                  : [];
                                 followups.push({
                                   id: `fu-${checklistDialog.interviewId}`,
                                   interviewId: checklistDialog.interviewId,
@@ -1860,10 +1878,7 @@ export default function InterviewScheduling() {
                                   ).toISOString(),
                                   done: false,
                                 });
-                                localStorage.setItem(
-                                  "sgt:interview_followups",
-                                  JSON.stringify(followups)
-                                );
+                                storage.set(STORAGE_KEYS.followups, followups);
                               } catch {}
                             }
                           }}

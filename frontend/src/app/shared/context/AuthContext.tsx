@@ -50,6 +50,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { migrateToUserScopedStorage } from "@shared/utils/userStorage";
+import {} from "react";
 import { supabase } from "../services/supabaseClient";
 import type {
   Session as SupabaseSession,
@@ -152,6 +154,12 @@ export function AuthContextProvider({ children }: ProviderProps) {
         if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
           setSession(newSession);
           setLoading(false);
+
+          // Migrate any old unscoped localStorage data to user-scoped storage
+          // This ensures data from previous sessions is properly isolated per user
+          if (newSession?.user?.id) {
+            migrateToUserScopedStorage(newSession.user.id);
+          }
         } else if (event === "SIGNED_OUT") {
           setSession(null);
           setLoading(false);
