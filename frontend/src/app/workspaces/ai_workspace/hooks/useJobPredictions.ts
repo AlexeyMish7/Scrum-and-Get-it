@@ -53,8 +53,11 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
     isLoadingRef.current = isLoading;
   }, [isLoading]);
 
+  // Sync internal jobs state when initialJobs changes
   useEffect(() => {
-    if (initialJobs && initialJobs.length) setJobs(initialJobs);
+    if (initialJobs) {
+      setJobs(initialJobs);
+    }
   }, [initialJobs]);
 
   // Note: We don't auto-run predictions on job changes anymore to avoid duplicate calls.

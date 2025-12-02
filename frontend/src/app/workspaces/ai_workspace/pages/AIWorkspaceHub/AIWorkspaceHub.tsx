@@ -171,9 +171,10 @@ export default function AIWorkspaceHub() {
   useEffect(() => {
     if (jobs.length > 0 && !hasFetchedPredictions.current && !isLoading) {
       hasFetchedPredictions.current = true;
-      runPredictions();
+      // Pass jobs directly to ensure we use the latest value
+      runPredictions(jobs);
     }
-  }, [jobs.length, isLoading]); // Intentionally exclude runPredictions to avoid loop
+  }, [jobs, isLoading, runPredictions]);
 
   //   useEffect(() => {
   //   if (jobs.length > 0) {
