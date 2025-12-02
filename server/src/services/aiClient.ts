@@ -105,6 +105,159 @@ function randomSampleForKind(kind: string) {
           explanation: "Strong skills match, moderate experience fit.",
         },
       };
+    case "market_intelligence":
+      return {
+        json: {
+          jobMarketTrends: [
+            {
+              industry: "Technology",
+              location: "San Francisco, CA",
+              demandLevel: "hot",
+              trendLabel: "High Demand",
+              summary: "Tech sector showing strong hiring activity with 25% YoY growth.",
+            },
+            {
+              industry: "Healthcare",
+              location: "Boston, MA",
+              demandLevel: "growing",
+              trendLabel: "Expanding",
+              summary: "Healthcare IT roles increasing as digital transformation accelerates.",
+            },
+          ],
+          skillDemand: {
+            coreSkills: [
+              {
+                name: "JavaScript",
+                category: "core",
+                trend: "stable",
+                commentary: "Fundamental skill with consistent demand across web development.",
+              },
+              {
+                name: "Python",
+                category: "core",
+                trend: "rising",
+                commentary: "Growing demand driven by AI/ML and data science applications.",
+              },
+            ],
+            emergingSkills: [
+              {
+                name: "TypeScript",
+                category: "emerging",
+                trend: "rising",
+                commentary: "Rapidly becoming standard for large-scale JavaScript applications.",
+              },
+            ],
+            decliningSkills: [
+              {
+                name: "jQuery",
+                category: "declining",
+                trend: "declining",
+                commentary: "Modern frameworks have reduced reliance on jQuery.",
+              },
+            ],
+          },
+          salaryTrends: [
+            {
+              role: "Software Engineer",
+              location: "San Francisco, CA",
+              median: 145000,
+              range: "$120K - $180K",
+              trend: "rising",
+              commentary: "Salaries increasing 8% annually due to talent shortage.",
+            },
+          ],
+          companyGrowthPatterns: [
+            {
+              name: "Tech Startups",
+              industry: "Technology",
+              hiringOutlook: "aggressive",
+              commentary: "Well-funded startups expanding engineering teams rapidly.",
+            },
+          ],
+          industryDisruptionInsights: [
+            "AI/ML integration transforming traditional software roles",
+            "Remote work enabling global talent competition",
+          ],
+          recommendations: [
+            "Focus on TypeScript and modern React patterns for frontend roles",
+            "Consider emerging tech hubs with lower cost of living",
+          ],
+          opportunityWindows: [
+            {
+              label: "Q4 Hiring Push",
+              timing: "now",
+              priority: "high",
+              description: "Companies rushing to fill positions before year-end budgets expire.",
+            },
+          ],
+          competitiveLandscapeSummary:
+            "Strong candidate market with companies competing for talent. Senior roles particularly competitive.",
+        },
+      };
+    case "time_investment":
+      return {
+        json: {
+          timeByActivity: [
+            {
+              activityType: "applications",
+              totalMinutes: 240,
+              sessionCount: 8,
+              avgMinutesPerSession: 30,
+            },
+            {
+              activityType: "networking",
+              totalMinutes: 180,
+              sessionCount: 6,
+              avgMinutesPerSession: 30,
+            },
+          ],
+          schedulePatterns: {
+            byHour: [{ hour: 9, minutes: 120 }],
+            byWeekday: [{ weekday: 1, minutes: 240 }],
+            bestHours: [9, 10, 14],
+            bestWeekdays: [1, 2, 3],
+          },
+          outcomesByActivity: [
+            {
+              activityType: "applications",
+              totalMinutes: 240,
+              outcomeCount: 5,
+              successCount: 2,
+              outcomesPerHour: 1.25,
+              successRate: 40,
+            },
+          ],
+          wellness: {
+            avgEnergyLevel: 3.5,
+            highEnergyShare: 45,
+            lowEnergyShare: 20,
+            burnoutRisk: "low",
+          },
+          energyCorrelation: {
+            description:
+              "Peak productivity during morning hours (9-11 AM) with high energy levels correlating to 35% better outcomes.",
+          },
+          efficiencyMetrics: {
+            avgMinutesPerOutcome: 48,
+            outcomeRate: 1.25,
+            improvementTrend: 15,
+          },
+          aiRecommendations: {
+            timeAllocation: [
+              "Increase networking time by 20% for better referral opportunities",
+              "Consolidate application sessions to 90-minute focused blocks",
+            ],
+            burnoutPrevention: [
+              "Take regular breaks every 50 minutes",
+              "Limit job search activities to 4 hours per day",
+            ],
+            coaching: [
+              "Your morning sessions (9-11 AM) show 35% better outcomes",
+              "Consider shifting more activities to high-energy periods",
+            ],
+          },
+        },
+      };
     default:
       return { text: "Mock response" };
   }
@@ -125,7 +278,7 @@ async function sendToOpenAI(
 
   // Basic retry + timeout wrapper around a single REST call.
   const maxRetries = opts.maxRetries ?? 2;
-  const timeoutMs = opts.timeoutMs ?? 30_000;
+  const timeoutMs = opts.timeoutMs ?? 120_000;
 
   const body = {
     model: opts.model ?? "gpt-4o-mini",
