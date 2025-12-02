@@ -1,123 +1,172 @@
-import { IncomingMessage, ServerResponse } from "http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { generate } from "../../services/aiClient.js";
-import * as cheerio from "cheerio"; // scraping helpers
-// fetch is available in modern Node runtimes; if not, install node-fetch
+import {
+  legacyLogInfo as logInfo,
+  legacyLogError as logError,
+} from "../../../utils/logger.js";
+import { readJson, sendJson } from "../../../utils/http.js";
+import { ApiError } from "../../../utils/errors.js";
+import { checkLimit } from "../../../utils/rateLimiter.js";
+import type { GenerationCounters } from "./types.js";
 
-async function readBody(req: IncomingMessage) {
-  return new Promise<string>((resolve, reject) => {
-    let body = "";
-    req.on("data", (c) => (body += c.toString()));
-    req.on("end", () => resolve(body));
-    req.on("error", reject);
-  });
+interface SuggestContactsBody {
+  job_title?: string;
+  job_company?: string;
+  alumni_school?: string | null;
 }
 
-// Scrape team members from a company page
-async function scrapeTeamPage(url: string) {
-  try {
-    const resp = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 ContactDiscoveryBot" },
-    });
-    const html = await resp.text();
-    const $ = cheerio.load(html);
+function buildPrompt(body: SuggestContactsBody) {
+  const { job_title, job_company, alumni_school } = body;
 
-    const people: any[] = [];
+  return `
+You are an assistant that suggests contacts the user can look up publicly.
 
-    // Adjust selectors per site structure later
-    $(".team-member, .person, .bio-card").each((_, el) => {
-      const name = $(el).find("h3, .name").first().text().trim();
-      const title = $(el).find("p, .title").first().text().trim();
-      const linkedin = $(el)
-        .find('a[href*="linkedin"]')
-        ?.attr("href")
-        ?.trim();
+There are TWO sections required:
 
-      if (name) {
-        people.push({
-          name,
-          title,
-          linkedin: linkedin || "",
-          source: url,
-          reason: "Public team page contact",
-        });
-      }
-    });
+1️⃣ "roleSuggestions": 2-4 professional contact types
+   - "name" must be a role descriptor only (ex: "Software Hiring Manager")
+   - DO NOT create any fake people
+   - Must include strong "searchQuery" fields for LinkedIn or company pages
 
-    return people;
-  } catch (_) {
-    return [];
-  }
+2️⃣ "publicLeaders": 1-3 public company executives
+   - Allowed ONLY if they are widely recognized / appear on public company leadership pages
+   - Include **real individuals** ONLY IF:
+       ✔ They are C-suite, VP, or well-known executives
+       ✔ Their names are easily verifiable on company websites
+   - Include their actual name in "name"
+   - Include a "role" field (ex: "CTO")
+   - Include a "searchQuery" to validate the information publicly
+   - NEVER include private or unverifiable individuals
+
+Input context:
+- job_title: ${job_title ?? "(not provided)"}
+- job_company: ${job_company ?? "(not provided)"}
+- alumni_school: ${alumni_school ?? "(not provided)"}
+
+Return EXACT JSON ONLY:
+
+{
+  "roleSuggestions": [
+    {
+      "name": "Role descriptor only",
+      "title": "Example: Senior Data Engineer",
+      "company": "Example Company",
+      "reason": "1-2 sentence reason",
+      "searchQuery": "\"Senior Data Engineer\" \"Example Company\" site:linkedin.com"
+    }
+  ],
+  "publicLeaders": [
+    {
+      "name": "Actual public figure name",
+      "role": "Official job title",
+      "company": "The company",
+      "searchQuery": "\"Person Name\" \"Company Name\" site:linkedin.com"
+    }
+  ]
+}
+`;
 }
 
-export async function handleSuggestContacts(
+export async function post(
   req: IncomingMessage,
   res: ServerResponse,
-  _url?: URL,
-  _reqId?: string,
-  _userId?: string
-) {
+  url: URL,
+  reqId: string,
+  userId: string,
+  counters: GenerationCounters
+): Promise<void> {
+  const limit = checkLimit(`suggest_contacts:${userId}`, 50, 300_000);
+  if (!limit.ok) {
+    res.setHeader("Retry-After", String(limit.retryAfterSec ?? 60));
+    throw new ApiError(429, "rate limited", "rate_limited");
+  }
+
+  let body: SuggestContactsBody;
   try {
-    const raw = await readBody(req);
-    const payload = raw ? JSON.parse(raw) : {};
+    body = await readJson(req) as SuggestContactsBody;
+  } catch (e) {
+    throw new ApiError(400, "invalid JSON body", "bad_json");
+  }
 
-    const jobTitle = payload.jobTitle ?? "";
-    const companyName = payload.companyName ?? "";
-    const alumniSchool = payload.alumniSchool ?? ""; // NEW ✨
-    const teamPageUrl = payload.teamPageUrl ?? ""; // NEW ✨
+  if (!body.job_title && !body.job_company) {
+    throw new ApiError(400, "Missing required data: job_title or job_company", "bad_request");
+  }
 
-    let realPeople: any[] = [];
+  counters.generate_total++;
+  const start = Date.now();
 
-    // Scrape team page if provided
-    if (teamPageUrl) {
-      const scraped = await scrapeTeamPage(teamPageUrl);
-      if (scraped.length) realPeople.push(...scraped);
+  try {
+    const prompt = buildPrompt(body);
+    const aiResult = await generate("suggest_contacts", prompt, {
+      model: "gpt-4o-mini",
+      temperature: 0.25,
+      maxTokens: 1000,
+      timeoutMs: 20000,
+    });
+
+    let roleSuggestions: any[] = [];
+    let publicLeaders: any[] = [];
+
+    const payload = aiResult.json ?? (() => {
+      try { return JSON.parse(aiResult.text || "{}"); } catch { return {}; }
+    })();
+
+    if (Array.isArray(payload.roleSuggestions)) {
+      roleSuggestions = payload.roleSuggestions;
+    }
+    if (Array.isArray(payload.publicLeaders)) {
+      publicLeaders = payload.publicLeaders;
     }
 
-    // Ask AI for alumni networking strategies
-    const aiPrompt = `
-The user is applying for a job:
+    // Fallback for role suggestions
+    if (roleSuggestions.length === 0) {
+      const role = body.job_title ?? "the role";
+      const co = body.job_company ?? "the company";
+      roleSuggestions = [
+        {
+          name: `Hiring Manager (${role})`,
+          title: `Hiring Manager — ${role}`,
+          company: co,
+          reason: `Likely involved in hiring for ${role}.`,
+          searchQuery: `"Hiring Manager" "${co}" site:linkedin.com"`
+        }
+      ];
+    }
 
-Role: ${jobTitle}
-Company: ${companyName}
-School: ${alumniSchool}
+    // If no leader names returned safely, leave empty (better safe than sorry)
+    publicLeaders = publicLeaders.filter(l => l.name && l.role);
 
-You MUST return valid JSON only:
-{
- "suggestions": [...]
-}
+    // Deduplicate generic roles
+    const seenRoles = new Set();
+    roleSuggestions = roleSuggestions.filter((s) => {
+      const tag = (s.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!tag || seenRoles.has(tag)) return false;
+      seenRoles.add(tag);
+      return true;
+    });
 
-Rules:
-• DO NOT invent names
-• If alumni not publicly listed, provide Google search queries like:
-  "${alumniSchool} alumni ${companyName} ${jobTitle} LinkedIn"
-`;
+    const latencyMs = Date.now() - start;
+    counters.generate_success++;
+    logInfo("suggest_contacts_success", {
+      userId, reqId, latencyMs,
+      roles: roleSuggestions.length,
+      leaders: publicLeaders.length
+    });
 
-    const aiResp = await generate(
-      "suggest_contacts_v2",
-      aiPrompt,
-      { temperature: 0.2 }
-    );
+    sendJson(res, 200, {
+      roleSuggestions,
+      publicLeaders,  // 👈 New section!
+      meta: { latency_ms: latencyMs }
+    });
 
-    let aiJson = {};
-    try {
-      aiJson = JSON.parse(
-        aiResp.text.replace(/```json/g, "").replace(/```/g, "").trim()
-      );
-    } catch (_) {}
-
-    const combined = {
-      real_people: realPeople.slice(0, 8), // from scraper
-      ...aiJson, // networking strategies
-    };
-
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(combined));
   } catch (err: any) {
-    console.error("SuggestContacts error", err);
-    res.writeHead(500);
-    res.end(JSON.stringify({ error: err.message }));
+    const latencyMs = Date.now() - start;
+    counters.generate_fail++;
+    logError("suggest_contacts_error", {
+      userId, reqId, latencyMs,
+      error: err.message ?? String(err)
+    });
+
+    throw new ApiError(502, "AI generation failed", "ai_error");
   }
 }
-
-export const post = handleSuggestContacts;
-export default handleSuggestContacts;

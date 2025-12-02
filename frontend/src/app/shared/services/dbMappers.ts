@@ -2903,9 +2903,9 @@ export const mapInformationalInterview = (
       (formData.preparationNotes as Record<string, unknown>) ??
       (formData.preparation_notes as Record<string, unknown>) ??
       {},
-    interview_date: toIso(
-      formData.interview_date ?? formData.interviewDate ?? null
-    ),
+    interview_date: toIso(formData.interview_date ?? formData.interviewDate ?? null),
+    // Timestamp when the informational interview was completed (optional)
+    completed_at: toIso(formData.completed_at ?? formData.completedAt ?? null),
     additional_notes:
       (formData.additional_notes as string) ??
       (formData.additionalNotes as string) ??

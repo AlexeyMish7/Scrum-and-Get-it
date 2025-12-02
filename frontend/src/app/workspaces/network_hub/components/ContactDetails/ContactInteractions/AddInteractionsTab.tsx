@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Button, TextField, Stack, MenuItem, Checkbox, FormControlLabel, Typography, Divider } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
 import * as db from "@shared/services/dbMappers";
@@ -6,9 +6,13 @@ import * as db from "@shared/services/dbMappers";
 export default function AddInteractionsTab({
     contactId,
     onAdded,
+    initialType,
+    initialOccurredAt,
 }: {
     contactId?: string | null;
     onAdded?: () => void;
+    initialType?: string | null;
+    initialOccurredAt?: string | null; // ISO timestamp
 }) {
     const { user } = useAuth();
     const [type, setType] = useState<string>("Note");
@@ -74,6 +78,33 @@ export default function AddInteractionsTab({
         }
     };
 
+    // If initial values were provided (e.g., opened from an informational interview), prefill them
+    // Convert ISO timestamp to datetime-local value (YYYY-MM-DDTHH:MM)
+    function toDatetimeLocal(iso?: string | null) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return "";
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const year = d.getFullYear();
+        const month = pad(d.getMonth() + 1);
+        const day = pad(d.getDate());
+        const hours = pad(d.getHours());
+        const minutes = pad(d.getMinutes());
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    useEffect(() => {
+        if (initialType && type === "Note") {
+            setType(initialType);
+        }
+        if (initialOccurredAt && !occurredAt) {
+            const v = toDatetimeLocal(initialOccurredAt);
+            if (v) setOccurredAt(v);
+        }
+        // We only want to run this when initial props change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialType, initialOccurredAt]);
+
     return (
         <Box>
             <Stack spacing={2}>
@@ -85,6 +116,7 @@ export default function AddInteractionsTab({
                         <MenuItem value="Virtual Meeting">Virtual Meeting</MenuItem>
                         <MenuItem value="In-Person Meeting">In-Person Meeting</MenuItem>
                         <MenuItem value="Networking Event">Networking Event</MenuItem>
+                        <MenuItem value="Informational Interview">Informational Interview</MenuItem>
                         <MenuItem value="Referral">Referral</MenuItem>
                         <MenuItem value="Other">Other</MenuItem>
                     </TextField>

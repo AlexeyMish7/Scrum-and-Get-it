@@ -25,5 +25,7 @@ export { post as postInterviewFeedback } from "./interview-feedback.js";
 export { post as postMockInterviewSummary } from "./mock-interview-summary.js";
 export { post as postChecklist } from "./checklist.js";
 export { post as postCoachingInsights } from "./coaching-insights.js";
+export { post as postSuggestContacts } from "./suggest-contacts.js";
+export { post as postEventContacts } from "./event-contacts.js";
 export type { GenerationCounters } from "./types.js";
 export { makePreview } from "./utils.js";

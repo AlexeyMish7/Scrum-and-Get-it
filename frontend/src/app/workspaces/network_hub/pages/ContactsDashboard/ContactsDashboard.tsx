@@ -5,15 +5,25 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Collapse,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Chip,
 } from "@mui/material";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState, useEffect } from "react";
 import EventList from "@workspaces/network_hub/components/NetworkingEvents/EventList";
 import ContactsList from "@workspaces/network_hub/components/ContactsList/ContactsList";
 import InformationalInterviews from "@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews";
 import PeerGroupsHub from "@workspaces/network_hub/pages/PeerGroupsHub";
-import { Breadcrumbs } from "@shared/components/navigation";
+// Breadcrumbs removed (unused)
 import { useAuth } from "@shared/context/AuthContext";
 import NetworkHubNavbar from "@workspaces/network_hub/components/NetworkHubNavbar/NetworkHubNavbar";
+import * as db from "@shared/services/dbMappers";
 
 interface NetworkingAnalytics {
   summary: {
@@ -34,6 +44,24 @@ export default function ContactsDashboard() {
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState<string>("30d");
   const [selectedTab, setSelectedTab] = useState<number>(0);
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem("contacts:reminder:open") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("contacts:reminder:message");
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState<boolean>(true);
 
   // Fetch networking analytics
   const fetchAnalytics = async () => {
@@ -74,6 +102,96 @@ export default function ContactsDashboard() {
     fetchAnalytics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session, timeRange]);
+
+  // persist snackbar state so returning to the page restores it
+  useEffect(() => {
+    try {
+      if (snackbarOpen) sessionStorage.setItem("contacts:reminder:open", "true");
+      else sessionStorage.removeItem("contacts:reminder:open");
+    } catch (e) {
+      /* ignore */
+    }
+  }, [snackbarOpen]);
+
+  useEffect(() => {
+    try {
+      if (snackbarMessage) sessionStorage.setItem("contacts:reminder:message", snackbarMessage);
+      else sessionStorage.removeItem("contacts:reminder:message");
+    } catch (e) {
+      /* ignore */
+    }
+  }, [snackbarMessage]);
+
+  // Fetch upcoming reminders (next 24h) and show a bottom-left collapsible panel
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkReminders() {
+      if (!user) return;
+      try {
+        const res = await db.listContactReminders(user.id, {
+          order: { column: "remind_at", ascending: true },
+        });
+        const rows = (!res.error && res.data ? (Array.isArray(res.data) ? res.data : [res.data]) : []) as any[];
+        const now = new Date();
+        const cutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        const upcoming = rows.filter((r: any) => {
+          if (!r || !r.remind_at) return false;
+          if (r.completed_at) return false;
+          const d = new Date(r.remind_at);
+          if (Number.isNaN(d.getTime())) return false;
+          return d > now && d <= cutoff;
+        });
+
+        if (upcoming.length > 0) {
+          // Ensure reminders are sorted by remind_at ascending
+          upcoming.sort((a: any, b: any) => new Date(a.remind_at).getTime() - new Date(b.remind_at).getTime());
+
+          // Resolve contact names when missing
+          const resolved = await Promise.all(
+            upcoming.map(async (r: any) => {
+              let name = r.contact_name ?? (r.contact && (r.contact.full_name ?? `${r.contact.first_name ?? ""} ${r.contact.last_name ?? ""}`.trim())) ?? null;
+              const cid = r.contact_id ?? (r.contact && r.contact.id) ?? null;
+              if (!name && cid) {
+                try {
+                  const cres = await db.getContact(user.id, String(cid));
+                  if (!cres.error && cres.data) {
+                    const c = cres.data as any;
+                    name = c.full_name ?? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
+                  }
+                } catch (e) {
+                  /* ignore */
+                }
+              }
+
+              return { ...r, _contact_name: name ?? "Contact" };
+            })
+          );
+
+          if (mounted) {
+            setReminders(resolved);
+            setSnackbarMessage(`${resolved.length} reminder${resolved.length === 1 ? "" : "s"} due`);
+            setSnackbarOpen(true);
+          }
+        } else {
+          if (mounted) {
+            setReminders([]);
+            setSnackbarOpen(false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load reminders for snackbar", err);
+      }
+    }
+
+    checkReminders();
+    const iv = setInterval(checkReminders, 5 * 60 * 1000); // poll every 5 minutes
+    return () => {
+      mounted = false;
+      clearInterval(iv);
+    };
+  }, [user]);
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
@@ -305,6 +423,39 @@ export default function ContactsDashboard() {
             <ContactsList />
           </>
         )}
+
+        {/* Bottom-left fixed collapsible reminders panel */}
+        <Box sx={{ position: "fixed", left: 16, bottom: 16, zIndex: (theme) => theme.zIndex.tooltip }}>
+          <Paper sx={{ width: 320, bgcolor: "error.main", color: "white" }} elevation={6}>
+            <Box sx={{ display: "flex", alignItems: "center", px: 1, py: 0.5 }}>
+              <Box sx={{ flex: 1, pl: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: "common.white" }}>
+                  {snackbarMessage ?? "Reminders"}
+                </Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setExpanded((s) => !s)} sx={{ color: "common.white" }}>
+                {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+              <IconButton size="small" onClick={() => setSnackbarOpen(false)} sx={{ color: "common.white" }}>
+                <Chip label="Dismiss" size="small" sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "common.white" }} />
+              </IconButton>
+            </Box>
+            <Collapse in={expanded && snackbarOpen} timeout="auto" unmountOnExit>
+              <List sx={{ maxHeight: 240, overflow: "auto", bgcolor: "transparent", color: "common.white" }}>
+                {reminders.map((r, idx) => (
+                  <ListItem key={r.id ?? idx} sx={{ py: 0.5 }}>
+                    <ListItemText
+                      primary={`${r.reminder_type ?? "Reminder"} — ${r._contact_name ?? "Contact"}`}
+                      secondary={new Date(r.remind_at).toLocaleString()}
+                      primaryTypographyProps={{ sx: { color: "common.white", fontSize: 13 } }}
+                      secondaryTypographyProps={{ sx: { color: "rgba(255,255,255,0.85)", fontSize: 12 } }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </Paper>
+        </Box>
 
         {selectedTab === 1 && <EventList />}
         {selectedTab === 2 && <InformationalInterviews />}
