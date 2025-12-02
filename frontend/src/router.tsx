@@ -185,6 +185,27 @@ const EnterpriseDashboard = lazy(() =>
     })
   )
 );
+const CreateCohortPage = lazy(() =>
+  import("@workspaces/team_management/pages/CreateCohortPage").then(
+    (module) => ({
+      default: module.CreateCohortPage,
+    })
+  )
+);
+const CohortDetailPage = lazy(() =>
+  import("@workspaces/team_management/pages/CohortDetailPage").then(
+    (module) => ({
+      default: module.CohortDetailPage,
+    })
+  )
+);
+const BulkOnboardingPage = lazy(() =>
+  import("@workspaces/team_management/pages/BulkOnboardingPage").then(
+    (module) => ({
+      default: module.BulkOnboardingPage,
+    })
+  )
+);
 
 // External Advisors Dashboard (UC-115: External Advisor and Coach Integration)
 const AdvisorDashboard = lazy(() =>
@@ -449,6 +470,30 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <EnterpriseDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "enterprise/cohorts/new",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <CreateCohortPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "enterprise/cohorts/:cohortId",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <CohortDetailPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "enterprise/onboarding",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <BulkOnboardingPage />
           </Suspense>
         ),
       },

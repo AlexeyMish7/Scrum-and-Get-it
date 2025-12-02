@@ -34,6 +34,7 @@ import {
   Divider,
   Skeleton,
 } from "@mui/material";
+import { useAuth } from "@shared/context/AuthContext";
 import {
   Message as MessageIcon,
   ThumbUp as ThumbUpIcon,
@@ -65,6 +66,8 @@ interface AccountabilityPartnerCardProps {
   onPartnershipUpdate?: (partnership: AccountabilityPartnership) => void;
   // Callback when user wants to send encouragement
   onSendEncouragement?: (partnerId: string) => void;
+  // Callback when user wants to message partner
+  onMessagePartner?: (partnerId: string) => void;
 }
 
 // Status configuration for visual styling
@@ -263,23 +266,37 @@ export function AccountabilityPartnerCard({
   isMyPartner = true,
   onPartnershipUpdate,
   onSendEncouragement,
+  onMessagePartner,
 }: AccountabilityPartnerCardProps) {
   // State
+  const { user } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [showEncouragementDialog, setShowEncouragementDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Determine which partner info to display
-  // If viewing as "my partner", show the partner's info
-  // If viewing as "partner viewing me", show the user's info
-  const displayedPerson = isMyPartner ? partnership.partner : partnership.user;
+  // Determine which person info to display
+  // We always want to show the OTHER person, not the current user
+  // - If current user is the `user_id` (requester), show `partner` info
+  // - If current user is the `partner_id` (recipient), show `user` info
+  const isCurrentUserTheRequester = user?.id === partnership.userId;
+  const displayedPerson = isCurrentUserTheRequester
+    ? partnership.partner
+    : partnership.user;
+
+  // The "other person's" ID for messaging - always the one we're NOT
+  const otherPersonId = isCurrentUserTheRequester
+    ? partnership.partnerId
+    : partnership.userId;
+
   const personName = displayedPerson?.fullName || "Unknown User";
   const personTitle = displayedPerson?.professionalTitle;
 
   const statusConfig = STATUS_CONFIGS[partnership.status];
   const isActive = partnership.status === "active";
   const isPending = partnership.status === "pending";
-  const canSendEncouragement = isActive && isMyPartner;
+  // For pending requests, current user can accept only if they are the recipient (partner_id)
+  const isRecipientOfRequest = user?.id === partnership.partnerId;
+  const canSendEncouragement = isActive;
 
   // Handle menu open/close
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -338,12 +355,12 @@ export function AccountabilityPartnerCard({
 
   // Handle send encouragement
   const handleSendEncouragement = useCallback(() => {
-    if (partnership.partnerId) {
-      onSendEncouragement?.(partnership.partnerId);
+    if (otherPersonId) {
+      onSendEncouragement?.(otherPersonId);
       // Record the interaction as encouragement (true = isEncouragement)
       progressService.recordPartnerInteraction(partnership.id, true);
     }
-  }, [partnership.id, partnership.partnerId, onSendEncouragement]);
+  }, [partnership.id, otherPersonId, onSendEncouragement]);
 
   // Compact view for lists
   if (compact) {
@@ -395,7 +412,7 @@ export function AccountabilityPartnerCard({
             </Tooltip>
           )}
 
-          {isPending && !isMyPartner && (
+          {isPending && isRecipientOfRequest && (
             <Button
               size="small"
               variant="contained"
@@ -491,7 +508,7 @@ export function AccountabilityPartnerCard({
           )}
 
           {/* Accept button for pending requests */}
-          {isPending && !isMyPartner && (
+          {isPending && isRecipientOfRequest && (
             <Button
               variant="contained"
               onClick={handleAccept}
@@ -596,11 +613,15 @@ export function AccountabilityPartnerCard({
                 variant="outlined"
                 startIcon={<MessageIcon />}
                 onClick={() => {
-                  // Would open messaging - for now just record interaction (not encouragement)
+                  // Record the interaction
                   progressService.recordPartnerInteraction(
                     partnership.id,
                     false
                   );
+                  // Navigate to messaging with the other person
+                  if (onMessagePartner && otherPersonId) {
+                    onMessagePartner(otherPersonId);
+                  }
                 }}
               >
                 Message

@@ -476,18 +476,6 @@ export default function InterviewScheduling() {
     }
   }
 
-  function cancelInterview(id: string) {
-    setInterviews((cur) =>
-      cur.map((iv) => (iv.id === id ? { ...iv, status: "cancelled" } : iv))
-    );
-    try {
-      window.dispatchEvent(new CustomEvent("interviews-updated"));
-    } catch {
-      /* intentionally empty */
-    }
-    setSnack({ open: true, msg: "Interview cancelled", sev: "info" });
-  }
-
   function markCompleted(id: string) {
     const iv = interviews.find((x) => x.id === id);
     if (!iv) return;

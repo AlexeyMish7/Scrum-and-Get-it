@@ -60,11 +60,18 @@ import {
   School as SchoolIcon,
   ShowChart as ShowChartIcon,
   Mail as MailIcon,
+  CorporateFare as CorporateFareIcon,
+  SupervisorAccount as SupervisorAccountIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
 import { useAuth } from "@shared/context/AuthContext";
-import { CreateTeamDialog, InviteMemberDialog } from "../components";
+import {
+  CreateTeamDialog,
+  InviteMemberDialog,
+  TeamActivityFeed,
+  TeamPerformanceBenchmark,
+} from "../components";
 import * as teamService from "../services/teamService";
 import type { TeamMemberWithProfile } from "../types";
 
@@ -347,7 +354,8 @@ export function TeamDashboard() {
         </Paper>
 
         {/* Quick Actions */}
-        <Stack direction="row" spacing={2} flexWrap="wrap">
+        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+          {/* Admin Actions Group */}
           {isAdmin && (
             <Button
               variant="contained"
@@ -366,6 +374,27 @@ export function TeamDashboard() {
               Sent Invitations
             </Button>
           )}
+          {isAdmin && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<CorporateFareIcon />}
+              onClick={() => navigate("/team/enterprise")}
+            >
+              Enterprise
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="outlined"
+              startIcon={<SupervisorAccountIcon />}
+              onClick={() => navigate("/team/advisors")}
+            >
+              Advisors
+            </Button>
+          )}
+
+          {/* Role-based Actions */}
           {(isMentor || isAdmin) && (
             <Button
               variant="contained"
@@ -482,16 +511,11 @@ export function TeamDashboard() {
           </Stack>
         </Paper>
 
-        {/* Coming Soon: Activity Feed */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Recent Activity
-          </Typography>
-          <Alert severity="info">
-            Activity feed coming soon! You'll see member joins, role changes,
-            and mentor assignments here.
-          </Alert>
-        </Paper>
+        {/* Team Activity Feed - Demo 4.3 */}
+        <TeamActivityFeed teamId={currentTeam.id} limit={10} />
+
+        {/* Team Performance Benchmarks - Demo 4.3 */}
+        <TeamPerformanceBenchmark teamId={currentTeam.id} />
       </Stack>
 
       {/* Dialogs */}
