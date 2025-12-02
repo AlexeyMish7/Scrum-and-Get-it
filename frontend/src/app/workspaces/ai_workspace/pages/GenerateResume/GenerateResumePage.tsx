@@ -19,12 +19,9 @@ const GenerateResumePage: React.FC = () => {
 
   /**
    * Handle successful generation
-   * TODO: Navigate to editor with new document
    */
   const handleComplete = (result: GenerationResult) => {
-    console.log("Generated document:", result);
-    // TODO: Navigate to editor or document library
-    // navigate(`/ai/document/${result.documentId}`);
+    // Navigate to library where user can view their generated document
     navigate("/ai/library");
   };
 

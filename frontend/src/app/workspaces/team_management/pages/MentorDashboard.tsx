@@ -74,12 +74,22 @@ import {
   ArrowBack as ArrowBackIcon,
   ShowChart as ShowChartIcon,
   Celebration as CelebrationIcon,
+  Psychology as PsychologyIcon,
+  Lightbulb as LightbulbIcon,
+  Star as StarIcon,
+  PriorityHigh as PriorityHighIcon,
+  CalendarToday as CalendarIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
 import { useAuth } from "@shared/context/AuthContext";
 import * as mentorService from "../services/mentorService";
 import * as progressSharingService from "../services/progressSharingService";
+import {
+  generateCoachingInsights,
+  type CoachingInsightsResult,
+} from "@shared/services/ai/aiGeneration";
 import type {
   MenteeWithProgress,
   MentorFeedback,
@@ -122,36 +132,52 @@ function TabPanel(props: TabPanelProps) {
 
 /**
  * Engagement badge component showing mentee activity level
+ * Handles values from database: high, moderate, low, inactive, unknown
  */
-function EngagementBadge({
-  level,
-}: {
-  level: "high" | "medium" | "low" | "inactive";
-}) {
-  const config = {
+function EngagementBadge({ level }: { level: string }) {
+  const config: Record<
+    string,
+    {
+      color: "success" | "info" | "warning" | "error" | "default";
+      label: string;
+      icon: React.ReactNode;
+    }
+  > = {
     high: {
-      color: "success" as const,
+      color: "success",
       label: "Highly Active",
       icon: <TrendingUpIcon fontSize="small" />,
     },
+    moderate: {
+      color: "info",
+      label: "Active",
+      icon: <CheckCircleIcon fontSize="small" />,
+    },
     medium: {
-      color: "info" as const,
+      color: "info",
       label: "Active",
       icon: <CheckCircleIcon fontSize="small" />,
     },
     low: {
-      color: "warning" as const,
+      color: "warning",
       label: "Low Activity",
       icon: <WarningIcon fontSize="small" />,
     },
     inactive: {
-      color: "error" as const,
+      color: "error",
       label: "Inactive",
+      icon: <TimerIcon fontSize="small" />,
+    },
+    unknown: {
+      color: "default",
+      label: "Unknown",
       icon: <TimerIcon fontSize="small" />,
     },
   };
 
-  const { color, label, icon } = config[level];
+  // Get config for the level, fallback to inactive if not found
+  const levelConfig = config[level] || config.inactive;
+  const { color, label, icon } = levelConfig;
 
   return (
     <Chip
@@ -205,6 +231,21 @@ export function MentorDashboard() {
     Map<string, AchievementCelebration[]>
   >(new Map());
   const [progressLoading, setProgressLoading] = useState(false);
+
+  // AI Coaching Insights state
+  const [coachingInsights, setCoachingInsights] = useState<
+    Map<string, CoachingInsightsResult>
+  >(new Map());
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [selectedInsightsMentee, setSelectedInsightsMentee] =
+    useState<MenteeWithProgress | null>(null);
+
+  // Documents dialog state
+  const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [menteeDocuments, setMenteeDocuments] = useState<
+    mentorService.MenteeDocument[]
+  >([]);
 
   // Dashboard summary stats
   const [summary, setSummary] = useState<{
@@ -350,6 +391,81 @@ export function MentorDashboard() {
     }
   }, [tabValue, mentees.length]);
 
+  /**
+   * Generate AI coaching insights for a specific mentee
+   * Called when user clicks "Get Insights" in the Coaching Insights tab
+   */
+  const handleGenerateInsights = async (mentee: MenteeWithProgress) => {
+    if (!user) return;
+
+    setInsightsLoading(true);
+    setSelectedInsightsMentee(mentee);
+
+    try {
+      // Prepare mentee data for the AI
+      const menteeData = {
+        name: mentee.candidate_name,
+        jobStats: mentee.jobStats,
+        engagementLevel: mentee.engagementLevel,
+        lastActiveAt: mentee.lastActiveAt || undefined,
+        recentActivity: mentee.recentActivity.map((a) => ({
+          type: a.type,
+          description: a.description,
+          timestamp: a.timestamp,
+        })),
+      };
+
+      const insights = await generateCoachingInsights(user.id, menteeData);
+
+      // Cache the insights
+      setCoachingInsights((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(mentee.candidate_id, insights);
+        return newMap;
+      });
+    } catch (err) {
+      console.error("Failed to generate coaching insights:", err);
+      setError("Failed to generate coaching insights. Please try again.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  // ============================================================================
+  // DOCUMENTS HANDLERS
+  // ============================================================================
+
+  /**
+   * Open dialog to view mentee's job search documents
+   */
+  const handleViewDocuments = async (mentee: MenteeWithProgress) => {
+    if (!user || !currentTeam) return;
+
+    setSelectedMentee(mentee);
+    setDocumentsDialogOpen(true);
+    setDocumentsLoading(true);
+    setMenteeDocuments([]);
+
+    try {
+      const result = await mentorService.getMenteeDocuments(
+        user.id,
+        mentee.candidate_id,
+        currentTeam.id
+      );
+
+      if (result.data) {
+        setMenteeDocuments(result.data);
+      } else if (result.error) {
+        setError(result.error.message);
+      }
+    } catch (err) {
+      console.error("Failed to load mentee documents:", err);
+      setError("Failed to load documents. Please try again.");
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+
   // ============================================================================
   // FEEDBACK HANDLERS
   // ============================================================================
@@ -383,7 +499,16 @@ export function MentorDashboard() {
     const result = await mentorService.createFeedback(user.id, data);
 
     if (result.data) {
-      setFeedback((prev) => [result.data!, ...prev]);
+      // Add candidate info to the newly created feedback
+      // since createFeedback doesn't include the joined candidate data
+      const feedbackWithCandidate = {
+        ...result.data,
+        candidate: {
+          fullName: selectedMentee.candidate_name,
+          email: selectedMentee.candidate_email,
+        },
+      };
+      setFeedback((prev) => [feedbackWithCandidate, ...prev]);
       setFeedbackDialogOpen(false);
       setFeedbackForm({ feedbackType: "general", feedbackText: "" });
     }
@@ -759,7 +884,10 @@ export function MentorDashboard() {
                       <ListItemSecondaryAction>
                         <Stack direction="row" spacing={1}>
                           <Tooltip title="View Documents">
-                            <IconButton size="small">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewDocuments(mentee)}
+                            >
                               <DescriptionIcon />
                             </IconButton>
                           </Tooltip>
@@ -852,6 +980,7 @@ export function MentorDashboard() {
                             </Typography>
                           </>
                         }
+                        secondaryTypographyProps={{ component: "div" }}
                       />
                     </ListItem>
                   </Box>
@@ -860,20 +989,450 @@ export function MentorDashboard() {
             )}
           </TabPanel>
 
-          {/* Coaching Insights Tab */}
+          {/* Coaching Insights Tab - AI-powered coaching recommendations */}
           <TabPanel value={tabValue} index={2}>
-            <Box textAlign="center" py={4}>
-              <TrendingUpIcon
-                sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
-              />
-              <Typography variant="h6" color="text.secondary">
-                AI Coaching Insights Coming Soon
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                AI-powered analysis of mentee progress patterns and coaching
-                recommendations.
-              </Typography>
-            </Box>
+            {mentees.length === 0 ? (
+              <Box textAlign="center" py={4}>
+                <PsychologyIcon
+                  sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
+                />
+                <Typography variant="h6" color="text.secondary">
+                  No Mentees Assigned
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Assign mentees to generate coaching insights.
+                </Typography>
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                {/* Instructions */}
+                <Alert severity="info" icon={<AutoAwesomeIcon />}>
+                  <Typography variant="body2">
+                    Select a mentee to generate AI-powered coaching insights
+                    based on their job search progress, activity, and goals.
+                  </Typography>
+                </Alert>
+
+                {/* Mentee selection cards */}
+                <Grid container spacing={2}>
+                  {mentees.map((mentee) => {
+                    const hasInsights = coachingInsights.has(
+                      mentee.candidate_id
+                    );
+                    const isSelected =
+                      selectedInsightsMentee?.candidate_id ===
+                      mentee.candidate_id;
+                    const isGenerating = insightsLoading && isSelected;
+
+                    return (
+                      <Grid
+                        size={{ xs: 12, sm: 6, md: 4 }}
+                        key={mentee.candidate_id}
+                      >
+                        <Card
+                          variant="outlined"
+                          sx={{
+                            cursor: "pointer",
+                            borderColor: isSelected
+                              ? "primary.main"
+                              : "divider",
+                            "&:hover": { borderColor: "primary.light" },
+                          }}
+                          onClick={() =>
+                            !insightsLoading && handleGenerateInsights(mentee)
+                          }
+                        >
+                          <CardContent>
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              spacing={2}
+                            >
+                              <Avatar sx={{ bgcolor: "primary.main" }}>
+                                {mentee.candidate_name?.[0]?.toUpperCase() ||
+                                  "?"}
+                              </Avatar>
+                              <Box flex={1}>
+                                <Typography variant="subtitle2">
+                                  {mentee.candidate_name}
+                                </Typography>
+                                <EngagementBadge
+                                  level={mentee.engagementLevel}
+                                />
+                              </Box>
+                              {isGenerating ? (
+                                <CircularProgress size={20} />
+                              ) : hasInsights ? (
+                                <CheckCircleIcon color="success" />
+                              ) : (
+                                <PsychologyIcon color="action" />
+                              )}
+                            </Stack>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ mt: 1, display: "block" }}
+                            >
+                              {mentee.jobStats.total} apps •{" "}
+                              {mentee.jobStats.interviewing} interviewing •{" "}
+                              {mentee.jobStats.offers} offers
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+
+                {/* Display insights for selected mentee */}
+                {selectedInsightsMentee &&
+                  coachingInsights.has(selectedInsightsMentee.candidate_id) && (
+                    <Paper sx={{ p: 3 }}>
+                      {(() => {
+                        const insights = coachingInsights.get(
+                          selectedInsightsMentee.candidate_id
+                        )!;
+                        return (
+                          <Stack spacing={3}>
+                            {/* Header */}
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              spacing={2}
+                            >
+                              <Avatar
+                                sx={{
+                                  bgcolor: "primary.main",
+                                  width: 48,
+                                  height: 48,
+                                }}
+                              >
+                                {selectedInsightsMentee.candidate_name?.[0]?.toUpperCase() ||
+                                  "?"}
+                              </Avatar>
+                              <Box>
+                                <Typography variant="h6">
+                                  Coaching Insights for{" "}
+                                  {selectedInsightsMentee.candidate_name}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Generated{" "}
+                                  {insights.meta?.generated_at
+                                    ? new Date(
+                                        insights.meta.generated_at
+                                      ).toLocaleString()
+                                    : "just now"}
+                                </Typography>
+                              </Box>
+                            </Stack>
+
+                            {/* Summary */}
+                            <Card variant="outlined">
+                              <CardContent>
+                                <Typography
+                                  variant="subtitle2"
+                                  color="primary"
+                                  gutterBottom
+                                >
+                                  <LightbulbIcon
+                                    sx={{
+                                      fontSize: 16,
+                                      mr: 0.5,
+                                      verticalAlign: "middle",
+                                    }}
+                                  />
+                                  Summary
+                                </Typography>
+                                <Typography variant="body2">
+                                  {insights.summary}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+
+                            {/* Recommendations */}
+                            {insights.recommendations.length > 0 && (
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  gutterBottom
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <StarIcon fontSize="small" color="warning" />
+                                  Key Recommendations
+                                </Typography>
+                                <List dense>
+                                  {insights.recommendations.map((rec, idx) => (
+                                    <ListItem key={idx}>
+                                      <ListItemText
+                                        primary={rec}
+                                        primaryTypographyProps={{
+                                          variant: "body2",
+                                        }}
+                                      />
+                                    </ListItem>
+                                  ))}
+                                </List>
+                              </Box>
+                            )}
+
+                            {/* Focus Areas */}
+                            {insights.focusAreas.length > 0 && (
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  gutterBottom
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <PriorityHighIcon
+                                    fontSize="small"
+                                    color="error"
+                                  />
+                                  Focus Areas
+                                </Typography>
+                                <Stack spacing={1}>
+                                  {insights.focusAreas.map((area, idx) => (
+                                    <Card
+                                      key={idx}
+                                      variant="outlined"
+                                      sx={{ p: 1.5 }}
+                                    >
+                                      <Stack
+                                        direction="row"
+                                        alignItems="center"
+                                        spacing={1}
+                                        mb={0.5}
+                                      >
+                                        <Typography variant="subtitle2">
+                                          {area.area}
+                                        </Typography>
+                                        <Chip
+                                          label={area.priority}
+                                          size="small"
+                                          color={
+                                            area.priority === "high"
+                                              ? "error"
+                                              : area.priority === "medium"
+                                              ? "warning"
+                                              : "default"
+                                          }
+                                        />
+                                      </Stack>
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        {area.suggestion}
+                                      </Typography>
+                                    </Card>
+                                  ))}
+                                </Stack>
+                              </Box>
+                            )}
+
+                            {/* Strength Areas */}
+                            {insights.strengthAreas.length > 0 && (
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  gutterBottom
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <EmojiEventsIcon
+                                    fontSize="small"
+                                    color="success"
+                                  />
+                                  Strengths
+                                </Typography>
+                                <Stack
+                                  direction="row"
+                                  spacing={1}
+                                  flexWrap="wrap"
+                                  useFlexGap
+                                >
+                                  {insights.strengthAreas.map(
+                                    (strength, idx) => (
+                                      <Chip
+                                        key={idx}
+                                        label={strength}
+                                        color="success"
+                                        variant="outlined"
+                                        size="small"
+                                      />
+                                    )
+                                  )}
+                                </Stack>
+                              </Box>
+                            )}
+
+                            {/* Suggested Goals */}
+                            {insights.suggestedGoals.length > 0 && (
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  gutterBottom
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <FlagIcon fontSize="small" color="info" />
+                                  Suggested Goals
+                                </Typography>
+                                <Stack spacing={1}>
+                                  {insights.suggestedGoals.map((goal, idx) => (
+                                    <Card
+                                      key={idx}
+                                      variant="outlined"
+                                      sx={{ p: 1.5 }}
+                                    >
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                      >
+                                        <Box>
+                                          <Typography variant="subtitle2">
+                                            {goal.title}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
+                                            {goal.reason}
+                                          </Typography>
+                                        </Box>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          onClick={() => {
+                                            setGoalForm({
+                                              goalType: goal.type as any,
+                                              title: goal.title,
+                                              description: goal.reason,
+                                            });
+                                            setSelectedMentee(
+                                              selectedInsightsMentee
+                                            );
+                                            setGoalDialogOpen(true);
+                                          }}
+                                        >
+                                          Create Goal
+                                        </Button>
+                                      </Stack>
+                                    </Card>
+                                  ))}
+                                </Stack>
+                              </Box>
+                            )}
+
+                            {/* Action Plan */}
+                            {insights.actionPlan.length > 0 && (
+                              <Box>
+                                <Typography
+                                  variant="subtitle2"
+                                  gutterBottom
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <CalendarIcon
+                                    fontSize="small"
+                                    color="primary"
+                                  />
+                                  Action Plan
+                                </Typography>
+                                <Stack spacing={1}>
+                                  {insights.actionPlan.map((week) => (
+                                    <Card
+                                      key={week.week}
+                                      variant="outlined"
+                                      sx={{ p: 1.5 }}
+                                    >
+                                      <Typography
+                                        variant="subtitle2"
+                                        color="primary"
+                                      >
+                                        Week {week.week}
+                                      </Typography>
+                                      <List dense disablePadding>
+                                        {week.actions.map((action, idx) => (
+                                          <ListItem key={idx} sx={{ py: 0.25 }}>
+                                            <ListItemText
+                                              primary={`• ${action}`}
+                                              primaryTypographyProps={{
+                                                variant: "body2",
+                                              }}
+                                            />
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    </Card>
+                                  ))}
+                                </Stack>
+                              </Box>
+                            )}
+
+                            {/* Motivational Note */}
+                            {insights.motivationalNote && (
+                              <Alert
+                                severity="success"
+                                icon={<CelebrationIcon />}
+                              >
+                                <Typography variant="body2">
+                                  {insights.motivationalNote}
+                                </Typography>
+                              </Alert>
+                            )}
+
+                            {/* Action buttons */}
+                            <Stack direction="row" spacing={2}>
+                              <Button
+                                variant="contained"
+                                startIcon={<ChatIcon />}
+                                onClick={() =>
+                                  handleOpenFeedbackDialog(
+                                    selectedInsightsMentee
+                                  )
+                                }
+                              >
+                                Send Feedback
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                startIcon={<RefreshIcon />}
+                                onClick={() =>
+                                  handleGenerateInsights(selectedInsightsMentee)
+                                }
+                                disabled={insightsLoading}
+                              >
+                                Regenerate
+                              </Button>
+                            </Stack>
+                          </Stack>
+                        );
+                      })()}
+                    </Paper>
+                  )}
+              </Stack>
+            )}
           </TabPanel>
 
           {/* Mentee Progress Tab - Shows progress snapshots and achievements (UC-111) */}
@@ -1218,6 +1777,125 @@ export function MentorDashboard() {
           >
             Create Goal
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Documents Dialog - View mentee's job search materials */}
+      <Dialog
+        open={documentsDialogOpen}
+        onClose={() => setDocumentsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Documents for {selectedMentee?.candidate_name}
+        </DialogTitle>
+        <DialogContent>
+          {documentsLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : menteeDocuments.length === 0 ? (
+            <Box textAlign="center" py={4}>
+              <DescriptionIcon
+                sx={{ fontSize: 48, color: "text.disabled", mb: 2 }}
+              />
+              <Typography variant="h6" color="text.secondary">
+                No Documents Found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This mentee hasn't created any resumes or cover letters yet.
+              </Typography>
+            </Box>
+          ) : (
+            <List>
+              {menteeDocuments.map((doc, index) => (
+                <Box key={doc.id}>
+                  {index > 0 && <Divider />}
+                  <ListItem>
+                    <ListItemAvatar>
+                      <Avatar
+                        sx={{
+                          bgcolor:
+                            doc.documentType === "resume"
+                              ? "primary.main"
+                              : "secondary.main",
+                        }}
+                      >
+                        <DescriptionIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="subtitle2">
+                            {doc.title}
+                          </Typography>
+                          <Chip
+                            label={
+                              doc.documentType === "resume"
+                                ? "Resume"
+                                : "Cover Letter"
+                            }
+                            size="small"
+                            color={
+                              doc.documentType === "resume"
+                                ? "primary"
+                                : "secondary"
+                            }
+                            variant="outlined"
+                          />
+                          <Chip
+                            label={`v${doc.version}`}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </Stack>
+                      }
+                      secondary={
+                        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                          {doc.companyName && (
+                            <Typography variant="body2" color="text.secondary">
+                              For: {doc.jobTitle} at {doc.companyName}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary">
+                            Updated:{" "}
+                            {new Date(doc.updatedAt).toLocaleDateString()}
+                          </Typography>
+                        </Stack>
+                      }
+                      secondaryTypographyProps={{ component: "div" }}
+                    />
+                    <ListItemSecondaryAction>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          // Open feedback dialog with document context
+                          setFeedbackForm({
+                            feedbackType:
+                              doc.documentType === "resume"
+                                ? "resume"
+                                : "cover_letter",
+                            feedbackText: "",
+                            relatedDocumentId: doc.id,
+                          });
+                          setDocumentsDialogOpen(false);
+                          setFeedbackDialogOpen(true);
+                        }}
+                      >
+                        Give Feedback
+                      </Button>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocumentsDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>

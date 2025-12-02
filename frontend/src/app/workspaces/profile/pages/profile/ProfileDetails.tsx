@@ -101,10 +101,6 @@ const ProfileDetails: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
   const navPrefill = (location.state as any)?.prefill ?? null;
-  // Debug navigation prefill for troubleshooting
-  useEffect(() => {
-    if (navPrefill) console.debug("ProfileDetails: navPrefill:", navPrefill);
-  }, [navPrefill]);
 
   const [formData, setFormData] = useState<ProfileData>({
     fullName: "",
@@ -155,7 +151,8 @@ const ProfileDetails: React.FC = () => {
           }
           // Accept either `headline` or `professional_title` from prefill (mapping sources vary)
           if (navPrefill.headline) prefillMapped.headline = navPrefill.headline;
-          else if (navPrefill.professional_title) prefillMapped.headline = navPrefill.professional_title;
+          else if (navPrefill.professional_title)
+            prefillMapped.headline = navPrefill.professional_title;
           // Merge with mapped, prefilling wins
           setFormData({ ...mapped, ...prefillMapped });
         } else {
@@ -170,13 +167,17 @@ const ProfileDetails: React.FC = () => {
     if (navPrefill) {
       const initial: ProfileData = {
         ...formData,
-        fullName: navPrefill.first_name || navPrefill.fullName || formData.fullName,
+        fullName:
+          navPrefill.first_name || navPrefill.fullName || formData.fullName,
         email: formData.email,
         phone: formData.phone,
         city: formData.city,
         state: formData.state,
         // Prefer either headline or professional_title from prefill
-        headline: navPrefill.headline ?? navPrefill.professional_title ?? formData.headline,
+        headline:
+          navPrefill.headline ??
+          navPrefill.professional_title ??
+          formData.headline,
         bio: formData.bio,
         industry: formData.industry,
         experience: formData.experience,
@@ -494,12 +495,18 @@ const ProfileDetails: React.FC = () => {
       <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
         <GenerateProfileTips
           profile={{
-            first_name: (formData.fullName || "").split(" ").slice(0, -1).join(" ") || (formData.fullName || "").split(" ")[0] || null,
-            last_name: (formData.fullName || "").split(" ").slice(-1).join(" ") || null,
+            first_name:
+              (formData.fullName || "").split(" ").slice(0, -1).join(" ") ||
+              (formData.fullName || "").split(" ")[0] ||
+              null,
+            last_name:
+              (formData.fullName || "").split(" ").slice(-1).join(" ") || null,
             headline: formData.headline || null,
             bio: formData.bio || null,
             experience_summary: formData.experience || null,
-            location: `${formData.city || ""}${formData.state ? ", " + formData.state : ""}`,
+            location: `${formData.city || ""}${
+              formData.state ? ", " + formData.state : ""
+            }`,
           }}
         />
       </Box>

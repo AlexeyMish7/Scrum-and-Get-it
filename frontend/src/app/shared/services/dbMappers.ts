@@ -343,10 +343,10 @@ export const mapJob = (
     const map: Record<string, string> = {
       "full-time": "full-time",
       "full time": "full-time",
-      "fulltime": "full-time",
+      fulltime: "full-time",
       "part-time": "part-time",
       "part time": "part-time",
-      "parttime": "part-time",
+      parttime: "part-time",
       contract: "contract",
       internship: "internship",
       intern: "internship",
@@ -355,7 +355,13 @@ export const mapJob = (
     };
     if (map[s]) return map[s];
     // accept exact allowed values (fallback)
-    const allowed = new Set(["full-time", "part-time", "contract", "internship", "freelance"]);
+    const allowed = new Set([
+      "full-time",
+      "part-time",
+      "contract",
+      "internship",
+      "freelance",
+    ]);
     if (allowed.has(s)) return s;
     return null;
   };
@@ -1711,22 +1717,28 @@ export const mapContact = (
     industry,
     relationship_type,
     relationship_strength,
-    is_professional_reference: (formData.is_professional_reference as unknown) === true,
+    is_professional_reference:
+      (formData.is_professional_reference as unknown) === true,
     personal_notes: (formData.personal_notes as string) ?? null,
     professional_notes: (formData.professional_notes as string) ?? null,
     linkedin_url: (formData.linkedin_url as string) ?? null,
     mutual_contacts: (() => {
-      const raw = (formData as any).mutual_contact_ids ?? (formData as any).mutual_contacts;
+      const raw =
+        (formData as any).mutual_contact_ids ??
+        (formData as any).mutual_contacts;
       if (raw == null) return null;
       if (Array.isArray(raw)) return raw.map(String);
-      if (typeof raw === 'string') {
+      if (typeof raw === "string") {
         try {
           const parsed = JSON.parse(raw as string);
           if (Array.isArray(parsed)) return parsed.map(String);
         } catch {
           // fallthrough to CSV split
         }
-        return (raw as string).split(',').map((s) => s.trim()).filter(Boolean);
+        return (raw as string)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
       return null;
     })(),
@@ -1752,9 +1764,10 @@ export const mapContactInteraction = (
   let occurred_at: string | null = null;
   if (formData.occurred_at != null) {
     try {
-      const d = formData.occurred_at instanceof Date
-        ? formData.occurred_at
-        : new Date(String(formData.occurred_at));
+      const d =
+        formData.occurred_at instanceof Date
+          ? formData.occurred_at
+          : new Date(String(formData.occurred_at));
       if (!Number.isNaN(d.getTime())) occurred_at = d.toISOString();
     } catch {
       occurred_at = null;
@@ -1770,9 +1783,10 @@ export const mapContactInteraction = (
   const value_provided = (formData.value_provided as string) || null;
   const value_received = (formData.value_received as string) || null;
   const follow_up_scheduled = formData.follow_up_scheduled === true;
-  const interaction_quality = formData.interaction_quality != null 
-    ? Number(formData.interaction_quality) 
-    : null;
+  const interaction_quality =
+    formData.interaction_quality != null
+      ? Number(formData.interaction_quality)
+      : null;
   const tags = Array.isArray(formData.tags) ? formData.tags : null;
 
   const payload: Record<string, unknown> = {
@@ -1808,7 +1822,10 @@ export async function getContact(
   contactId: string
 ): Promise<Result<unknown | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow("contacts", "*", { eq: { id: contactId }, single: true });
+  return userCrud.getRow("contacts", "*", {
+    eq: { id: contactId },
+    single: true,
+  });
 }
 
 export async function createContact(
@@ -1840,12 +1857,20 @@ export async function updateContact(
       (formData as any).mutual_contacts = null;
     } else if (Array.isArray(mc)) {
       (formData as any).mutual_contacts = mc.map(String);
-    } else if (typeof mc === 'string') {
+    } else if (typeof mc === "string") {
       try {
         const parsed = JSON.parse(mc as string);
-        (formData as any).mutual_contacts = Array.isArray(parsed) ? parsed.map(String) : (mc as string).split(',').map((s) => s.trim()).filter(Boolean);
+        (formData as any).mutual_contacts = Array.isArray(parsed)
+          ? parsed.map(String)
+          : (mc as string)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
       } catch {
-        (formData as any).mutual_contacts = (mc as string).split(',').map((s) => s.trim()).filter(Boolean);
+        (formData as any).mutual_contacts = (mc as string)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
     }
     delete (formData as any).mutual_contact_ids;
@@ -1861,7 +1886,9 @@ export async function updateContact(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("contacts", mapped.payload ?? {}, { eq: { id: contactId } });
+    return userCrud.updateRow("contacts", mapped.payload ?? {}, {
+      eq: { id: contactId },
+    });
   }
 
   return userCrud.updateRow("contacts", formData, { eq: { id: contactId } });
@@ -1927,7 +1954,9 @@ export async function deleteContactInteraction(
   interactionId: string
 ): Promise<Result<null>> {
   const userCrud = withUser(userId);
-  return userCrud.deleteRow("contact_interactions", { eq: { id: interactionId } });
+  return userCrud.deleteRow("contact_interactions", {
+    eq: { id: interactionId },
+  });
 }
 
 // =====================================================================
@@ -2023,7 +2052,10 @@ export async function updateContactReminder(
   const userCrud = withUser(userId);
   // If core fields are provided (contact_id or remind_at), validate via mapper
   if (formData.contact_id != null || formData.remind_at != null) {
-    const mapped = mapContactReminder({ ...formData, contact_id: formData.contact_id });
+    const mapped = mapContactReminder({
+      ...formData,
+      contact_id: formData.contact_id,
+    });
     if (mapped.error) {
       return {
         data: null,
@@ -2036,7 +2068,9 @@ export async function updateContactReminder(
     });
   }
 
-  return userCrud.updateRow("contact_reminders", formData, { eq: { id: reminderId } });
+  return userCrud.updateRow("contact_reminders", formData, {
+    eq: { id: reminderId },
+  });
 }
 
 export async function deleteContactReminder(
@@ -2058,14 +2092,16 @@ export async function deleteContactReminder(
 export const mapReferralRequest = (
   formData: Record<string, unknown>
 ): MapperResult<Record<string, unknown>> => {
-  const contact_id = (
-    formData.contact_id ?? formData.contactId ?? formData.contact
-  ) as string | undefined;
+  const contact_id = (formData.contact_id ??
+    formData.contactId ??
+    formData.contact) as string | undefined;
   const job_id = formData.job_id ?? formData.jobId ?? null;
 
   // Require at least a contact or job identifier to make a referral request meaningful
   if (!contact_id && (job_id == null || job_id === "")) {
-    return { error: "Provide at least a contact_id or job_id for the referral" };
+    return {
+      error: "Provide at least a contact_id or job_id for the referral",
+    };
   }
 
   // Parse timestamptz-like values into full ISO strings
@@ -2085,7 +2121,12 @@ export const mapReferralRequest = (
     contact_id: contact_id ?? null,
     // Created at / request date: DB column is `created_at` (timestamptz)
     // Map incoming `request_date` / `requestDate` to `created_at` so inserts/updates use the correct column
-    created_at: toIso(formData.request_date ?? formData.requestDate ?? formData.created_at ?? formData.createdAt),
+    created_at: toIso(
+      formData.request_date ??
+        formData.requestDate ??
+        formData.created_at ??
+        formData.createdAt
+    ),
     responded_at: toIso(formData.responded_at ?? formData.respondedAt),
     completed_at: toIso(formData.completed_at ?? formData.completedAt),
     // `status` is a textual column in `referral_requests` (changed to text/varchar in DB).
@@ -2166,7 +2207,9 @@ export async function updateReferralRequest(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("referral_requests", mapped.payload ?? {}, { eq: { id } });
+    return userCrud.updateRow("referral_requests", mapped.payload ?? {}, {
+      eq: { id },
+    });
   }
 
   // Partial update
@@ -2195,14 +2238,17 @@ export async function getNetworkingAnalytics(
   timeRange: string = "30d"
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/networking", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ timeRange }),
-    });
+    const response = await fetch(
+      "http://localhost:8787/api/analytics/networking",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ timeRange }),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -2236,7 +2282,7 @@ export async function getNetworkingAnalytics(
 
 /**
  * GET SALARY ANALYTICS
- * 
+ *
  * Fetch comprehensive salary progression and negotiation analytics
  * Calculates salary progression over time, negotiation success rates,
  * compensation evolution, and career advancement impact on earnings
@@ -2251,7 +2297,7 @@ export async function getSalaryAnalytics(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ timeRange }),
     });
@@ -2292,7 +2338,7 @@ export async function getSalaryAnalytics(
 
 /**
  * GET GOALS
- * 
+ *
  * Fetch user's career goals with optional filtering
  */
 export async function getGoals(
@@ -2305,7 +2351,7 @@ export async function getGoals(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         action: "get",
@@ -2345,7 +2391,7 @@ export async function getGoals(
 
 /**
  * CREATE GOAL
- * 
+ *
  * Create a new career goal
  */
 export async function createGoal(
@@ -2358,7 +2404,7 @@ export async function createGoal(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         action: "create",
@@ -2398,7 +2444,7 @@ export async function createGoal(
 
 /**
  * UPDATE GOAL
- * 
+ *
  * Update an existing goal (progress, status, etc.)
  */
 export async function updateGoal(
@@ -2412,7 +2458,7 @@ export async function updateGoal(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         action: "update",
@@ -2453,7 +2499,7 @@ export async function updateGoal(
 
 /**
  * DELETE GOAL
- * 
+ *
  * Delete a goal
  */
 export async function deleteGoal(
@@ -2466,7 +2512,7 @@ export async function deleteGoal(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         action: "delete",
@@ -2506,7 +2552,7 @@ export async function deleteGoal(
 
 /**
  * GET GOALS ANALYTICS
- * 
+ *
  * Fetch comprehensive goal analytics with insights and recommendations
  */
 export async function getGoalsAnalytics(
@@ -2518,7 +2564,7 @@ export async function getGoalsAnalytics(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         action: "analytics",
@@ -2581,17 +2627,33 @@ export const mapNetworkingEvent = (
   const name = (formData.name as string) ?? null;
   const location = (formData.location as string) ?? null;
   const url = (formData.url as string) ?? null;
-  const start_time = parseIso(formData.start_time ?? formData.startTime ?? formData.starts_at);
-  const end_time = parseIso(formData.end_time ?? formData.endTime ?? formData.ends_at);
+  const start_time = parseIso(
+    formData.start_time ?? formData.startTime ?? formData.starts_at
+  );
+  const end_time = parseIso(
+    formData.end_time ?? formData.endTime ?? formData.ends_at
+  );
   const goals = (formData.goals as string) ?? null;
-  const research_notes = (formData.research_notes as string) ?? (formData.researchNotes as string) ?? null;
-  const preparation_notes = (formData.preparation_notes as string) ?? (formData.preparationNotes as string) ?? null;
+  const research_notes =
+    (formData.research_notes as string) ??
+    (formData.researchNotes as string) ??
+    null;
+  const preparation_notes =
+    (formData.preparation_notes as string) ??
+    (formData.preparationNotes as string) ??
+    null;
   const industry = (formData.industry as string) ?? null;
-  const attended = formData.attended === true ? true : formData.attended === false ? false : null;
+  const attended =
+    formData.attended === true
+      ? true
+      : formData.attended === false
+      ? false
+      : null;
 
   const payload: Record<string, unknown> = {
     name: name && String(name).trim() ? String(name).trim() : null,
-    location: location && String(location).trim() ? String(location).trim() : null,
+    location:
+      location && String(location).trim() ? String(location).trim() : null,
     url: url && String(url).trim() ? String(url).trim() : null,
     start_time,
     end_time,
@@ -2619,7 +2681,10 @@ export async function getNetworkingEvent(
   eventId: string
 ): Promise<Result<unknown | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow("networking_events", "*", { eq: { id: eventId }, single: true });
+  return userCrud.getRow("networking_events", "*", {
+    eq: { id: eventId },
+    single: true,
+  });
 }
 
 export async function createNetworkingEvent(
@@ -2661,11 +2726,15 @@ export async function updateNetworkingEvent(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("networking_events", mapped.payload ?? {}, { eq: { id: eventId } });
+    return userCrud.updateRow("networking_events", mapped.payload ?? {}, {
+      eq: { id: eventId },
+    });
   }
 
   // Otherwise perform a partial update
-  return userCrud.updateRow("networking_events", formData, { eq: { id: eventId } });
+  return userCrud.updateRow("networking_events", formData, {
+    eq: { id: eventId },
+  });
 }
 
 export async function deleteNetworkingEvent(
@@ -2703,10 +2772,14 @@ export const mapNetworkingEventContact = (
     follow_up_required:
       formData.follow_up_required === true || formData.followUpRequired === true
         ? true
-        : formData.follow_up_required === false || formData.followUpRequired === false
+        : formData.follow_up_required === false ||
+          formData.followUpRequired === false
         ? false
         : null,
-    follow_up_notes: (formData.follow_up_notes as string) ?? (formData.followUpNotes as string) ?? null,
+    follow_up_notes:
+      (formData.follow_up_notes as string) ??
+      (formData.followUpNotes as string) ??
+      null,
   };
 
   return { payload };
@@ -2726,7 +2799,10 @@ export async function getNetworkingEventContact(
   id: string | number
 ): Promise<Result<unknown | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow("networking_event_contacts", "*", { eq: { id }, single: true });
+  return userCrud.getRow("networking_event_contacts", "*", {
+    eq: { id },
+    single: true,
+  });
 }
 
 export async function createNetworkingEventContact(
@@ -2753,7 +2829,12 @@ export async function updateNetworkingEventContact(
   const userCrud = withUser(userId);
 
   // If core identity fields provided, validate via mapper
-  if (formData.event_id != null || formData.contact_id != null || formData.eventId != null || formData.contactId != null) {
+  if (
+    formData.event_id != null ||
+    formData.contact_id != null ||
+    formData.eventId != null ||
+    formData.contactId != null
+  ) {
     const mapped = mapNetworkingEventContact(formData);
     if (mapped.error) {
       return {
@@ -2762,11 +2843,17 @@ export async function updateNetworkingEventContact(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("networking_event_contacts", mapped.payload ?? {}, { eq: { id } });
+    return userCrud.updateRow(
+      "networking_event_contacts",
+      mapped.payload ?? {},
+      { eq: { id } }
+    );
   }
 
   // Partial update
-  return userCrud.updateRow("networking_event_contacts", formData, { eq: { id } });
+  return userCrud.updateRow("networking_event_contacts", formData, {
+    eq: { id },
+  });
 }
 
 export async function deleteNetworkingEventContact(
@@ -2816,9 +2903,13 @@ export const mapInformationalInterview = (
       (formData.preparationNotes as Record<string, unknown>) ??
       (formData.preparation_notes as Record<string, unknown>) ??
       {},
-    interview_date: toIso(formData.interview_date ?? formData.interviewDate ?? null),
+    interview_date: toIso(
+      formData.interview_date ?? formData.interviewDate ?? null
+    ),
     additional_notes:
-      (formData.additional_notes as string) ?? (formData.additionalNotes as string) ?? null,
+      (formData.additional_notes as string) ??
+      (formData.additionalNotes as string) ??
+      null,
     // Status: optional textual status (e.g., 'confirmed', 'completed', 'ignored')
     status: (formData.status as string) ?? null,
   };
@@ -2840,7 +2931,10 @@ export async function getInformationalInterview(
   id: string | number
 ): Promise<Result<unknown | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow("informational_interviews", "*", { eq: { id }, single: true });
+  return userCrud.getRow("informational_interviews", "*", {
+    eq: { id },
+    single: true,
+  });
 }
 
 export async function createInformationalInterview(
@@ -2882,11 +2976,17 @@ export async function updateInformationalInterview(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("informational_interviews", mapped.payload ?? {}, { eq: { id } });
+    return userCrud.updateRow(
+      "informational_interviews",
+      mapped.payload ?? {},
+      { eq: { id } }
+    );
   }
 
   // Partial update allowed
-  return userCrud.updateRow("informational_interviews", formData, { eq: { id } });
+  return userCrud.updateRow("informational_interviews", formData, {
+    eq: { id },
+  });
 }
 
 export async function deleteInformationalInterview(
@@ -2904,25 +3004,29 @@ export async function deleteInformationalInterview(
 /**
  * Map preparation activity form data to database payload
  */
-function mapPreparationActivity(formData: Record<string, unknown>): { payload?: Record<string, unknown>; error?: string } {
-  const activity_type = (formData.activity_type ?? formData.activityType) as string;
-  
+function mapPreparationActivity(formData: Record<string, unknown>): {
+  payload?: Record<string, unknown>;
+  error?: string;
+} {
+  const activity_type = (formData.activity_type ??
+    formData.activityType) as string;
+
   if (!activity_type) {
     return { error: "activity_type is required" };
   }
 
   const validActivityTypes = [
-    'resume_tailoring',
-    'cover_letter_writing',
-    'company_research',
-    'skills_practice',
-    'interview_prep',
-    'networking',
-    'portfolio_update',
-    'certification',
-    'project_completion',
-    'mock_interview',
-    'salary_research'
+    "resume_tailoring",
+    "cover_letter_writing",
+    "company_research",
+    "skills_practice",
+    "interview_prep",
+    "networking",
+    "portfolio_update",
+    "certification",
+    "project_completion",
+    "mock_interview",
+    "salary_research",
   ];
 
   if (!validActivityTypes.includes(activity_type)) {
@@ -2932,16 +3036,31 @@ function mapPreparationActivity(formData: Record<string, unknown>): { payload?: 
   const payload: Record<string, unknown> = {
     activity_type,
     job_id: formData.job_id ?? formData.jobId ?? null,
-    activity_description: (formData.activity_description ?? formData.activityDescription ?? formData.description) as string | null,
-    time_spent_minutes: formData.time_spent_minutes ?? formData.timeSpentMinutes ?? formData.timeSpent ?? null,
-    completion_quality: (formData.completion_quality ?? formData.completionQuality ?? formData.quality) as string | null,
-    days_before_application: formData.days_before_application ?? formData.daysBeforeApplication ?? null,
-    activity_date: formatToSqlDate(formData.activity_date ?? formData.activityDate ?? new Date()),
+    activity_description: (formData.activity_description ??
+      formData.activityDescription ??
+      formData.description) as string | null,
+    time_spent_minutes:
+      formData.time_spent_minutes ??
+      formData.timeSpentMinutes ??
+      formData.timeSpent ??
+      null,
+    completion_quality: (formData.completion_quality ??
+      formData.completionQuality ??
+      formData.quality) as string | null,
+    days_before_application:
+      formData.days_before_application ??
+      formData.daysBeforeApplication ??
+      null,
+    activity_date: formatToSqlDate(
+      formData.activity_date ?? formData.activityDate ?? new Date()
+    ),
     led_to_response: formData.led_to_response ?? formData.ledToResponse ?? null,
-    led_to_interview: formData.led_to_interview ?? formData.ledToInterview ?? null,
+    led_to_interview:
+      formData.led_to_interview ?? formData.ledToInterview ?? null,
     led_to_offer: formData.led_to_offer ?? formData.ledToOffer ?? null,
     tools_used: formData.tools_used ?? formData.toolsUsed ?? null,
-    resources_consulted: formData.resources_consulted ?? formData.resourcesConsulted ?? null,
+    resources_consulted:
+      formData.resources_consulted ?? formData.resourcesConsulted ?? null,
     notes: (formData.notes as string) ?? null,
   };
 
@@ -2967,7 +3086,10 @@ export async function getPreparationActivity(
   id: string | number
 ): Promise<Result<unknown | null>> {
   const userCrud = withUser(userId);
-  return userCrud.getRow("preparation_activities", "*", { eq: { id }, single: true });
+  return userCrud.getRow("preparation_activities", "*", {
+    eq: { id },
+    single: true,
+  });
 }
 
 /**
@@ -3009,7 +3131,9 @@ export async function updatePreparationActivity(
         status: null,
       } as Result<unknown>;
     }
-    return userCrud.updateRow("preparation_activities", mapped.payload ?? {}, { eq: { id } });
+    return userCrud.updateRow("preparation_activities", mapped.payload ?? {}, {
+      eq: { id },
+    });
   }
 
   // Partial update allowed
@@ -3034,13 +3158,18 @@ export async function deletePreparationActivity(
 /**
  * Map interview form data to database schema
  */
-function mapInterview(formData: Record<string, unknown>): { payload?: Record<string, unknown>; error?: string } {
+function mapInterview(formData: Record<string, unknown>): {
+  payload?: Record<string, unknown>;
+  error?: string;
+} {
   const format = formData.format as string | null;
-  const interviewType = formData.interview_type ?? formData.interviewType as string | null;
+  const interviewType =
+    formData.interview_type ?? (formData.interviewType as string | null);
 
   // Convert interview_date to ISO string for timestamptz
-  let interviewDate = formData.interview_date ?? formData.interviewDate ?? new Date();
-  if (typeof interviewDate === 'string') {
+  let interviewDate =
+    formData.interview_date ?? formData.interviewDate ?? new Date();
+  if (typeof interviewDate === "string") {
     // If it's already a string from datetime-local input, ensure it's ISO format
     interviewDate = new Date(interviewDate).toISOString();
   } else if (interviewDate instanceof Date) {
@@ -3102,7 +3231,7 @@ export async function createInterview(
       status: null,
     } as Result<unknown>;
   }
-  
+
   const payload = { ...mapped.payload, user_id: userId };
   const userCrud = withUser(userId);
   return userCrud.insertRow("interviews", payload);
@@ -3117,7 +3246,7 @@ export async function updateInterview(
   formData: Record<string, unknown>
 ): Promise<Result<unknown>> {
   const userCrud = withUser(userId);
-  
+
   // Partial update allowed
   return userCrud.updateRow("interviews", formData, { eq: { id } });
 }
@@ -3141,7 +3270,9 @@ export async function listInterviewFeedback(
   interviewId: string
 ): Promise<Result<unknown[]>> {
   const userCrud = withUser(userId);
-  return userCrud.listRows("interview_feedback", "*", { eq: { interview_id: interviewId } });
+  return userCrud.listRows("interview_feedback", "*", {
+    eq: { interview_id: interviewId },
+  });
 }
 
 /**
@@ -3154,14 +3285,14 @@ export async function createInterviewFeedback(
 ): Promise<Result<unknown>> {
   const payload = {
     interview_id: interviewId,
-    provider: (formData.provider as string) ?? 'self',
-    feedback_text: (formData.feedback_text ?? formData.feedbackText ?? formData.feedback) as string,
+    provider: (formData.provider as string) ?? "self",
+    feedback_text: (formData.feedback_text ??
+      formData.feedbackText ??
+      formData.feedback) as string,
     themes: formData.themes ?? [],
     rating: formData.rating ?? null,
   };
-  
-  console.log('[createInterviewFeedback] Attempting to insert:', payload);
-  
+
   // Use supabase client directly instead of withUser wrapper
   // This ensures proper auth context for RLS policies
   const { data, error } = await supabase
@@ -3169,9 +3300,7 @@ export async function createInterviewFeedback(
     .insert([payload])
     .select()
     .single();
-  
-  console.log('[createInterviewFeedback] Insert result:', { data, error });
-  
+
   if (error) {
     return {
       data: null,
@@ -3179,7 +3308,7 @@ export async function createInterviewFeedback(
       status: null,
     } as Result<unknown>;
   }
-  
+
   return {
     data,
     error: null,
@@ -3207,14 +3336,18 @@ export async function createConfidenceLog(
 ): Promise<Result<unknown>> {
   const payload = {
     user_id: userId,
-    interview_id: (formData.interview_id ?? formData.interviewId) as string | null,
-    logged_at: formatToSqlDate(formData.logged_at ?? formData.loggedAt ?? new Date()),
-    confidence_level: formData.confidence_level ?? formData.confidenceLevel ?? null,
+    interview_id: (formData.interview_id ?? formData.interviewId) as
+      | string
+      | null,
+    logged_at: formatToSqlDate(
+      formData.logged_at ?? formData.loggedAt ?? new Date()
+    ),
+    confidence_level:
+      formData.confidence_level ?? formData.confidenceLevel ?? null,
     anxiety_level: formData.anxiety_level ?? formData.anxietyLevel ?? null,
     notes: (formData.notes as string) ?? null,
   };
-  
+
   const userCrud = withUser(userId);
   return userCrud.insertRow("confidence_logs", payload);
 }
-

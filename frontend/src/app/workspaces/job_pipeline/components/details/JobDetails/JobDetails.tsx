@@ -155,13 +155,6 @@ export default function JobDetails({ jobId }: Props) {
     if (!user || !jobId) return;
     setLoading(true);
     try {
-      console.log("[JobDetails] handleSave called", {
-        userId: user.id,
-        jobId,
-        form,
-        noteForm,
-      });
-
       // update job fields (partial allowed)
       const jobPayload: Record<string, unknown> = {};
       // pick known editable fields
@@ -190,7 +183,7 @@ export default function JobDetails({ jobId }: Props) {
       const notePayload = { ...(noteForm ?? {}) };
       const excludeFields = ["id", "user_id", "created_at", "updated_at"];
       excludeFields.forEach((field) => delete notePayload[field]);
-      
+
       // Convert salary fields from string to number
       if (notePayload.offered_salary) {
         notePayload.offered_salary = Number(notePayload.offered_salary);
@@ -198,7 +191,7 @@ export default function JobDetails({ jobId }: Props) {
       if (notePayload.negotiated_salary) {
         notePayload.negotiated_salary = Number(notePayload.negotiated_salary);
       }
-      
+
       Object.keys(notePayload).forEach((key) => {
         if (
           notePayload[key] === undefined ||
@@ -212,7 +205,6 @@ export default function JobDetails({ jobId }: Props) {
 
       // If nothing changed, inform the user and bail out
       if (!hasJobChanges && !hasNoteChanges) {
-        console.log("[JobDetails] No changes detected; nothing to save");
         showSuccess("No changes to save");
         return;
       }
@@ -230,7 +222,11 @@ export default function JobDetails({ jobId }: Props) {
       if (hasNoteChanges) {
         if (note && note.id) {
           // update existing note
-          const res2 = await updateJobNote(user.id, String(note.id), notePayload);
+          const res2 = await updateJobNote(
+            user.id,
+            String(note.id),
+            notePayload
+          );
           if (res2.error) {
             console.error("[JobDetails] Error updating note:", res2.error);
             throw res2.error;
@@ -243,7 +239,6 @@ export default function JobDetails({ jobId }: Props) {
             console.error("[JobDetails] Error creating note:", res2.error);
             throw res2.error;
           }
-          console.log("[JobDetails] Note created successfully:", res2.data);
         }
       }
 
@@ -255,7 +250,8 @@ export default function JobDetails({ jobId }: Props) {
 
       // refresh
       const fresh = await jobsService.getJob(user.id, Number(jobId));
-      if (!fresh.error) setJob(fresh.data as unknown as Record<string, unknown>);
+      if (!fresh.error)
+        setJob(fresh.data as unknown as Record<string, unknown>);
       const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
       if (!notesRes.error) {
         const notes = (notesRes.data ?? []) as Record<string, unknown>[];
@@ -703,7 +699,7 @@ export default function JobDetails({ jobId }: Props) {
                   multiline
                   minRows={2}
                 />
-                
+
                 {/* Offer Details & Tracking */}
                 <Divider sx={{ mt: 2 }} />
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>

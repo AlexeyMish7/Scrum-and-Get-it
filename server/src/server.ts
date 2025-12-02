@@ -412,7 +412,14 @@ async function handleRequest(
 
     if (method === "POST" && pathname === "/api/generate/referral-request") {
       const userId = await requireAuth(req);
-      await handleReferralRequest(req, res, url, ctx.reqId, userId, counters as any);
+      await handleReferralRequest(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 200);
       return;
     }
@@ -420,36 +427,88 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/generate/profile-tips") {
       const userId = await requireAuth(req);
       const { handleProfileTips } = await import("./routes/index.js");
-      await handleProfileTips(req, res, url, ctx.reqId, userId, counters as any);
+      await handleProfileTips(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 200);
       return;
     }
 
     if (method === "POST" && pathname === "/api/generate/interview-request") {
       const userId = await requireAuth(req);
-      const { handleGenerateInterviewRequest } = await import("./routes/index.js");
-      await handleGenerateInterviewRequest(req, res, url, ctx.reqId, userId, counters as any);
+      const { handleGenerateInterviewRequest } = await import(
+        "./routes/index.js"
+      );
+      await handleGenerateInterviewRequest(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 201);
       return;
     }
 
     if (method === "POST" && pathname === "/api/generate/interview-questions") {
       const userId = await requireAuth(req);
-      const { handleGenerateInterviewQuestions } = await import("./routes/index.js");
-      await handleGenerateInterviewQuestions(req, res, url, ctx.reqId, userId, counters as any);
+      const { handleGenerateInterviewQuestions } = await import(
+        "./routes/index.js"
+      );
+      await handleGenerateInterviewQuestions(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 201);
       return;
     }
 
     if (method === "POST" && pathname === "/api/generate/interview-feedback") {
       const userId = await requireAuth(req);
-      const { handleGenerateInterviewFeedback } = await import("./routes/index.js");
-      await handleGenerateInterviewFeedback(req, res, url, ctx.reqId, userId, counters as any);
+      const { handleGenerateInterviewFeedback } = await import(
+        "./routes/index.js"
+      );
+      await handleGenerateInterviewFeedback(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 201);
       return;
     }
 
-    if (method === "POST" && pathname === "/api/generate/mock-interview-summary") {
+    if (method === "POST" && pathname === "/api/generate/coaching-insights") {
+      const userId = await requireAuth(req);
+      const { handleCoachingInsights } = await import("./routes/index.js");
+      await handleCoachingInsights(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (
+      method === "POST" &&
+      pathname === "/api/generate/mock-interview-summary"
+    ) {
       const userId = await requireAuth(req);
       const mod = await import("./routes/generate/mock-interview-summary.js");
       await mod.post(req, res, url, ctx.reqId, userId, counters as any);
@@ -460,7 +519,14 @@ async function handleRequest(
     if (method === "POST" && pathname === "/api/generate/reference-points") {
       const userId = await requireAuth(req);
       const { handleReferencePoints } = await import("./routes/index.js");
-      await handleReferencePoints(req, res, url, ctx.reqId, userId, counters as any);
+      await handleReferencePoints(
+        req,
+        res,
+        url,
+        ctx.reqId,
+        userId,
+        counters as any
+      );
       ctx.logComplete(method, pathname, 200);
       return;
     }
@@ -470,7 +536,9 @@ async function handleRequest(
     // ------------------------------------------------------------------
     if (method === "GET" && pathname === "/api/analytics/overview") {
       try {
-        const { get: handleAnalyticsOverview } = await import("./routes/analytics.js");
+        const { get: handleAnalyticsOverview } = await import(
+          "./routes/analytics.js"
+        );
         await handleAnalyticsOverview(req, res);
         ctx.logComplete(method, pathname, 200);
         return;
@@ -483,7 +551,9 @@ async function handleRequest(
 
     if (method === "GET" && pathname === "/api/analytics/trends") {
       try {
-        const { getTrends: handleAnalyticsTrends } = await import("./routes/analytics.js");
+        const { getTrends: handleAnalyticsTrends } = await import(
+          "./routes/analytics.js"
+        );
         await handleAnalyticsTrends(req, res);
         ctx.logComplete(method, pathname, 200);
         return;
@@ -527,10 +597,15 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // COMPETITIVE BENCHMARKING ENDPOINT (protected)
     // ------------------------------------------------------------------
-    if (method === "POST" && pathname === "/api/analytics/competitive/position") {
+    if (
+      method === "POST" &&
+      pathname === "/api/analytics/competitive/position"
+    ) {
       console.log("🎯 HIT COMPETITIVE ROUTE!");
       try {
-        const { handleGetCompetitivePosition } = await import("./routes/analytics/competitive.js");
+        const { handleGetCompetitivePosition } = await import(
+          "./routes/analytics/competitive.js"
+        );
         console.log("✅ Import successful, calling handler...");
         await handleGetCompetitivePosition(req, res);
         console.log("✅ Handler completed");
@@ -600,12 +675,17 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // PATTERN RECOGNITION ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
-    if (method === "POST" && pathname === "/api/analytics/pattern-recognition") {
+    if (
+      method === "POST" &&
+      pathname === "/api/analytics/pattern-recognition"
+    ) {
       console.log("🎯 HIT PATTERN RECOGNITION ROUTE!");
       try {
         const userId = await requireAuth(req);
         (req as any).userId = userId;
-        const { handleGetPatternRecognition } = await import("./routes/analytics/pattern-recognition.js");
+        const { handleGetPatternRecognition } = await import(
+          "./routes/analytics/pattern-recognition.js"
+        );
         console.log("✅ Import successful, calling handler...");
         await handleGetPatternRecognition(req, res);
         console.log("✅ Handler completed");
@@ -623,7 +703,9 @@ async function handleRequest(
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/admin/compute-benchmarks") {
       const userId = await requireAuth(req);
-      const { handleComputeBenchmarks } = await import("./routes/admin/benchmarks.js");
+      const { handleComputeBenchmarks } = await import(
+        "./routes/admin/benchmarks.js"
+      );
       await handleComputeBenchmarks(req, res);
       ctx.logComplete(method, pathname, 200);
       return;
@@ -631,7 +713,9 @@ async function handleRequest(
 
     if (method === "GET" && pathname === "/api/admin/benchmark-status") {
       const userId = await requireAuth(req);
-      const { handleBenchmarkStatus } = await import("./routes/admin/benchmarks.js");
+      const { handleBenchmarkStatus } = await import(
+        "./routes/admin/benchmarks.js"
+      );
       await handleBenchmarkStatus(req, res);
       ctx.logComplete(method, pathname, 200);
       return;
@@ -682,8 +766,6 @@ async function handleRequest(
       ctx.logComplete(method, pathname, 200);
       return;
     }
-
-    
 
     // ------------------------------------------------------------------
     // COVER LETTER DRAFTS ENDPOINTS (protected)

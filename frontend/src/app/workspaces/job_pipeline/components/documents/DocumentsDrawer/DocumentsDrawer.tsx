@@ -42,7 +42,6 @@ import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { withUser } from "@shared/services/crud";
-import { useCoverLetterDrafts } from "@shared/hooks/useCoverLetterDrafts";
 import type { JobRow } from "@job_pipeline/types";
 
 // Types for resume/cover drafts (minimal interface)
@@ -138,16 +137,7 @@ export default function DocumentsDrawer({
           }
         );
 
-        // 2) Cover letters: merge local cache with DB rows for this job
-        const store = useCoverLetterDrafts.getState();
-        if (store.setUserId) store.setUserId(user.id);
-        if (store.loadFromCacheSync) store.loadFromCacheSync();
-        const cached = (store.drafts || []).filter(
-          (c: DraftDocument) =>
-            String(c.job_id ?? c.jobId ?? c.metadata?.jobId ?? "") ===
-            String(selectedJobId)
-        );
-
+        // 2) Cover letters from database for this job
         const { data: dbCovers, error: coverErr } = await supabase
           .from("cover_letter_drafts")
           .select("*")
@@ -155,16 +145,8 @@ export default function DocumentsDrawer({
           .eq("job_id", selectedJobId as number);
         if (coverErr) throw coverErr;
 
-        const map = new Map<string, DraftDocument>();
-        (dbCovers || []).forEach((c: DraftDocument) =>
-          map.set(String(c.id), c)
-        );
-        (cached || []).forEach((c: DraftDocument) => {
-          if (!map.has(String(c.id))) map.set(String(c.id), c);
-        });
-
         setResumes(resumeCandidates || []);
-        setCovers(Array.from(map.values()));
+        setCovers(dbCovers || []);
       } catch (err) {
         console.error(err);
         handleError(err, "Failed to load materials for job");

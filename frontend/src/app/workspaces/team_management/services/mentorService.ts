@@ -192,23 +192,34 @@ export async function getAssignedMentees(
     return { data: [], error: null, status: 200 };
   }
 
-  // For each mentee, fetch their progress data
+  // For each mentee, fetch their progress data using SECURITY DEFINER functions
+  // These bypass RLS to allow mentors to view their assigned candidates' data
   const menteesWithProgress: MenteeWithProgress[] = await Promise.all(
     (assignments as AssignedCandidateInfo[]).map(async (assignment) => {
-      // Get job stats for this mentee
-      const jobStats = await getMenteeJobStats(assignment.candidate_id);
+      // Get job stats using the RPC function (bypasses RLS)
+      const jobStats = await getMenteeJobStats(userId, assignment.candidate_id);
 
-      // Get recent activity
+      // Get recent activity using RPC function (bypasses RLS)
       const recentActivity = await getMenteeRecentActivity(
+        userId,
         assignment.candidate_id
       );
 
-      // Calculate engagement level based on recent activity
-      const engagementLevel = calculateEngagementLevel(recentActivity);
+      // Get activity summary from RPC for engagement level
+      const activitySummary = await getMenteeActivitySummary(
+        userId,
+        assignment.candidate_id
+      );
 
-      // Get last active timestamp
+      // Use engagement level from server, or calculate from recent activity as fallback
+      const engagementLevel =
+        activitySummary?.engagement_level ||
+        calculateEngagementLevel(recentActivity);
+
+      // Get last active timestamp from summary or activity
       const lastActiveAt =
-        recentActivity.length > 0 ? recentActivity[0].timestamp : null;
+        activitySummary?.last_activity_at ||
+        (recentActivity.length > 0 ? recentActivity[0].timestamp : null);
 
       return {
         ...assignment,
@@ -225,24 +236,27 @@ export async function getAssignedMentees(
 
 /**
  * Get detailed job stats for a specific mentee
- * Note: This uses a security definer approach via RPC or admin access
+ * Uses SECURITY DEFINER RPC function to bypass RLS
+ * Only returns data if the mentor has an active assignment with this candidate
  */
-async function getMenteeJobStats(candidateId: string): Promise<{
+async function getMenteeJobStats(
+  mentorId: string,
+  candidateId: string
+): Promise<{
   total: number;
   applied: number;
   interviewing: number;
   offers: number;
   rejected: number;
 }> {
-  // Try to fetch job stats - this may be limited by RLS
-  // In production, this should use a security definer function
-  const { data: jobs, error } = await supabase
-    .from("jobs")
-    .select("id, job_status")
-    .eq("user_id", candidateId);
+  // Use RPC function that bypasses RLS after verifying mentor-candidate relationship
+  const { data, error } = await supabase.rpc("get_mentee_job_stats", {
+    p_mentor_id: mentorId,
+    p_candidate_id: candidateId,
+  });
 
-  if (error || !jobs) {
-    // Return zeros if we can't access (RLS restriction)
+  if (error || !data || data.length === 0) {
+    // Return zeros if we can't access
     return {
       total: 0,
       applied: 0,
@@ -252,75 +266,121 @@ async function getMenteeJobStats(candidateId: string): Promise<{
     };
   }
 
+  // RPC returns an array with one row
+  const stats = data[0];
   return {
-    total: jobs.length,
-    applied: jobs.filter(
-      (j) => j.job_status === "Applied" || j.job_status === "Interested"
-    ).length,
-    interviewing: jobs.filter(
-      (j) => j.job_status === "Interview" || j.job_status === "Phone Screen"
-    ).length,
-    offers: jobs.filter(
-      (j) => j.job_status === "Offer" || j.job_status === "Accepted"
-    ).length,
-    rejected: jobs.filter(
-      (j) => j.job_status === "Rejected" || j.job_status === "Declined"
-    ).length,
+    total: stats.total_jobs || 0,
+    applied: stats.applied_count || 0,
+    interviewing: stats.interviewing_count || 0,
+    offers: stats.offer_count || 0,
+    rejected: stats.rejected_count || 0,
   };
 }
 
 /**
+ * Get activity summary for a mentee from the server
+ * Uses SECURITY DEFINER RPC function for cross-user data access
+ */
+async function getMenteeActivitySummary(
+  mentorId: string,
+  candidateId: string
+): Promise<{
+  jobs_created_7d: number;
+  jobs_updated_7d: number;
+  documents_updated_7d: number;
+  goals_completed_7d: number;
+  last_activity_at: string | null;
+  engagement_level: string;
+} | null> {
+  const { data, error } = await supabase.rpc("get_mentee_activity_summary", {
+    p_mentor_id: mentorId,
+    p_candidate_id: candidateId,
+  });
+
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  return data[0];
+}
+
+/**
  * Get recent activity for a mentee
- * Combines job updates, document changes, and goal completions
+ * Uses SECURITY DEFINER RPC function to get job data, then combines with
+ * document and goal data
+ *
+ * Note: Activity data comes from multiple sources:
+ * - jobs table via RPC (created_at, updated_at) for application activity
+ * - document_versions for document updates
+ * - mentee_goals for goal completions
  */
 async function getMenteeRecentActivity(
+  mentorId: string,
   candidateId: string
 ): Promise<ActivityItem[]> {
   const activities: ActivityItem[] = [];
 
-  // Get recent job status changes from job_history
-  const { data: jobHistory } = await supabase
-    .from("job_history")
-    .select("id, job_id, status_change, changed_at, jobs(company_name, title)")
-    .eq("user_id", candidateId)
-    .order("changed_at", { ascending: false })
-    .limit(10);
+  // Get recent job applications using RPC function (bypasses RLS)
+  const { data: recentJobs } = await supabase.rpc("get_mentee_recent_jobs", {
+    p_mentor_id: mentorId,
+    p_candidate_id: candidateId,
+    p_limit: 15,
+  });
 
-  if (jobHistory) {
-    // Supabase returns joined data as array or object depending on relation
-    type JobHistoryRow = {
-      id: string;
+  if (recentJobs) {
+    type JobRow = {
       job_id: number;
-      status_change: { from: string; to: string };
-      changed_at: string;
-      jobs:
-        | { company_name: string; title: string }[]
-        | { company_name: string; title: string }
-        | null;
+      title: string;
+      company_name: string;
+      job_status: string;
+      created_at: string;
+      updated_at: string;
     };
 
-    (jobHistory as unknown as JobHistoryRow[]).forEach((h) => {
-      // Handle both array and object return types from Supabase
-      const jobData = Array.isArray(h.jobs) ? h.jobs[0] : h.jobs;
-      activities.push({
-        id: h.id,
-        type: "status_change",
-        description: `${jobData?.title || "Job"} at ${
-          jobData?.company_name || "Company"
-        }: ${h.status_change?.from} → ${h.status_change?.to}`,
-        timestamp: h.changed_at,
-        metadata: { jobId: h.job_id, statusChange: h.status_change },
-      });
+    (recentJobs as JobRow[]).forEach((job) => {
+      // Check if this is a recent creation (created within last 30 days)
+      const createdDate = new Date(job.created_at);
+      const now = new Date();
+      const daysSinceCreated = Math.floor(
+        (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Add job application activity
+      if (daysSinceCreated <= 30) {
+        activities.push({
+          id: `job-created-${job.job_id}`,
+          type: "job_applied",
+          description: `Applied to ${job.title} at ${job.company_name}`,
+          timestamp: job.created_at,
+          metadata: { jobId: job.job_id, status: job.job_status },
+        });
+      }
+
+      // If updated_at is different from created_at, there was an update
+      const updatedDate = new Date(job.updated_at);
+      const timeDiff = Math.abs(updatedDate.getTime() - createdDate.getTime());
+      if (timeDiff > 60000) {
+        // More than 1 minute difference = genuine update
+        activities.push({
+          id: `job-updated-${job.job_id}`,
+          type: "status_change",
+          description: `Updated ${job.title} at ${job.company_name} (${job.job_status})`,
+          timestamp: job.updated_at,
+          metadata: { jobId: job.job_id, currentStatus: job.job_status },
+        });
+      }
     });
   }
 
-  // Get recent document updates
-  const { data: documents } = await supabase
-    .from("document_versions")
-    .select("id, title, document_type, created_at")
-    .eq("user_id", candidateId)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  // Note: Document activity is included in the activity summary from RPC
+  // We don't query document_versions directly due to RLS restrictions
+  // The mentor can view documents via getMenteeDocuments() when needed
+  const documents: Array<{
+    id: string;
+    title: string;
+    document_type: string;
+    created_at: string;
+  }> | null = null;
 
   if (documents) {
     type DocumentRow = {
@@ -341,7 +401,7 @@ async function getMenteeRecentActivity(
     });
   }
 
-  // Get recent goal completions
+  // Get recent goal completions - mentee_goals should be accessible
   const { data: goals } = await supabase
     .from("mentee_goals")
     .select("id, title, completed_at")
@@ -413,6 +473,7 @@ function calculateEngagementLevel(
 
 /**
  * Get mentee's job search documents (resumes, cover letters)
+ * Uses SECURITY DEFINER RPC to bypass RLS after verifying mentor-candidate assignment
  * Mentors can review these for feedback
  */
 export async function getMenteeDocuments(
@@ -420,88 +481,244 @@ export async function getMenteeDocuments(
   candidateId: string,
   teamId: string
 ): Promise<Result<MenteeDocument[]>> {
-  // First verify the mentor has access to this candidate
-  const { data: assignment, error: assignError } = await supabase
-    .from("team_member_assignments")
-    .select("id")
-    .eq("mentor_id", userId)
-    .eq("candidate_id", candidateId)
-    .eq("team_id", teamId)
-    .eq("is_active", true)
-    .single();
+  // Use RPC function that verifies mentor-candidate relationship and bypasses RLS
+  const { data: documents, error } = await supabase.rpc(
+    "get_mentee_documents",
+    {
+      p_mentor_id: userId,
+      p_candidate_id: candidateId,
+      p_team_id: teamId,
+    }
+  );
 
-  if (assignError || !assignment) {
+  if (error) {
     return {
       data: null,
-      error: {
-        message: "Not authorized to view this candidate's documents",
-        status: 403,
-      },
-      status: 403,
-    };
-  }
-
-  // Get the candidate's documents
-  const { data: documents, error: docError } = await supabase
-    .from("document_versions")
-    .select(
-      `
-      id,
-      title,
-      document_type,
-      version,
-      created_at,
-      updated_at,
-      job_id,
-      jobs(title, company_name)
-    `
-    )
-    .eq("user_id", candidateId)
-    .in("document_type", ["resume", "cover_letter"])
-    .order("updated_at", { ascending: false });
-
-  if (docError) {
-    return {
-      data: null,
-      error: { message: docError.message, status: null },
+      error: { message: error.message, status: null },
       status: null,
     };
   }
 
-  // Supabase returns joined data as array or object depending on relation
+  if (!documents || documents.length === 0) {
+    return { data: [], error: null, status: 200 };
+  }
+
+  // Map RPC response to MenteeDocument type
   type DocumentRow = {
-    id: string;
+    document_id: string;
     title: string;
-    document_type: "resume" | "cover_letter";
-    version: number;
+    document_type: string;
+    version_number: number;
     created_at: string;
     updated_at: string;
     job_id: number | null;
-    jobs:
-      | { title: string; company_name: string }[]
-      | { title: string; company_name: string }
-      | null;
+    job_title: string | null;
+    company_name: string | null;
   };
 
-  const menteeDocuments: MenteeDocument[] = (
-    documents as unknown as DocumentRow[]
-  ).map((d) => {
-    // Handle both array and object return types from Supabase
-    const jobData = Array.isArray(d.jobs) ? d.jobs[0] : d.jobs;
-    return {
-      id: d.id,
+  const menteeDocuments: MenteeDocument[] = (documents as DocumentRow[]).map(
+    (d) => ({
+      id: d.document_id,
       title: d.title,
-      documentType: d.document_type,
-      version: d.version,
+      documentType: d.document_type as "resume" | "cover_letter",
+      version: d.version_number,
       createdAt: d.created_at,
       updatedAt: d.updated_at,
       jobId: d.job_id || undefined,
-      jobTitle: jobData?.title,
-      companyName: jobData?.company_name,
-    };
-  });
+      jobTitle: d.job_title || undefined,
+      companyName: d.company_name || undefined,
+    })
+  );
 
   return { data: menteeDocuments, error: null, status: 200 };
+}
+
+/**
+ * Mentee profile summary type for mentor viewing
+ */
+export interface MenteeProfileSummary {
+  candidateId: string;
+  fullName: string;
+  email: string;
+  professionalTitle: string | null;
+  experienceLevel: string | null;
+  industry: string | null;
+  city: string | null;
+  state: string | null;
+  skillCount: number;
+  employmentCount: number;
+  educationCount: number;
+  projectCount: number;
+  certificationCount: number;
+}
+
+/**
+ * Get a summary of the mentee's profile for mentor viewing
+ * Uses SECURITY DEFINER RPC to bypass RLS after verifying mentor-candidate assignment
+ */
+export async function getMenteeProfileSummary(
+  userId: string,
+  candidateId: string
+): Promise<Result<MenteeProfileSummary | null>> {
+  const { data, error } = await supabase.rpc("get_mentee_profile_summary", {
+    p_mentor_id: userId,
+    p_candidate_id: candidateId,
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    };
+  }
+
+  if (!data || data.length === 0) {
+    return { data: null, error: null, status: 200 };
+  }
+
+  const row = data[0];
+  return {
+    data: {
+      candidateId: row.candidate_id,
+      fullName: row.full_name,
+      email: row.email,
+      professionalTitle: row.professional_title,
+      experienceLevel: row.experience_level,
+      industry: row.industry,
+      city: row.city,
+      state: row.state,
+      skillCount: row.skill_count || 0,
+      employmentCount: row.employment_count || 0,
+      educationCount: row.education_count || 0,
+      projectCount: row.project_count || 0,
+      certificationCount: row.certification_count || 0,
+    },
+    error: null,
+    status: 200,
+  };
+}
+
+/**
+ * Mentee skill type for mentor viewing
+ */
+export interface MenteeSkill {
+  id: string;
+  name: string;
+  proficiencyLevel: string;
+  category: string;
+  yearsOfExperience: number | null;
+}
+
+/**
+ * Get all skills for a mentee
+ * Uses SECURITY DEFINER RPC to bypass RLS after verifying mentor-candidate assignment
+ */
+export async function getMenteeSkills(
+  userId: string,
+  candidateId: string
+): Promise<Result<MenteeSkill[]>> {
+  const { data, error } = await supabase.rpc("get_mentee_skills", {
+    p_mentor_id: userId,
+    p_candidate_id: candidateId,
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    };
+  }
+
+  if (!data || data.length === 0) {
+    return { data: [], error: null, status: 200 };
+  }
+
+  type SkillRow = {
+    skill_id: string;
+    skill_name: string;
+    proficiency_level: string;
+    skill_category: string;
+    years_of_experience: number | null;
+  };
+
+  const skills: MenteeSkill[] = (data as SkillRow[]).map((s) => ({
+    id: s.skill_id,
+    name: s.skill_name,
+    proficiencyLevel: s.proficiency_level,
+    category: s.skill_category,
+    yearsOfExperience: s.years_of_experience,
+  }));
+
+  return { data: skills, error: null, status: 200 };
+}
+
+/**
+ * Mentee employment type for mentor viewing
+ */
+export interface MenteeEmployment {
+  id: string;
+  jobTitle: string;
+  companyName: string;
+  location: string | null;
+  startDate: string;
+  endDate: string | null;
+  currentPosition: boolean;
+  description: string | null;
+  achievements: string[];
+}
+
+/**
+ * Get employment history for a mentee
+ * Uses SECURITY DEFINER RPC to bypass RLS after verifying mentor-candidate assignment
+ */
+export async function getMenteeEmployment(
+  userId: string,
+  candidateId: string
+): Promise<Result<MenteeEmployment[]>> {
+  const { data, error } = await supabase.rpc("get_mentee_employment", {
+    p_mentor_id: userId,
+    p_candidate_id: candidateId,
+  });
+
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    };
+  }
+
+  if (!data || data.length === 0) {
+    return { data: [], error: null, status: 200 };
+  }
+
+  type EmploymentRow = {
+    employment_id: string;
+    job_title: string;
+    company_name: string;
+    location: string | null;
+    start_date: string;
+    end_date: string | null;
+    current_position: boolean;
+    job_description: string | null;
+    achievements: string[] | null;
+  };
+
+  const employment: MenteeEmployment[] = (data as EmploymentRow[]).map((e) => ({
+    id: e.employment_id,
+    jobTitle: e.job_title,
+    companyName: e.company_name,
+    location: e.location,
+    startDate: e.start_date,
+    endDate: e.end_date,
+    currentPosition: e.current_position,
+    description: e.job_description,
+    achievements: e.achievements || [],
+  }));
+
+  return { data: employment, error: null, status: 200 };
 }
 
 // ============================================================================

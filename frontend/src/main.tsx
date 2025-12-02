@@ -6,6 +6,7 @@ import { RouterProvider } from "react-router-dom";
 import { AuthContextProvider } from "@shared/context/AuthContext.tsx";
 import { TeamProvider } from "@shared/context/TeamContext.tsx";
 import { ThemeContextProvider } from "@shared/context/ThemeContext";
+import { AvatarProvider } from "@shared/context/AvatarContext";
 import { ProfileChangeProvider } from "@shared/context/ProfileChangeContext";
 import { ErrorBoundary } from "@shared/components/feedback/ErrorBoundary";
 import { ConfirmDialogProvider } from "@shared/components/dialogs";
@@ -26,13 +27,15 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <ThemeContextProvider>
         <AuthContextProvider>
-          <TeamProvider>
-            <ProfileChangeProvider>
-              <ConfirmDialogProvider>
-                <RouterProvider router={router} />
-              </ConfirmDialogProvider>
-            </ProfileChangeProvider>
-          </TeamProvider>
+          <AvatarProvider>
+            <TeamProvider>
+              <ProfileChangeProvider>
+                <ConfirmDialogProvider>
+                  <RouterProvider router={router} />
+                </ConfirmDialogProvider>
+              </ProfileChangeProvider>
+            </TeamProvider>
+          </AvatarProvider>
         </AuthContextProvider>
       </ThemeContextProvider>
     </ErrorBoundary>

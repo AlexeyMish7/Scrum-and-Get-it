@@ -45,6 +45,7 @@ import {
   Paper,
   Grid,
   Toolbar,
+  Alert,
 } from "@mui/material";
 import {
   GridView as GridViewIcon,
@@ -55,12 +56,14 @@ import {
   Search as SearchIcon,
   Description as DescriptionIcon,
   Work as WorkIcon,
+  Share as ShareIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { withUser } from "@shared/services/crud";
-import { useCoverLetterDrafts } from "@shared/hooks/useCoverLetterDrafts";
+import { useTeam } from "@shared/context/useTeam";
+import { ShareDocumentDialog } from "@workspaces/ai_workspace/components/reviews";
 import type { JobRow } from "@job_pipeline/types";
 
 // Types for documents
@@ -87,6 +90,14 @@ type ViewMode = "grid" | "list";
 export default function DocumentsView() {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
+  const { currentTeam, loading: teamLoading, userTeams } = useTeam();
+
+  // Debug: Log team state
+  console.log("[DocumentsView] Team state:", {
+    currentTeam: currentTeam?.name,
+    teamLoading,
+    userTeamsCount: userTeams.length,
+  });
 
   // State
   const [activeTab, setActiveTab] = useState<DocumentTab>("all");
@@ -100,6 +111,18 @@ export default function DocumentsView() {
   const [otherDocs, setOtherDocs] = useState<DraftDocument[]>([]);
 
   const [loading, setLoading] = useState(false);
+
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [documentToShare, setDocumentToShare] = useState<DraftDocument | null>(
+    null
+  );
+
+  // Open share dialog for a document
+  function handleShareDocument(doc: DraftDocument) {
+    setDocumentToShare(doc);
+    setShareDialogOpen(true);
+  }
 
   // Load jobs for association display
   useEffect(() => {
@@ -136,15 +159,7 @@ export default function DocumentsView() {
           kind: "resume" as const,
         }));
 
-        // 2) Cover letters: merge local cache with DB
-        const store = useCoverLetterDrafts.getState();
-        if (store.setUserId) store.setUserId(user.id);
-        if (store.loadFromCacheSync) store.loadFromCacheSync();
-        const cached = (store.drafts || []).map((c: DraftDocument) => ({
-          ...c,
-          kind: "cover_letter" as const,
-        }));
-
+        // 2) Cover letters from database
         const { data: dbCovers, error: coverErr } = await supabase
           .from("cover_letter_drafts")
           .select("*")
@@ -152,19 +167,16 @@ export default function DocumentsView() {
           .order("created_at", { ascending: false });
         if (coverErr) throw coverErr;
 
-        const coverMap = new Map<string, DraftDocument>();
-        (dbCovers || []).forEach((c: DraftDocument) =>
-          coverMap.set(String(c.id), { ...c, kind: "cover_letter" as const })
-        );
-        (cached || []).forEach((c: DraftDocument) => {
-          if (!coverMap.has(String(c.id))) coverMap.set(String(c.id), c);
-        });
+        const coversWithKind = (dbCovers || []).map((c: DraftDocument) => ({
+          ...c,
+          kind: "cover_letter" as const,
+        }));
 
         // 3) Other documents (future: from documents table)
         const otherDocsWithKind: DraftDocument[] = [];
 
         setResumes(resumesWithKind);
-        setCovers(Array.from(coverMap.values()));
+        setCovers(coversWithKind);
         setOtherDocs(otherDocsWithKind);
       } catch (err) {
         console.error(err);
@@ -390,6 +402,15 @@ export default function DocumentsView() {
           >
             Download
           </Button>
+          {currentTeam && (
+            <Button
+              size="small"
+              startIcon={<ShareIcon />}
+              onClick={() => handleShareDocument(doc)}
+            >
+              Share
+            </Button>
+          )}
         </CardActions>
       </Card>
     );
@@ -447,6 +468,18 @@ export default function DocumentsView() {
               </Stack>
             }
           />
+          {currentTeam && (
+            <IconButton
+              edge="end"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShareDocument(doc);
+              }}
+              sx={{ mr: 1 }}
+            >
+              <ShareIcon />
+            </IconButton>
+          )}
           <IconButton
             edge="end"
             onClick={(e) => {
@@ -463,6 +496,17 @@ export default function DocumentsView() {
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Team sharing tip - only show when not in a team */}
+      {!currentTeam && (
+        <Alert severity="info" sx={{ m: 2, mb: 0 }}>
+          <Typography variant="body2">
+            <strong>Want to share documents for review?</strong> Join or create
+            a team to enable collaborative review features with mentors and
+            peers.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Header */}
       <Paper elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Box sx={{ p: 2 }}>
@@ -606,6 +650,22 @@ export default function DocumentsView() {
           </List>
         )}
       </Box>
+
+      {/* Share Document Dialog for collaborative review (UC-110) */}
+      <ShareDocumentDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        documentId={documentToShare?.id || ""}
+        documentName={
+          documentToShare?.title || documentToShare?.name || "Document"
+        }
+        teamId={currentTeam?.id || ""}
+        onSuccess={() => {
+          showSuccess("Review request sent successfully!");
+          setShareDialogOpen(false);
+          setDocumentToShare(null);
+        }}
+      />
     </Box>
   );
 }

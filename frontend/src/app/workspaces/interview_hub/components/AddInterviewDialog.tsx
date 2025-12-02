@@ -1,11 +1,11 @@
 /**
  * AddInterviewDialog - Quick form to log interview records
- * 
+ *
  * Purpose: Allow users to easily add interview records for tracking
  * Usage: Can be added to Interview Hub or Analytics view
  */
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -21,13 +21,13 @@ import {
   Checkbox,
   Typography,
   Divider,
-} from '@mui/material';
-import { useAuth } from '@shared/context/AuthContext';
-import { 
-  createInterview, 
-  createConfidenceLog, 
-  createInterviewFeedback 
-} from '@shared/services/dbMappers';
+} from "@mui/material";
+import { useAuth } from "@shared/context/AuthContext";
+import {
+  createInterview,
+  createConfidenceLog,
+  createInterviewFeedback,
+} from "@shared/services/dbMappers";
 
 interface AddInterviewDialogProps {
   open: boolean;
@@ -35,32 +35,62 @@ interface AddInterviewDialogProps {
   onSuccess?: () => void;
 }
 
-const INTERVIEW_FORMATS = ['phone', 'video', 'onsite', 'take-home', 'pair-programming'];
-const INTERVIEW_TYPES = ['screening', 'technical', 'behavioral', 'case-study', 'final'];
-const STAGES = ['applied', 'phone_screen', 'first_round', 'final_round', 'offer'];
-const COMPANY_CULTURES = ['startup', 'corporate', 'mid-size', 'remote-first', 'consulting', 'agency', 'non-profit'];
+const INTERVIEW_FORMATS = [
+  "phone",
+  "video",
+  "onsite",
+  "take-home",
+  "pair-programming",
+];
+const INTERVIEW_TYPES = [
+  "screening",
+  "technical",
+  "behavioral",
+  "case-study",
+  "final",
+];
+const STAGES = [
+  "applied",
+  "phone_screen",
+  "first_round",
+  "final_round",
+  "offer",
+];
+const COMPANY_CULTURES = [
+  "startup",
+  "corporate",
+  "mid-size",
+  "remote-first",
+  "consulting",
+  "agency",
+  "non-profit",
+];
 
-export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInterviewDialogProps) {
+export default function AddInterviewDialog({
+  open,
+  onClose,
+  onSuccess,
+}: AddInterviewDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    company: '',
-    role: '',
-    industry: '',
-    company_culture: '',
+    company: "",
+    role: "",
+    industry: "",
+    company_culture: "",
     interview_date: new Date().toISOString().slice(0, 16),
-    format: 'video',
-    interview_type: 'technical',
-    stage: 'phone_screen',
-    result: '',
-    score: '',
-    notes: '',
+    format: "video",
+    interview_type: "technical",
+    stage: "phone_screen",
+    result: "",
+    score: "",
+    notes: "",
     is_mock: false,
-    confidence_level: '5',
-    anxiety_level: '5',
-    feedback_text: '',
-    feedback_themes: '',
+    confidence_level: "5",
+    anxiety_level: "5",
+    feedback_text: "",
+    feedback_themes: "",
   });
 
   const handleSubmit = async () => {
@@ -77,9 +107,14 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
         company_culture: formData.company_culture,
         interview_date: formData.interview_date,
         format: formData.format,
-        interview_type: formData.is_mock ? 'mock' : formData.interview_type,
+        interview_type: formData.is_mock ? "mock" : formData.interview_type,
         stage: formData.stage,
-        result: formData.result === 'true' ? true : formData.result === 'false' ? false : null,
+        result:
+          formData.result === "true"
+            ? true
+            : formData.result === "false"
+            ? false
+            : null,
         score: formData.score ? parseInt(formData.score, 10) : null,
         notes: formData.notes,
       };
@@ -93,7 +128,10 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
       const interviewId = (result.data as any)?.id;
 
       // Add confidence log if interview was created
-      if (interviewId && (formData.confidence_level || formData.anxiety_level)) {
+      if (
+        interviewId &&
+        (formData.confidence_level || formData.anxiety_level)
+      ) {
         try {
           await createConfidenceLog(user.id, {
             interview_id: interviewId,
@@ -102,7 +140,7 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             notes: formData.notes,
           });
         } catch (confErr) {
-          console.error('[AddInterviewDialog] Confidence log error:', confErr);
+          console.error("[AddInterviewDialog] Confidence log error:", confErr);
           // Don't fail the whole operation if confidence logging fails
         }
       }
@@ -110,84 +148,87 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
       // Add feedback if provided - use AI to extract themes
       if (interviewId && formData.feedback_text) {
         try {
-          console.log('[AddInterviewDialog] Creating feedback for interview:', interviewId);
-          
           // Call AI to analyze feedback and extract themes
           let aiThemes: string[] = [];
           try {
-            const response = await fetch('/api/interviews/analyze-feedback', {
-              method: 'POST',
+            const response = await fetch("/api/interviews/analyze-feedback", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${(await user.getSession())?.access_token}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${
+                  (
+                    await user.getSession()
+                  )?.access_token
+                }`,
               },
               body: JSON.stringify({ feedback_text: formData.feedback_text }),
             });
-            
+
             if (response.ok) {
               const analysis = await response.json();
               aiThemes = analysis.themes || [];
-              console.log('[AddInterviewDialog] AI extracted themes:', aiThemes);
-            } else {
-              console.warn('[AddInterviewDialog] AI analysis failed, proceeding without themes');
             }
-          } catch (aiErr) {
-            console.warn('[AddInterviewDialog] AI analysis error:', aiErr);
+          } catch {
             // Continue without AI themes if analysis fails
           }
-          
+
           // Use AI themes, or fallback to manual themes if provided
-          const themes = aiThemes.length > 0 
-            ? aiThemes 
-            : formData.feedback_themes
-                .split(',')
-                .map((t: string) => t.trim())
-                .filter((t: string) => t);
-          
-          console.log('[AddInterviewDialog] Final feedback themes:', themes);
-          const feedbackResult = await createInterviewFeedback(user.id, interviewId, {
-            provider: 'self',
-            feedback_text: formData.feedback_text,
-            themes: themes,
-          });
-          console.log('[AddInterviewDialog] Feedback result:', feedbackResult);
+          const themes =
+            aiThemes.length > 0
+              ? aiThemes
+              : formData.feedback_themes
+                  .split(",")
+                  .map((t: string) => t.trim())
+                  .filter((t: string) => t);
+
+          const feedbackResult = await createInterviewFeedback(
+            user.id,
+            interviewId,
+            {
+              provider: "self",
+              feedback_text: formData.feedback_text,
+              themes: themes,
+            }
+          );
           if (feedbackResult.error) {
-            console.error('[AddInterviewDialog] Feedback error:', {
-              message: feedbackResult.error.message,
-              status: feedbackResult.error.status,
-              fullError: feedbackResult.error,
-            });
+            console.error(
+              "[AddInterviewDialog] Feedback error:",
+              feedbackResult.error
+            );
           }
         } catch (feedbackErr) {
-          console.error('[AddInterviewDialog] Feedback creation failed:', feedbackErr);
+          console.error(
+            "[AddInterviewDialog] Feedback creation failed:",
+            feedbackErr
+          );
           // Don't fail the whole operation if feedback fails
         }
       }
 
       // Reset form
       setFormData({
-        company: '',
-        role: '',
-        industry: '',
-        company_culture: '',
+        company: "",
+        role: "",
+        industry: "",
+        company_culture: "",
         interview_date: new Date().toISOString().slice(0, 16),
-        format: 'video',
-        interview_type: 'technical',
-        stage: 'phone_screen',
-        result: '',
-        score: '',
-        notes: '',
+        format: "video",
+        interview_type: "technical",
+        stage: "phone_screen",
+        result: "",
+        score: "",
+        notes: "",
         is_mock: false,
-        confidence_level: '5',
-        anxiety_level: '5',
-        feedback_text: '',
-        feedback_themes: '',
+        confidence_level: "5",
+        anxiety_level: "5",
+        feedback_text: "",
+        feedback_themes: "",
       });
 
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add interview');
+      setError(err instanceof Error ? err.message : "Failed to add interview");
     } finally {
       setLoading(false);
     }
@@ -207,7 +248,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
           <TextField
             label="Company"
             value={formData.company}
-            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, company: e.target.value })
+            }
             fullWidth
             required
           />
@@ -223,7 +266,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
           <TextField
             label="Industry"
             value={formData.industry}
-            onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, industry: e.target.value })
+            }
             fullWidth
           />
 
@@ -231,14 +276,17 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             select
             label="Company Culture"
             value={formData.company_culture}
-            onChange={(e) => setFormData({ ...formData, company_culture: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, company_culture: e.target.value })
+            }
             fullWidth
             SelectProps={{ native: true }}
           >
             <option value="">Select culture type</option>
             {COMPANY_CULTURES.map((culture) => (
               <option key={culture} value={culture}>
-                {culture.charAt(0).toUpperCase() + culture.slice(1).replace(/-/g, ' ')}
+                {culture.charAt(0).toUpperCase() +
+                  culture.slice(1).replace(/-/g, " ")}
               </option>
             ))}
           </TextField>
@@ -247,7 +295,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Date & Time"
             type="datetime-local"
             value={formData.interview_date}
-            onChange={(e) => setFormData({ ...formData, interview_date: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, interview_date: e.target.value })
+            }
             fullWidth
             required
             InputLabelProps={{ shrink: true }}
@@ -257,12 +307,14 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Format"
             select
             value={formData.format}
-            onChange={(e) => setFormData({ ...formData, format: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, format: e.target.value })
+            }
             fullWidth
           >
             {INTERVIEW_FORMATS.map((format) => (
               <MenuItem key={format} value={format}>
-                {format.replace('-', ' ').replace('_', ' ')}
+                {format.replace("-", " ").replace("_", " ")}
               </MenuItem>
             ))}
           </TextField>
@@ -271,12 +323,14 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Type"
             select
             value={formData.interview_type}
-            onChange={(e) => setFormData({ ...formData, interview_type: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, interview_type: e.target.value })
+            }
             fullWidth
           >
             {INTERVIEW_TYPES.map((type) => (
               <MenuItem key={type} value={type}>
-                {type.replace('-', ' ').replace('_', ' ')}
+                {type.replace("-", " ").replace("_", " ")}
               </MenuItem>
             ))}
           </TextField>
@@ -285,12 +339,14 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Stage"
             select
             value={formData.stage}
-            onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, stage: e.target.value })
+            }
             fullWidth
           >
             {STAGES.map((stage) => (
               <MenuItem key={stage} value={stage}>
-                {stage.replace('_', ' ')}
+                {stage.replace("_", " ")}
               </MenuItem>
             ))}
           </TextField>
@@ -299,7 +355,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Result"
             select
             value={formData.result}
-            onChange={(e) => setFormData({ ...formData, result: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, result: e.target.value })
+            }
             fullWidth
             helperText="Did this interview result in an offer?"
           >
@@ -312,7 +370,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Interview Score (0-100)"
             type="number"
             value={formData.score}
-            onChange={(e) => setFormData({ ...formData, score: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, score: e.target.value })
+            }
             fullWidth
             inputProps={{ min: 0, max: 100 }}
             helperText="Optional: Your self-assessed performance"
@@ -328,7 +388,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             control={
               <Checkbox
                 checked={formData.is_mock}
-                onChange={(e) => setFormData({ ...formData, is_mock: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_mock: e.target.checked })
+                }
               />
             }
             label="This was a mock interview (practice)"
@@ -338,7 +400,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Confidence Level (1-10)"
             type="number"
             value={formData.confidence_level}
-            onChange={(e) => setFormData({ ...formData, confidence_level: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, confidence_level: e.target.value })
+            }
             fullWidth
             inputProps={{ min: 1, max: 10 }}
             helperText="How confident did you feel? (1=Not confident, 10=Very confident)"
@@ -348,7 +412,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             label="Anxiety Level (1-10)"
             type="number"
             value={formData.anxiety_level}
-            onChange={(e) => setFormData({ ...formData, anxiety_level: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, anxiety_level: e.target.value })
+            }
             fullWidth
             inputProps={{ min: 1, max: 10 }}
             helperText="How anxious did you feel? (1=Not anxious, 10=Very anxious)"
@@ -359,7 +425,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             multiline
             rows={3}
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value })
+            }
             fullWidth
             placeholder="How did it go? What did you learn?"
           />
@@ -375,7 +443,9 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
             multiline
             rows={4}
             value={formData.feedback_text}
-            onChange={(e) => setFormData({ ...formData, feedback_text: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, feedback_text: e.target.value })
+            }
             fullWidth
             placeholder="What feedback did you receive? What went well? What needs improvement?"
             helperText="AI will automatically extract improvement themes from your feedback"
@@ -390,10 +460,15 @@ export default function AddInterviewDialog({ open, onClose, onSuccess }: AddInte
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading || !formData.company || !formData.role || !formData.interview_date}
+          disabled={
+            loading ||
+            !formData.company ||
+            !formData.role ||
+            !formData.interview_date
+          }
           startIcon={loading && <CircularProgress size={16} />}
         >
-          {loading ? 'Adding...' : 'Add Interview'}
+          {loading ? "Adding..." : "Add Interview"}
         </Button>
       </DialogActions>
     </Dialog>

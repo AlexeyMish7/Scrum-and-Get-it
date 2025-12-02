@@ -48,7 +48,7 @@ import type { TeamInvitationWithTeam } from "../types";
 export function Invitations() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { refreshTeams } = useTeam();
+  const { refreshTeams, switchTeam } = useTeam();
 
   const [invitations, setInvitations] = useState<TeamInvitationWithTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,10 @@ export function Invitations() {
     setLoading(false);
   };
 
-  const handleAccept = async (invitationId: string) => {
+  const handleAccept = async (
+    invitationId: string,
+    invitation: TeamInvitationWithTeam
+  ) => {
     if (!user) return;
 
     setProcessingId(invitationId);
@@ -95,9 +98,26 @@ export function Invitations() {
       setError(result.error.message);
       setProcessingId(null);
     } else {
-      // Success - refresh invitations and team list
-      await Promise.all([loadInvitations(), refreshTeams()]);
+      // Success - refresh team list first
+      await refreshTeams();
+
+      // Auto-switch to the newly joined team so the user sees it right away
+      const teamId = invitation.team?.id || invitation.team_id;
+      if (teamId) {
+        await switchTeam(teamId);
+      }
+
+      // Refresh invitations
+      await loadInvitations();
       setProcessingId(null);
+
+      // Navigate based on the role they were invited as
+      // Mentors go to mentor dashboard, others go to team dashboard
+      if (invitation.role === "mentor") {
+        navigate("/team/mentor");
+      } else {
+        navigate("/team");
+      }
     }
   };
 
@@ -242,7 +262,7 @@ export function Invitations() {
                           <AcceptIcon />
                         )
                       }
-                      onClick={() => handleAccept(invitation.id)}
+                      onClick={() => handleAccept(invitation.id, invitation)}
                       disabled={isProcessing}
                     >
                       {isProcessing ? "Accepting..." : "Accept Invitation"}

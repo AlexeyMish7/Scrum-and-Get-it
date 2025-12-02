@@ -581,6 +581,175 @@ describe("Mentor Service (UC-109)", () => {
     });
   });
 
+  describe("AI Coaching Insights", () => {
+    const mockCoachingInsightsResponse = {
+      summary: "John is making good progress with 15 applications submitted.",
+      recommendations: [
+        "Focus on networking in target companies",
+        "Increase follow-up on pending applications",
+        "Practice behavioral interview questions",
+      ],
+      focusAreas: [
+        {
+          area: "Interview Preparation",
+          priority: "high",
+          suggestion: "Schedule mock interviews to improve confidence",
+        },
+        {
+          area: "Application Volume",
+          priority: "medium",
+          suggestion: "Aim for 5-7 quality applications per week",
+        },
+      ],
+      strengthAreas: [
+        "Consistent application activity",
+        "Good interview conversion rate",
+      ],
+      suggestedGoals: [
+        {
+          title: "Complete 3 mock interviews",
+          type: "interview_prep",
+          reason: "To build confidence before upcoming interviews",
+        },
+        {
+          title: "Apply to 10 jobs this week",
+          type: "weekly_applications",
+          reason: "Maintain consistent application momentum",
+        },
+      ],
+      actionPlan: [
+        {
+          week: 1,
+          actions: [
+            "Review and update resume highlights",
+            "Research top 5 target companies",
+          ],
+        },
+        {
+          week: 2,
+          actions: ["Submit 10 applications", "Complete first mock interview"],
+        },
+      ],
+      motivationalNote:
+        "You're making excellent progress! Stay focused on quality applications.",
+      meta: {
+        latency_ms: 1234,
+        mentee_name: "John Doe",
+        generated_at: new Date().toISOString(),
+      },
+    };
+
+    it("should generate coaching insights for a mentee", async () => {
+      // Mock AI client response
+      const mockGenerateCoachingInsights = vi
+        .fn()
+        .mockResolvedValue(mockCoachingInsightsResponse);
+
+      const menteeData = {
+        name: "John Doe",
+        jobStats: {
+          total: 15,
+          applied: 10,
+          interviewing: 3,
+          offers: 1,
+          rejected: 1,
+        },
+        engagementLevel: "high" as const,
+        lastActiveAt: new Date().toISOString(),
+        recentActivity: [
+          {
+            type: "status_change",
+            description: "Interview scheduled at Tech Corp",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
+      const result = await mockGenerateCoachingInsights(testUserId, menteeData);
+
+      expect(result.summary).toBeDefined();
+      expect(result.recommendations).toBeInstanceOf(Array);
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      expect(result.focusAreas).toBeInstanceOf(Array);
+      expect(result.strengthAreas).toBeInstanceOf(Array);
+      expect(result.suggestedGoals).toBeInstanceOf(Array);
+      expect(result.actionPlan).toBeInstanceOf(Array);
+      expect(result.motivationalNote).toBeDefined();
+    });
+
+    it("should include priority levels in focus areas", async () => {
+      const mockGenerateCoachingInsights = vi
+        .fn()
+        .mockResolvedValue(mockCoachingInsightsResponse);
+
+      const result = await mockGenerateCoachingInsights(testUserId, {
+        name: "John Doe",
+        jobStats: {
+          total: 5,
+          applied: 3,
+          interviewing: 1,
+          offers: 0,
+          rejected: 1,
+        },
+        engagementLevel: "medium" as const,
+      });
+
+      result.focusAreas.forEach((area: { priority: string }) => {
+        expect(["high", "medium", "low"]).toContain(area.priority);
+      });
+    });
+
+    it("should suggest actionable goals with types", async () => {
+      const mockGenerateCoachingInsights = vi
+        .fn()
+        .mockResolvedValue(mockCoachingInsightsResponse);
+
+      const result = await mockGenerateCoachingInsights(testUserId, {
+        name: "John Doe",
+        jobStats: {
+          total: 5,
+          applied: 3,
+          interviewing: 1,
+          offers: 0,
+          rejected: 1,
+        },
+        engagementLevel: "medium" as const,
+      });
+
+      result.suggestedGoals.forEach(
+        (goal: { title: string; type: string; reason: string }) => {
+          expect(goal.title).toBeDefined();
+          expect(goal.type).toBeDefined();
+          expect(goal.reason).toBeDefined();
+        }
+      );
+    });
+
+    it("should provide weekly action plans", async () => {
+      const mockGenerateCoachingInsights = vi
+        .fn()
+        .mockResolvedValue(mockCoachingInsightsResponse);
+
+      const result = await mockGenerateCoachingInsights(testUserId, {
+        name: "John Doe",
+        jobStats: {
+          total: 15,
+          applied: 10,
+          interviewing: 3,
+          offers: 1,
+          rejected: 1,
+        },
+        engagementLevel: "high" as const,
+      });
+
+      expect(result.actionPlan.length).toBeGreaterThan(0);
+      result.actionPlan.forEach((week: { week: number; actions: string[] }) => {
+        expect(typeof week.week).toBe("number");
+        expect(Array.isArray(week.actions)).toBe(true);
+      });
+    });
+  });
+
   describe("Error Handling", () => {
     it("should handle authorization errors", async () => {
       mockMentorService.getMenteeGoals.mockResolvedValue({

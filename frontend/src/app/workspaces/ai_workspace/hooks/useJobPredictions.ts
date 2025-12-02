@@ -41,11 +41,9 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
 
   useEffect(() => {
     if (jobs.length > 0) {
-      console.log("Running predictions for jobs:", jobs);
       runPredictions();
     }
   }, [jobs]);
-
 
   const runPredictions = useCallback(
     async (overrideJobs?: JobRecord[]) => {
@@ -230,31 +228,53 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
  */
 function simulatePredictions(jobs: JobRecord[]): Prediction[] {
   const total = jobs.length;
-  const offers = jobs.filter((j) => (j.job_status ?? "").toLowerCase().includes("offer")).length;
+  const offers = jobs.filter((j) =>
+    (j.job_status ?? "").toLowerCase().includes("offer")
+  ).length;
   const interviews = jobs.filter((j) => {
     const s = (j.job_status ?? "").toLowerCase();
     return s.includes("interview") || s.includes("phone");
   }).length;
 
   // Interview success probability
-  const interviewProb = Math.min(0.95, Math.max(0.05, 0.15 + (interviews / Math.max(1, total)) * 0.6));
+  const interviewProb = Math.min(
+    0.95,
+    Math.max(0.05, 0.15 + (interviews / Math.max(1, total)) * 0.6)
+  );
   // Offer probability
-  const offerProb = Math.min(0.9, Math.max(0.01, 0.03 + (offers / Math.max(1, total)) * 0.7));
+  const offerProb = Math.min(
+    0.9,
+    Math.max(0.01, 0.03 + (offers / Math.max(1, total)) * 0.7)
+  );
   // Job search timeline (weeks)
   const timelineWeeks = Math.max(4, Math.round(12 - interviews));
   // Salary negotiation probability (simulated)
-  const salaryProb = Math.min(0.85, Math.max(0.05, 0.3 + (offers / Math.max(1, total)) * 0.4));
+  const salaryProb = Math.min(
+    0.85,
+    Math.max(0.05, 0.3 + (offers / Math.max(1, total)) * 0.4)
+  );
   // Optimal timing score (0-1)
-  const optimalTiming = Math.min(1, Math.max(0, 0.5 + interviews / Math.max(1, total) * 0.3));
+  const optimalTiming = Math.min(
+    1,
+    Math.max(0, 0.5 + (interviews / Math.max(1, total)) * 0.3)
+  );
 
   const preds: Prediction[] = [
     {
       kind: "interview_probability",
-      summary: "Estimated probability of getting interviews based on activity and past performance",
+      summary:
+        "Estimated probability of getting interviews based on activity and past performance",
       score: Math.round(interviewProb * 100),
       confidence: 0.6,
-      confidenceInterval: [Math.max(0, interviewProb - 0.1), Math.min(1, interviewProb + 0.1)],
-      recommendations: ["Practice behavioral questions", "Schedule mock interviews", "Tailor resume for target roles"],
+      confidenceInterval: [
+        Math.max(0, interviewProb - 0.1),
+        Math.min(1, interviewProb + 0.1),
+      ],
+      recommendations: [
+        "Practice behavioral questions",
+        "Schedule mock interviews",
+        "Tailor resume for target roles",
+      ],
       scenarioAnalysis: {
         "Apply to 5 jobs/week": Math.min(1, interviewProb + 0.05),
         "Apply to 10 jobs/week": Math.min(1, interviewProb + 0.12),
@@ -268,8 +288,14 @@ function simulatePredictions(jobs: JobRecord[]): Prediction[] {
       summary: "Estimated probability of receiving an offer",
       score: Math.round(offerProb * 100),
       confidence: 0.55,
-      confidenceInterval: [Math.max(0, offerProb - 0.1), Math.min(1, offerProb + 0.1)],
-      recommendations: ["Target high-fit roles", "Prepare post-interview follow-ups"],
+      confidenceInterval: [
+        Math.max(0, offerProb - 0.1),
+        Math.min(1, offerProb + 0.1),
+      ],
+      recommendations: [
+        "Target high-fit roles",
+        "Prepare post-interview follow-ups",
+      ],
       scenarioAnalysis: {
         "Apply to 5 jobs/week": Math.min(1, offerProb + 0.05),
         "Apply to 10 jobs/week": Math.min(1, offerProb + 0.1),
@@ -284,7 +310,9 @@ function simulatePredictions(jobs: JobRecord[]): Prediction[] {
       score: timelineWeeks,
       confidence: 0.5,
       confidenceInterval: [Math.max(1, timelineWeeks - 2), timelineWeeks + 2],
-      recommendations: ["Increase weekly application volume to shorten timeline"],
+      recommendations: [
+        "Increase weekly application volume to shorten timeline",
+      ],
       details: { timelineWeeks },
       created_at: new Date(),
     },
@@ -293,8 +321,15 @@ function simulatePredictions(jobs: JobRecord[]): Prediction[] {
       summary: "Estimated probability of successful salary negotiation",
       score: Math.round(salaryProb * 100),
       confidence: 0.5,
-      confidenceInterval: [Math.max(0, salaryProb - 0.1), Math.min(1, salaryProb + 0.1)],
-      recommendations: ["Research industry salaries", "Prepare counter-offers", "Practice negotiation conversations"],
+      confidenceInterval: [
+        Math.max(0, salaryProb - 0.1),
+        Math.min(1, salaryProb + 0.1),
+      ],
+      recommendations: [
+        "Research industry salaries",
+        "Prepare counter-offers",
+        "Practice negotiation conversations",
+      ],
       details: { offers },
       created_at: new Date(),
     },
@@ -303,8 +338,14 @@ function simulatePredictions(jobs: JobRecord[]): Prediction[] {
       summary: "Optimal timing for career moves and job search activities",
       score: Math.round(optimalTiming * 100),
       confidence: 0.5,
-      confidenceInterval: [Math.max(0, optimalTiming - 0.1), Math.min(1, optimalTiming + 0.1)],
-      recommendations: ["Prioritize applications to high-response companies", "Schedule networking activities early"],
+      confidenceInterval: [
+        Math.max(0, optimalTiming - 0.1),
+        Math.min(1, optimalTiming + 0.1),
+      ],
+      recommendations: [
+        "Prioritize applications to high-response companies",
+        "Schedule networking activities early",
+      ],
       details: { interviews, total },
       created_at: new Date(),
     },

@@ -140,10 +140,22 @@ const TeamSettings = lazy(() =>
     default: module.TeamSettings,
   }))
 );
+const TeamMembers = lazy(() =>
+  import("@workspaces/team_management/pages/TeamMembers").then((module) => ({
+    default: module.TeamMembers,
+  }))
+);
 const Invitations = lazy(() =>
   import("@workspaces/team_management/pages/Invitations").then((module) => ({
     default: module.Invitations,
   }))
+);
+const SentInvitations = lazy(() =>
+  import("@workspaces/team_management/pages/SentInvitations").then(
+    (module) => ({
+      default: module.SentInvitations,
+    })
+  )
 );
 const TeamReports = lazy(() =>
   import("@workspaces/team_management/pages/TeamReports").then((module) => ({
@@ -384,10 +396,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "members",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <TeamMembers />
+          </Suspense>
+        ),
+      },
+      {
         path: "invitations",
         element: (
           <Suspense fallback={<LazyLoadFallback />}>
             <Invitations />
+          </Suspense>
+        ),
+      },
+      {
+        path: "sent-invitations",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <SentInvitations />
           </Suspense>
         ),
       },

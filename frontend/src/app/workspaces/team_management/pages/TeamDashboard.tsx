@@ -59,6 +59,7 @@ import {
   EmojiEvents as EmojiEventsIcon,
   School as SchoolIcon,
   ShowChart as ShowChartIcon,
+  Mail as MailIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
@@ -354,6 +355,15 @@ export function TeamDashboard() {
               onClick={() => setShowInviteDialog(true)}
             >
               Invite Member
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="outlined"
+              startIcon={<MailIcon />}
+              onClick={() => navigate("/team/sent-invitations")}
+            >
+              Sent Invitations
             </Button>
           )}
           {(isMentor || isAdmin) && (

@@ -33,7 +33,6 @@ const Login = () => {
 
     // Prevent double-submission while already processing login
     if (loading) {
-      console.log("Login already in progress, ignoring duplicate submission");
       return;
     }
 
@@ -42,18 +41,11 @@ const Login = () => {
 
     const res = await signIn(userEmail, userPassword);
 
-    // Dev-only debug: keep console noise out of production
-    if (import.meta.env.MODE === "development") {
-      console.debug("✍️ [Login] signIn result:", res);
-    }
-
     if (!res.ok) {
       setLoading(false);
       // Check for rate limit error and provide helpful message
       const errorMessage =
         res.message ?? "Incorrect email or password. Please try again.";
-
-      console.error("❌ [Login] Sign in failed:", errorMessage);
 
       if (errorMessage.toLowerCase().includes("rate limit")) {
         setLoginError(
@@ -67,18 +59,13 @@ const Login = () => {
       return;
     }
 
-    // Success! Log and navigate
-    console.log("✅ [Login] Sign in successful, navigating to /profile");
-
-    // Keep loading state true during navigation to prevent flicker
-    // Navigate to profile - session is set in AuthContext
+    // Success - navigate to profile (session is set in AuthContext)
     navigate("/profile");
   };
 
   const handleGoogle = async () => {
     // Prevent multiple OAuth attempts while one is in progress
     if (loading) {
-      console.log("OAuth already in progress, ignoring duplicate attempt");
       return;
     }
 

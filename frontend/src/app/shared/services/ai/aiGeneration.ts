@@ -272,3 +272,100 @@ export async function listJobMaterials(
     userId
   );
 }
+
+// ============================================================================
+// COACHING INSIGHTS (UC-109)
+// ============================================================================
+
+export interface MenteeJobStats {
+  total: number;
+  applied: number;
+  interviewing: number;
+  offers: number;
+  rejected: number;
+}
+
+export interface MenteeGoalData {
+  title: string;
+  goalType: string;
+  status: "active" | "completed" | "missed" | "cancelled";
+  targetValue?: number;
+  currentValue?: number;
+  dueDate?: string;
+}
+
+export interface MenteeActivityItem {
+  type: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface MenteeDataForCoaching {
+  name: string;
+  jobStats: MenteeJobStats;
+  engagementLevel: "high" | "medium" | "low" | "inactive";
+  lastActiveAt?: string;
+  goals?: MenteeGoalData[];
+  recentActivity?: MenteeActivityItem[];
+  documentsCount?: number;
+}
+
+export interface CoachingInsightFocusArea {
+  area: string;
+  priority: "high" | "medium" | "low";
+  suggestion: string;
+}
+
+export interface CoachingSuggestedGoal {
+  title: string;
+  type: string;
+  reason: string;
+}
+
+export interface CoachingActionPlan {
+  week: number;
+  actions: string[];
+}
+
+export interface CoachingInsightsResult {
+  summary: string;
+  recommendations: string[];
+  focusAreas: CoachingInsightFocusArea[];
+  strengthAreas: string[];
+  suggestedGoals: CoachingSuggestedGoal[];
+  actionPlan: CoachingActionPlan[];
+  motivationalNote: string;
+  meta?: {
+    latency_ms: number;
+    mentee_name: string;
+    generated_at: string;
+  };
+}
+
+/**
+ * Generate AI coaching insights for a mentee
+ * Used in the Mentor Dashboard to provide actionable recommendations
+ */
+export async function generateCoachingInsights(
+  userId: string,
+  menteeData: MenteeDataForCoaching,
+  options?: {
+    teamContext?: string;
+    focusArea?:
+      | "applications"
+      | "interviews"
+      | "engagement"
+      | "goals"
+      | "general";
+  }
+): Promise<CoachingInsightsResult> {
+  return aiClient.postJson<CoachingInsightsResult>(
+    "/api/generate/coaching-insights",
+    {
+      menteeData,
+      teamContext: options?.teamContext,
+      focusArea: options?.focusArea,
+    },
+    userId
+  );
+}

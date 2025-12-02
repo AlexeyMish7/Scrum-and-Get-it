@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Stack,
@@ -45,6 +46,7 @@ import {
   History as HistoryIcon,
   Refresh as RefreshIcon,
   Work as WorkIcon,
+  RateReview as ReviewIcon,
 } from "@mui/icons-material";
 import type {
   MenteeDocument,
@@ -119,6 +121,8 @@ export function MenteeDocumentsViewer({
   onRefresh,
   loading = false,
 }: MenteeDocumentsViewerProps) {
+  const navigate = useNavigate();
+
   // State
   const [tabValue, setTabValue] = useState(0);
   const [selectedDocument, setSelectedDocument] =
@@ -295,6 +299,14 @@ export function MenteeDocumentsViewer({
           </Box>
 
           <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<ReviewIcon />}
+              onClick={() => navigate("/ai/reviews")}
+            >
+              View Reviews
+            </Button>
             {onProvideFeedback && (
               <Button
                 size="small"
@@ -302,7 +314,7 @@ export function MenteeDocumentsViewer({
                 startIcon={<FeedbackIcon />}
                 onClick={() => setShowFeedbackDialog(true)}
               >
-                Give Feedback
+                Quick Feedback
               </Button>
             )}
           </Stack>
@@ -372,9 +384,194 @@ export function MenteeDocumentsViewer({
             </Stack>
           </Paper>
 
-          <Alert severity="info">
-            To view the full document content, ask {candidateName} to share it
-            directly or navigate to the document editor in the AI Workspace.
+          {/* Visual Document Placeholder Preview */}
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              bgcolor: "grey.50",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>
+              Document Preview
+            </Typography>
+
+            {/* Stylized document preview showing structure without content */}
+            <Box
+              sx={{
+                bgcolor: "white",
+                border: 1,
+                borderColor: "grey.300",
+                borderRadius: 1,
+                p: 2,
+                minHeight: 200,
+              }}
+            >
+              {selectedDocument.documentType === "resume" ? (
+                // Resume placeholder structure
+                <Stack spacing={1.5}>
+                  {/* Header placeholder */}
+                  <Box sx={{ textAlign: "center", mb: 1 }}>
+                    <Box
+                      sx={{
+                        height: 16,
+                        bgcolor: "grey.300",
+                        borderRadius: 0.5,
+                        width: "50%",
+                        mx: "auto",
+                        mb: 0.5,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        height: 10,
+                        bgcolor: "grey.200",
+                        borderRadius: 0.5,
+                        width: "35%",
+                        mx: "auto",
+                      }}
+                    />
+                  </Box>
+                  <Divider />
+
+                  {/* Section placeholders */}
+                  {["Experience", "Education", "Skills"].map((section) => (
+                    <Box key={section}>
+                      <Box
+                        sx={{
+                          height: 12,
+                          bgcolor: "primary.light",
+                          borderRadius: 0.5,
+                          width: "25%",
+                          mb: 1,
+                          opacity: 0.6,
+                        }}
+                      />
+                      <Stack spacing={0.5}>
+                        {[1, 2].map((line) => (
+                          <Box
+                            key={line}
+                            sx={{
+                              height: 8,
+                              bgcolor: "grey.200",
+                              borderRadius: 0.5,
+                              width: `${Math.random() * 30 + 60}%`,
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                // Cover letter placeholder structure
+                <Stack spacing={1.5}>
+                  {/* Header */}
+                  <Box sx={{ mb: 1 }}>
+                    <Box
+                      sx={{
+                        height: 12,
+                        bgcolor: "grey.300",
+                        borderRadius: 0.5,
+                        width: "40%",
+                        mb: 0.5,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        height: 8,
+                        bgcolor: "grey.200",
+                        borderRadius: 0.5,
+                        width: "30%",
+                      }}
+                    />
+                  </Box>
+                  <Divider />
+
+                  {/* Paragraphs */}
+                  {[1, 2, 3].map((para) => (
+                    <Stack key={para} spacing={0.5}>
+                      {[1, 2, 3, 4].map((line) => (
+                        <Box
+                          key={line}
+                          sx={{
+                            height: 8,
+                            bgcolor: "grey.200",
+                            borderRadius: 0.5,
+                            width: line === 4 ? "60%" : "100%",
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  ))}
+
+                  {/* Signature */}
+                  <Box sx={{ mt: 2 }}>
+                    <Box
+                      sx={{
+                        height: 8,
+                        bgcolor: "grey.200",
+                        borderRadius: 0.5,
+                        width: "20%",
+                        mb: 0.5,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        height: 10,
+                        bgcolor: "grey.300",
+                        borderRadius: 0.5,
+                        width: "30%",
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              )}
+
+              {/* Privacy overlay */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  bgcolor: "rgba(255,255,255,0.4)",
+                  backdropFilter: "blur(2px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Chip
+                  label="Content hidden for privacy"
+                  size="small"
+                  sx={{ bgcolor: "white" }}
+                />
+              </Box>
+            </Box>
+          </Paper>
+
+          <Alert severity="info" icon={<ReviewIcon />}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>How to review full document content:</strong>
+            </Typography>
+            <Typography variant="body2" component="div">
+              1. Ask {candidateName} to share this document with you via the{" "}
+              <strong>Share for Review</strong> feature in their Documents view
+              <br />
+              2. Once shared, you'll find it in your{" "}
+              <Button
+                size="small"
+                onClick={() => navigate("/ai/reviews")}
+                sx={{ textTransform: "none", p: 0, minWidth: "auto" }}
+              >
+                Reviews inbox
+              </Button>{" "}
+              where you can view, comment, and approve
+            </Typography>
           </Alert>
         </Stack>
       </Box>

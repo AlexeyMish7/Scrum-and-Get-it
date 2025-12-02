@@ -19,3 +19,4 @@ export {
   ProfileChangeProvider,
   useProfileChange,
 } from "./ProfileChangeContext";
+export { AvatarProvider, useAvatarContext } from "./AvatarContext";

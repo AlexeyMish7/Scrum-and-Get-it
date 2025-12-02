@@ -5,7 +5,9 @@
 
 export { TeamDashboard } from "./TeamDashboard";
 export { TeamSettings } from "./TeamSettings";
+export { TeamMembers } from "./TeamMembers";
 export { Invitations } from "./Invitations";
+export { SentInvitations } from "./SentInvitations";
 export { TeamReports } from "./TeamReports";
 export { MentorDashboard } from "./MentorDashboard";
 export { CandidateProgressPage } from "./CandidateProgressPage";

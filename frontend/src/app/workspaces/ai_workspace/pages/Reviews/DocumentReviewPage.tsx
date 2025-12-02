@@ -45,7 +45,7 @@ import { ReviewSidebar } from "../../components/reviews/ReviewSidebar";
 import { ApprovalWorkflow } from "../../components/reviews/ApprovalWorkflow";
 import { DocumentPreview } from "../../components/editor/DocumentPreview";
 import * as reviewService from "../../services/reviewService";
-import { withUser } from "@shared/services/crud";
+import { supabase } from "@shared/services/supabaseClient";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import type {
@@ -143,15 +143,20 @@ export function DocumentReviewPage() {
 
       setReview(reviewResult.data);
 
-      // Fetch document if review has document_id
+      // Fetch full document data if review has document_id
+      // Uses Supabase directly so RLS can check reviewer access via auth.uid()
       if (reviewResult.data.document_id) {
-        const userCrud = withUser(user.id);
-        const docResult = await userCrud.getRow("documents", "*", {
-          eq: { id: reviewResult.data.document_id },
-          single: true,
-        });
-        if (docResult.data) {
-          setDocument(docResult.data as unknown as Document);
+        const { data: docData, error: docError } = await supabase
+          .from("documents")
+          .select("*")
+          .eq("id", reviewResult.data.document_id)
+          .single();
+
+        if (docData && !docError) {
+          setDocument(docData as unknown as Document);
+        } else {
+          // Document might not be accessible or doesn't exist
+          console.warn("Could not fetch document:", docError?.message);
         }
       }
 

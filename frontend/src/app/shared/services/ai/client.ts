@@ -67,11 +67,6 @@ async function postJson<T>(
   try {
     let headers = await getAuthHeaders();
 
-    console.log(`🚀 POST ${url}`, {
-      body,
-      headers: { ...headers, Authorization: "***" },
-    });
-
     let resp = await fetch(url, {
       method: "POST",
       headers,
@@ -80,7 +75,6 @@ async function postJson<T>(
 
     // If we get 401, try refreshing token once and retry
     if (resp.status === 401) {
-      console.log("🔄 Token expired, refreshing and retrying...");
       headers = await getAuthHeaders(true); // Force refresh
       resp = await fetch(url, {
         method: "POST",
@@ -92,10 +86,8 @@ async function postJson<T>(
     let data: unknown = null;
     try {
       data = await resp.json();
-      console.log(`✅ Response ${resp.status}:`, data);
     } catch {
       // ignore json parse error; will throw below if not ok
-      console.warn(`⚠️ Failed to parse JSON response`);
     }
 
     if (!resp.ok) {
@@ -151,7 +143,6 @@ async function getJson<T>(
 
     // If we get 401, try refreshing token once and retry
     if (resp.status === 401) {
-      console.log("🔄 Token expired, refreshing and retrying...");
       headers = await getAuthHeaders(true); // Force refresh
       resp = await fetch(url, {
         method: "GET",
@@ -217,7 +208,6 @@ export async function patchJson<T>(url: string, payload: unknown): Promise<T> {
 
     // If we get 401, try refreshing token once and retry
     if (resp.status === 401) {
-      console.log("🔄 Token expired, refreshing and retrying...");
       headers = await getAuthHeaders(true); // Force refresh
       resp = await fetch(url, {
         method: "PATCH",
@@ -275,7 +265,6 @@ export async function deleteJson(url: string): Promise<void> {
 
     // If we get 401, try refreshing token once and retry
     if (resp.status === 401) {
-      console.log("🔄 Token expired, refreshing and retrying...");
       headers = await getAuthHeaders(true); // Force refresh
       resp = await fetch(url, {
         method: "DELETE",
