@@ -36,6 +36,7 @@ export { post as postJobMatch } from "./generate/job-match.js";
 export { post as postProfileTips } from "./generate/profile-tips.js";
 export { post as postInterviewQuestions } from "./generate/interview-questions.js";
 export { post as postInterviewFeedback } from "./generate/interview-feedback.js";
+export { post as postCoachingInsights } from "./generate/coaching-insights.js";
 export type { GenerationCounters } from "./generate/types.js";
 
 // ===== ARTIFACTS =====
@@ -88,6 +89,7 @@ export { post as handleReferencePoints } from "./generate/reference-points.js";
 export { post as handleGenerateInterviewRequest } from "./generate/interview-request.js";
 export { post as handleGenerateInterviewQuestions } from "./generate/interview-questions.js";
 export { post as handleGenerateInterviewFeedback } from "./generate/interview-feedback.js";
+export { post as handleCoachingInsights } from "./generate/coaching-insights.js";
 export { get as handleListArtifacts } from "./artifacts/index.js";
 export { getById as handleGetArtifact } from "./artifacts/index.js";
 export { post as handleCreateJobMaterials } from "./artifacts/job-materials.js";
@@ -100,4 +102,3 @@ export { del as handleDeleteDraft } from "./cover-letter/drafts.js";
 export { get as handleGetCompanyResearch } from "./company/research.js";
 export { get as handleGetUserCompanies } from "./company/user-companies.js";
 export { post as handleSalaryResearch } from "./salary/research.js";
-

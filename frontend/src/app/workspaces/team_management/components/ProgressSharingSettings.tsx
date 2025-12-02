@@ -30,7 +30,6 @@ import {
   Button,
   CircularProgress,
   Chip,
-  Tooltip,
   Collapse,
   IconButton,
 } from "@mui/material";
@@ -42,12 +41,10 @@ import {
   Groups as GroupsIcon,
   Public as PublicIcon,
   Notifications as NotificationsIcon,
-  EmojiEvents as EmojiEventsIcon,
   Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
@@ -79,32 +76,32 @@ const VISIBILITY_OPTIONS: Array<{
 }> = [
   {
     value: "private",
-    label: "Private",
-    description: "Only you can see your progress",
+    label: "Keep Private",
+    description: "Only you can see your progress - nobody else",
     icon: <VisibilityOffIcon />,
   },
   {
     value: "mentors_only",
-    label: "Mentors Only",
-    description: "Only your assigned mentors can view",
+    label: "Share with Mentors",
+    description: "Your assigned mentors can see your progress",
     icon: <PersonIcon />,
   },
   {
     value: "accountability",
-    label: "Accountability Partners",
-    description: "Mentors and accountability partners can view",
+    label: "Share with Partners",
+    description: "Mentors and your accountability partners can see",
     icon: <PeopleIcon />,
   },
   {
     value: "team",
-    label: "Team Members",
-    description: "All team members can view your progress",
+    label: "Share with Team",
+    description: "Everyone on your team can see your progress",
     icon: <GroupsIcon />,
   },
   {
     value: "public",
     label: "Public (Coming Soon)",
-    description: "Anyone in the organization can view",
+    description: "Anyone in the organization can see",
     icon: <PublicIcon />,
   },
 ];
@@ -268,14 +265,14 @@ export function ProgressSharingSettings({
         >
           <Stack direction="row" alignItems="center" spacing={1}>
             <SettingsIcon color="primary" />
-            <Typography variant="h6">Progress Sharing Settings</Typography>
+            <Box>
+              <Typography variant="h6">Privacy Settings</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Control who sees your job search progress
+              </Typography>
+            </Box>
           </Stack>
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Refresh settings">
-              <IconButton onClick={handleRefresh} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
             {hasChanges && (
               <Button
                 variant="contained"
@@ -286,7 +283,7 @@ export function ProgressSharingSettings({
                 onClick={handleSave}
                 disabled={saving}
               >
-                Save Changes
+                {saving ? "Saving..." : "Save"}
               </Button>
             )}
           </Stack>
@@ -367,11 +364,16 @@ export function ProgressSharingSettings({
             alignItems="center"
             justifyContent="space-between"
             onClick={() => setShowDataOptions(!showDataOptions)}
-            sx={{ cursor: "pointer" }}
+            sx={{ cursor: "pointer", py: 1 }}
           >
             <Stack direction="row" alignItems="center" spacing={1}>
               <VisibilityIcon color="action" />
-              <Typography variant="subtitle2">What data to share</Typography>
+              <Box>
+                <Typography variant="subtitle2">What to Share</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Choose which parts of your progress others can see
+                </Typography>
+              </Box>
             </Stack>
             <IconButton size="small">
               {showDataOptions ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -379,7 +381,7 @@ export function ProgressSharingSettings({
           </Stack>
 
           <Collapse in={showDataOptions}>
-            <FormGroup sx={{ mt: 2 }}>
+            <FormGroup sx={{ mt: 2, pl: 1 }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -390,9 +392,9 @@ export function ProgressSharingSettings({
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Applications</Typography>
+                    <Typography variant="body2">Job Applications</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Share application counts and status distribution
+                      How many jobs you've applied to and their statuses
                     </Typography>
                   </Box>
                 }
@@ -408,9 +410,9 @@ export function ProgressSharingSettings({
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Interviews</Typography>
+                    <Typography variant="body2">Interview Progress</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Share interview scheduling and progress
+                      Your interview schedule and how many you've completed
                     </Typography>
                   </Box>
                 }
@@ -426,9 +428,9 @@ export function ProgressSharingSettings({
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Offers</Typography>
+                    <Typography variant="body2">Job Offers</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Share offer counts and outcomes
+                      When you receive or accept offers
                     </Typography>
                   </Box>
                 }
@@ -446,25 +448,7 @@ export function ProgressSharingSettings({
                   <Box>
                     <Typography variant="body2">Goals</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Share goal progress and completion rates
-                    </Typography>
-                  </Box>
-                }
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings?.shareActivityTimeline ?? false}
-                    onChange={() => handleToggleChange("shareActivityTimeline")}
-                    disabled={saving || settings?.visibility === "private"}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2">Activity Timeline</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Share detailed activity history
+                      Your job search goals and completion progress
                     </Typography>
                   </Box>
                 }
@@ -480,9 +464,11 @@ export function ProgressSharingSettings({
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Documents</Typography>
+                    <Typography variant="body2">
+                      Resumes & Cover Letters
+                    </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Allow access to resumes and cover letters for review
+                      Let team members review your documents
                     </Typography>
                   </Box>
                 }
@@ -500,11 +486,16 @@ export function ProgressSharingSettings({
             alignItems="center"
             justifyContent="space-between"
             onClick={() => setShowNotificationOptions(!showNotificationOptions)}
-            sx={{ cursor: "pointer" }}
+            sx={{ cursor: "pointer", py: 1 }}
           >
             <Stack direction="row" alignItems="center" spacing={1}>
               <NotificationsIcon color="action" />
-              <Typography variant="subtitle2">Notifications</Typography>
+              <Box>
+                <Typography variant="subtitle2">Notifications</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Control when you get notified about progress updates
+                </Typography>
+              </Box>
             </Stack>
             <IconButton size="small">
               {showNotificationOptions ? (
@@ -516,7 +507,7 @@ export function ProgressSharingSettings({
           </Stack>
 
           <Collapse in={showNotificationOptions}>
-            <FormGroup sx={{ mt: 2 }}>
+            <FormGroup sx={{ mt: 2, pl: 1 }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -528,10 +519,10 @@ export function ProgressSharingSettings({
                 label={
                   <Box>
                     <Typography variant="body2">
-                      Achievement Celebrations
+                      Milestone Celebrations
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Notify when you reach milestones
+                      Get notified when you hit important milestones
                     </Typography>
                   </Box>
                 }
@@ -547,9 +538,11 @@ export function ProgressSharingSettings({
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Weekly Summary</Typography>
+                    <Typography variant="body2">
+                      Weekly Summary Email
+                    </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Receive weekly progress summary emails
+                      Receive a weekly report of your progress
                     </Typography>
                   </Box>
                 }
@@ -558,16 +551,16 @@ export function ProgressSharingSettings({
               <FormControlLabel
                 control={
                   <Switch
-                    checked={settings?.notifyOnView ?? false}
-                    onChange={() => handleToggleChange("notifyOnView")}
+                    checked={settings?.allowEncouragement ?? true}
+                    onChange={() => handleToggleChange("allowEncouragement")}
                     disabled={saving}
                   />
                 }
                 label={
                   <Box>
-                    <Typography variant="body2">Profile Views</Typography>
+                    <Typography variant="body2">Team Encouragement</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Notify when someone views your progress
+                      Let team members send you motivational messages
                     </Typography>
                   </Box>
                 }
@@ -576,60 +569,26 @@ export function ProgressSharingSettings({
           </Collapse>
         </Box>
 
-        <Divider />
-
-        {/* Team Features */}
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-            <EmojiEventsIcon color="action" />
-            <Typography variant="subtitle2">Team Features</Typography>
-          </Stack>
-
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings?.showOnTeamLeaderboard ?? false}
-                  onChange={() => handleToggleChange("showOnTeamLeaderboard")}
-                  disabled={saving || settings?.visibility === "private"}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2">Team Leaderboard</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Appear on the team leaderboard (opt-in)
-                  </Typography>
-                </Box>
-              }
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings?.allowEncouragement ?? true}
-                  onChange={() => handleToggleChange("allowEncouragement")}
-                  disabled={saving}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body2">Receive Encouragement</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Allow team members to send you encouragement
-                  </Typography>
-                </Box>
-              }
-            />
-          </FormGroup>
-        </Box>
-
         {/* Privacy Note */}
-        {settings?.visibility !== "private" && (
+        {settings?.visibility === "private" ? (
           <Alert severity="info" variant="outlined">
             <Typography variant="body2">
-              Your progress data is shared according to these settings. You can
-              change these at any time.
+              Your progress is <strong>completely private</strong>. Only you can
+              see your data.
+            </Typography>
+          </Alert>
+        ) : (
+          <Alert severity="success" variant="outlined">
+            <Typography variant="body2">
+              Your progress is being shared with{" "}
+              <strong>
+                {settings?.visibility === "mentors_only"
+                  ? "your mentors"
+                  : settings?.visibility === "accountability"
+                  ? "your mentors and partners"
+                  : "your team"}
+              </strong>
+              . You can change this anytime.
             </Typography>
           </Alert>
         )}

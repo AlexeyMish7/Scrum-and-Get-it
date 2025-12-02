@@ -33,6 +33,10 @@ import {
   Drawer,
   useMediaQuery,
   useTheme,
+  Card,
+  CardContent,
+  LinearProgress,
+  Divider,
 } from "@mui/material";
 import {
   Assessment as AssessmentIcon,
@@ -43,7 +47,13 @@ import {
   Refresh as RefreshIcon,
   Add as AddIcon,
   Share as ShareIcon,
+  ArrowBack as ArrowBackIcon,
+  Work as WorkIcon,
+  Event as EventIcon,
+  CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@shared/services/supabaseClient";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
 import * as progressService from "../services/progressSharingService";
@@ -79,14 +89,26 @@ type TabValue =
 // MAIN COMPONENT
 // ============================================================================
 
+// Quick stats type for real-time job data
+interface QuickStats {
+  totalApplications: number;
+  interviews: number;
+  offers: number;
+  byStatus: Record<string, number>;
+}
+
 export function CandidateProgressPage() {
   const { user } = useAuth();
   const { currentTeam } = useTeam();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabValue>("overview");
+
+  // Real-time stats (always show even without snapshots)
+  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
 
   // Data state
   const [snapshots, setSnapshots] = useState<ProgressSnapshot[]>([]);
@@ -110,6 +132,31 @@ export function CandidateProgressPage() {
   // Settings drawer state (for mobile)
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
+  // Load real-time job stats directly from jobs table
+  const loadQuickStats = useCallback(async () => {
+    if (!user?.id) return;
+
+    const { data: jobs } = await supabase
+      .from("jobs")
+      .select("job_status")
+      .eq("user_id", user.id);
+
+    if (jobs) {
+      const byStatus: Record<string, number> = {};
+      jobs.forEach((job) => {
+        byStatus[job.job_status] = (byStatus[job.job_status] || 0) + 1;
+      });
+
+      setQuickStats({
+        totalApplications: jobs.length,
+        interviews:
+          (byStatus["Interview"] || 0) + (byStatus["Phone Screen"] || 0),
+        offers: (byStatus["Offer"] || 0) + (byStatus["Accepted"] || 0),
+        byStatus,
+      });
+    }
+  }, [user?.id]);
+
   // Load all data function
   const loadAllData = useCallback(async () => {
     if (!user?.id || !currentTeam?.id) return;
@@ -118,6 +165,9 @@ export function CandidateProgressPage() {
     setError(null);
 
     try {
+      // Always load quick stats first (they show even without snapshots)
+      await loadQuickStats();
+
       // Load snapshots with options object
       const snapshotsResult = await progressService.getProgressSnapshots(
         user.id,
@@ -278,21 +328,30 @@ export function CandidateProgressPage() {
           />
         )}
 
-        {/* Page header */}
+        {/* Page header with back button */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           alignItems={{ xs: "stretch", sm: "center" }}
           spacing={2}
         >
-          <Box>
-            <Typography variant="h4" fontWeight="bold">
-              My Progress
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Track your job search journey and share with your team
-            </Typography>
-          </Box>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <IconButton
+              onClick={() => navigate("/team")}
+              aria-label="Back to team dashboard"
+              sx={{ bgcolor: "action.hover" }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Box>
+              <Typography variant="h4" fontWeight="bold">
+                My Progress
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Track your job search journey and share with your team
+              </Typography>
+            </Box>
+          </Stack>
 
           <Stack direction="row" spacing={1}>
             <Button
@@ -376,13 +435,142 @@ export function CandidateProgressPage() {
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, lg: 8 }}>
                 <Stack spacing={3}>
-                  {/* Progress Report Card */}
-                  <ProgressReportCard
-                    userId={user?.id}
-                    teamId={currentTeam.id}
-                    snapshot={latestSnapshot}
-                    onRefresh={handleRefresh}
-                  />
+                  {/* Quick Stats - Always Show Current Data */}
+                  {quickStats && (
+                    <Paper sx={{ p: 3 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Current Job Search Stats
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 6, sm: 3 }}>
+                          <Card variant="outlined">
+                            <CardContent sx={{ textAlign: "center", py: 2 }}>
+                              <WorkIcon
+                                color="primary"
+                                sx={{ fontSize: 32, mb: 1 }}
+                              />
+                              <Typography variant="h4" fontWeight="bold">
+                                {quickStats.totalApplications}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Applications
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 6, sm: 3 }}>
+                          <Card variant="outlined">
+                            <CardContent sx={{ textAlign: "center", py: 2 }}>
+                              <EventIcon
+                                color="secondary"
+                                sx={{ fontSize: 32, mb: 1 }}
+                              />
+                              <Typography variant="h4" fontWeight="bold">
+                                {quickStats.interviews}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Interviews
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 6, sm: 3 }}>
+                          <Card variant="outlined">
+                            <CardContent sx={{ textAlign: "center", py: 2 }}>
+                              <TrophyIcon
+                                color="warning"
+                                sx={{ fontSize: 32, mb: 1 }}
+                              />
+                              <Typography variant="h4" fontWeight="bold">
+                                {quickStats.offers}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Offers
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid size={{ xs: 6, sm: 3 }}>
+                          <Card variant="outlined">
+                            <CardContent sx={{ textAlign: "center", py: 2 }}>
+                              <CheckCircleIcon
+                                color="success"
+                                sx={{ fontSize: 32, mb: 1 }}
+                              />
+                              <Typography variant="h4" fontWeight="bold">
+                                {quickStats.byStatus["Applied"] || 0}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Pending
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      </Grid>
+
+                      {/* Status breakdown */}
+                      {Object.keys(quickStats.byStatus).length > 0 && (
+                        <Box sx={{ mt: 3 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Status Breakdown
+                          </Typography>
+                          <Stack spacing={1}>
+                            {Object.entries(quickStats.byStatus).map(
+                              ([status, count]) => (
+                                <Box key={status}>
+                                  <Stack
+                                    direction="row"
+                                    justifyContent="space-between"
+                                    mb={0.5}
+                                  >
+                                    <Typography variant="body2">
+                                      {status}
+                                    </Typography>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight="medium"
+                                    >
+                                      {count}
+                                    </Typography>
+                                  </Stack>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={
+                                      (count / quickStats.totalApplications) *
+                                      100
+                                    }
+                                    sx={{ height: 6, borderRadius: 3 }}
+                                  />
+                                </Box>
+                              )
+                            )}
+                          </Stack>
+                        </Box>
+                      )}
+                    </Paper>
+                  )}
+
+                  {/* Progress Report Card (Historical Snapshots) */}
+                  {latestSnapshot && (
+                    <ProgressReportCard
+                      userId={user?.id}
+                      teamId={currentTeam.id}
+                      snapshot={latestSnapshot}
+                      onRefresh={handleRefresh}
+                    />
+                  )}
 
                   {/* Quick visualization */}
                   <ProgressVisualization

@@ -55,12 +55,15 @@ import {
   Search as SearchIcon,
   Description as DescriptionIcon,
   Work as WorkIcon,
+  Share as ShareIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
 import { withUser } from "@shared/services/crud";
 import { useCoverLetterDrafts } from "@shared/hooks/useCoverLetterDrafts";
+import { useTeam } from "@shared/context/useTeam";
+import { ShareDocumentDialog } from "@workspaces/ai_workspace/components/reviews";
 import type { JobRow } from "@job_pipeline/types";
 
 // Types for documents
@@ -87,6 +90,7 @@ type ViewMode = "grid" | "list";
 export default function DocumentsView() {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
+  const { currentTeam } = useTeam();
 
   // State
   const [activeTab, setActiveTab] = useState<DocumentTab>("all");
@@ -100,6 +104,16 @@ export default function DocumentsView() {
   const [otherDocs, setOtherDocs] = useState<DraftDocument[]>([]);
 
   const [loading, setLoading] = useState(false);
+
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [documentToShare, setDocumentToShare] = useState<DraftDocument | null>(null);
+
+  // Open share dialog for a document
+  function handleShareDocument(doc: DraftDocument) {
+    setDocumentToShare(doc);
+    setShareDialogOpen(true);
+  }
 
   // Load jobs for association display
   useEffect(() => {

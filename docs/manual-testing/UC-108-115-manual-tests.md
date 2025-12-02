@@ -62,30 +62,95 @@ Expected Results
 
 ## UC-109: Mentor Dashboard and Coaching Tools
 
-Summary: Mentor dashboard with mentee KPIs, feedback tools, and engagement.
+Summary: Mentor dashboard with mentee KPIs, AI coaching insights, feedback tools, and engagement tracking.
 
-Sample Data
+### Sample Data
 
 - Mentee: Casey Candidate
 - Goal: "Apply to 5 roles/week"
 - KPI thresholds: Applications (weekly), Interviews (monthly)
 
-Steps
+### Steps
 
-1. Sign in as Manny (Mentor). Go to Mentor Dashboard.
-2. Verify mentee list contains Casey.
-3. Open Casey: review summary cards (applications, interviews, offers) and trend line.
-4. Open "Materials" tab: view Casey's latest resume/cover letter.
-5. Leave feedback comment on resume section (e.g., "Strengthen STAR impact statements").
-6. Add a coaching recommendation (e.g., "Target 3 mid-size SaaS roles this week").
-7. Add an accountability milestone ("5 applications by Friday").
-8. Verify Casey sees feedback, recommendation, and milestone.
+**1. Access Mentor Dashboard**
 
-Expected Results
+1. Sign in as Manny (Mentor). Navigate to Team → Mentor Dashboard.
+2. Verify "My Mentees" tab shows assigned candidates with:
+   - Profile avatar and name
+   - Engagement badge (Highly Active/Active/Low Activity/Inactive)
+   - Quick stats: Total Apps, Interviewing, Offers
 
-- Mentor sees aggregated KPIs per mentee.
-- Feedback stored and visible to Candidate.
-- Milestones tracked and appear in accountability widgets.
+**2. Review Mentee Progress (KPIs)**
+
+1. Click on Casey in mentee list.
+2. Verify job stats display: total applications, interviewing, offers, rejected.
+3. Check engagement level badge matches recent activity.
+4. Verify "Last Active" timestamp is accurate.
+
+**3. AI Coaching Insights**
+
+1. Switch to "Coaching Insights" tab.
+2. Click on Casey's card to generate AI insights.
+3. Wait for AI to analyze mentee data (loading indicator shows).
+4. Verify insights display includes:
+   - Summary: Brief overall assessment
+   - Key Recommendations: Actionable suggestions list
+   - Focus Areas: Priority-tagged areas needing attention
+   - Strengths: What mentee is doing well
+   - Suggested Goals: Goals with "Create Goal" button
+   - Action Plan: Week-by-week actions
+   - Motivational Note: Encouraging message
+5. Click "Regenerate" to get fresh insights.
+6. Click "Create Goal" on a suggested goal to auto-populate goal dialog.
+
+**4. Access Mentee Documents**
+
+1. Return to "My Mentees" tab.
+2. Click document icon on Casey's row.
+3. Verify documents dialog shows:
+   - Resume and cover letter list
+   - Document type chips (Resume/Cover Letter)
+   - Version numbers
+   - Associated job info (if applicable)
+   - "Give Feedback" button per document
+4. Click "Give Feedback" on resume - feedback dialog opens with document context.
+
+**5. Provide Feedback**
+
+1. Click chat icon on any mentee.
+2. Select feedback type: Application, Interview, Resume, Cover Letter, General, Goal, or Milestone.
+3. Enter feedback text: "Strengthen STAR impact statements in experience section."
+4. Submit feedback.
+5. Switch to "Recent Feedback" tab - verify feedback appears.
+
+**6. Create Goals & Milestones**
+
+1. Click flag icon on mentee.
+2. Create goal:
+   - Type: Weekly Applications
+   - Title: "Apply to 5 roles by Friday"
+   - Target Value: 5
+   - Due Date: [set 3 days out]
+3. Submit goal.
+4. Verify toast confirmation appears.
+
+**7. Monitor Mentee Progress Tab**
+
+1. Switch to "Mentee Progress" tab.
+2. View progress snapshots for each mentee:
+   - Total Apps, Interviewing, Offers, Goals Done
+   - Recent Achievements chips
+3. Click "View Full Progress Dashboard" for detailed view.
+
+### Expected Results
+
+- ✅ Mentor sees aggregated KPIs per mentee
+- ✅ AI coaching insights generate with actionable recommendations
+- ✅ Documents accessible for review
+- ✅ Feedback stored and visible in history
+- ✅ Goals created with due dates and targets
+- ✅ Engagement levels accurately reflect activity
+- ✅ Progress tab shows snapshots and achievements
 
 ---
 
@@ -269,3 +334,138 @@ Expected Results
 - [ ] UC-113 family summaries and boundaries
 - [ ] UC-114 cohorts, branding, reports
 - [ ] UC-115 advisor access, sessions, billing
+
+---
+
+## Demo Script: Act 4 - Multi-User Collaboration Features (2 minutes)
+
+This section provides a streamlined demo flow for the collaboration features presentation.
+
+### 4.1 Team Account and Role Management
+
+**Demo Actions:**
+
+1. **Create team account:**
+
+   - Navigate to `/team`
+   - Click "Create Team" button
+   - Enter team name: "Demo Career Team"
+   - Verify team dashboard appears
+
+2. **Invite team member:**
+
+   - Click "Invite Member" on team dashboard
+   - Enter email of demo mentor account
+   - Select role: "Mentor"
+   - Send invitation
+
+3. **Accept invitation (mentor side):**
+
+   - Switch to mentor account
+   - Navigate to `/team/invitations`
+   - Click "Accept" on pending invitation
+   - Verify redirect to team dashboard
+
+4. **Verify role assignment and permissions:**
+
+   - As admin, go to `/team/members`
+   - Confirm mentor appears with correct role
+   - Verify admin can change roles, mentor cannot
+
+5. **View team dashboard with aggregate stats:**
+   - Navigate to `/team`
+   - Show member count, total applications, interviews, offers
+   - Highlight collaboration metrics panel
+
+**Script:** "Collaboration features for job search teams and career support... Create team account for collaborative job searching, invite team member (mentor, career coach, or peer), assign role with specific permissions, view team dashboard with aggregate statistics. Perfect for university career centers, job search groups, or mentorship programs."
+
+### 4.2 Shared Resources and Coach Collaboration
+
+**Demo Actions:**
+
+1. **Share job posting with team:**
+
+   - As candidate, open a job in pipeline
+   - (If sharing feature exists) Share with team
+   - Add comment/recommendation
+
+2. **Switch to mentor/coach view:**
+
+   - Log in as mentor account
+   - Navigate to `/team/mentor`
+   - Show mentee progress dashboard
+
+3. **Provide feedback on application materials:**
+
+   - Open mentee's documents section
+   - Add feedback comment on resume
+   - Show feedback appears for candidate
+
+4. **Assign preparation tasks:**
+   - Create goal/task for mentee
+   - Set deadline and target
+
+**Script:** "Real-time collaboration on opportunities and progress... Share job posting with team members, add collaborative comments and recommendations. Switch to mentor/coach view, show mentee progress dashboard, provide feedback on application materials, assign preparation tasks. Guided support throughout the job search journey."
+
+### 4.3 Team Analytics and Activity Feed
+
+**Demo Actions:**
+
+1. **Display team activity feed:**
+
+   - Navigate to team dashboard
+   - Show activity log section
+   - Highlight recent actions (member joined, feedback added)
+
+2. **Show milestone achievements:**
+
+   - Point out team statistics cards
+   - Mention celebration features if present
+
+3. **Navigate to team performance comparison:**
+   - Show insights panel with aggregate metrics
+   - Discuss anonymized benchmarking concept
+
+**Script:** "Team insights and performance benchmarking... Display team activity feed with real-time updates, show milestone achievements and team celebrations. Navigate to team performance comparison. Anonymized benchmarking motivates and identifies best practices. View team success patterns and collaboration effectiveness."
+
+---
+
+## Automated Test Verification
+
+Before demo, run all collaboration tests to ensure features work:
+
+### Frontend Tests
+
+```powershell
+cd frontend
+npm test -- --run tests/frontend/services/teamService.test.ts
+npm test -- --run tests/frontend/services/mentorService.test.ts
+npm test -- --run tests/frontend/services/reviewService.test.ts
+npm test -- --run tests/frontend/services/progressSharingService.test.ts
+```
+
+### Backend Tests
+
+```powershell
+cd server
+npm test -- tests/server/routes/collaboration.test.ts
+```
+
+### Run All Collaboration Tests
+
+```powershell
+# From project root
+cd tests
+npm test
+```
+
+### Test Checklist for Demo
+
+- [ ] Team creation works (no RLS errors)
+- [ ] Invitation flow works (send, view, accept)
+- [ ] New member appears in team members list
+- [ ] Mentor dashboard loads with mentee data
+- [ ] Feedback can be added and viewed
+- [ ] Activity log shows recent actions
+- [ ] No "infinite recursion" errors in console
+- [ ] All automated tests pass

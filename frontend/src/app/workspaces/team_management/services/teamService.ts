@@ -16,7 +16,13 @@
  */
 
 import { supabase } from "@shared/services/supabaseClient";
-import { withUser, insertRow, getRow, updateRow } from "@shared/services/crud";
+import {
+  withUser,
+  insertRow,
+  getRow,
+  updateRow,
+  listRows,
+} from "@shared/services/crud";
 import type { Result } from "@shared/services/types";
 import type {
   TeamRow,
@@ -418,6 +424,50 @@ export async function removeMember(
 // ============================================================================
 
 /**
+ * Check if a user exists by email
+ * Used to warn admins when inviting someone without an account
+ */
+export async function checkUserExistsByEmail(
+  email: string
+): Promise<
+  Result<{ exists: boolean; profile?: { full_name: string | null } }>
+> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, first_name, last_name")
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    };
+  }
+
+  if (!data) {
+    return {
+      data: { exists: false },
+      error: null,
+      status: 200,
+    };
+  }
+
+  // Build display name from available fields
+  const displayName =
+    data.full_name ||
+    `${data.first_name || ""} ${data.last_name || ""}`.trim() ||
+    null;
+
+  return {
+    data: { exists: true, profile: { full_name: displayName } },
+    error: null,
+    status: 200,
+  };
+}
+
+/**
  * Invite a new member to the team
  * Only admins can invite (enforced by RLS)
  * Generates a secure random invitation token
@@ -427,12 +477,11 @@ export async function inviteMember(
   teamId: string,
   data: InviteMemberData
 ): Promise<Result<TeamInvitationRow>> {
-  const userCrud = withUser(userId);
-
+  // Don't use withUser for team_invitations - it has invited_by, not user_id
   // Generate secure random token
   const token = generateInvitationToken();
 
-  const result = await userCrud.insertRow("team_invitations", {
+  const result = await insertRow<TeamInvitationRow>("team_invitations", {
     team_id: teamId,
     invited_by: userId,
     invitee_email: data.invitee_email,
@@ -468,15 +517,18 @@ export async function acceptInvitation(
   userId: string,
   invitationId: string
 ): Promise<Result<TeamMemberRow>> {
-  const userCrud = withUser(userId);
-
-  // Get invitation details by ID
-  const invResult = await userCrud.getRow("team_invitations", "*", {
+  // Don't use withUser for team_invitations - it doesn't have user_id column
+  // Get invitation details by ID using raw getRow
+  const invResult = await getRow<TeamInvitationRow>("team_invitations", "*", {
     eq: { id: invitationId, status: "pending" },
     single: true,
   });
 
-  if (invResult.error) {
+  if (invResult.error || !invResult.data) {
+    console.error(
+      "[acceptInvitation] Failed to get invitation:",
+      invResult.error
+    );
     return {
       data: null,
       error: { message: "Invalid or expired invitation", status: 404 },
@@ -484,7 +536,7 @@ export async function acceptInvitation(
     };
   }
 
-  const invitation = invResult.data as TeamInvitationRow;
+  const invitation = invResult.data;
 
   // Check if invitation is expired
   if (new Date(invitation.expires_at) < new Date()) {
@@ -495,26 +547,62 @@ export async function acceptInvitation(
     };
   }
 
-  // Create team member record
-  const memberResult = await userCrud.insertRow("team_members", {
-    team_id: invitation.team_id,
-    user_id: userId,
-    role: invitation.role,
-    invited_by: invitation.invited_by,
-    invited_at: invitation.created_at,
-    joined_at: new Date().toISOString(),
+  // Check if user is already a member of this team
+  const existingMember = await getRow<TeamMemberRow>("team_members", "*", {
+    eq: { team_id: invitation.team_id, user_id: userId },
+    single: true,
   });
 
-  if (memberResult.error) {
+  if (existingMember.data) {
+    // User is already a member - just update invitation status and return
+    await updateRow(
+      "team_invitations",
+      {
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+        invitee_user_id: userId,
+      },
+      { eq: { id: invitation.id } }
+    );
+
     return {
-      data: null,
-      error: memberResult.error,
-      status: memberResult.status,
+      data: existingMember.data,
+      error: null,
+      status: 200,
     };
   }
 
-  // Update invitation status
-  await userCrud.updateRow(
+  // Create team member record using direct insert (not withUser)
+  // The RLS policy allows: user_id = auth.uid()
+  // So we insert with user_id matching the authenticated user
+  const { data: memberData, error: memberError } = await supabase
+    .from("team_members")
+    .insert({
+      team_id: invitation.team_id,
+      user_id: userId,
+      role: invitation.role,
+      invited_by: invitation.invited_by,
+      invited_at: invitation.created_at,
+      joined_at: new Date().toISOString(),
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (memberError) {
+    console.error(
+      "[acceptInvitation] Failed to create team member:",
+      memberError
+    );
+    return {
+      data: null,
+      error: { message: memberError.message, status: null },
+      status: null,
+    };
+  }
+
+  // Update invitation status using raw updateRow (team_invitations has no user_id)
+  await updateRow(
     "team_invitations",
     {
       status: "accepted",
@@ -533,7 +621,7 @@ export async function acceptInvitation(
   );
 
   return {
-    data: memberResult.data as TeamMemberRow,
+    data: memberData as TeamMemberRow,
     error: null,
     status: 200,
   };
@@ -562,8 +650,8 @@ export async function getUserInvitations(): Promise<
     .select(
       `
       *,
-      team:teams(name, description),
-      inviter:profiles!invited_by(full_name, email)
+      team:teams!team_id(id, name, description),
+      inviter:profiles!invited_by(id, first_name, last_name, full_name, email)
     `
     )
     .eq("invitee_email", userData.user.email)
@@ -578,16 +666,40 @@ export async function getUserInvitations(): Promise<
     };
   }
 
+  type InviterProfile = {
+    id?: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    full_name?: string | null;
+    email?: string;
+  };
+
   type InvitationRowWithJoins = TeamInvitationRow & {
-    team?: { name: string; description: string | null };
-    inviter?: { full_name: string; email: string };
+    team?: { id?: string; name: string; description: string | null } | null;
+    inviter?: InviterProfile | null;
+  };
+
+  // Helper to build display name from profile fields
+  const getDisplayName = (
+    inviter: InviterProfile | null | undefined
+  ): string => {
+    if (!inviter) return "Unknown User";
+    if (inviter.full_name) return inviter.full_name;
+    if (inviter.first_name || inviter.last_name) {
+      return `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim();
+    }
+    if (inviter.email) return inviter.email.split("@")[0];
+    return "Unknown User";
   };
 
   return {
     data: (data as InvitationRowWithJoins[]).map((inv) => ({
       ...inv,
       team: inv.team || { name: "Unknown Team", description: null },
-      inviter: inv.inviter || { full_name: "Unknown User", email: "" },
+      inviter: {
+        full_name: getDisplayName(inv.inviter),
+        email: inv.inviter?.email || "",
+      },
     })) as TeamInvitationWithTeam[],
     error: null,
     status: 200,
@@ -619,25 +731,32 @@ export async function declineInvitation(
 }
 
 /**
- * Get pending invitations for a team
+ * Get invitations for a team (admin view)
+ * Supports filtering by status or getting all
  * Only admins can view invitations (enforced by RLS)
  */
 export async function getTeamInvitations(
   _userId: string,
-  teamId: string
+  teamId: string,
+  options?: { status?: "pending" | "all" }
 ): Promise<Result<InvitationWithDetails[]>> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("team_invitations")
     .select(
       `
       *,
-      team:teams(name, description),
-      inviter:profiles!invited_by(full_name, email)
+      team:teams!team_id(id, name, description),
+      inviter:profiles!invited_by(id, first_name, last_name, full_name, email)
     `
     )
-    .eq("team_id", teamId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
+    .eq("team_id", teamId);
+
+  // Filter by status unless requesting all
+  if (options?.status !== "all") {
+    query = query.eq("status", "pending");
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     return {
@@ -647,16 +766,40 @@ export async function getTeamInvitations(
     };
   }
 
+  type InviterProfile = {
+    id?: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    full_name?: string | null;
+    email?: string;
+  };
+
   type InvitationRowWithJoins = TeamInvitationRow & {
-    team?: { name: string; description: string | null };
-    inviter?: { full_name: string; email: string };
+    team?: { id?: string; name: string; description: string | null } | null;
+    inviter?: InviterProfile | null;
+  };
+
+  // Helper to build display name from profile fields
+  const getDisplayName = (
+    inviter: InviterProfile | null | undefined
+  ): string => {
+    if (!inviter) return "Unknown User";
+    if (inviter.full_name) return inviter.full_name;
+    if (inviter.first_name || inviter.last_name) {
+      return `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim();
+    }
+    if (inviter.email) return inviter.email.split("@")[0];
+    return "Unknown User";
   };
 
   return {
     data: (data as InvitationRowWithJoins[]).map((inv) => ({
       ...inv,
       team: inv.team || { name: "Unknown Team", description: null },
-      inviter: inv.inviter || { full_name: "Unknown User", email: "" },
+      inviter: {
+        full_name: getDisplayName(inv.inviter),
+        email: inv.inviter?.email || "",
+      },
     })) as InvitationWithDetails[],
     error: null,
     status: 200,
@@ -668,12 +811,11 @@ export async function getTeamInvitations(
  * Only the inviter or admin can cancel (enforced by RLS)
  */
 export async function cancelInvitation(
-  userId: string,
+  _userId: string,
   invitationId: string
 ): Promise<Result<boolean>> {
-  const userCrud = withUser(userId);
-
-  const result = await userCrud.updateRow(
+  // Don't use withUser for team_invitations - it doesn't have user_id column
+  const result = await updateRow(
     "team_invitations",
     { status: "cancelled" },
     { eq: { id: invitationId } }
@@ -699,16 +841,18 @@ export async function assignMentor(
   teamId: string,
   data: AssignMentorData
 ): Promise<Result<TeamMemberAssignmentRow>> {
-  const userCrud = withUser(userId);
-
-  const result = await userCrud.insertRow("team_member_assignments", {
-    team_id: teamId,
-    mentor_id: data.mentor_id,
-    candidate_id: data.candidate_id,
-    assigned_by: userId,
-    assigned_at: new Date().toISOString(),
-    notes: data.notes || null,
-  });
+  // Don't use withUser for team_member_assignments - it has assigned_by, not user_id
+  const result = await insertRow<TeamMemberAssignmentRow>(
+    "team_member_assignments",
+    {
+      team_id: teamId,
+      mentor_id: data.mentor_id,
+      candidate_id: data.candidate_id,
+      assigned_by: userId,
+      assigned_at: new Date().toISOString(),
+      notes: data.notes || null,
+    }
+  );
 
   if (result.error) {
     return { data: null, error: result.error, status: result.status };
@@ -762,10 +906,9 @@ export async function removeAssignment(
   userId: string,
   assignmentId: string
 ): Promise<Result<boolean>> {
-  const userCrud = withUser(userId);
-
+  // Don't use withUser for team_member_assignments - it doesn't have user_id column
   // Get assignment info before deletion
-  const assignmentResult = await userCrud.getRow(
+  const assignmentResult = await getRow<TeamMemberAssignmentRow>(
     "team_member_assignments",
     "*",
     {
@@ -774,18 +917,21 @@ export async function removeAssignment(
     }
   );
 
-  if (assignmentResult.error) {
+  if (assignmentResult.error || !assignmentResult.data) {
     return {
       data: null,
-      error: assignmentResult.error,
-      status: assignmentResult.status,
+      error: assignmentResult.error || {
+        message: "Assignment not found",
+        status: 404,
+      },
+      status: assignmentResult.status || 404,
     };
   }
 
-  const assignment = assignmentResult.data as TeamMemberAssignmentRow;
+  const assignment = assignmentResult.data;
 
-  // Soft delete
-  const result = await userCrud.updateRow(
+  // Soft delete using raw updateRow
+  const result = await updateRow(
     "team_member_assignments",
     { is_active: false },
     { eq: { id: assignmentId } }
@@ -820,11 +966,10 @@ export async function getTeamActivity(
   teamId: string,
   limit: number = 50
 ): Promise<Result<TeamActivityLogRow[]>> {
+  // Verify user has access to this team (team_members DOES have user_id)
   const userCrud = withUser(userId);
-
-  // Verify user has access to this team
   const accessCheck = await userCrud.getRow("team_members", "id", {
-    eq: { team_id: teamId, user_id: userId, is_active: true },
+    eq: { team_id: teamId, is_active: true },
     single: true,
   });
 
@@ -836,13 +981,14 @@ export async function getTeamActivity(
     };
   }
 
-  const result = await userCrud.listRows("team_activity_log", "*", {
+  // Don't use withUser for team_activity_log - it doesn't have user_id column
+  const result = await listRows<TeamActivityLogRow>("team_activity_log", "*", {
     eq: { team_id: teamId },
     order: { column: "created_at", ascending: false },
     limit,
   });
 
-  return result as Result<TeamActivityLogRow[]>;
+  return result;
 }
 
 /**

@@ -139,7 +139,7 @@ workspaces/team_management/
 │   ├── CreateTeamDialog.tsx
 │   ├── EngagementMonitor.tsx
 │   ├── FeedbackPanel.tsx
-│   ├── InviteMemberDialog.tsx
+│   ├── InviteMemberDialog.tsx  # Includes user existence check with debounce
 │   ├── MenteeDocumentsViewer.tsx
 │   ├── MenteeGoalsTracker.tsx
 │   └── MenteeProgressCard.tsx
@@ -147,14 +147,16 @@ workspaces/team_management/
 ├── layouts/
 │   └── TeamLayout.tsx
 ├── pages/
-│   ├── Invitations.tsx
-│   ├── MentorDashboard.tsx  # UC-109
-│   ├── TeamDashboard.tsx    # UC-108
+│   ├── Invitations.tsx       # User's received invitations
+│   ├── MentorDashboard.tsx   # UC-109
+│   ├── SentInvitations.tsx   # Admin view of sent invitations with status
+│   ├── TeamDashboard.tsx     # UC-108
+│   ├── TeamMembers.tsx       # Full member list with search/filter
 │   ├── TeamReports.tsx
 │   └── TeamSettings.tsx
 ├── services/
 │   ├── mentorService.ts
-│   └── teamService.ts
+│   └── teamService.ts        # Includes checkUserExistsByEmail()
 ├── types/               # Team type definitions
 └── utils/               # Team utilities
 ```

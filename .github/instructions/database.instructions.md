@@ -2,16 +2,67 @@
 
 ## Overview
 
-PostgreSQL database hosted on Supabase with Row Level Security (RLS) policies. All tables enforce user-level isolation - users can only access their own data.
+PostgreSQL database hosted on Supabase with Row Level Security (RLS) policies. All tables enforce user-level isolation - users can only access their own data unless in a team context.
 
-**Database Statistics (as of 2025-11-30):**
+**Database Statistics (as of 2025-12-01):**
 
-- **25+ tables** with data in production
-- **8 custom ENUM types** for data validation
+- **85+ tables** in production
+- **30+ custom ENUM types** for data validation
 - **25+ database functions** (including RLS helpers, cleanup jobs, company research)
 - **20+ triggers** for auto-updating timestamps and maintaining data integrity
 - **Shared company data** - Companies table accessible to all users (no user_id isolation)
 - **Team collaboration** - Team tables support multi-user access with role-based permissions
+- **Peer networking** - Peer groups for job seekers to connect and support each other
+- **Family/Supporter** - Allow family members to track progress and provide encouragement
+- **External advisors** - Connect with career coaches and advisors outside the team
+
+---
+
+## Table Categories Overview
+
+### 1. Core User Tables
+
+profiles, skills, employment, education, projects, certifications
+
+### 2. Job Pipeline Tables
+
+jobs, job_notes, companies, company_research_cache, user_company_notes
+
+### 3. Document System Tables
+
+documents, document_versions, templates, themes, generation_sessions, export_history, document_jobs, document_reviews, review_comments
+
+### 4. Analytics & Caching Tables
+
+analytics_cache, industry_standards, peer_benchmarks, user_competitive_position, success_patterns, strategy_effectiveness, timing_patterns, pattern_evolution, predictive_models, career_progression_patterns, preparation_activities
+
+### 5. Team Management Tables (UC-108, UC-109)
+
+teams, team_members, team_invitations, team_member_assignments, team_activity_log, team_messages, team_subscriptions, team_settings, subscription_plans, mentor_feedback, mentee_goals, progress_sharing_settings, progress_snapshots, accountability_partnerships, achievement_celebrations
+
+### 6. Enterprise Features (UC-114)
+
+cohorts, cohort_members, program_analytics, roi_reports, enterprise_branding, external_integrations, bulk_onboarding_jobs, compliance_logs
+
+### 7. External Advisor Tables (UC-115)
+
+external_advisors, advisor_sessions, advisor_recommendations, advisor_billing, advisor_invitations, advisor_messages, advisor_shared_materials
+
+### 8. Family Support Tables (UC-113)
+
+family_supporters, family_support_settings, family_milestones, family_progress_summaries, family_communications, family_resources, support_boundaries, stress_metrics
+
+### 9. Peer Networking Tables (UC-112)
+
+peer_groups, peer_group_members, peer_group_posts, peer_post_likes, peer_group_challenges, peer_challenge_participants, peer_referrals, peer_referral_interests, peer_success_stories, peer_networking_impact, user_peer_settings
+
+### 10. Interview & Networking Tables
+
+interviews, interview_feedback, confidence_logs, contacts, contact_interactions, contact_reminders, networking_events, networking_event_contacts, informational_interviews, references_list, referral_requests
+
+### 11. Career Goals Tables
+
+career_goals
 
 ---
 
@@ -1267,6 +1318,22 @@ CREATE TABLE public.mentee_goals (
   created_at timestamptz DEFAULT now()
 );
 ```
+
+### team_activity_log - Audit trail for team actions
+
+```sql
+CREATE TABLE public.team_activity_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  actor_id uuid NOT NULL REFERENCES profiles(id),  -- User who performed action
+  action text NOT NULL,  -- member_invited/member_joined/member_removed/role_changed/etc.
+  target_user_id uuid REFERENCES profiles(id),  -- User affected by action (if applicable)
+  metadata jsonb DEFAULT '{}'::jsonb,  -- Additional context data
+  created_at timestamptz DEFAULT now()
+);
+```
+
+**Important:** Use `actor_id` for the user who performed the action, NOT `user_id`. The `withUser()` helper should NOT be used with this table.
 
 ---
 
