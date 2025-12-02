@@ -31,6 +31,8 @@ import type {
 } from "@job_pipeline/types";
 import { dataCache, getCacheKey } from "@shared/services/cache";
 import { deduplicateRequest } from "@shared/utils";
+import { supabase } from "@shared/services/supabaseClient";
+import { checkAndCreateAchievement } from "../../team_management/services/progressSharingService";
 
 // Cache TTL for job data (5 minutes)
 const JOBS_CACHE_TTL = 5 * 60 * 1000;
@@ -221,6 +223,31 @@ const createJob = async (
   // Invalidate cache on successful insert
   if (result.data && !result.error) {
     dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
+
+    // Trigger achievement check for application milestone
+    // Get user's team to check for achievements
+    try {
+      const { data: teamMember } = await supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
+      if (teamMember?.team_id) {
+        // Check for application milestones (1st, 10th, 25th, etc.)
+        checkAndCreateAchievement(
+          userId,
+          teamMember.team_id,
+          "application_added"
+        ).catch((err) => {
+          console.error("Failed to check achievement:", err);
+        });
+      }
+    } catch {
+      // Silently fail - achievement is optional
+    }
   }
 
   return result;

@@ -33,6 +33,7 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
+import { getUserStorage } from "@shared/utils/userStorage";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "@job_pipeline/components/details/JobDetails/JobDetails";
 
@@ -134,11 +135,11 @@ export default function CalendarWidget() {
     }
   };
 
-  // Load interviews from localStorage (local scheduling persisted in InterviewScheduling)
+  // Load interviews from user-scoped localStorage
   const loadInterviews = () => {
     try {
-      const raw = localStorage.getItem("sgt:interviews");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
+      const storage = getUserStorage(user?.id);
+      const arr = storage.get<any[]>("interviews", []);
       // keep only scheduled interviews (exclude cancelled)
       const scheduled = arr.filter((iv) => iv && iv.status !== "cancelled");
       setInterviews(scheduled);
@@ -162,18 +163,26 @@ export default function CalendarWidget() {
     const handleInterviewsUpdated = () => {
       if (mounted) loadInterviews();
     };
-    window.addEventListener("interviews-updated", handleInterviewsUpdated as EventListener);
+    window.addEventListener(
+      "interviews-updated",
+      handleInterviewsUpdated as EventListener
+    );
 
     // listen to storage events (other tabs) to keep interviews in sync
+    const storage = getUserStorage(user?.id);
+    const interviewsKey = storage.getFullKey("interviews");
     const onStorage = (ev: StorageEvent) => {
-      if (ev.key === "sgt:interviews") loadInterviews();
+      if (ev.key === interviewsKey) loadInterviews();
     };
     window.addEventListener("storage", onStorage);
 
     return () => {
       mounted = false;
       window.removeEventListener("jobs-updated", handleJobsUpdated);
-      window.removeEventListener("interviews-updated", handleInterviewsUpdated as EventListener);
+      window.removeEventListener(
+        "interviews-updated",
+        handleInterviewsUpdated as EventListener
+      );
       window.removeEventListener("storage", onStorage);
     };
   }, [user]);
@@ -207,7 +216,9 @@ export default function CalendarWidget() {
         title: j.job_title,
         company: j.company_name,
         city: j.city_name,
-        deadline: j.application_deadline ? new Date(String(j.application_deadline)) : null,
+        deadline: j.application_deadline
+          ? new Date(String(j.application_deadline))
+          : null,
       }))
       .filter((j) => j.deadline);
 
@@ -329,7 +340,10 @@ export default function CalendarWidget() {
                             days < 0 ? `Overdue ${Math.abs(days)}d` : `${days}d`
                           }
                           color={
-                            deadlineColor(days) as "error" | "warning" | "success"
+                            deadlineColor(days) as
+                              | "error"
+                              | "warning"
+                              | "success"
                           }
                           size="small"
                         />
@@ -343,9 +357,13 @@ export default function CalendarWidget() {
                 // try to resolve linked job/company if it's an id
                 let companyLabel = "";
                 if (interview.company) {
-                  const matched = jobs.find((j) => String(j.id) === String(interview.company));
+                  const matched = jobs.find(
+                    (j) => String(j.id) === String(interview.company)
+                  );
                   if (matched) {
-                    companyLabel = `${matched.company_name ?? ""}${matched.job_title ? ` — ${matched.job_title}` : ""}`;
+                    companyLabel = `${matched.company_name ?? ""}${
+                      matched.job_title ? ` — ${matched.job_title}` : ""
+                    }`;
                   } else {
                     companyLabel = String(interview.company);
                   }
@@ -361,8 +379,14 @@ export default function CalendarWidget() {
                     onClick={() => {
                       // lightweight: show details summary for interview
                       try {
-                        const when = interview.deadline ? interview.deadline.toLocaleString() : "";
-                        window.alert(`${interview.title ?? "Interview"}\n${when}${companyLabel ? `\n${companyLabel}` : ""}`);
+                        const when = interview.deadline
+                          ? interview.deadline.toLocaleString()
+                          : "";
+                        window.alert(
+                          `${interview.title ?? "Interview"}\n${when}${
+                            companyLabel ? `\n${companyLabel}` : ""
+                          }`
+                        );
                       } catch {}
                     }}
                   >
@@ -485,10 +509,18 @@ export default function CalendarWidget() {
                         // For interviews, open a small summary or navigate to the Interview hub in future
                         try {
                           const t = item.title ?? "Interview";
-                          const when = item.start ? new Date(item.start).toLocaleString() : "";
+                          const when = item.start
+                            ? new Date(item.start).toLocaleString()
+                            : "";
                           // lightweight UI: show an alert with details for now
                           // NOTE: could be replaced with a drawer or navigation to the Interview Hub
-                          window.alert(`${t}\n${when}${item.linkedJob ? `\nLinked job: ${item.linkedJob}` : ""}`);
+                          window.alert(
+                            `${t}\n${when}${
+                              item.linkedJob
+                                ? `\nLinked job: ${item.linkedJob}`
+                                : ""
+                            }`
+                          );
                         } catch {}
                       }
                     }

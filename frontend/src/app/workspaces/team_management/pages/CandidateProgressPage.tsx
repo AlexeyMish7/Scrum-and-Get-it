@@ -54,6 +54,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Message as MessageIcon,
   Notifications as NotificationsIcon,
+  Flag as FlagIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@shared/services/supabaseClient";
@@ -81,6 +82,9 @@ import AccountabilityImpactCard from "../components/AccountabilityImpactCard";
 import MotivationWidget from "../components/MotivationWidget";
 import ScheduledReportsSettings from "../components/ScheduledReportsSettings";
 import TeamMessaging from "../components/TeamMessaging";
+import { MenteeGoalsTracker } from "../components/MenteeGoalsTracker";
+import type { MenteeGoal, CreateGoalData } from "../services/mentorService";
+import * as mentorService from "../services/mentorService";
 
 // ============================================================================
 // TYPES
@@ -88,6 +92,7 @@ import TeamMessaging from "../components/TeamMessaging";
 
 type TabValue =
   | "overview"
+  | "goals"
   | "charts"
   | "achievements"
   | "partners"
@@ -148,6 +153,10 @@ export function CandidateProgressPage() {
   // Add partner dialog state
   const [addPartnerDialogOpen, setAddPartnerDialogOpen] = useState(false);
 
+  // Goals state
+  const [goals, setGoals] = useState<MenteeGoal[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(false);
+
   // Selected partner for messaging
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(
     null
@@ -183,6 +192,57 @@ export function CandidateProgressPage() {
       });
     }
   }, [user?.id]);
+
+  // Load goals for this candidate
+  const loadGoals = useCallback(async () => {
+    if (!user?.id || !currentTeam?.id) return;
+
+    setLoadingGoals(true);
+    try {
+      const result = await mentorService.getMenteeGoals(
+        user.id,
+        currentTeam.id
+      );
+      if (result.data) {
+        setGoals(result.data);
+      }
+    } catch (err) {
+      console.error("Error loading goals:", err);
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, [user?.id, currentTeam?.id]);
+
+  // Handle creating a new goal (self-set goals)
+  const handleCreateGoal = useCallback(
+    async (data: CreateGoalData) => {
+      if (!user?.id || !currentTeam?.id) return;
+
+      const result = await mentorService.createMenteeGoal(
+        currentTeam.id,
+        user.id,
+        null, // No mentor - self-set goal
+        data
+      );
+      if (result.data) {
+        setGoals((prev) => [...prev, result.data!]);
+      }
+    },
+    [user?.id, currentTeam?.id]
+  );
+
+  // Handle updating a goal
+  const handleUpdateGoal = useCallback(
+    async (goalId: string, updates: Partial<MenteeGoal>) => {
+      const result = await mentorService.updateMenteeGoal(goalId, updates);
+      if (result.data) {
+        setGoals((prev) =>
+          prev.map((g) => (g.id === goalId ? { ...g, ...result.data } : g))
+        );
+      }
+    },
+    []
+  );
 
   // Load all data function
   const loadAllData = useCallback(async () => {
@@ -244,6 +304,9 @@ export function CandidateProgressPage() {
       if (achievementsResult.data && achievementsResult.data.length > 0) {
         setPendingCelebration(achievementsResult.data[0]);
       }
+
+      // Load goals for this candidate
+      await loadGoals();
     } catch (err) {
       setError("Failed to load progress data. Please try again.");
       console.error("Error loading progress data:", err);
@@ -434,6 +497,12 @@ export function CandidateProgressPage() {
               icon={<AssessmentIcon />}
               iconPosition="start"
               label="Overview"
+            />
+            <Tab
+              value="goals"
+              icon={<FlagIcon />}
+              iconPosition="start"
+              label="My Goals"
             />
             <Tab
               value="charts"
@@ -729,6 +798,50 @@ export function CandidateProgressPage() {
                 </Stack>
               </Grid>
             </Grid>
+          )}
+
+          {/* Goals Tab */}
+          {activeTab === "goals" && user?.id && currentTeam?.id && (
+            <Paper sx={{ p: 3 }}>
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="h5" fontWeight="bold" gutterBottom>
+                    My Goals
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Track your job search goals and milestones. Set your own
+                    goals or view goals assigned by your mentor.
+                  </Typography>
+                </Box>
+
+                {loadingGoals ? (
+                  <Stack spacing={2}>
+                    <Skeleton variant="rectangular" height={100} />
+                    <Skeleton variant="rectangular" height={100} />
+                  </Stack>
+                ) : (
+                  <MenteeGoalsTracker
+                    candidateId={user.id}
+                    candidateName="My"
+                    teamId={currentTeam.id}
+                    goals={goals}
+                    onCreateGoal={handleCreateGoal}
+                    onUpdateGoal={handleUpdateGoal}
+                    loading={loadingGoals}
+                  />
+                )}
+
+                {goals.length === 0 && !loadingGoals && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      No goals yet! Create your first goal to start tracking
+                      your progress, or wait for your mentor to assign goals to
+                      you.
+                    </Typography>
+                  </Alert>
+                )}
+              </Stack>
+            </Paper>
           )}
 
           {/* Charts Tab */}

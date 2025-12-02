@@ -62,6 +62,7 @@ import {
   Mail as MailIcon,
   CorporateFare as CorporateFareIcon,
   SupervisorAccount as SupervisorAccountIcon,
+  Share as ShareIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
@@ -71,6 +72,7 @@ import {
   InviteMemberDialog,
   TeamActivityFeed,
   TeamPerformanceBenchmark,
+  ShareJobFromPipelineDialog,
 } from "../components";
 import * as teamService from "../services/teamService";
 import type { TeamMemberWithProfile } from "../types";
@@ -92,6 +94,7 @@ export function TeamDashboard() {
   const [switching, setSwitching] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showShareJobDialog, setShowShareJobDialog] = useState(false);
   const [insights, setInsights] = useState<{
     totalMembers: number;
     totalApplications: number;
@@ -365,6 +368,17 @@ export function TeamDashboard() {
               Invite Member
             </Button>
           )}
+          
+          {/* Share Job - Available to all team members */}
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<ShareIcon />}
+            onClick={() => setShowShareJobDialog(true)}
+          >
+            Share a Job
+          </Button>
+          
           {isAdmin && (
             <Button
               variant="outlined"
@@ -522,6 +536,10 @@ export function TeamDashboard() {
       <InviteMemberDialog
         open={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
+      />
+      <ShareJobFromPipelineDialog
+        open={showShareJobDialog}
+        onClose={() => setShowShareJobDialog(false)}
       />
     </Container>
   );
