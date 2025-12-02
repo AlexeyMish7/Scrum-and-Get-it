@@ -191,7 +191,7 @@ export default function GoalSettingCard() {
 
     setLoading(true);
     try {
-      // Load active goals
+      // Load active goals only (exclude completed, paused, cancelled, archived)
       const goalsResult = await getGoals(user.id, session.access_token, {
         status: "active",
       });
@@ -200,7 +200,8 @@ export default function GoalSettingCard() {
         handleError(goalsResult.error.message);
       } else {
         const fetchedGoals = (goalsResult.data as any)?.goals || [];
-        setGoals(fetchedGoals);
+        // Only show active goals
+        setGoals(fetchedGoals.filter((g: CareerGoal) => g.status === "active"));
       }
 
       // Load analytics
@@ -349,14 +350,17 @@ export default function GoalSettingCard() {
     if (!user || !session?.access_token) return;
 
     try {
+      console.log("[GoalSettingCard] Updating progress:", { goalId, newValue });
       const result = await updateGoal(user.id, session.access_token, goalId, {
         current_value: newValue,
       });
 
       if (result.error) {
+        console.error("[GoalSettingCard] Update error:", result.error);
         handleError(result.error.message);
       } else {
         const updatedGoal = (result.data as any)?.goal;
+        console.log("[GoalSettingCard] Updated goal:", updatedGoal);
 
         // Check for celebrations
         if (updatedGoal?.celebration_message) {
@@ -373,9 +377,11 @@ export default function GoalSettingCard() {
           showSuccess("Progress updated!");
         }
 
+        console.log("[GoalSettingCard] Reloading goals data...");
         loadGoalsData();
       }
     } catch (err: any) {
+      console.error("[GoalSettingCard] Exception:", err);
       handleError(err.message);
     }
   }
@@ -616,6 +622,18 @@ ${new Date().toLocaleDateString()}
                         size="small"
                         variant="outlined"
                       />
+                      {goal.reminder_frequency &&
+                        goal.reminder_frequency !== "none" && (
+                          <Chip
+                            label={
+                              goal.reminder_frequency.charAt(0).toUpperCase() +
+                              goal.reminder_frequency.slice(1)
+                            }
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        )}
                       <Chip
                         label={
                           goal.is_on_track ? "On Track" : "Behind Schedule"
@@ -773,18 +791,20 @@ ${new Date().toLocaleDateString()}
                           severity="info"
                           sx={{ mt: 1, py: 0.5 }}
                         >
-                          {achievement.message}
-                          <Typography
-                            variant="caption"
-                            display="block"
-                            color="text.secondary"
-                          >
-                            {new Date(
-                              achievement.achieved_at
-                            ).toLocaleDateString()}{" "}
-                            • {achievement.progress_at_achievement.toFixed(0)}%
-                            complete
-                          </Typography>
+                          <Box>
+                            {achievement.message}
+                            <Typography
+                              variant="caption"
+                              display="block"
+                              color="text.secondary"
+                            >
+                              {new Date(
+                                achievement.achieved_at
+                              ).toLocaleDateString()}{" "}
+                              • {achievement.progress_at_achievement.toFixed(0)}%
+                              complete
+                            </Typography>
+                          </Box>
                         </Alert>
                       ))}
                   </Box>

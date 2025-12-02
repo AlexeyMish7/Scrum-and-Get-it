@@ -333,39 +333,46 @@ async function handleUpdateGoal(
         updates.motivation_notes = `⚡ Keep Pushing: You're a bit behind pace but can catch up! Try increasing daily effort by ${Math.ceil(((expectedProgress - progressPercentage) / 100 * goal.target_value) / 7)} ${goal.unit || 'units'} per day this week.`;
       } else if (progressPercentage > expectedProgress + 20) {
         // Ahead of schedule - celebrate and encourage
-        updates.motivation_notes = `🌟 Excellent Progress! You're ahead of schedule by ${Math.round(progressPercentage - expectedProgress)}%! Your consistency is paying off. Consider setting a stretch goal once you complete this one!`;
+        updates.motivation_notes = `🌟 Excellent Progress! You're ahead of schedule! Your consistency is paying off. Consider setting a stretch goal once you complete this one!`;
       }
 
       // Check milestone completions with enhanced celebrations
       const milestones = goal.milestones || [];
       const achievements = goal.achievements || [];
       const motivationalMessages = [
-        "Keep up the fantastic work!",
-        "You're crushing it!",
-        "Your persistence is inspiring!",
-        "One step closer to success!",
-        "Momentum is building!",
-        "You're making great progress!"
+        "Keep going!",
+        "Great work!",
+        "You're doing awesome!",
+        "Keep it up!",
+        "Nice progress!",
+        "Well done!"
       ];
       
       milestones.forEach((m: Milestone) => {
+        // Mark milestone as completed if progress reaches target
         if (!m.completed && updates.current_value >= m.target_value) {
           m.completed = true;
           m.completed_at = new Date().toISOString();
           
           const motivationMsg = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-          // Add achievement with enhanced celebration
+          
+          // Add achievement
           achievements.push({
             milestone: m.title,
             achieved_at: m.completed_at,
-            message: `🎯 Milestone Unlocked: ${m.title}! 🎊 ${motivationMsg}`,
-            progress_at_achievement: progressPercentage,
+            message: `🎯 ${m.title} achieved! ${motivationMsg}`,
+            progress_at_achievement: (m.target_value / goal.target_value) * 100,
           });
           
-          // Set celebration message for most recent milestone
-          if (!updates.celebration_message) {
-            updates.celebration_message = `🎊 Milestone Complete: ${m.title}! ${progressPercentage.toFixed(0)}% of your goal achieved! ${motivationMsg}`;
-          }
+          // Set celebration message
+          updates.celebration_message = `🎊 ${m.title} achieved! ${motivationMsg}`;
+        }
+        // Un-complete milestone if progress falls below target
+        else if (m.completed && updates.current_value < m.target_value) {
+          m.completed = false;
+          m.completed_at = null;
+          // Clear celebration if going back below this milestone
+          updates.celebration_message = null;
         }
       });
 

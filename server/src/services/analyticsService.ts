@@ -119,21 +119,46 @@ export async function computeOverview(userId: string) {
     .eq("user_id", userId);
   if (interviewsErr) throw interviewsErr;
 
-  const interviewsCount = (interviews ?? []).length;
-  const offersCount = (interviews ?? []).filter((r: any) => r.result === true).length;
+  // Also fetch jobs from pipeline that reached Interview or Offer stage
+  const { data: jobInterviews, error: jobsErr } = await client
+    .from("jobs")
+    .select("id, job_status, industry, created_at")
+    .eq("user_id", userId)
+    .in("job_status", ["Interview", "Offer", "Accepted"])
+    .eq("is_archived", false);
+  if (jobsErr) throw jobsErr;
+
+  // Combine interviews from both sources
+  const allInterviews = [...(interviews ?? [])];
+  const jobBasedInterviews = (jobInterviews ?? []).map((job: any) => ({
+    id: `job-${job.id}`,
+    result: job.job_status === "Offer" || job.job_status === "Accepted",
+    format: "job-pipeline",
+    interview_type: "real",
+    industry: job.industry,
+    score: null,
+    interview_date: job.created_at,
+  }));
+  allInterviews.push(...jobBasedInterviews);
+
+  const interviewsCount = allInterviews.length;
+  const offersCount = allInterviews.filter((r: any) => r.result === true).length;
   const conversionRate = interviewsCount > 0 ? offersCount / interviewsCount : 0;
 
-  // Build breakdowns
+  // Build breakdowns using combined interviews
   const formatMap: Record<string, { interviews: number; offers: number }> = {};
   const typeMap: Record<string, { interviews: number; offers: number }> = {};
   const industryMap: Record<string, { interviews: number; offers: number }> = {};
   const interviewIds: string[] = [];
 
-  (interviews ?? []).forEach((r: any) => {
+  allInterviews.forEach((r: any) => {
     const fmt = r.format ?? "unknown";
     const typ = r.interview_type ?? "unknown";
     const ind = r.industry ?? "unknown";
-    interviewIds.push(r.id);
+    // Only add to interviewIds if it's a real interview record (not job-based)
+    if (!String(r.id).startsWith("job-")) {
+      interviewIds.push(r.id);
+    }
 
     if (!formatMap[fmt]) formatMap[fmt] = { interviews: 0, offers: 0 };
     formatMap[fmt].interviews += 1;
@@ -197,6 +222,7 @@ export async function computeOverview(userId: string) {
 
   const mockScores: number[] = [];
   const realScores: number[] = [];
+  // Only use actual interview records for scoring (not job-based ones)
   (interviews ?? []).forEach((r: any) => {
     const score = typeof r.score === "number" ? r.score : null;
     if (score !== null) {
@@ -291,10 +317,36 @@ export async function computeTrends(userId: string) {
     .order("interview_date", { ascending: true });
   if (interviewsErr) throw interviewsErr;
 
+  // Also fetch jobs from pipeline that reached Interview or Offer stage
+  const { data: jobInterviews, error: jobsErr } = await client
+    .from("jobs")
+    .select("created_at, job_status, industry")
+    .eq("user_id", userId)
+    .in("job_status", ["Interview", "Offer", "Accepted"])
+    .eq("is_archived", false)
+    .order("created_at", { ascending: true });
+  if (jobsErr) throw jobsErr;
+
+  // Combine interviews from both sources for trends
+  const allInterviews = [
+    ...(interviews ?? []).map((i: any) => ({
+      date: i.interview_date,
+      result: i.result,
+      industry: i.industry,
+      company_culture: i.company_culture,
+    })),
+    ...(jobInterviews ?? []).map((j: any) => ({
+      date: j.created_at,
+      result: j.job_status === "Offer" || j.job_status === "Accepted",
+      industry: j.industry,
+      company_culture: null,
+    })),
+  ];
+
   // Aggregate monthly conversion
   const timeseriesMap: Record<string, { attempts: number; offers: number }> = {};
-  (interviews ?? []).forEach((r: any) => {
-    const d = new Date(r.interview_date);
+  allInterviews.forEach((r: any) => {
+    const d = new Date(r.date);
     if (isNaN(d.getTime())) return;
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
     if (!timeseriesMap[key]) timeseriesMap[key] = { attempts: 0, offers: 0 };
@@ -329,9 +381,9 @@ export async function computeTrends(userId: string) {
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([date, v]) => ({ date, confidence: v.count > 0 ? v.sum / v.count : 0 }));
 
-  // Industry comparison
+  // Industry comparison (using combined data)
   const industryMap: Record<string, { interviews: number; offers: number }> = {};
-  (interviews ?? []).forEach((r: any) => {
+  allInterviews.forEach((r: any) => {
     const rawIndustry = r.industry ?? "";
     const ind = rawIndustry.trim().toLowerCase() || "unknown";
     if (!industryMap[ind]) industryMap[ind] = { interviews: 0, offers: 0 };
@@ -345,25 +397,21 @@ export async function computeTrends(userId: string) {
       conversion: v.interviews > 0 ? v.offers / v.interviews : 0,
     }));
 
-  // Company culture comparison
-  console.log("[analyticsService/computeTrends] Sample interview data:", interviews?.[0]);
+  // Company culture comparison (only from actual interviews table, not jobs)
   const cultureMap: Record<string, { interviews: number; offers: number }> = {};
   (interviews ?? []).forEach((r: any) => {
     const rawCulture = r.company_culture ?? "";
-    console.log("[analyticsService/computeTrends] Processing culture:", rawCulture, "from interview:", r);
     const culture = rawCulture.trim().toLowerCase() || "unknown";
     if (!cultureMap[culture]) cultureMap[culture] = { interviews: 0, offers: 0 };
     cultureMap[culture].interviews += 1;
     if (r.result === true) cultureMap[culture].offers += 1;
   });
-  console.log("[analyticsService/computeTrends] Culture map:", cultureMap);
   const cultureComparison = Object.entries(cultureMap)
     .filter(([culture]) => culture !== "unknown")
     .map(([culture, v]) => ({
       culture,
       conversion: v.interviews > 0 ? v.offers / v.interviews : 0,
     }));
-  console.log("[analyticsService/computeTrends] Culture comparison result:", cultureComparison);
 
   return {
     conversionTimeseries,
