@@ -55,7 +55,9 @@ import type {
 function normalizeCompanySize(size: string | null | undefined): string | null {
   if (!size) return null;
 
-  const normalized = size.trim();
+  // Safe trim - handle non-string inputs defensively
+  const normalized = String(size).trim();
+  if (!normalized) return null;
 
   // Valid sizes that match database constraint
   const validSizes = [
@@ -87,6 +89,7 @@ function normalizeCompanySize(size: string | null | undefined): string | null {
   const match = normalized.match(/(\d+)/);
   if (match) {
     const num = parseInt(match[1], 10);
+    if (Number.isNaN(num)) return null;
     if (num <= 10) return "1-10";
     if (num <= 50) return "11-50";
     if (num <= 200) return "51-200";
@@ -858,12 +861,20 @@ export default {
 /** Remove problematic control characters and cap prompt length */
 function sanitizePrompt(input: string, maxLen = 16_000): string {
   try {
+    // Defensive check for non-string input
+    if (typeof input !== "string") {
+      logError("sanitizePrompt received non-string input", {
+        type: typeof input,
+      });
+      return String(input ?? "");
+    }
     const noCtrl = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
     const redacted = redactSecrets(noCtrl);
     return redacted.length > maxLen
       ? redacted.slice(0, maxLen - 1) + "…"
       : redacted;
-  } catch {
+  } catch (e) {
+    logError("sanitizePrompt failed", { error: String(e) });
     return String(input ?? "");
   }
 }
@@ -919,21 +930,47 @@ function sanitizeResumeContent(
   }
 ): any {
   try {
+    // Defensive null/undefined checks
+    if (input === null || input === undefined) {
+      logError("sanitizeResumeContent received null/undefined input", {});
+      return {
+        sections: {
+          experience: [],
+          education: [],
+          projects: [],
+        },
+      };
+    }
+
     const out: any = typeof input === "object" && input ? { ...input } : {};
-    // summary must be a string
+
+    // summary must be a string - handle various edge cases
     if (out.summary != null && typeof out.summary !== "string") {
-      // derive fallback from first bullets if possible
-      const firstBullet =
-        Array.isArray(out.bullets) && out.bullets[0]
-          ? typeof out.bullets[0] === "string"
-            ? out.bullets[0]
-            : out.bullets[0]?.text
-          : null;
-      out.summary = firstBullet ? String(firstBullet) : undefined;
+      // If summary is an object, try to extract text from it
+      if (typeof out.summary === "object") {
+        const summaryObj = out.summary as Record<string, unknown>;
+        const extracted =
+          summaryObj.text || summaryObj.content || summaryObj.value;
+        if (typeof extracted === "string") {
+          out.summary = extracted;
+        } else {
+          // derive fallback from first bullets if possible
+          const firstBullet =
+            Array.isArray(out.bullets) && out.bullets[0]
+              ? typeof out.bullets[0] === "string"
+                ? out.bullets[0]
+                : out.bullets[0]?.text
+              : null;
+          out.summary = firstBullet ? String(firstBullet) : undefined;
+        }
+      } else {
+        // Convert non-string, non-object to string
+        out.summary = String(out.summary);
+      }
     }
     if (typeof out.summary === "string") out.summary = out.summary.trim();
 
-    // skills arrays must be string[] if present
+    // skills arrays must be string[] if present - handle nested objects
     for (const key of [
       "ordered_skills",
       "emphasize_skills",
@@ -941,7 +978,16 @@ function sanitizeResumeContent(
       "ats_keywords",
     ]) {
       if (Array.isArray(out[key])) {
-        out[key] = out[key].filter((s: any) => typeof s === "string");
+        out[key] = out[key]
+          .map((s: any) => {
+            if (typeof s === "string") return s;
+            // Handle objects with name/skill property
+            if (typeof s === "object" && s !== null) {
+              return s.name || s.skill || s.text || null;
+            }
+            return null;
+          })
+          .filter((s: any) => typeof s === "string" && s.trim());
       }
     }
 
@@ -955,18 +1001,30 @@ function sanitizeResumeContent(
     if (Array.isArray(exp)) {
       out.sections.experience = exp
         .map((row: any) => {
+          if (!row || typeof row !== "object") return null;
           const bullets = Array.isArray(row?.bullets)
-            ? row.bullets.filter((b: any) => typeof b === "string")
+            ? row.bullets
+                .map((b: any) =>
+                  typeof b === "string"
+                    ? b
+                    : typeof b === "object" && b !== null
+                    ? b.text || b.content || null
+                    : null
+                )
+                .filter((b: any) => typeof b === "string" && b.trim())
             : [];
           return {
             employment_id: row?.employment_id ?? undefined,
-            role: row?.role ?? undefined,
-            company: row?.company ?? undefined,
+            role: row?.role ?? row?.title ?? row?.job_title ?? undefined,
+            company: row?.company ?? row?.company_name ?? undefined,
             dates: row?.dates ?? undefined,
             bullets,
           };
         })
-        .filter((r: any) => r.bullets.length > 0 || r.role || r.company);
+        .filter(
+          (r: any) =>
+            r !== null && (r.bullets.length > 0 || r.role || r.company)
+        );
     } else if (dbData?.employment && dbData.employment.length > 0) {
       // Fallback: populate from database if AI didn't provide experience
       out.sections.experience = dbData.employment.map((emp: any) => ({
@@ -980,22 +1038,36 @@ function sanitizeResumeContent(
           ? [emp.job_description.slice(0, 200)] // Use first 200 chars as placeholder
           : [],
       }));
+    } else {
+      // Ensure experience is at least an empty array
+      out.sections.experience = [];
     }
 
     // sections.education normalization
     const edu = out.sections.education;
     if (Array.isArray(edu)) {
       out.sections.education = edu
-        .map((row: any) => ({
-          education_id: row?.education_id ?? undefined,
-          institution: row?.institution ?? undefined,
-          degree: row?.degree ?? undefined,
-          graduation_date: row?.graduation_date ?? undefined,
-          details: Array.isArray(row?.details)
-            ? row.details.filter((d: any) => typeof d === "string")
-            : [],
-        }))
-        .filter((r: any) => r.institution || r.degree);
+        .map((row: any) => {
+          if (!row || typeof row !== "object") return null;
+          return {
+            education_id: row?.education_id ?? undefined,
+            institution:
+              row?.institution ??
+              row?.school ??
+              row?.institution_name ??
+              undefined,
+            degree: row?.degree ?? row?.degree_type ?? undefined,
+            graduation_date:
+              row?.graduation_date ??
+              row?.end_date ??
+              row?.grad_date ??
+              undefined,
+            details: Array.isArray(row?.details)
+              ? row.details.filter((d: any) => typeof d === "string")
+              : [],
+          };
+        })
+        .filter((r: any) => r !== null && (r.institution || r.degree));
     } else if (dbData?.education && dbData.education.length > 0) {
       // Fallback: populate from database
       out.sections.education = dbData.education.map((ed: any) => ({
@@ -1008,21 +1080,27 @@ function sanitizeResumeContent(
           ed.honors ? ed.honors : "",
         ].filter(Boolean),
       }));
+    } else {
+      // Ensure education is at least an empty array
+      out.sections.education = [];
     }
 
     // sections.projects normalization
     const proj = out.sections.projects;
     if (Array.isArray(proj)) {
       out.sections.projects = proj
-        .map((row: any) => ({
-          project_id: row?.project_id ?? undefined,
-          name: row?.name ?? undefined,
-          role: row?.role ?? undefined,
-          bullets: Array.isArray(row?.bullets)
-            ? row.bullets.filter((b: any) => typeof b === "string")
-            : [],
-        }))
-        .filter((r: any) => r.name || r.bullets.length > 0);
+        .map((row: any) => {
+          if (!row || typeof row !== "object") return null;
+          return {
+            project_id: row?.project_id ?? undefined,
+            name: row?.name ?? row?.proj_name ?? row?.title ?? undefined,
+            role: row?.role ?? undefined,
+            bullets: Array.isArray(row?.bullets)
+              ? row.bullets.filter((b: any) => typeof b === "string")
+              : [],
+          };
+        })
+        .filter((r: any) => r !== null && (r.name || r.bullets.length > 0));
     } else if (dbData?.projects && dbData.projects.length > 0) {
       // Fallback: populate from database
       out.sections.projects = dbData.projects.map((p: any) => {
@@ -1037,11 +1115,36 @@ function sanitizeResumeContent(
           bullets,
         };
       });
+    } else {
+      // Ensure projects is at least an empty array
+      out.sections.projects = [];
     }
 
     return out;
-  } catch {
-    return input;
+  } catch (e) {
+    logError("sanitizeResumeContent failed", { error: String(e) });
+    // Return a safe fallback structure
+    return {
+      sections: {
+        experience: dbData?.employment?.length
+          ? dbData.employment.map((emp: any) => ({
+              employment_id: emp.id,
+              role: emp.job_title,
+              company: emp.company_name,
+              bullets: [],
+            }))
+          : [],
+        education: dbData?.education?.length
+          ? dbData.education.map((ed: any) => ({
+              education_id: ed.id,
+              institution: ed.institution_name,
+              degree: ed.degree_type,
+              details: [],
+            }))
+          : [],
+        projects: [],
+      },
+    };
   }
 }
 
@@ -1311,7 +1414,9 @@ export async function handleCompanyResearch(req: {
         ? researchData.competitors
         : [],
       marketPositioning:
-        researchData.marketPositioning || researchData.market_positioning || null,
+        researchData.marketPositioning ||
+        researchData.market_positioning ||
+        null,
       talkingPoints: Array.isArray(researchData.talkingPoints)
         ? researchData.talkingPoints
         : Array.isArray(researchData.talking_points)

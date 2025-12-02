@@ -146,17 +146,30 @@ export function DocumentReviewPage() {
       // Fetch full document data if review has document_id
       // Uses Supabase directly so RLS can check reviewer access via auth.uid()
       if (reviewResult.data.document_id) {
+        console.log(
+          "[DocumentReviewPage] Fetching document:",
+          reviewResult.data.document_id
+        );
+
         const { data: docData, error: docError } = await supabase
           .from("documents")
           .select("*")
           .eq("id", reviewResult.data.document_id)
           .single();
 
+        console.log("[DocumentReviewPage] Document result:", {
+          data: docData,
+          error: docError,
+        });
+
         if (docData && !docError) {
           setDocument(docData as unknown as Document);
         } else {
           // Document might not be accessible or doesn't exist
-          console.warn("Could not fetch document:", docError?.message);
+          console.warn(
+            "[DocumentReviewPage] Could not fetch document:",
+            docError?.message
+          );
         }
       }
 

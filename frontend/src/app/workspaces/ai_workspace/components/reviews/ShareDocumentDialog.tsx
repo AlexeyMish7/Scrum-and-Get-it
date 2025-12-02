@@ -154,13 +154,29 @@ export function ShareDocumentDialog({
   const loadReviewers = useCallback(async () => {
     if (!user) return;
 
+    console.log(
+      "[ShareDocumentDialog] Loading reviewers for teamId:",
+      teamId,
+      "userId:",
+      user.id
+    );
     setLoadingReviewers(true);
     try {
       const result = await reviewService.getAvailableReviewers(user.id, teamId);
+      console.log(
+        "[ShareDocumentDialog] getAvailableReviewers result:",
+        result
+      );
       if (result.data) {
         setAvailableReviewers(result.data);
+      } else if (result.error) {
+        console.error(
+          "[ShareDocumentDialog] Error loading reviewers:",
+          result.error
+        );
       }
     } catch (err) {
+      console.error("[ShareDocumentDialog] Exception loading reviewers:", err);
       handleError(err);
     } finally {
       setLoadingReviewers(false);

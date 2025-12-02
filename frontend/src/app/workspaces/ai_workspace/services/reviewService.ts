@@ -203,25 +203,26 @@ export async function createReview(
       request_message: data.requestMessage || null,
     };
 
+    console.log("[createReview] Creating review with payload:", payload);
+
+    // Insert without profile joins to avoid RLS recursion issues
+    // Profile joins can cause issues when the reviewer's profile isn't
+    // yet visible to the current user during the INSERT operation
     const { data: review, error } = await supabase
       .from("document_reviews")
       .insert(payload)
-      .select(
-        `
-        *,
-        owner:profiles!document_reviews_owner_id_fkey(id, full_name, email),
-        reviewer:profiles!document_reviews_reviewer_id_fkey(id, full_name, email),
-        document:documents(id, name, type)
-      `
-      )
+      .select("*")
       .single();
 
     if (error) {
+      console.error("[createReview] Supabase error:", error);
       return { data: null, error: { message: error.message }, status: 400 };
     }
 
+    console.log("[createReview] Review created successfully:", review);
     return { data: review as DocumentReview, error: null, status: 201 };
   } catch (err) {
+    console.error("[createReview] Exception:", err);
     return { data: null, error: { message: String(err) }, status: 500 };
   }
 }
@@ -853,48 +854,113 @@ export async function getAvailableReviewers(
   Result<Array<{ id: string; full_name: string; email: string; role?: string }>>
 > {
   try {
-    if (teamId) {
-      // Get team members
-      const { data: members, error } = await supabase
-        .from("team_members")
-        .select(
-          `
-          user_id,
-          role,
-          profile:profiles!team_members_user_id_fkey(id, full_name, email)
-        `
-        )
-        .eq("team_id", teamId)
-        .eq("is_active", true)
-        .neq("user_id", userId);
-
-      if (error) {
-        return { data: null, error: { message: error.message }, status: 400 };
-      }
-
-      // Profile comes back as array from Supabase join, need to handle that
-      const reviewers = (members || []).map((m: Record<string, unknown>) => {
-        // Profile can be an array or single object depending on join type
-        const profile = Array.isArray(m.profile) ? m.profile[0] : m.profile;
-        return {
-          id:
-            ((profile as Record<string, unknown>)?.id as string) ||
-            (m.user_id as string),
-          full_name:
-            ((profile as Record<string, unknown>)?.full_name as string) ||
-            "Unknown",
-          email: ((profile as Record<string, unknown>)?.email as string) || "",
-          role: m.role as string,
-        };
-      });
-
-      return { data: reviewers, error: null, status: 200 };
+    if (!teamId) {
+      // No team context - return empty
+      console.log("[getAvailableReviewers] No teamId provided");
+      return { data: [], error: null, status: 200 };
     }
 
-    // No team context - return empty for now (could expand to recent collaborators)
-    return { data: [], error: null, status: 200 };
+    console.log(
+      "[getAvailableReviewers] Fetching for teamId:",
+      teamId,
+      "userId:",
+      userId
+    );
+
+    // Try the SECURITY DEFINER function first
+    const { data: members, error } = await supabase.rpc(
+      "get_team_members_for_sharing",
+      {
+        p_user_id: userId,
+        p_team_id: teamId,
+      }
+    );
+
+    if (error) {
+      console.error("[getAvailableReviewers] RPC error:", error);
+
+      // If the function doesn't exist, fall back to direct query
+      // This will only work if user is team owner (can see team via RLS)
+      if (error.message?.includes("function") || error.code === "42883") {
+        console.log(
+          "[getAvailableReviewers] RPC function not found, trying fallback..."
+        );
+        return await getAvailableReviewersFallback(userId, teamId);
+      }
+
+      return { data: null, error: { message: error.message }, status: 400 };
+    }
+
+    console.log("[getAvailableReviewers] RPC returned:", members);
+
+    // Map the function result to our expected format
+    // Column names: member_user_id, member_full_name, member_email, member_role
+    const reviewers = (members || []).map((m: Record<string, unknown>) => ({
+      id: m.member_user_id as string,
+      full_name: (m.member_full_name as string) || "Unknown",
+      email: (m.member_email as string) || "",
+      role: m.member_role as string,
+    }));
+
+    return { data: reviewers, error: null, status: 200 };
   } catch (err) {
+    console.error("[getAvailableReviewers] Exception:", err);
     return { data: null, error: { message: String(err) }, status: 500 };
+  }
+}
+
+/**
+ * Fallback method to get team members when RPC function is not available
+ * This only works for team owners who can see the team via RLS
+ */
+async function getAvailableReviewersFallback(
+  userId: string,
+  teamId: string
+): Promise<
+  Result<Array<{ id: string; full_name: string; email: string; role?: string }>>
+> {
+  try {
+    // Query team_members with profile join
+    // Note: This may fail due to RLS if user is not team owner
+    const { data: members, error } = await supabase
+      .from("team_members")
+      .select(
+        `
+        user_id,
+        role,
+        profiles!team_members_user_id_fkey(id, full_name, email)
+      `
+      )
+      .eq("team_id", teamId)
+      .eq("is_active", true)
+      .neq("user_id", userId);
+
+    if (error) {
+      console.error("[getAvailableReviewersFallback] Query error:", error);
+      return { data: [], error: null, status: 200 }; // Return empty instead of error
+    }
+
+    console.log("[getAvailableReviewersFallback] Query returned:", members);
+
+    // Map the result
+    const reviewers = (members || []).map((m: Record<string, unknown>) => {
+      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+      return {
+        id:
+          ((profile as Record<string, unknown>)?.id as string) ||
+          (m.user_id as string),
+        full_name:
+          ((profile as Record<string, unknown>)?.full_name as string) ||
+          "Unknown",
+        email: ((profile as Record<string, unknown>)?.email as string) || "",
+        role: m.role as string,
+      };
+    });
+
+    return { data: reviewers, error: null, status: 200 };
+  } catch (err) {
+    console.error("[getAvailableReviewersFallback] Exception:", err);
+    return { data: [], error: null, status: 200 }; // Return empty instead of error
   }
 }
 

@@ -5,7 +5,7 @@
  * recent documents, and statistics. Replaces the old dashboard.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { JobRecord } from "../../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import { Container, Stack, Typography, Box, Button } from "@mui/material";
 import {
@@ -57,6 +57,9 @@ export default function AIWorkspaceHub() {
   const [reportOpen, setReportOpen] = useState(false);
   const { predictions, isLoading, error, runPredictions } =
     useJobPredictions(jobs);
+
+  // Track if predictions have already been fetched to prevent infinite loop
+  const hasFetchedPredictions = useRef(false);
 
   // Fetch real data from database
   useEffect(() => {
@@ -163,13 +166,14 @@ export default function AIWorkspaceHub() {
     fetchData();
   }, [user?.id]);
 
-  // Trigger predictions when we have jobs loaded
+  // Trigger predictions once when we first have jobs loaded
+  // Use a ref to prevent infinite loop from runPredictions changing
   useEffect(() => {
-    if (jobs.length > 0) {
-      // runPredictions is safe to call; the hook will handle auth/fallbacks
+    if (jobs.length > 0 && !hasFetchedPredictions.current && !isLoading) {
+      hasFetchedPredictions.current = true;
       runPredictions();
     }
-  }, [jobs, runPredictions]);
+  }, [jobs.length, isLoading]); // Intentionally exclude runPredictions to avoid loop
 
   //   useEffect(() => {
   //   if (jobs.length > 0) {
