@@ -114,14 +114,16 @@ function randomSampleForKind(kind: string) {
               location: "San Francisco, CA",
               demandLevel: "hot",
               trendLabel: "High Demand",
-              summary: "Tech sector showing strong hiring activity with 25% YoY growth.",
+              summary:
+                "Tech sector showing strong hiring activity with 25% YoY growth.",
             },
             {
               industry: "Healthcare",
               location: "Boston, MA",
               demandLevel: "growing",
               trendLabel: "Expanding",
-              summary: "Healthcare IT roles increasing as digital transformation accelerates.",
+              summary:
+                "Healthcare IT roles increasing as digital transformation accelerates.",
             },
           ],
           skillDemand: {
@@ -130,13 +132,15 @@ function randomSampleForKind(kind: string) {
                 name: "JavaScript",
                 category: "core",
                 trend: "stable",
-                commentary: "Fundamental skill with consistent demand across web development.",
+                commentary:
+                  "Fundamental skill with consistent demand across web development.",
               },
               {
                 name: "Python",
                 category: "core",
                 trend: "rising",
-                commentary: "Growing demand driven by AI/ML and data science applications.",
+                commentary:
+                  "Growing demand driven by AI/ML and data science applications.",
               },
             ],
             emergingSkills: [
@@ -144,7 +148,8 @@ function randomSampleForKind(kind: string) {
                 name: "TypeScript",
                 category: "emerging",
                 trend: "rising",
-                commentary: "Rapidly becoming standard for large-scale JavaScript applications.",
+                commentary:
+                  "Rapidly becoming standard for large-scale JavaScript applications.",
               },
             ],
             decliningSkills: [
@@ -152,7 +157,8 @@ function randomSampleForKind(kind: string) {
                 name: "jQuery",
                 category: "declining",
                 trend: "declining",
-                commentary: "Modern frameworks have reduced reliance on jQuery.",
+                commentary:
+                  "Modern frameworks have reduced reliance on jQuery.",
               },
             ],
           },
@@ -163,7 +169,8 @@ function randomSampleForKind(kind: string) {
               median: 145000,
               range: "$120K - $180K",
               trend: "rising",
-              commentary: "Salaries increasing 8% annually due to talent shortage.",
+              commentary:
+                "Salaries increasing 8% annually due to talent shortage.",
             },
           ],
           companyGrowthPatterns: [
@@ -171,7 +178,8 @@ function randomSampleForKind(kind: string) {
               name: "Tech Startups",
               industry: "Technology",
               hiringOutlook: "aggressive",
-              commentary: "Well-funded startups expanding engineering teams rapidly.",
+              commentary:
+                "Well-funded startups expanding engineering teams rapidly.",
             },
           ],
           industryDisruptionInsights: [
@@ -187,7 +195,8 @@ function randomSampleForKind(kind: string) {
               label: "Q4 Hiring Push",
               timing: "now",
               priority: "high",
-              description: "Companies rushing to fill positions before year-end budgets expire.",
+              description:
+                "Companies rushing to fill positions before year-end budgets expire.",
             },
           ],
           competitiveLandscapeSummary:
@@ -304,7 +313,18 @@ async function sendToOpenAI(
         signal: controller.signal,
       });
 
-      const raw: any = await resp.json();
+      let raw: any;
+      try {
+        raw = await resp.json();
+      } catch (jsonErr) {
+        clearTimeout(id);
+        logError("ai_response_json_parse_failed", {
+          status: resp.status,
+          error: String(jsonErr),
+        });
+        throw new Error(`Failed to parse OpenAI response: ${resp.status}`);
+      }
+
       clearTimeout(id);
       if (!resp.ok) {
         const errMsg = raw?.error?.message || `OpenAI HTTP ${resp.status}`;
@@ -312,10 +332,12 @@ async function sendToOpenAI(
         (err.status as any) = resp.status;
         throw err;
       }
+
       // Compose text from choices if present
       const text =
         raw?.choices
           ?.map((c: any) => c.message?.content ?? c.text)
+          .filter((t: any) => typeof t === "string")
           .join("\n") ?? null;
       const tokens = raw?.usage?.total_tokens ?? undefined;
 
@@ -327,11 +349,20 @@ async function sendToOpenAI(
           try {
             json = JSON.parse(trimmed);
           } catch (e) {
-            // Not valid JSON, leave json undefined and keep text
-            logInfo("ai_json_parse_failed", {
-              error: String(e),
-              textPreview: trimmed.substring(0, 200),
-            });
+            // Try removing markdown code blocks if present
+            try {
+              const cleaned = trimmed
+                .replace(/```json\s*/g, "")
+                .replace(/```\s*/g, "")
+                .trim();
+              json = JSON.parse(cleaned);
+            } catch (e2) {
+              // Not valid JSON, leave json undefined and keep text
+              logInfo("ai_json_parse_failed", {
+                error: String(e),
+                textPreview: trimmed.substring(0, 200),
+              });
+            }
           }
         }
       }

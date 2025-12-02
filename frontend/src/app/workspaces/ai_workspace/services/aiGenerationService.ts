@@ -76,12 +76,14 @@ async function transformAIResumeContent(
     );
   }
 
-  // Build header from profile data
+  // Build header from profile data - defensive null checks
+  const firstName = profile.first_name || "";
+  const lastName = profile.last_name || "";
   const header = {
-    fullName: `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
-    title: profile.job_title || "",
+    fullName: `${firstName} ${lastName}`.trim() || "Your Name",
+    title: profile.job_title || profile.professional_title || "",
     email: profile.email || "",
-    phone: profile.phone || "",
+    phone: profile.phone || profile.phone_number || "",
     location: profile.location || "",
     links: [
       ...(profile.linkedin_url
@@ -109,66 +111,93 @@ async function transformAIResumeContent(
     photoUrl: profile.avatar_url || undefined,
   };
 
-  // Transform AI content to ResumeContent format
+  // Handle null/undefined aiContent gracefully
+  const safeAiContent = aiContent || {};
+
+  // Transform AI content to ResumeContent format - with defensive checks
   const content: ResumeContent = {
     header,
-    summary: aiContent?.summary
+    summary: safeAiContent?.summary
       ? {
           enabled: true,
-          text: aiContent.summary,
-          highlights: aiContent.ats_keywords || [],
+          text:
+            typeof safeAiContent.summary === "string"
+              ? safeAiContent.summary
+              : String(safeAiContent.summary),
+          highlights: Array.isArray(safeAiContent.ats_keywords)
+            ? safeAiContent.ats_keywords.filter(
+                (k: unknown) => typeof k === "string"
+              )
+            : [],
         }
       : undefined,
     experience: {
       enabled: true,
-      items:
-        aiContent?.sections?.experience?.map((exp) => ({
-          title: exp.role || "",
-          company: exp.company || "",
-          location: "",
-          startDate: "",
-          endDate: null,
-          current: false,
-          bullets: exp.bullets || [],
-          highlights: exp.notes || [],
-          technologies: [],
-        })) || [],
+      items: (Array.isArray(safeAiContent?.sections?.experience)
+        ? safeAiContent.sections.experience
+        : []
+      ).map((exp: any) => ({
+        title: exp?.role || exp?.title || exp?.job_title || "",
+        company: exp?.company || exp?.company_name || "",
+        location: exp?.location || "",
+        startDate: exp?.start_date || "",
+        endDate: exp?.end_date || null,
+        current: exp?.current || false,
+        bullets: Array.isArray(exp?.bullets)
+          ? exp.bullets.filter((b: unknown) => typeof b === "string")
+          : [],
+        highlights: Array.isArray(exp?.notes)
+          ? exp.notes.filter((n: unknown) => typeof n === "string")
+          : [],
+        technologies: [],
+      })),
     },
     education: {
       enabled: true,
-      items:
-        aiContent?.sections?.education?.map((edu) => ({
-          degree: edu.degree || "",
-          field: "",
-          institution: edu.institution || "",
-          location: "",
-          graduationDate: edu.graduation_date || "",
-          relevant: edu.details || [],
-        })) || [],
+      items: (Array.isArray(safeAiContent?.sections?.education)
+        ? safeAiContent.sections.education
+        : []
+      ).map((edu: any) => ({
+        degree: edu?.degree || edu?.degree_type || "",
+        field: edu?.field || edu?.field_of_study || "",
+        institution: edu?.institution || edu?.institution_name || "",
+        location: edu?.location || "",
+        graduationDate: edu?.graduation_date || edu?.end_date || "",
+        relevant: Array.isArray(edu?.details)
+          ? edu.details.filter((d: unknown) => typeof d === "string")
+          : [],
+      })),
     },
     skills: {
       enabled: true,
-      categories: aiContent?.ordered_skills
+      categories: Array.isArray(safeAiContent?.ordered_skills)
         ? [
             {
               name: "Skills",
-              skills: aiContent.ordered_skills.map((skill) => ({
-                name: skill,
-                highlighted:
-                  aiContent.emphasize_skills?.includes(skill) || false,
-              })),
+              skills: safeAiContent.ordered_skills
+                .filter((skill: unknown) => typeof skill === "string")
+                .map((skill: string) => ({
+                  name: skill,
+                  highlighted:
+                    Array.isArray(safeAiContent.emphasize_skills) &&
+                    safeAiContent.emphasize_skills.includes(skill),
+                })),
             },
           ]
         : [],
     },
-    projects: aiContent?.sections?.projects
+    projects: Array.isArray(safeAiContent?.sections?.projects)
       ? {
           enabled: true,
-          items: aiContent.sections.projects.map((proj) => ({
-            name: proj.name || "",
-            description: proj.role || "",
-            technologies: [],
-            bullets: proj.bullets || [],
+          items: safeAiContent.sections.projects.map((proj: any) => ({
+            name: proj?.name || proj?.proj_name || "",
+            description: proj?.role || proj?.description || "",
+            technologies: Array.isArray(proj?.technologies)
+              ? proj.technologies.filter((t: unknown) => typeof t === "string")
+              : [],
+            bullets: Array.isArray(proj?.bullets)
+              ? proj.bullets.filter((b: unknown) => typeof b === "string")
+              : [],
           })),
         }
       : undefined,
