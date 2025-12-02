@@ -10,6 +10,7 @@ import {
 	Stack,
 	Checkbox,
 	FormControlLabel,
+	MenuItem,
 } from "@mui/material";
 
 type Props = {
@@ -29,11 +30,45 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 	useEffect(() => {
 		setForm(
 			initialData
-				? { ...initialData, is_professional_reference: (initialData.is_professional_reference as boolean) ?? false, follow_up_required: (initialData.follow_up_required as boolean) ?? false, follow_up_notes: (initialData.follow_up_notes as string) ?? "" }
-				: { is_professional_reference: false, follow_up_required: false, follow_up_notes: "" }
+				? {
+					...initialData,
+					is_professional_reference: (initialData.is_professional_reference as boolean) ?? false,
+					follow_up_required: (initialData.follow_up_required as boolean) ?? false,
+					follow_up_notes: (initialData.follow_up_notes as string) ?? "",
+					relationship_type: (initialData.relationship_type as string) ?? null,
+					industry: (initialData.industry as string) ?? null,
+				}
+				: { is_professional_reference: false, follow_up_required: false, follow_up_notes: "", relationship_type: null, industry: null }
 		);
 		setError(null);
 	}, [initialData, open]);
+
+	const relationshipOptions = ["alumni", "mentor", "colleague", "friend", "client", "other"];
+	const industryOptions = [
+		"Technology",
+		"Finance",
+		"Healthcare",
+		"Education",
+		"Manufacturing",
+		"Retail",
+		"Government",
+		"Non-profit",
+		"Energy",
+		"Transportation",
+		"Real Estate",
+		"Media & Entertainment",
+		"Telecommunications",
+		"Legal",
+		"Pharmaceuticals",
+		"Hospitality",
+		"Consulting",
+		"Automotive",
+		"Insurance",
+		"Biotechnology",
+		"Agriculture",
+		"Construction",
+		"Other",
+	];
 
 	const setField = (key: string, value: unknown) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -85,8 +120,35 @@ const AddContactForm: React.FC<Props> = ({ open, initialData, onClose, onCreate,
 					</Box>
 
 					<Box display="flex" gap={2} flexWrap="wrap">
-						<TextField sx={{ flex: "1 1 240px" }} label="Industry" value={String(form.industry ?? "")} onChange={(e) => setField("industry", e.target.value)} />
-						<TextField sx={{ flex: "1 1 200px" }} label="Relationship Type" value={String(form.relationship_type ?? "")} onChange={(e) => setField("relationship_type", e.target.value)} />
+						<TextField
+							select
+							sx={{ flex: "1 1 240px" }}
+							label="Industry"
+							value={String(form.industry ?? "")}
+							onChange={(e) => setField("industry", e.target.value || null)}
+						>
+							<MenuItem value="">Any</MenuItem>
+							{industryOptions.map((i) => (
+								<MenuItem key={i} value={i}>
+									{i}
+								</MenuItem>
+							))}
+						</TextField>
+
+						<TextField
+							select
+							sx={{ flex: "1 1 200px" }}
+							label="Relationship Type"
+							value={String(form.relationship_type ?? "")}
+							onChange={(e) => setField("relationship_type", e.target.value || null)}
+						>
+							<MenuItem value="">Any</MenuItem>
+							{relationshipOptions.map((r) => (
+								<MenuItem key={r} value={r}>
+									{r.charAt(0).toUpperCase() + r.slice(1)}
+								</MenuItem>
+							))}
+						</TextField>
 					</Box>
 
 					<Box>

@@ -424,6 +424,22 @@ async function handleRequest(
       return;
     }
 
+    if (method === "POST" && pathname === "/api/generate/suggest-contacts") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/generate/suggest-contacts.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/generate/event-contacts") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/generate/event-contacts.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/profile-tips") {
       const userId = await requireAuth(req);
       const { handleProfileTips } = await import("./routes/index.js");

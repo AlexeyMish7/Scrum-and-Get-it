@@ -15,7 +15,32 @@ type Props = {
 	onClear?: () => void;
 };
 
-const relationshipOptions = ["colleague", "friend", "mentor", "client", "other"];
+const relationshipOptions = ["alumni", "mentor", "colleague", "friend", "client", "other"];
+const industryOptions = [
+	"Technology",
+	"Finance",
+	"Healthcare",
+	"Education",
+	"Manufacturing",
+	"Retail",
+	"Government",
+	"Non-profit",
+	"Energy",
+	"Transportation",
+	"Real Estate",
+	"Media & Entertainment",
+	"Telecommunications",
+	"Legal",
+	"Pharmaceuticals",
+	"Hospitality",
+	"Consulting",
+	"Automotive",
+	"Insurance",
+	"Biotechnology",
+	"Agriculture",
+	"Construction",
+	"Other",
+];
 
 const ContactFilters: React.FC<Props> = ({ onChange, onClear }) => {
 	const [q, setQ] = useState("");
@@ -54,12 +79,20 @@ const ContactFilters: React.FC<Props> = ({ onChange, onClear }) => {
 			/>
 
 			<TextField
+				select
 				label="Industry"
 				value={industry ?? ""}
 				onChange={(e) => setIndustry(e.target.value || null)}
 				size="small"
 				sx={{ minWidth: 160 }}
-			/>
+			>
+				<MenuItem value="">Any</MenuItem>
+				{industryOptions.map((i) => (
+					<MenuItem key={i} value={i}>
+						{i}
+					</MenuItem>
+				))}
+			</TextField>
 
 			<TextField
 				label="Company"
@@ -88,7 +121,7 @@ const ContactFilters: React.FC<Props> = ({ onChange, onClear }) => {
 				<MenuItem value="">Any</MenuItem>
 				{relationshipOptions.map((r) => (
 					<MenuItem key={r} value={r}>
-						{r}
+						{r.charAt(0).toUpperCase() + r.slice(1)}
 					</MenuItem>
 				))}
 			</TextField>
