@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-empty */
 import { useEffect, useState } from "react";
 import {
   Box,
@@ -47,6 +50,28 @@ type Interview = {
   notes?: string;
   status: "scheduled" | "cancelled" | "completed";
   outcome?: string;
+};
+
+type FollowupTemplate = {
+  id: string;
+  title: string;
+  subject: string;
+  body: string;
+  suggestedDays?: number;
+  category?: string;
+  to?: string;
+};
+
+type FollowupRecord = {
+  id: string;
+  interviewId: string;
+  title: string;
+  subject: string;
+  body: string;
+  createdAt: string;
+  sentAt: string | null;
+  respondedAt: string | null;
+  category?: string;
 };
 
 const STORAGE_KEY = "sgt:interviews";
@@ -135,19 +160,15 @@ export default function InterviewScheduling() {
         scheduleReminderTimeout(r);
       }
     } catch {}
+    try {
+      // ensure job list loaded for the linked-job dropdown on mount
+      refreshJobs();
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function scheduleReminderTimeout(rem: any) {
     const when = new Date(rem.when).getTime();
-
-    // ensure job list loaded for the linked-job dropdown
-    useEffect(() => {
-      try {
-        refreshJobs();
-      } catch {}
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
     const now = Date.now();
     const ms = when - now;
     if (ms <= 0) return; // already past
@@ -461,7 +482,9 @@ export default function InterviewScheduling() {
     );
     try {
       window.dispatchEvent(new CustomEvent("interviews-updated"));
-    } catch {}
+    } catch {
+      /* intentionally empty */
+    }
     setSnack({ open: true, msg: "Interview cancelled", sev: "info" });
   }
 
@@ -718,9 +741,12 @@ export default function InterviewScheduling() {
   }
 
   // Send follow-up: copy to clipboard and open mailto (best-effort)
-  async function sendFollowupTemplate(interviewId: string, tpl: any) {
+  async function sendFollowupTemplate(
+    interviewId: string,
+    tpl: FollowupTemplate
+  ) {
     try {
-      const record = {
+      const record: FollowupRecord = {
         id: tpl.id,
         interviewId,
         title: tpl.title,
@@ -1803,7 +1829,7 @@ export default function InterviewScheduling() {
                     !(it.meta && it.meta.internal) &&
                     !String(it.id).endsWith("__meta")
                 )
-                .map((it, idx) => (
+                .map((it) => (
                   <ListItem key={it.id} disableGutters>
                     <FormControlLabel
                       control={
@@ -1913,7 +1939,7 @@ export default function InterviewScheduling() {
               Templates
             </Typography>
             <List>
-              {followupDialog.templates.map((t, i) => (
+              {followupDialog.templates.map((t) => (
                 <ListItem
                   key={t.id}
                   sx={{

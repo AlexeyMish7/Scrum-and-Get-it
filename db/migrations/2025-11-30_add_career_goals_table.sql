@@ -9,7 +9,7 @@
 --   - Milestone tracking with celebration features
 --   - Progress measurement against target metrics
 --   - Accountability and progress sharing options
---   - Goal impact tracking on job search success
+--   - Goal impact tracking on job search success./
 -- =====================================================================
 
 -- Create goal status enum

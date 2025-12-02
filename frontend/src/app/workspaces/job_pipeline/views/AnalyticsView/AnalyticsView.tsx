@@ -43,11 +43,15 @@ import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCar
 import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchCard/CompanyResearchCard";
 import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
 import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
+import MarketIntelligenceCard from "@job_pipeline/components/cards/MarketIntelligenceCard/MarketIntelligenceCard";
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
 import CompetitivePositioningCard from "@job_pipeline/components/cards/CompetitivePositioningCard/CompetitivePositioningCard";
 import PatternRecognitionCard from "@job_pipeline/components/cards/PatternRecognitionCard/PatternRecognitionCard";
+import TimeInvestmentCard from "@job_pipeline/components/cards/TimeInvestmentCard/TimeInvestmentCard";
+import ApplicationAnalyticsCard from "@job_pipeline/components/cards/ApplicationAnalyticsCard/ApplicationAnalyticsCard";
+import TimeEntryForm from "@job_pipeline/components/forms/TimeEntryForm/TimeEntryForm";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -679,6 +683,17 @@ export default function AnalyticsView() {
           </Grid>
         </Grid>
 
+        {/* Application Analytics */}
+        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 3 }}>
+          Application Success Analytics
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={12}>
+            <ApplicationAnalyticsCard jobs={jobs} />
+          </Grid>
+        </Grid>
+
         {/* AI Insights + Goals */}
         <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 3 }}>
           Insights & Goals
@@ -726,6 +741,9 @@ export default function AnalyticsView() {
           <Grid size={{ xs: 12, md: 6 }}>
             <CompanyResearchCard />
           </Grid>
+          <Grid size={{ xs: 12 }}>
+            <MarketIntelligenceCard />
+          </Grid>
         </Grid>
 
         {/* Quality Analysis */}
@@ -761,6 +779,20 @@ export default function AnalyticsView() {
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <ResponseRateCard />
+          </Grid>
+        </Grid>
+
+        {/* Productivity & Time Management */}
+        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 3 }}>
+          Productivity & Time Management
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TimeEntryForm />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <TimeInvestmentCard />
           </Grid>
         </Grid>
 

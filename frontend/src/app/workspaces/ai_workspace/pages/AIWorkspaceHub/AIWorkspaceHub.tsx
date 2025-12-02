@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
-import type { JobRecord } from "../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
+import type { JobRecord } from "../../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import { Container, Stack, Typography, Box, Button } from "@mui/material";
 import {
   QuickActions,
@@ -258,10 +258,10 @@ export default function AIWorkspaceHub() {
                 {p.confidence !== undefined && (
                   <Typography>
                     Confidence: {(p.confidence * 100).toFixed(1)}%
-                    {p.confidenceInterval &&
+                    {/* {p.confidenceInterval &&
                       ` (CI: ${(p.confidenceInterval[0] * 100).toFixed(
                         1
-                      )}% - ${(p.confidenceInterval[1] * 100).toFixed(1)}%)`}
+                      )}% - ${(p.confidenceInterval[1] * 100).toFixed(1)}%)`} */}
                   </Typography>
                 )}
 
@@ -301,7 +301,7 @@ export default function AIWorkspaceHub() {
                 )}
 
                 {/* Details */}
-                {p.details && (
+                {/* {p.details && (
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="subtitle2">Details:</Typography>
                     <pre style={{ whiteSpace: "pre-wrap" }}>
@@ -310,7 +310,7 @@ export default function AIWorkspaceHub() {
                         : JSON.stringify(p.details, null, 2)}
                     </pre>
                   </Box>
-                )}
+                )} */}
               </Box>
             ))}
         </Box>

@@ -46,6 +46,8 @@ import crud from "@shared/services/crud";
 import BenchmarkCard from "../../pages/AnalyticsPage/BenchmarkCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
 import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgressionCard/SalaryProgressionCard";
+import MarketIntelligenceCard from "@job_pipeline/components/cards/MarketIntelligenceCard/MarketIntelligenceCard";
+import TimeInvestmentCard from "@job_pipeline/components/cards/TimeInvestmentCard/TimeInvestmentCard";
 import {
   computeSuccessRates,
   computeAvgResponseDays,
@@ -618,6 +620,12 @@ export default function AnalyticsPanel({
             </Grid>
             <Grid size={12}>
               <SalaryResearchCard />
+            </Grid>
+            <Grid size={12}>
+              <MarketIntelligenceCard />
+            </Grid>
+            <Grid size={12}>
+              <TimeInvestmentCard />
             </Grid>
           </Grid>
 

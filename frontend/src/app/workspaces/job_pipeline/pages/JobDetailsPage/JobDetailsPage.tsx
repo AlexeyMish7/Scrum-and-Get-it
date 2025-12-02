@@ -59,7 +59,7 @@ import JobMaterialsTab from "./JobMaterialsTab";
 import JobNotesTab from "./JobNotesTab";
 import JobHistoryTab from "./JobHistoryTab";
 
-type TabValue = "overview" | "materials" | "notes" | "history";
+type TabValue = "overview" | "materials" | gt"notes" | "history";
 
 export default function JobDetailsPage() {
   const { id } = useParams<{ id: string }>();

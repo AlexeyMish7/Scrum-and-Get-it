@@ -77,9 +77,7 @@ export default function ContactsDashboard() {
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
-      <Box sx={{ p: 3, pb: 0 }}>
-        <Breadcrumbs items={[{ label: "Network" }, { label: "Contacts" }]} />
-      </Box>
+   
 
       <Box sx={{ maxWidth: 1200, mx: "auto", mt: 2 }}>
         <NetworkHubNavbar
