@@ -563,6 +563,41 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // TIME ENTRIES ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/time-entries") {
+      try {
+        const { handleCreateTimeEntry } = await import("./routes/time-entries/create.js");
+        await handleCreateTimeEntry(req, res);
+        ctx.logComplete(method, pathname, 201);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in time entries route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // TIME INVESTMENT & PRODUCTIVITY ANALYTICS ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (method === "POST" && pathname === "/api/analytics/productivity/time-investment") {
+      console.log("🎯 HIT TIME INVESTMENT ROUTE!");
+      try {
+        const { handleTimeInvestmentAnalytics } = await import("./routes/analytics/productivity/timeInvestment.js");
+        console.log("✅ Import successful, calling handler...");
+        await handleTimeInvestmentAnalytics(req, res);
+        console.log("✅ Handler completed");
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in time investment route:", error);
+        jsonReply(res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // PATTERN RECOGNITION ANALYTICS ENDPOINT (protected)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/analytics/pattern-recognition") {
