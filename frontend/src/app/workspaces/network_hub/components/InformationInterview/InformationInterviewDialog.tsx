@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogTitle,
@@ -52,6 +53,7 @@ export default function InformationInterviewDialog({ open, onClose, initialConta
   const [preferredTime, setPreferredTime] = useState<string | null>(null);
 
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [generateLoading, setGenerateLoading] = useState(false);
   const [persistedRowId, setPersistedRowId] = useState<string | null>(null);
@@ -308,12 +310,30 @@ export default function InformationInterviewDialog({ open, onClose, initialConta
             try {
               if (persistedRowId) {
                 // update existing row
-                await db.updateInformationalInterview(user.id, persistedRowId, payload);
+                const res = await db.updateInformationalInterview(user.id, persistedRowId, payload);
+                if (res.error) {
+                  console.error("Update informational interview failed", res.error);
+                  alert(`Failed to update informational interview: ${res.error.message ?? 'unknown error'}`);
+                  return;
+                }
               } else {
                 const created = await db.createInformationalInterview(user.id, payload);
-                if (!created.error && created.data && (created.data as any).id) {
+                if (created.error) {
+                  console.error("Create informational interview failed", created.error);
+                  alert(`Failed to save informational interview: ${created.error.message ?? 'unknown error'}`);
+                  return;
+                }
+                if (created.data && (created.data as any).id) {
                   setPersistedRowId(String((created.data as any).id));
                 }
+              }
+
+              // On success, navigate to the informational interviews page and close the dialog
+              try {
+                // Navigate back to the Contacts Dashboard and open the Informational Interviews tab
+                navigate("/network", { state: { selectedTab: 2 } });
+              } catch (navErr) {
+                console.warn("Navigation to /network failed", navErr);
               }
               close();
             } catch (e) {

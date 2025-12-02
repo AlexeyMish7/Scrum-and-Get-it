@@ -16,6 +16,7 @@ import {
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import EventList from "@workspaces/network_hub/components/NetworkingEvents/EventList";
 import ContactsList from "@workspaces/network_hub/components/ContactsList/ContactsList";
 import InformationalInterviews from "@workspaces/network_hub/pages/InformationalInterview/InformationalInterviews";
@@ -40,10 +41,24 @@ interface NetworkingAnalytics {
 
 export default function ContactsDashboard() {
   const { user, session } = useAuth();
+  const location = useLocation();
+  const initialTabFromState = (location.state as any)?.selectedTab;
   const [analytics, setAnalytics] = useState<NetworkingAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState<string>("30d");
-  const [selectedTab, setSelectedTab] = useState<number>(0);
+  const [selectedTab, setSelectedTab] = useState<number>(() =>
+    typeof initialTabFromState === "number" ? initialTabFromState : 0
+  );
+
+  // If navigation includes a selectedTab in location.state, update the tab
+  useEffect(() => {
+    const s = (location.state as any)?.selectedTab;
+    if (typeof s === "number" && s !== selectedTab) {
+      setSelectedTab(s);
+    }
+    // We only want to respond to location.state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem("contacts:reminder:open") === "true";
