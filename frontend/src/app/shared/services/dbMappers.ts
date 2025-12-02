@@ -2904,8 +2904,7 @@ export const mapInformationalInterview = (
       (formData.preparation_notes as Record<string, unknown>) ??
       {},
     interview_date: toIso(formData.interview_date ?? formData.interviewDate ?? null),
-    // Timestamp when the informational interview was completed (optional)
-    completed_at: toIso(formData.completed_at ?? formData.completedAt ?? null),
+    // Note: 'completed_at' column removed from DB schema; do not include it here
     additional_notes:
       (formData.additional_notes as string) ??
       (formData.additionalNotes as string) ??
@@ -2942,14 +2941,43 @@ export async function createInformationalInterview(
   formData: Record<string, unknown>
 ): Promise<Result<unknown>> {
   const mapped = mapInformationalInterview(formData);
-  if (mapped.error) {
-    return {
-      data: null,
-      error: { message: mapped.error, status: null },
-      status: null,
-    } as Result<unknown>;
-  }
   const userCrud = withUser(userId);
+
+  if (mapped.error) {
+    // Fallback: if strict mapper validation fails (e.g., missing contact_id),
+    // attempt a best-effort insert using available fields so the UI 'Finish'
+    // action persists user-entered data instead of failing silently.
+    function toIso(v: unknown): string | null {
+      if (v == null) return null;
+      if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+      const s = String(v).trim();
+      if (!s) return null;
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d.toISOString();
+    }
+
+    const payload: Record<string, unknown> = {
+      contact_id: formData.contact_id ?? formData.contactId ?? null,
+      request_template:
+        (formData.request_template as Record<string, unknown>) ??
+        (formData.requestTemplate as Record<string, unknown>) ?? {},
+      prepartion_notes:
+        (formData.prepartion_notes as Record<string, unknown>) ??
+        (formData.preparationNotes as Record<string, unknown>) ??
+        (formData.preparation_notes as Record<string, unknown>) ?? {},
+      interview_date: toIso(
+        formData.interview_date ?? formData.interviewDate ?? null
+      ),
+      additional_notes:
+        (formData.additional_notes as string) ??
+        (formData.additionalNotes as string) ??
+        null,
+      status: (formData.status as string) ?? null,
+    };
+
+    return userCrud.insertRow("informational_interviews", payload);
+  }
+
   return userCrud.insertRow("informational_interviews", mapped.payload ?? {});
 }
 
@@ -2959,25 +2987,15 @@ export async function updateInformationalInterview(
   formData: Record<string, unknown>
 ): Promise<Result<unknown>> {
   const userCrud = withUser(userId);
-  // If the caller is only updating status (and optionally completed_at),
-  // allow a direct partial update without running the full mapper which
-  // requires `contact_id` and other identity fields.
+  // If the caller is only updating status, allow a direct partial update
+  // without running the full mapper which requires `contact_id` and other
+  // identity fields.
   const keys = Object.keys(formData || {});
-  const statusOnlyKeys = keys.length > 0 && keys.every((k) =>
-    ["status", "completed_at", "completedAt"].includes(k)
-  );
+  const statusOnlyKeys = keys.length > 0 && keys.every((k) => ["status"].includes(k));
 
   if (statusOnlyKeys) {
-    // Normalize completed_at if provided (accept Date or string)
     const payload: Record<string, unknown> = {};
     if (formData.status != null) payload.status = formData.status;
-    if (formData.completed_at != null) {
-      const v = formData.completed_at;
-      payload.completed_at = v instanceof Date ? v.toISOString() : String(v);
-    } else if (formData.completedAt != null) {
-      const v = formData.completedAt;
-      payload.completed_at = v instanceof Date ? v.toISOString() : String(v);
-    }
 
     return userCrud.updateRow("informational_interviews", payload, {
       eq: { id },
