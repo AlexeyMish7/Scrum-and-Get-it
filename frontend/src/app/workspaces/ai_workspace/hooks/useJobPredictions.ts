@@ -3,6 +3,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import type { JobRecord } from "../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import aiClient from "@shared/services/ai/client";
 import aiArtifacts from "@shared/services/aiArtifacts";
+import { listPreparationActivities } from "@shared/services/dbMappers";
 
 export type Prediction = {
   id?: string | number;
@@ -63,15 +64,101 @@ export function useJobPredictions(initialJobs?: JobRecord[]) {
       setRawResponse(null);
 
       try {
-        const compact = inputJobs.map((j) => ({
-          id: j.id,
-          title: j.job_title,
-          company: j.company_name,
-          industry: j.industry,
-          created_at: j.created_at,
-          status_changed_at: j.status_changed_at,
-          job_status: j.job_status,
-        }));
+          // Fetch user's preparation activities and local attempts to enrich job context
+          let prepActivities: any[] = [];
+          try {
+            const pa = await listPreparationActivities(userId, { limit: 1000 });
+            if (!pa.error && Array.isArray(pa.data)) prepActivities = pa.data as any[];
+          } catch (e) {
+            // ignore prep fetch failures — predictions still proceed
+          }
+
+          let localAttempts: any[] = [];
+          try {
+            const raw = localStorage.getItem("sgt:technical_prep_attempts");
+            localAttempts = raw ? JSON.parse(raw) : [];
+          } catch {}
+
+          // Build compact job objects enriched with prep summaries so the AI can use them
+          const compact = inputJobs.map((j) => {
+            const jobTitle = String(j.job_title || "").toLowerCase();
+            const company = String(j.company_name || "").toLowerCase();
+
+            // aggregate prep activities related to this job
+            let prepMinutes = 0;
+            let mockCount = 0;
+            for (const r of prepActivities) {
+              try {
+                const dt = r.activity_date ? new Date(r.activity_date) : null;
+                // consider recent activities only (90 days)
+                if (dt && Date.now() - dt.getTime() > 90 * 24 * 3600 * 1000) continue;
+              } catch {}
+
+              if (r.job_id && String(r.job_id) === String(j.id)) {
+                prepMinutes += Number(r.time_spent_minutes) || 0;
+                const at = String(r.activity_type || "").toLowerCase();
+                if (at.includes("mock") || at.includes("interview")) mockCount++;
+                continue;
+              }
+
+              const desc = (String(r.activity_description || "") + " " + String(r.notes || "")).toLowerCase();
+              if (jobTitle && desc.includes(jobTitle)) {
+                prepMinutes += Number(r.time_spent_minutes) || 0;
+                const at = String(r.activity_type || "").toLowerCase();
+                if (at.includes("mock") || at.includes("interview")) mockCount++;
+                continue;
+              }
+              if (company && desc.includes(company)) {
+                prepMinutes += Number(r.time_spent_minutes) || 0;
+                const at = String(r.activity_type || "").toLowerCase();
+                if (at.includes("mock") || at.includes("interview")) mockCount++;
+                continue;
+              }
+            }
+
+            // include local attempts
+            let localPracticeMin = 0;
+            let localMockCount = 0;
+            for (const a of localAttempts) {
+              try {
+                if (a.jobId && String(a.jobId) === String(j.id)) {
+                  localPracticeMin += (Number(a.elapsedMs) || 0) / 60000;
+                  const origin = String(a.origin || "").toLowerCase();
+                  if (origin.includes("mock") || origin.includes("interview")) localMockCount++;
+                  continue;
+                }
+                const txt = (String(a.text || a.question || "") + " " + String(a.code || "") + " " + String(a.origin || "")).toLowerCase();
+                if (jobTitle && txt.includes(jobTitle)) {
+                  localPracticeMin += (Number(a.elapsedMs) || 0) / 60000;
+                  const origin = String(a.origin || "").toLowerCase();
+                  if (origin.includes("mock") || origin.includes("interview")) localMockCount++;
+                  continue;
+                }
+                if (company && txt.includes(company)) {
+                  localPracticeMin += (Number(a.elapsedMs) || 0) / 60000;
+                  const origin = String(a.origin || "").toLowerCase();
+                  if (origin.includes("mock") || origin.includes("interview")) localMockCount++;
+                  continue;
+                }
+              } catch {}
+            }
+
+            return {
+              id: j.id,
+              title: j.job_title,
+              company: j.company_name,
+              industry: j.industry,
+              created_at: j.created_at,
+              status_changed_at: j.status_changed_at,
+              job_status: j.job_status,
+              prep_summary: {
+                prepMinutes: Math.round(prepMinutes),
+                mockCount,
+                localPracticeMin: Math.round(localPracticeMin),
+                localMockCount,
+              },
+            };
+          });
 
         const payload = { jobs: compact };
 
