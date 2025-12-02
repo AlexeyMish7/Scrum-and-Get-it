@@ -561,32 +561,110 @@ export default function AnalyticsView() {
           <Grid size={12}>
             <Paper sx={{ p: 2 }} variant="outlined">
               <Typography variant="subtitle1" fontWeight={600}>
-                Application Volume (Last 12 Weeks)
+                Application Volume (Last 14 Days)
               </Typography>
               <Divider sx={{ my: 1 }} />
               <Box
                 sx={{
-                  display: "flex",
-                  gap: 1,
-                  alignItems: "flex-end",
-                  height: 120,
+                  position: 'relative',
+                  height: 180,
+                  width: '100%',
                 }}
               >
-                {monthlyApps.map((m) => (
-                  <Box key={m.month} sx={{ flex: 1, textAlign: "center" }}>
-                    <Box
-                      sx={{
-                        height: `${Math.min(100, m.count * 12)}%`,
-                        bgcolor: "primary.main",
-                        mx: 0.5,
-                        borderRadius: 0.5,
-                      }}
+                <svg width="100%" height="180" viewBox="0 0 1000 180" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                  {/* Grid lines */}
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <line
+                      key={i}
+                      x1="50"
+                      y1={20 + i * 28}
+                      x2="980"
+                      y2={20 + i * 28}
+                      stroke="#e0e0e0"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
                     />
-                    <Typography variant="caption">
-                      {m.month.split("-")[1]}
-                    </Typography>
-                  </Box>
-                ))}
+                  ))}
+                  
+                  {/* Line chart */}
+                  {monthlyApps.length > 1 && (() => {
+                    const chartWidth = 930; // 980 - 50
+                    const startX = 50;
+                    const spacing = chartWidth / (monthlyApps.length - 1);
+                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
+                    
+                    return (
+                      <polyline
+                        points={monthlyApps.map((m, i) => {
+                          const x = startX + (i * spacing);
+                          const y = 160 - (m.count / maxCount) * 120;
+                          return `${x},${y}`;
+                        }).join(' ')}
+                        fill="none"
+                        stroke="#1976d2"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })()}
+                  
+                  {/* Data points */}
+                  {(() => {
+                    const chartWidth = 930;
+                    const startX = 50;
+                    const spacing = chartWidth / Math.max(monthlyApps.length - 1, 1);
+                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
+                    
+                    return monthlyApps.map((m, i) => {
+                      const x = startX + (i * spacing);
+                      const y = 160 - (m.count / maxCount) * 120;
+                      return (
+                        <g key={i}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="5"
+                            fill={m.count > 0 ? "#1976d2" : "#bdbdbd"}
+                            stroke="white"
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          <text
+                            x={x}
+                            y="175"
+                            textAnchor="middle"
+                            fontSize="11"
+                            fill="#666"
+                          >
+                            {m.month.split("/")[1]}
+                          </text>
+                        </g>
+                      );
+                    });
+                  })()}
+                  
+                  {/* Y-axis labels */}
+                  {(() => {
+                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
+                    return [0, 1, 2, 3, 4, 5].map((i) => {
+                      const value = Math.round((5 - i) * maxCount / 5);
+                      return (
+                        <text
+                          key={i}
+                          x="5"
+                          y={20 + i * 28}
+                          fontSize="11"
+                          fill="#666"
+                          dominantBaseline="middle"
+                        >
+                          {value}
+                        </text>
+                      );
+                    });
+                  })()}
+                </svg>
               </Box>
             </Paper>
           </Grid>
