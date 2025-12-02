@@ -128,19 +128,15 @@ export default function InterviewScheduling() {
         scheduleReminderTimeout(r);
       }
     } catch {}
+    try {
+      // ensure job list loaded for the linked-job dropdown on mount
+      refreshJobs();
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function scheduleReminderTimeout(rem: any) {
     const when = new Date(rem.when).getTime();
-
-  // ensure job list loaded for the linked-job dropdown
-  useEffect(() => {
-    try {
-      refreshJobs();
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
     const now = Date.now();
     const ms = when - now;
     if (ms <= 0) return; // already past
