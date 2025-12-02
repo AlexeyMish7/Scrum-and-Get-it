@@ -4,6 +4,7 @@
  */
 
 export { useProgressSharing } from "./useProgressSharing";
+export { useMessaging } from "./useMessaging";
 
 // UC-114: Enterprise Career Services Hooks
 export { useEnterprise } from "./useEnterprise";

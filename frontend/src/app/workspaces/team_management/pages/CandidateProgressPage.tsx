@@ -37,6 +37,7 @@ import {
   CardContent,
   LinearProgress,
   Divider,
+  Badge,
 } from "@mui/material";
 import {
   Assessment as AssessmentIcon,
@@ -51,6 +52,8 @@ import {
   Work as WorkIcon,
   Event as EventIcon,
   CheckCircle as CheckCircleIcon,
+  Message as MessageIcon,
+  Notifications as NotificationsIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@shared/services/supabaseClient";
@@ -73,6 +76,11 @@ import {
 } from "../components/AchievementCelebration";
 import { AccountabilityPartnerCard } from "../components/AccountabilityPartnerCard";
 import { ProgressSharingSettings as SettingsComponent } from "../components/ProgressSharingSettings";
+import AddPartnerDialog from "../components/AddPartnerDialog";
+import AccountabilityImpactCard from "../components/AccountabilityImpactCard";
+import MotivationWidget from "../components/MotivationWidget";
+import ScheduledReportsSettings from "../components/ScheduledReportsSettings";
+import TeamMessaging from "../components/TeamMessaging";
 
 // ============================================================================
 // TYPES
@@ -83,7 +91,9 @@ type TabValue =
   | "charts"
   | "achievements"
   | "partners"
-  | "settings";
+  | "messages"
+  | "settings"
+  | "analytics";
 
 // ============================================================================
 // MAIN COMPONENT
@@ -121,6 +131,9 @@ export function CandidateProgressPage() {
   const [partnerships, setPartnerships] = useState<AccountabilityPartnership[]>(
     []
   );
+  const [pendingRequests, setPendingRequests] = useState<
+    AccountabilityPartnership[]
+  >([]);
   const [pendingCelebration, setPendingCelebration] =
     useState<AchievementCelebration | null>(null);
 
@@ -131,6 +144,20 @@ export function CandidateProgressPage() {
 
   // Settings drawer state (for mobile)
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+
+  // Add partner dialog state
+  const [addPartnerDialogOpen, setAddPartnerDialogOpen] = useState(false);
+
+  // Selected partner for messaging
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(
+    null
+  );
+
+  // Handle clicking Message button on partner card
+  const handleMessagePartner = useCallback((partnerId: string) => {
+    setSelectedPartnerId(partnerId);
+    setActiveTab("messages");
+  }, []);
 
   // Load real-time job stats directly from jobs table
   const loadQuickStats = useCallback(async () => {
@@ -197,6 +224,15 @@ export function CandidateProgressPage() {
       );
       if (partnershipsResult.data) {
         setPartnerships(partnershipsResult.data);
+      }
+
+      // Load pending partnership requests (requests user needs to accept)
+      const pendingResult = await progressService.getPendingPartnershipRequests(
+        user.id,
+        currentTeam.id
+      );
+      if (pendingResult.data) {
+        setPendingRequests(pendingResult.data);
       }
 
       // Check for pending achievements to celebrate
@@ -413,9 +449,25 @@ export function CandidateProgressPage() {
             />
             <Tab
               value="partners"
-              icon={<PeopleIcon />}
+              icon={
+                <Badge badgeContent={pendingRequests.length} color="error">
+                  <PeopleIcon />
+                </Badge>
+              }
               iconPosition="start"
               label="Partners"
+            />
+            <Tab
+              value="messages"
+              icon={<MessageIcon />}
+              iconPosition="start"
+              label="Messages"
+            />
+            <Tab
+              value="analytics"
+              icon={<TimelineIcon />}
+              iconPosition="start"
+              label="Analytics"
             />
             {!isMobile && (
               <Tab
@@ -657,6 +709,7 @@ export function CandidateProgressPage() {
                             partnership={partnership}
                             compact
                             onPartnershipUpdate={handlePartnershipUpdate}
+                            onMessagePartner={handleMessagePartner}
                           />
                         ))}
                         {partnerships.length > 3 && (
@@ -670,6 +723,9 @@ export function CandidateProgressPage() {
                       </Stack>
                     )}
                   </Paper>
+
+                  {/* Daily Motivation Widget */}
+                  <MotivationWidget variant="compact" />
                 </Stack>
               </Grid>
             </Grid>
@@ -690,6 +746,46 @@ export function CandidateProgressPage() {
           {/* Partners Tab */}
           {activeTab === "partners" && (
             <Stack spacing={3}>
+              {/* Pending Partnership Requests */}
+              {pendingRequests.length > 0 && (
+                <Paper sx={{ p: 2, bgcolor: "warning.light", borderRadius: 2 }}>
+                  <Stack spacing={2}>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <NotificationsIcon color="warning" />
+                      <Typography variant="h6">
+                        Partnership Requests ({pendingRequests.length})
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      You have pending partnership requests to review:
+                    </Typography>
+                    <Grid container spacing={2}>
+                      {pendingRequests.map((request) => (
+                        <Grid size={{ xs: 12, md: 6 }} key={request.id}>
+                          <AccountabilityPartnerCard
+                            partnership={request}
+                            isMyPartner={false}
+                            onPartnershipUpdate={(updated) => {
+                              // Remove from pending if accepted
+                              if (updated.status === "active") {
+                                setPendingRequests((prev) =>
+                                  prev.filter((p) => p.id !== updated.id)
+                                );
+                                setPartnerships((prev) => [...prev, updated]);
+                              } else if (updated.status === "ended") {
+                                setPendingRequests((prev) =>
+                                  prev.filter((p) => p.id !== updated.id)
+                                );
+                              }
+                            }}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Stack>
+                </Paper>
+              )}
+
               <Stack
                 direction="row"
                 justifyContent="space-between"
@@ -698,12 +794,16 @@ export function CandidateProgressPage() {
                 <Typography variant="h6">
                   Accountability Partners ({partnerships.length})
                 </Typography>
-                <Button variant="contained" startIcon={<AddIcon />}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAddPartnerDialogOpen(true)}
+                >
                   Add Partner
                 </Button>
               </Stack>
 
-              {partnerships.length === 0 ? (
+              {partnerships.length === 0 && pendingRequests.length === 0 ? (
                 <Paper sx={{ p: 4, textAlign: "center" }}>
                   <PeopleIcon
                     sx={{ fontSize: 48, color: "text.disabled", mb: 2 }}
@@ -715,22 +815,46 @@ export function CandidateProgressPage() {
                     Accountability partners help keep you motivated and on track
                     with your job search goals.
                   </Typography>
-                  <Button variant="contained" startIcon={<AddIcon />}>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setAddPartnerDialogOpen(true)}
+                  >
                     Find a Partner
                   </Button>
                 </Paper>
-              ) : (
+              ) : partnerships.length > 0 ? (
                 <Grid container spacing={2}>
                   {partnerships.map((partnership) => (
                     <Grid size={{ xs: 12, md: 6 }} key={partnership.id}>
                       <AccountabilityPartnerCard
                         partnership={partnership}
                         onPartnershipUpdate={handlePartnershipUpdate}
+                        onMessagePartner={handleMessagePartner}
                       />
                     </Grid>
                   ))}
                 </Grid>
-              )}
+              ) : null}
+            </Stack>
+          )}
+
+          {/* Messages Tab */}
+          {activeTab === "messages" && (
+            <TeamMessaging partnerId={selectedPartnerId || undefined} />
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <Stack spacing={3}>
+              {/* Motivation Widget */}
+              <MotivationWidget />
+
+              {/* Accountability Impact */}
+              <AccountabilityImpactCard />
+
+              {/* Scheduled Reports */}
+              <ScheduledReportsSettings />
             </Stack>
           )}
 
@@ -763,6 +887,18 @@ export function CandidateProgressPage() {
           <SettingsComponent onSettingsChange={handleSettingsChange} compact />
         </Box>
       </Drawer>
+
+      {/* Add Partner Dialog */}
+      {currentTeam && user?.id && (
+        <AddPartnerDialog
+          open={addPartnerDialogOpen}
+          onClose={() => setAddPartnerDialogOpen(false)}
+          teamId={currentTeam.id}
+          userId={user.id}
+          onPartnerAdded={() => loadAllData()}
+          existingPartnerIds={partnerships.map((p) => p.partnerId)}
+        />
+      )}
     </Box>
   );
 }

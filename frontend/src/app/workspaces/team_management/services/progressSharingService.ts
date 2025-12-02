@@ -600,6 +600,43 @@ export async function getActivePartnerships(
 }
 
 /**
+ * Get pending partnership requests for a user (requests they need to accept)
+ * Only returns partnerships where the user is the partner (recipient of request)
+ */
+export async function getPendingPartnershipRequests(
+  userId: string,
+  teamId: string
+): Promise<Result<AccountabilityPartnership[]>> {
+  const { data, error } = await supabase
+    .from("accountability_partnerships")
+    .select(
+      `
+      *,
+      partner:profiles!partner_id(full_name, email, professional_title),
+      user:profiles!user_id(full_name, email, professional_title)
+    `
+    )
+    .eq("partner_id", userId) // User is the recipient of the request
+    .eq("team_id", teamId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return {
+      data: null,
+      error: { message: error.message, status: null },
+      status: null,
+    };
+  }
+
+  return {
+    data: data.map(mapPartnershipFromDb),
+    error: null,
+    status: 200,
+  };
+}
+
+/**
  * Create a new accountability partnership request
  */
 export async function createPartnershipRequest(

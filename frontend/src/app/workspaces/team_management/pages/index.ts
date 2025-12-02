@@ -16,6 +16,9 @@ export { CandidateProgressPage } from "./CandidateProgressPage";
 
 // UC-114: Enterprise Career Services
 export { EnterpriseDashboard } from "./EnterpriseDashboard";
+export { CreateCohortPage } from "./CreateCohortPage";
+export { CohortDetailPage } from "./CohortDetailPage";
+export { BulkOnboardingPage } from "./BulkOnboardingPage";
 
 // UC-115: External Advisor Dashboard
 export { AdvisorDashboard } from "./AdvisorDashboard";

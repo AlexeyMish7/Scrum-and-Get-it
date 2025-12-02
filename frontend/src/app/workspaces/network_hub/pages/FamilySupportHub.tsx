@@ -80,6 +80,13 @@ import {
   MOOD_TYPE_INFO,
 } from "../types/familySupport.types";
 
+// Import dialog components
+import { InviteSupporterDialog } from "../components/InviteSupporterDialog";
+import { EditSupporterDialog } from "../components/EditSupporterDialog";
+import { StressCheckInDialog } from "../components/StressCheckInDialog";
+import { CreateMilestoneDialog } from "../components/CreateMilestoneDialog";
+import { CreateBoundaryDialog } from "../components/CreateBoundaryDialog";
+
 // Tab panel helper component
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -475,6 +482,15 @@ export default function FamilySupportHub() {
     null
   );
 
+  // Dialog states
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [stressDialogOpen, setStressDialogOpen] = useState(false);
+  const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false);
+  const [boundaryDialogOpen, setBoundaryDialogOpen] = useState(false);
+  const [selectedSupporter, setSelectedSupporter] =
+    useState<FamilySupporterWithProfile | null>(null);
+
   // Stable userId reference for effects
   const userId = user?.id;
 
@@ -536,18 +552,24 @@ export default function FamilySupportHub() {
 
   // Action handlers (to be implemented with actual components)
   function handleInviteSupporter() {
-    // TODO: Open invite supporter dialog
-    console.log("Invite supporter");
+    setInviteDialogOpen(true);
   }
 
   function handleEditSupporter(supporter: FamilySupporterWithProfile) {
-    // TODO: Open edit supporter dialog
-    console.log("Edit supporter:", supporter.id);
+    setSelectedSupporter(supporter);
+    setEditDialogOpen(true);
   }
 
   function handleRemoveSupporter(supporterId: string) {
-    // TODO: Confirm and remove supporter
-    console.log("Remove supporter:", supporterId);
+    // Removing is handled in the edit dialog
+    const supporter = [
+      ...(dashboard?.activeSupporters || []),
+      ...(dashboard?.pendingInvitations || []),
+    ].find((s) => s.id === supporterId);
+    if (supporter) {
+      setSelectedSupporter(supporter as FamilySupporterWithProfile);
+      setEditDialogOpen(true);
+    }
   }
 
   function handleShareMilestone(milestoneId: string) {
@@ -556,8 +578,7 @@ export default function FamilySupportHub() {
   }
 
   function handleStressCheckIn() {
-    // TODO: Open stress check-in dialog
-    console.log("Open stress check-in");
+    setStressDialogOpen(true);
   }
 
   function handleEditBoundary(boundary: SupportBoundaryRow) {
@@ -566,18 +587,25 @@ export default function FamilySupportHub() {
   }
 
   function handleCreateMilestone() {
-    // TODO: Open create milestone dialog
-    console.log("Create milestone");
+    setMilestoneDialogOpen(true);
   }
 
   function handleCreateBoundary() {
-    // TODO: Open create boundary dialog
-    console.log("Create boundary");
+    setBoundaryDialogOpen(true);
   }
 
   function handleViewResources() {
     // TODO: Navigate to resources or open dialog
     console.log("View resources");
+  }
+
+  // Refresh dashboard data after dialog actions
+  async function refreshDashboard() {
+    if (!userId) return;
+    const dashboardResult = await getFamilySupportDashboard(userId);
+    if (dashboardResult.data) {
+      setDashboard(dashboardResult.data);
+    }
   }
 
   if (loading) {
@@ -1086,6 +1114,46 @@ export default function FamilySupportHub() {
           </Stack>
         </Card>
       </TabPanel>
+
+      {/* Dialog Components */}
+      <InviteSupporterDialog
+        open={inviteDialogOpen}
+        onClose={() => setInviteDialogOpen(false)}
+        userId={userId || ""}
+        onSuccess={refreshDashboard}
+      />
+
+      <EditSupporterDialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedSupporter(null);
+        }}
+        userId={userId || ""}
+        supporter={selectedSupporter}
+        onSuccess={refreshDashboard}
+      />
+
+      <StressCheckInDialog
+        open={stressDialogOpen}
+        onClose={() => setStressDialogOpen(false)}
+        userId={userId || ""}
+        onSuccess={refreshDashboard}
+      />
+
+      <CreateMilestoneDialog
+        open={milestoneDialogOpen}
+        onClose={() => setMilestoneDialogOpen(false)}
+        userId={userId || ""}
+        onSuccess={refreshDashboard}
+      />
+
+      <CreateBoundaryDialog
+        open={boundaryDialogOpen}
+        onClose={() => setBoundaryDialogOpen(false)}
+        userId={userId || ""}
+        onSuccess={refreshDashboard}
+      />
     </Container>
   );
 }
