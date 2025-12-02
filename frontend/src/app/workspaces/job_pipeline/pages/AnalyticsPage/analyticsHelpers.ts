@@ -178,19 +178,42 @@ export function computeAvgStageDurations(jobs: JobRecord[]) {
 
 /** ✅ Compute monthly application counts for a bar chart */
 export function computeMonthlyApplications(jobs: JobRecord[]) {
-  const map: Record<string, number> = {};
+  // Use daily buckets for the last 14 days
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Start of today
+  const dayMap: Record<string, number> = {};
+  
+  // Initialize last 14 days with 0 counts
+  for (let i = 13; i >= 0; i--) {
+    const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = `${day.getMonth() + 1}/${day.getDate()}`;
+    dayMap[key] = 0;
+  }
+  
+  // Count jobs in each day
   for (const j of jobs) {
     if (!j.created_at) continue;
     const d = new Date(j.created_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}`;
-    map[key] = (map[key] ?? 0) + 1;
+    d.setHours(0, 0, 0, 0);
+    const daysDiff = Math.floor((now.getTime() - d.getTime()) / (24 * 60 * 60 * 1000));
+    
+    // Only count jobs from last 14 days
+    if (daysDiff >= 0 && daysDiff < 14) {
+      const day = new Date(now.getTime() - daysDiff * 24 * 60 * 60 * 1000);
+      const key = `${day.getMonth() + 1}/${day.getDate()}`;
+      dayMap[key] = (dayMap[key] ?? 0) + 1;
+    }
   }
-  return Object.keys(map)
-    .map((m) => ({ month: m, count: map[m] }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+  
+  // Convert to array format and maintain chronological order
+  const result: { month: string; count: number }[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = `${day.getMonth() + 1}/${day.getDate()}`;
+    result.push({ month: key, count: dayMap[key] ?? 0 });
+  }
+  
+  return result;
 }
 
 /** ✅ Deadline adherence (how many deadlines met vs missed) */
