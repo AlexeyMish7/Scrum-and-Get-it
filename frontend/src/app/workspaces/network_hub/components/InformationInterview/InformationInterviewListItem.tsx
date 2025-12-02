@@ -4,6 +4,8 @@ import {
 	ListItemText,
 	Stack,
 	Button,
+    Checkbox,
+    FormControlLabel,
 	Dialog,
 	DialogTitle,
 	DialogContent,
@@ -17,8 +19,6 @@ import {
 } from "@mui/material";
 import * as db from "@shared/services/dbMappers";
 import { useAuth } from "@shared/context/AuthContext";
-import IconButton from '@mui/material/IconButton';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AddReminders from "../RelationshipMaintenance/Reminders/AddReminders";
 import AddInteractionsTab from "../ContactDetails/ContactInteractions/AddInteractionsTab";
 
@@ -79,7 +79,10 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 
 	return (
 		<>
-			<ListItem divider>
+			<ListItem
+				divider
+				sx={status === 'completed' ? { bgcolor: (theme) => theme.palette.success.light } : {}}
+			>
 				<ListItemText
 					primary={
 						<span>
@@ -91,14 +94,12 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 
 				<Stack direction="row" spacing={1} alignItems="center">
 					<Button size="small" onClick={() => { setOpen(true); setTab(0); }}>View</Button>
-					{status === 'completed' ? (
-						<CheckCircleOutlineIcon color="success" sx={{ ml: 1 }} />
-					) : (
-						<IconButton size="small" aria-label="mark-completed" onClick={async () => {
+					{status !== 'completed' && (
+						<Button size="small" onClick={async () => {
 							// mark completed in DB, then open the dialog on the Completed tab with interactions prefilled
 							try {
 								if (user && id) {
-									await db.updateInformationalInterview(user.id, id, { status: 'completed', completed_at: (interviewDate ?? new Date().toISOString()) });
+									await db.updateInformationalInterview(user.id, id, { status: 'completed'});
 								}
 							} catch (err) {
 								console.error('Failed to mark interview completed', err);
@@ -108,9 +109,7 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 							setOpen(true);
 							setTab(2);
 							if (onUpdated) onUpdated();
-						}}>
-							<CheckCircleOutlineIcon />
-						</IconButton>
+						}}>Mark completed</Button>
 					)}
 				</Stack>
 			</ListItem>
@@ -170,6 +169,31 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 					{/* Completed tab: allow adding an interaction tied to this contact/interview */}
 					{tab === 2 && (
 						<Box>
+							{/* Checkbox to mark completed */}
+							<FormControlLabel
+								control={
+									<Checkbox
+										checked={status === 'completed'}
+										disabled={status === 'completed'}
+										onChange={async (e: any) => {
+											const checked = e.target.checked;
+											if (!checked) return;
+											// when checked, mark as completed in DB and update UI
+											try {
+												if (user && id) {
+													await db.updateInformationalInterview(user.id, id, { status: 'completed'});
+												}
+											} catch (err) {
+												console.error('Failed to mark interview completed via checkbox', err);
+											}
+											setStatus('completed');
+											if (onUpdated) onUpdated();
+										}}
+									/>
+								}
+								label="Was this interview completed?"
+								sx={{ mb: 2 }}
+							/>
 							<AddInteractionsTab
 								contactId={row?.contact_id ?? row?.contact?.id}
 								initialType={"Informational Interview"}
@@ -178,7 +202,7 @@ export default function InformationInterviewListItem({ row, onUpdated }: Props) 
 									// mark as completed in the DB (if possible), then update UI and notify parent
 									try {
 										if (user && id) {
-											const upd = await db.updateInformationalInterview(user.id, id, { status: "completed", completed_at: new Date().toISOString() });
+											const upd = await db.updateInformationalInterview(user.id, id, { status: "completed"});
 											if (upd && !upd.error) {
 												setStatus("completed");
 											} else {

@@ -2959,14 +2959,37 @@ export async function updateInformationalInterview(
   formData: Record<string, unknown>
 ): Promise<Result<unknown>> {
   const userCrud = withUser(userId);
+  // If the caller is only updating status (and optionally completed_at),
+  // allow a direct partial update without running the full mapper which
+  // requires `contact_id` and other identity fields.
+  const keys = Object.keys(formData || {});
+  const statusOnlyKeys = keys.length > 0 && keys.every((k) =>
+    ["status", "completed_at", "completedAt"].includes(k)
+  );
 
-  // If identity fields present, validate full payload via mapper
+  if (statusOnlyKeys) {
+    // Normalize completed_at if provided (accept Date or string)
+    const payload: Record<string, unknown> = {};
+    if (formData.status != null) payload.status = formData.status;
+    if (formData.completed_at != null) {
+      const v = formData.completed_at;
+      payload.completed_at = v instanceof Date ? v.toISOString() : String(v);
+    } else if (formData.completedAt != null) {
+      const v = formData.completedAt;
+      payload.completed_at = v instanceof Date ? v.toISOString() : String(v);
+    }
+
+    return userCrud.updateRow("informational_interviews", payload, {
+      eq: { id },
+    });
+  }
+
+  // If core identity fields present, validate full payload via mapper
   if (
     formData.contact_id != null ||
     formData.contactId != null ||
     formData.request_template != null ||
-    formData.prepartion_notes != null ||
-    formData.status != null
+    formData.prepartion_notes != null
   ) {
     const mapped = mapInformationalInterview(formData);
     if (mapped.error) {
