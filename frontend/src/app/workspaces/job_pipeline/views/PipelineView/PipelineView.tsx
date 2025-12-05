@@ -58,6 +58,7 @@ import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import PipelineAnalytics from "@job_pipeline/components/analytics/PipelineAnalytics/PipelineAnalytics";
 import JobAnalyticsDialog from "@job_pipeline/components/dialogs/JobAnalyticsDialog";
 import SuggestContacts from "@job_pipeline/components/contacts/SuggestContacts";
+import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
 
 const STAGES = [
   "Interested",
@@ -914,6 +915,11 @@ export default function PipelineView() {
             {showDetailedAnalytics ? "Hide" : "Show"} Detailed Analytics &
             Insights
           </Button>
+
+          {/* Follow-up reminders placed under the analytics toggle for quick access */}
+          <Box sx={{ mb: 2 }}>
+            <FollowupCard jobs={allJobs} />
+          </Box>
 
           <Collapse in={showDetailedAnalytics}>
             <Card variant="outlined" sx={{ p: 3 }}>

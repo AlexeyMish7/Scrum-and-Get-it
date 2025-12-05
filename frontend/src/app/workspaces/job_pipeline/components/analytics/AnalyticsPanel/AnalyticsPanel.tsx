@@ -41,6 +41,7 @@ import {
 } from "@mui/icons-material";
 import NextDeadlinesWidget from "@job_pipeline/components/calendar/NextDeadlinesWidget/NextDeadlinesWidget";
 import DeadlineCalendar from "@job_pipeline/components/calendar/DeadlineCalendar/DeadlineCalendar";
+import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
 import { useAuth } from "@shared/context/AuthContext";
 import crud from "@shared/services/crud";
 import BenchmarkCard from "../../pages/AnalyticsPage/BenchmarkCard";
@@ -327,6 +328,7 @@ export default function AnalyticsPanel({
           >
             <Box sx={{ width: { xs: "100%", md: "33%" } }}>
               <NextDeadlinesWidget />
+              <FollowupCard jobs={jobs} />
             </Box>
             <Box sx={{ width: { xs: "100%", md: "67%" } }}>
               <DeadlineCalendar />
