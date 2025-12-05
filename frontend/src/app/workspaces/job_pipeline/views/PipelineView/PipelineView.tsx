@@ -59,6 +59,7 @@ import PipelineAnalytics from "@job_pipeline/components/analytics/PipelineAnalyt
 import JobAnalyticsDialog from "@job_pipeline/components/dialogs/JobAnalyticsDialog";
 import SuggestContacts from "@job_pipeline/components/contacts/SuggestContacts";
 import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
+import OfferComparisonDialog from "@job_pipeline/components/OfferComparison/OfferComparisonDialog";
 
 const STAGES = [
   "Interested",
@@ -147,6 +148,7 @@ export default function PipelineView() {
 
   const [filter, setFilter] = useState<"All" | Stage | "Selected">("All");
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [offerCompareOpen, setOfferCompareOpen] = useState(false);
 
   // Keyboard shortcut: A = add job
   useEffect(() => {
@@ -501,6 +503,7 @@ export default function PipelineView() {
           >
             {showFilters ? "Hide" : "Show"} Filters
           </Button>
+          <Button variant="outlined" onClick={() => setOfferCompareOpen(true)} size="small">Offer Comparison</Button>
           {/* suggest contacts moved into per-job action buttons */}
           {selectedCount > 0 && (
             <Button
@@ -530,6 +533,8 @@ export default function PipelineView() {
             />
           </Box>
         </Collapse>
+
+        <OfferComparisonDialog open={offerCompareOpen} onClose={() => setOfferCompareOpen(false)} />
 
         {/* Filter and Bulk Controls */}
         <Stack
