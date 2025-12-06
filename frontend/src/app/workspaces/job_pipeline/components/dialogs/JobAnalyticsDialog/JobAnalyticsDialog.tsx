@@ -60,7 +60,7 @@ export default function JobAnalyticsDialog({
   open,
   onClose,
 }: JobAnalyticsDialogProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
 
   const { data: matchData, loading } = useJobMatch(user?.id, jobId);
@@ -232,11 +232,25 @@ export default function JobAnalyticsDialog({
     } catch {}
   }
 
-  function saveSubmissionRecord(record: { jobId: number | string; submittedAt: string; responded?: boolean; respondedAt?: string; group?: string }) {
+  function saveSubmissionRecord(record: { jobId: number | string; submittedAt: string; responded?: boolean; respondedAt?: string; group?: string; companySize?: string | null; industry?: string | null; jobLevel?: string | null }) {
     try {
+      // Augment record with job metadata when available so server-side
+      // grouping by companySize/industry/jobLevel works correctly.
+      const rec = { ...record } as any;
+      try {
+        const recJob = allJobs.find((j) => String(j.id) === String(record.jobId));
+        if (recJob) {
+          rec.companySize = rec.companySize ?? (recJob as any).company_size ?? null;
+          rec.industry = rec.industry ?? recJob.industry ?? null;
+          rec.jobLevel = rec.jobLevel ?? (recJob as any).job_level ?? null;
+        }
+      } catch {
+        // ignore augmentation failures
+      }
+
       const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
       const arr = JSON.parse(raw);
-      arr.push(record);
+      arr.push(rec);
       localStorage.setItem(SUBMISSION_HISTORY_KEY, JSON.stringify(arr));
     } catch {}
   }
@@ -299,6 +313,10 @@ export default function JobAnalyticsDialog({
   const [realtimeRecMsg, setRealtimeRecMsg] = useState<string | null>(null);
   const [scheduledEntries, setScheduledEntries] = useState<Array<{jobId: number | string; when: string; group?: string}>>([]);
   const [abTimingResults, setAbTimingResults] = useState<any | null>(null);
+  const [dataVersion, setDataVersion] = useState<number>(0);
+  const [apiLoading, setApiLoading] = useState<boolean>(false);
+  const [apiResult, setApiResult] = useState<any | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     // compute initial recommended slot based on similar jobs (industry/company)
@@ -410,6 +428,172 @@ export default function JobAnalyticsDialog({
     }
   }
 
+  function computeResponseTimePrediction(job: typeof jobRow | null) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = (JSON.parse(raw) as Array<any>) || [];
+      if (!job) return null;
+
+      // Filter records by similarity: same company OR same industry OR same company_size OR same job_level
+      const same = arr.filter((r) => {
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        const sameIndustry = (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+        const sameCompany = (recJob.company_name ?? "").toString() === (job.company_name ?? "").toString();
+        const sameSize = (recJob as any).company_size && (job as any).company_size && (recJob as any).company_size === (job as any).company_size;
+        const sameLevel = (recJob as any).job_level && (job as any).job_level && (recJob as any).job_level === (job as any).job_level;
+        return sameCompany || sameIndustry || sameSize || sameLevel;
+      });
+
+      if (same.length === 0) return null;
+
+      // Gather responded entries with valid timestamps
+      const responded = same.filter((r) => r.responded && r.respondedAt && r.submittedAt).map((r) => ({ submittedAt: new Date(r.submittedAt), respondedAt: new Date(r.respondedAt) })).filter((p) => !isNaN(p.submittedAt.getTime()) && !isNaN(p.respondedAt.getTime()));
+
+      // If no responded records, we can still return sample counts and default benchmark values
+      if (responded.length === 0) return { sampleCount: same.length, respondedCount: 0, meanDays: 0, medianDays: 0, ciDays: [0,0], mae: 0, recent: [], industryBenchmark: { median: 0, lower: 0, upper: 0 } };
+
+      // Compute diffs in days
+      const diffsDays = responded.map((p) => (p.respondedAt.getTime() - p.submittedAt.getTime()) / (1000*60*60*24));
+      const meanDays = diffsDays.reduce((s, v) => s + v, 0) / diffsDays.length;
+      const sorted = diffsDays.slice().sort((a,b) => a-b);
+      const medianDays = (sorted.length % 2 === 1) ? sorted[Math.floor(sorted.length/2)] : (sorted[sorted.length/2 - 1] + sorted[sorted.length/2]) / 2;
+
+      // 80% confidence interval (10th and 90th percentiles)
+      const p = (arr: number[], q: number) => {
+        if (arr.length === 0) return 0;
+        const idx = (arr.length - 1) * q;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        if (lo === hi) return arr[lo];
+        return arr[lo] * (hi - idx) + arr[hi] * (idx - lo);
+      };
+      const lower = p(sorted, 0.1);
+      const upper = p(sorted, 0.9);
+
+      // Seasonality: compare recent same-period records (same month or quarter) vs overall
+      function samePeriodAdjust() {
+        try {
+          const now = new Date();
+          const month = now.getMonth();
+          const recentPeriod = responded.filter((p) => p.submittedAt.getMonth() === month);
+          if (recentPeriod.length < 3) return 0; // not enough data
+          const recentDiffs = recentPeriod.map((p) => (p.respondedAt.getTime() - p.submittedAt.getTime()) / (1000*60*60*24));
+          const recentMean = recentDiffs.reduce((s,v) => s+v,0)/recentDiffs.length;
+          return recentMean - meanDays; // positive means responses are slower this month
+        } catch { return 0; }
+      }
+
+      const seasonAdj = samePeriodAdjust();
+
+      // Model performance: mean absolute error between actual and median prediction
+      const mae = diffsDays.reduce((s, v) => s + Math.abs(v - medianDays), 0) / diffsDays.length;
+
+      const recent = same.filter((r) => r.responded && r.respondedAt && r.submittedAt).sort((a,b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0,5);
+
+      // Industry benchmarks: compute median and 10/90 for same industry across all jobs
+      const industryRecs = arr.filter((r) => {
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        return (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+      }).filter((r) => r.responded && r.respondedAt && r.submittedAt).map((r) => (new Date(r.respondedAt).getTime() - new Date(r.submittedAt).getTime())/(1000*60*60*24));
+      const industrySorted = industryRecs.slice().sort((a,b) => a-b);
+      const industryMedian = industrySorted.length ? p(industrySorted, 0.5) : 0;
+      const industryLower = industrySorted.length ? p(industrySorted, 0.1) : 0;
+      const industryUpper = industrySorted.length ? p(industrySorted, 0.9) : 0;
+
+      return {
+        sampleCount: same.length,
+        respondedCount: responded.length,
+        meanDays: meanDays + seasonAdj,
+        medianDays: medianDays + seasonAdj,
+        ciDays: [lower + seasonAdj, upper + seasonAdj],
+        mae,
+        recent,
+        industryBenchmark: { median: industryMedian, lower: industryLower, upper: industryUpper },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function markLatestUnrespondedSubmission(jobId: number | string) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      const candidates = arr.filter((r: any) => String(r.jobId) === String(jobId) && !r.responded && r.submittedAt).sort((a: any,b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      if (candidates.length === 0) return false;
+      const pick = candidates[0];
+      // find index in original array
+      const idx = arr.findIndex((r: any) => r === pick);
+      if (idx === -1) return false;
+      arr[idx] = { ...arr[idx], responded: true, respondedAt: new Date().toISOString() };
+      localStorage.setItem(SUBMISSION_HISTORY_KEY, JSON.stringify(arr));
+      setDataVersion(v => v + 1);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function getSubmissionsForJob(jobId: number | string) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      return arr.filter((r: any) => String(r.jobId) === String(jobId)).sort((a: any,b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    } catch {
+      return [];
+    }
+  }
+
+  async function refineWithAI() {
+    setApiError(null);
+    setApiResult(null);
+    setApiLoading(true);
+    try {
+      // Prepare payload: prefer job metadata (no local seeding required)
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      const headers: Record<string,string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+      let payload: any = {};
+      if (jobRow) {
+        payload.job = {
+          id: jobRow.id,
+          title: (jobRow as any).title ?? (jobRow as any).job_title ?? null,
+          company: (jobRow as any).company_name ?? (jobRow as any).company ?? null,
+          industry: (jobRow as any).industry ?? null,
+          companySize: (jobRow as any).company_size ?? null,
+          jobLevel: (jobRow as any).job_level ?? null,
+          location: (jobRow as any).location ?? null,
+        };
+      } else {
+        payload.submissions = arr;
+      }
+
+      const resp = await fetch(`/api/predictions/response-time`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`Server error ${resp.status}: ${txt}`);
+      }
+      const json = await resp.json();
+      if (!json || !json.success) {
+        throw new Error(json?.error || "Invalid response from server");
+      }
+      setApiResult(json);
+    } catch (e: any) {
+      console.error("refineWithAI failed", e);
+      setApiError(e?.message ?? String(e));
+    } finally {
+      setApiLoading(false);
+    }
+  }
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -436,7 +620,7 @@ export default function JobAnalyticsDialog({
           borderColor: "divider",
         }}
       >
-        <Typography variant="h6">Job Analytics</Typography>
+        <Typography variant="h6" component="div">Job Analytics</Typography>
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
@@ -449,6 +633,7 @@ export default function JobAnalyticsDialog({
           <Tab icon={<CompanyIcon />} label="Company Insights" />
           <Tab icon={<PrepIcon />} label="Interview Prep" />
           <Tab icon={<AccessTimeIcon />} label="Job Timing Optimizer" />
+          <Tab icon={<AccessTimeIcon />} label="Employer Response Time Prediction" />
         </Tabs>
       </Box>
 
@@ -653,7 +838,7 @@ export default function JobAnalyticsDialog({
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle2">Optimizer Recommendations</Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Typography variant="body2" component="div" sx={{ mt: 1 }}>
                     {(() => {
                       // heuristics
                       if (!jobRow) return 'No job information available to generate recommendations.';
@@ -685,7 +870,7 @@ export default function JobAnalyticsDialog({
                       recs.push('Follow-up cadence: 1) After application: 3–7 business days. 2) After interview: thank-you within 24 hours, follow-up after 5 business days if no update.');
 
                       return recs.map((r, i) => (
-                        <Typography variant="body2" key={i}>• {r}</Typography>
+                        <Typography variant="body2" component="div" key={i}>• {r}</Typography>
                       ));
                     })()}
                   </Typography>
@@ -923,6 +1108,147 @@ export default function JobAnalyticsDialog({
                 </CardContent>
               </Card>
             </Stack>
+          </Box>
+        )}
+
+        {/* Tab 5: Employer Response Time Prediction */}
+        {activeTab === 5 && !loading && (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Employer Response Time Prediction
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Predicts how long it typically takes this employer (or similar employers) to respond after an application is submitted.
+            </Typography>
+
+            <Card variant="outlined">
+              <CardContent>
+                {(() => {
+                  // include dataVersion to re-evaluate when user marks responses
+                  void dataVersion;
+                  const pred = computeResponseTimePrediction(jobRow);
+                  if (!pred) {
+                    return <Alert severity="info">No submission/response data available yet to build a prediction. Record submissions and responses to collect data.</Alert>;
+                  }
+
+                  const { sampleCount, respondedCount, meanDays, medianDays, ciDays, mae, recent, industryBenchmark } = pred;
+                  const medianText = medianDays >= 1 ? `${Math.round(medianDays)} day(s)` : `${Math.round(medianDays*24)} hour(s)`;
+                  const meanText = meanDays >= 1 ? `${meanDays.toFixed(1)} day(s)` : `${Math.round(meanDays*24)} hour(s)`;
+                  const ciText = `${Math.max(0, Math.round(ciDays[0]))}–${Math.max(0, Math.round(ciDays[1]))} day(s)`;
+
+                  // find unresponded submissions for this job (to show overdue/mark-as-responded)
+                  const subs = jobRow ? getSubmissionsForJob(jobRow.id) : [];
+                  const unresponded = subs.filter((s: any) => !s.responded && s.submittedAt).map((s:any) => ({ ...s, submittedAtDate: new Date(s.submittedAt) }));
+
+                  // overdue detection: any unresponded submission older than upper CI
+                  let overdue = false;
+                  if (unresponded.length > 0 && ciDays && ciDays[1] > 0) {
+                    const now = new Date();
+                    for (const u of unresponded) {
+                      const submitted = new Date(u.submittedAt);
+                      if (isNaN(submitted.getTime())) continue;
+                      const diffDays = (now.getTime() - submitted.getTime())/(1000*60*60*24);
+                      if (diffDays > ciDays[1]) { overdue = true; break; }
+                    }
+                  }
+
+                  // suggested follow-up: medianDays (rounded) after submission; if not submitted, suggest after applying (medianDays)
+                  const suggestedFollowUpDays = Math.max(1, Math.round(medianDays));
+
+                  return (
+                    <Box>
+                      {overdue && (
+                        <Alert severity="warning" sx={{ mb: 1 }}>One or more submissions to this employer are overdue compared to the predicted response window.</Alert>
+                      )}
+                      <Typography variant="subtitle1">Prediction</Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>Based on {sampleCount} submission(s) ({respondedCount} responses), typically responds in <strong>{ciText}</strong> (80% CI). Median: <strong>{medianText}</strong>, average: {meanText}.</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Confidence: ~80% of responses fall within the interval shown. Model MAE: {Math.round(mae*10)/10} day(s).</Typography>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Suggested follow-up</Typography>
+                      <Typography variant="body2">Optimal follow-up: around <strong>{suggestedFollowUpDays} day(s)</strong> after application. If you've already applied, pick the most recent submission and follow up on that date.</Typography>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Button size="small" variant="contained" onClick={() => refineWithAI()} disabled={apiLoading}>Refine with AI</Button>
+                        <Button size="small" onClick={() => { setApiResult(null); setApiError(null); }}>Clear AI result</Button>
+                        {apiLoading && <Typography variant="body2" color="text.secondary">Calling AI service…</Typography>}
+                      </Stack>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Industry benchmark</Typography>
+                      <Typography variant="body2">Industry typical: {Math.round(industryBenchmark.median)} day(s) (80% CI: {Math.round(industryBenchmark.lower)}–{Math.round(industryBenchmark.upper)} day(s)).</Typography>
+
+                      {apiError && (
+                        <Alert severity="error" sx={{ mt: 1 }}>{apiError}</Alert>
+                      )}
+
+                      {apiResult && apiResult.grouped && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="subtitle2">Aggregated historical groups (server)</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Company size</Typography>
+                          {Object.entries(apiResult.grouped.companySize || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Industry</Typography>
+                          {Object.entries(apiResult.grouped.industry || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Job level</Typography>
+                          {Object.entries(apiResult.grouped.jobLevel || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          {apiResult.aiAnalysis && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="subtitle2">AI Analysis</Typography>
+                              {apiResult.aiAnalysis.json ? (
+                                <Typography variant="body2">{JSON.stringify(apiResult.aiAnalysis.json)}</Typography>
+                              ) : (
+                                <Typography variant="body2">{apiResult.aiAnalysis.text ?? 'No textual analysis returned.'}</Typography>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Recent responded submissions</Typography>
+                      {recent.length === 0 ? (
+                        <Typography variant="body2">No recent responded submissions to show.</Typography>
+                      ) : (
+                        <List dense>
+                          {recent.map((r: any, i: number) => (
+                            <ListItem key={i} sx={{ py: 0.5 }}>
+                              <ListItemText primary={`${new Date(r.submittedAt).toLocaleString()} → ${new Date(r.respondedAt).toLocaleString()}`} secondary={`${Math.round(((new Date(r.respondedAt).getTime() - new Date(r.submittedAt).getTime())/(1000*60*60))) } hours`} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Your recent submissions (unresponded)</Typography>
+                      {unresponded.length === 0 ? (
+                        <Typography variant="body2">No outstanding submissions recorded for this job.</Typography>
+                      ) : (
+                        <List dense>
+                          {unresponded.map((u: any, i: number) => (
+                            <ListItem key={i} sx={{ py: 0.5 }} secondaryAction={(
+                              <Button size="small" onClick={() => { if (jobRow) { markLatestUnrespondedSubmission(jobRow.id); setScheduleSavedMsg('Marked latest submission as responded.'); setTimeout(() => setScheduleSavedMsg(null), 4000); } }}>Mark responded</Button>
+                            )}>
+                              <ListItemText primary={`${u.submittedAtDate.toLocaleString()}`} secondary={`${Math.round(((Date.now() - u.submittedAtDate.getTime())/(1000*60*60*24)))} day(s) ago`} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+                    </Box>
+                  );
+                })()}
+              </CardContent>
+            </Card>
           </Box>
         )}
       </DialogContent>
