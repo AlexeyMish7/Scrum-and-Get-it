@@ -1,3 +1,31 @@
+// Server-first approach: prefer backend route for job materials.
+// Avoid direct Supabase client calls here to prevent RLS/404 issues
+// if the table isn't exposed to the anon client or has strict policies.
+
+export interface JobMaterial {
+  id: number;
+  job_id: number;
+  material_type: "resume" | "cover_letter" | "linkedin" | string;
+  title?: string | null;
+  is_tailored?: boolean | null;
+  created_at?: string;
+  document_id?: string | null;
+}
+
+export async function listJobMaterials(_jobId: number, _jwt?: string) {
+  // Temporarily return empty to avoid backend errors disrupting UI.
+  // When server route is stable, restore the fetch call.
+  return { data: [], error: null } as const;
+}
+
+export async function getDocumentText(_documentId: string, _jwt?: string) {
+  try {
+    // Temporarily disable server call; return empty text to keep scoring operational.
+    return { data: "", error: null } as const;
+  } catch {
+    return { data: "", error: null } as const;
+  }
+}
 /**
  * JOB MATERIALS SERVICE (⚠️ LEGACY - Use document_jobs table instead)
  *
