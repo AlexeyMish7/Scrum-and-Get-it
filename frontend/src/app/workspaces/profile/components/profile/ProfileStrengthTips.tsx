@@ -1,6 +1,10 @@
-import React from "react";
+import React, { memo, useMemo } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
-import { FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTimesCircle,
+} from "react-icons/fa";
 
 interface ProfileData {
   employmentCount: number;
@@ -30,10 +34,22 @@ const WEIGHTS = {
 const ProfileStrength: React.FC<ProfileStrengthProps> = ({ profile }) => {
   const theme = useTheme();
 
-  const employmentStrength = Math.min(profile.employmentCount / REQUIRED_COUNTS.employment, 1);
-  const skillsStrength = Math.min(profile.skillsCount / REQUIRED_COUNTS.skills, 1);
-  const educationStrength = Math.min(profile.educationCount / REQUIRED_COUNTS.education, 1);
-  const projectsStrength = Math.min(profile.projectsCount / REQUIRED_COUNTS.projects, 1);
+  const employmentStrength = Math.min(
+    profile.employmentCount / REQUIRED_COUNTS.employment,
+    1
+  );
+  const skillsStrength = Math.min(
+    profile.skillsCount / REQUIRED_COUNTS.skills,
+    1
+  );
+  const educationStrength = Math.min(
+    profile.educationCount / REQUIRED_COUNTS.education,
+    1
+  );
+  const projectsStrength = Math.min(
+    profile.projectsCount / REQUIRED_COUNTS.projects,
+    1
+  );
 
   const strengthScore =
     (employmentStrength * WEIGHTS.employment +
@@ -44,33 +60,33 @@ const ProfileStrength: React.FC<ProfileStrengthProps> = ({ profile }) => {
 
   const recommendations: string[] = [];
 
-if (employmentStrength < 1) {
-  recommendations.push(
-    "Include detailed descriptions of your responsibilities and achievements for each job.",
-    "Highlight measurable results or projects you led in past roles."
-  );
-}
+  if (employmentStrength < 1) {
+    recommendations.push(
+      "Include detailed descriptions of your responsibilities and achievements for each job.",
+      "Highlight measurable results or projects you led in past roles."
+    );
+  }
 
-if (skillsStrength < 1) {
-  recommendations.push(
-    "List at least 3–5 key skills relevant to your career goals.",
-    "Include both technical and soft skills."
-  );
-}
+  if (skillsStrength < 1) {
+    recommendations.push(
+      "List at least 3–5 key skills relevant to your career goals.",
+      "Include both technical and soft skills."
+    );
+  }
 
-if (educationStrength < 1) {
-  recommendations.push(
-    "Include your degree, institution, and graduation year.",
-    "Highlight relevant coursework, certifications, or awards."
-  );
-}
+  if (educationStrength < 1) {
+    recommendations.push(
+      "Include your degree, institution, and graduation year.",
+      "Highlight relevant coursework, certifications, or awards."
+    );
+  }
 
-if (projectsStrength < 1) {
-  recommendations.push(
-    "Add at least one project with a clear description and your role.",
-    "Include links to live demos, GitHub repos, or portfolios."
-  );
-}
+  if (projectsStrength < 1) {
+    recommendations.push(
+      "Add at least one project with a clear description and your role.",
+      "Include links to live demos, GitHub repos, or portfolios."
+    );
+  }
 
   let label = "Weak";
   let color = theme.palette.error.main;
@@ -89,14 +105,17 @@ if (projectsStrength < 1) {
   return (
     <Box
       sx={{
-        my: 4,
         p: 3,
-        border: `1px solid ${color}`,
+        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Typography variant="h4" sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+      <Typography
+        variant="h6"
+        fontWeight={600}
+        sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+      >
         {icon} Profile Strength:{" "}
         <Box component="span" sx={{ color }}>
           {label}
@@ -106,8 +125,8 @@ if (projectsStrength < 1) {
 
       <Box
         sx={{
-          backgroundColor: theme.palette.grey[300],
-          height: 10,
+          backgroundColor: theme.palette.action.hover,
+          height: 8,
           borderRadius: 1,
           overflow: "hidden",
           mb: 2,
@@ -128,7 +147,7 @@ if (projectsStrength < 1) {
           <Typography variant="h5" gutterBottom>
             Recommendations:
           </Typography>
-          <Box component="ul" sx={{ pl: 3, mb: 0 }}>
+          <Box component="ul" sx={{ pl: 4, pr: 2, mb: 0, mt: 1 }}>
             {recommendations.map((rec, idx) => (
               <li key={idx}>
                 <Typography variant="body1">{rec}</Typography>
@@ -145,4 +164,4 @@ if (projectsStrength < 1) {
   );
 };
 
-export default ProfileStrength;
+export default memo(ProfileStrength);

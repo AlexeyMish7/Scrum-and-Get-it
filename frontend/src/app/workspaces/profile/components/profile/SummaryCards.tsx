@@ -1,38 +1,47 @@
-// src/components/ProfileDashboard/SummaryCards.tsx
-import React, { useState } from "react";
-import {
-  useErrorHandler,
-  validateRequired,
-} from "@shared/hooks/useErrorHandler";
-import { SKILL_LEVEL_OPTIONS, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
-import { AddSkillDialog } from "../../components/dialogs/AddSkillDialog";
-import { AddEducationDialog } from "../../components/dialogs/AddEducationDialog";
-import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
-import { AddProjectDialog } from "../../components/dialogs/AddProjectDialog";
+/**
+ * SUMMARY CARDS COMPONENT
+ *
+ * Purpose:
+ * - Display profile section counts (Employment, Skills, Education, Projects)
+ * - Provide quick-add buttons that open dedicated dialogs
+ * - Show visual feedback with icons and theme-based colors
+ *
+ * Pattern:
+ * - Cards open dedicated dialog components (AddSkillDialog, etc.)
+ * - Dialogs handle their own form state, validation, and DB operations
+ * - Dialogs dispatch events (skills:changed, etc.) when data changes
+ * - Parent components listen for events to refresh data
+ *
+ * Performance:
+ * - Wrapped with React.memo to prevent unnecessary re-renders
+ * - cardsConfig memoized to maintain stable reference
+ * - Dialog handlers memoized with useCallback
+ *
+ * No inline forms - all add/edit operations use dedicated dialogs
+ */
+import React, { useState, useMemo, useCallback, memo } from "react";
 import {
   Card,
   CardContent,
   Typography,
   Box,
-  Button,
+  IconButton,
   useTheme,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
   Snackbar,
   Alert,
+  alpha,
+  Tooltip,
 } from "@mui/material";
-import {
-  FaBriefcase,
-  FaLightbulb,
-  FaGraduationCap,
-  FaProjectDiagram,
-} from "react-icons/fa";
+import AddIcon from "@mui/icons-material/Add";
+import WorkIcon from "@mui/icons-material/Work";
+import PsychologyIcon from "@mui/icons-material/Psychology";
+import SchoolIcon from "@mui/icons-material/School";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
+import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { AddSkillDialog } from "../dialogs/AddSkillDialog";
+import { AddEducationDialog } from "../dialogs/AddEducationDialog";
+import { AddEmploymentDialog } from "../dialogs/AddEmploymentDialog";
+import { AddProjectDialog } from "../dialogs/AddProjectDialog";
 
 interface SummaryCardsProps {
   counts: {
@@ -41,471 +50,295 @@ interface SummaryCardsProps {
     educationCount: number;
     projectsCount: number;
   };
-  // Handlers receive the form payload (string/number/boolean values).
-  onAddEmployment: (
+  // Legacy props - kept for compatibility but no longer used
+  // Dialogs handle their own DB operations and dispatch events
+  onAddEmployment?: (
     data: Record<string, string | number | boolean | undefined>
   ) => Promise<void> | void;
-  onAddSkill: (
+  onAddSkill?: (
     data: Record<string, string | number | boolean | undefined>
   ) => Promise<void> | void;
-  onAddEducation: (
+  onAddEducation?: (
     data: Record<string, string | number | boolean | undefined>
   ) => Promise<void> | void;
-  onAddProject: (
+  onAddProject?: (
     data: Record<string, string | number | boolean | undefined>
   ) => Promise<void> | void;
 }
 
-interface FieldBase {
-  type: string;
-  name: string;
-  label: string;
-  required?: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
-  default?: string | number | boolean;
+// Card configuration for consistent styling
+interface CardConfig {
+  title: string;
+  subtitle: string;
+  countKey: keyof SummaryCardsProps["counts"];
+  icon: React.ReactNode;
+  colorPath: "primary" | "success" | "warning" | "info";
+  dialogKey: "skill" | "education" | "employment" | "project";
 }
 
-const degreeOptions = [
-  "High School",
-  "Associate",
-  "Bachelor's",
-  "Master's",
-  "PhD",
-  "Certificate",
-];
-
-const SummaryCards: React.FC<SummaryCardsProps> = ({
-  counts,
-  onAddEmployment,
-  onAddSkill,
-  onAddEducation,
-  onAddProject,
-}) => {
+const SummaryCards: React.FC<SummaryCardsProps> = ({ counts }) => {
   const theme = useTheme();
-  const [openDialog, setOpenDialog] = useState<null | string>(null);
-  const [formData, setFormData] = useState<
-    Record<string, string | number | boolean | undefined>
-  >({});
-  const [submitting, setSubmitting] = useState(false);
+  const { notification, closeNotification } = useErrorHandler();
 
-  // Skills dialog state
-  const [skillDialogOpen, setSkillDialogOpen] = useState(false);
+  // Dialog open states - one for each section
+  const [dialogState, setDialogState] = useState({
+    skill: false,
+    education: false,
+    employment: false,
+    project: false,
+  });
 
-  // Education dialog state
-  const [educationDialogOpen, setEducationDialogOpen] = useState(false);
+  // Card configurations - memoized to prevent recreation on every render
+  const cardsConfig: CardConfig[] = useMemo(
+    () => [
+      {
+        title: "Employment",
+        subtitle: "Work Experience",
+        countKey: "employmentCount",
+        icon: <WorkIcon sx={{ fontSize: 28 }} />,
+        colorPath: "primary",
+        dialogKey: "employment",
+      },
+      {
+        title: "Skills",
+        subtitle: "Capabilities",
+        countKey: "skillsCount",
+        icon: <PsychologyIcon sx={{ fontSize: 28 }} />,
+        colorPath: "success",
+        dialogKey: "skill",
+      },
+      {
+        title: "Education",
+        subtitle: "Academic Background",
+        countKey: "educationCount",
+        icon: <SchoolIcon sx={{ fontSize: 28 }} />,
+        colorPath: "warning",
+        dialogKey: "education",
+      },
+      {
+        title: "Projects",
+        subtitle: "Portfolio Work",
+        countKey: "projectsCount",
+        icon: <RocketLaunchIcon sx={{ fontSize: 28 }} />,
+        colorPath: "info",
+        dialogKey: "project",
+      },
+    ],
+    []
+  );
 
-  // Employment dialog state
-  const [employmentDialogOpen, setEmploymentDialogOpen] = useState(false);
+  // Open a specific dialog - memoized to prevent recreation
+  const openDialog = useCallback((key: CardConfig["dialogKey"]) => {
+    setDialogState((prev) => ({ ...prev, [key]: true }));
+  }, []);
 
-  // Project dialog state
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  // Close a specific dialog - memoized to prevent recreation
+  const closeDialog = useCallback((key: CardConfig["dialogKey"]) => {
+    setDialogState((prev) => ({ ...prev, [key]: false }));
+  }, []);
 
-  // centralized error handler hook for snackbars
-  const { notification, closeNotification, showNotification, handleError } =
-    useErrorHandler();
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    // Narrow the value and update state using functional update to avoid stale closures
-    const nextValue = type === "checkbox" ? checked : (value as string);
-    setFormData((prev) => ({ ...prev, [name]: nextValue }));
-  };
-
-  const handleSubmit = async (card: (typeof cardsData)[0]) => {
-    // Client-side validation for required fields and simple numeric ranges
-    try {
-      // Special-case Skills, Education, Employment, and Projects: use the dedicated dialogs
-      if (
-        card.title === "Skills" ||
-        card.title === "Education" ||
-        card.title === "Employment" ||
-        card.title === "Projects"
-      ) {
-        return; // Handled by dedicated dialogs
-      }
-
-      // Build requiredFields map for validateRequired
-      const requiredFields: Record<string, unknown> = {};
-      for (const f of card.fields) {
-        if (f.required) requiredFields[f.name] = formData[f.name];
-      }
-
-      // Validate numeric ranges (e.g., proficiency)
-      for (const f of card.fields) {
-        if (f.required && f.type === "number") {
-          const raw = formData[f.name];
-          const n = raw === undefined || raw === null ? NaN : Number(raw);
-          if (Number.isNaN(n)) {
-            showNotification(
-              `Please provide a valid value for ${f.label}`,
-              "error"
-            );
-            return;
-          }
-          if (typeof f.min === "number" && n < f.min) {
-            showNotification(`${f.label} must be at least ${f.min}`, "error");
-            return;
-          }
-          if (typeof f.max === "number" && n > f.max) {
-            showNotification(`${f.label} must be at most ${f.max}`, "error");
-            return;
-          }
-        }
-      }
-
-      const validationMsg = validateRequired(requiredFields);
-      if (validationMsg) {
-        showNotification(validationMsg, "error");
-        return;
-      }
-
-      setSubmitting(true);
-      // Allow the parent handler to perform async work (DB insert). If it fails,
-      // bubble the error so we don't close the dialog prematurely.
-      await Promise.resolve(card.onAdd(formData));
-      setFormData({});
-      setOpenDialog(null);
-    } catch (e) {
-      // Log and surface errors using the shared error handler so messages are
-      // consistent across the app and map DB/Supabase errors to friendly text.
-      console.error("Add handler failed", e);
-      handleError(e);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  const cardsData = [
-    {
-      title: "Employment",
-      count: counts.employmentCount,
-      icon: <FaBriefcase size={24} color="#fff" />,
-      color: theme.palette.primary.main,
-      onAdd: onAddEmployment,
-      fields: [
-        { type: "text", name: "position", label: "Job title", required: true },
-        { type: "text", name: "company", label: "Company", required: true },
-        {
-          type: "date",
-          name: "start_date",
-          label: "Start Date",
-          required: true,
-        },
-        { type: "date", name: "end_date", label: "End Date" },
-        {
-          type: "checkbox",
-          name: "is_current",
-          label: "Current position",
-        },
-      ] as FieldBase[],
-    },
-    {
-      title: "Skills",
-      count: counts.skillsCount,
-      icon: <FaLightbulb size={24} color="#fff" />,
-      color: theme.palette.success.main,
-      onAdd: onAddSkill,
-      fields: [
-        { type: "text", name: "name", label: "Skill name", required: true },
-        {
-          type: "number",
-          name: "proficiency_level",
-          label: "Proficiency (1-5)",
-          min: 1,
-          max: 5,
-          default: 1,
-          required: true,
-        },
-        {
-          type: "select",
-          name: "category",
-          label: "Skill category",
-          options: ["Technical", "Soft Skills", "Language", "Other"],
-          required: true,
-        },
-      ] as FieldBase[],
-    },
-    {
-      title: "Education",
-      count: counts.educationCount,
-      icon: <FaGraduationCap size={24} color="#fff" />,
-      color: theme.palette.warning.main,
-      onAdd: onAddEducation,
-      fields: [
-        {
-          type: "text",
-          name: "institution",
-          label: "Institution",
-          required: true,
-        },
-        {
-          type: "select",
-          name: "degree",
-          label: "Degree type (optional)",
-          options: degreeOptions,
-        },
-        {
-          type: "text",
-          name: "field_of_study",
-          label: "Field of study (optional)",
-        },
-        {
-          type: "date",
-          name: "start_date",
-          label: "Start date",
-          required: true,
-        },
-      ] as FieldBase[],
-    },
-    {
-      title: "Projects",
-      count: counts.projectsCount,
-      icon: <FaProjectDiagram size={24} color="#fff" />,
-      color: theme.palette.info.main,
-      onAdd: onAddProject,
-      fields: [
-        { type: "text", name: "title", label: "Project name", required: true },
-        {
-          type: "date",
-          name: "start_date",
-          label: "Start date",
-          required: true,
-        },
-        { type: "date", name: "end_date", label: "End date" },
-        { type: "checkbox", name: "is_ongoing", label: "Current project" },
-      ] as FieldBase[],
-    },
-  ];
-
-  const handleOpenDialog = (title: string) => {
-    if (title === "Skills") {
-      setSkillDialogOpen(true);
-    } else if (title === "Education") {
-      setEducationDialogOpen(true);
-    } else if (title === "Employment") {
-      setEmploymentDialogOpen(true);
-    } else if (title === "Projects") {
-      setProjectDialogOpen(true);
-    } else {
-      setOpenDialog(title);
-      setFormData({});
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(null);
-    setFormData({});
-  };
-
-  const handleSkillDialogSuccess = async () => {
-    // Trigger the onAddSkill handler to refresh dashboard counts
-    // The AddSkillDialog already handles the actual skill creation
-    window.dispatchEvent(new CustomEvent("skills:changed"));
-  };
-
-  const handleEducationDialogSuccess = async () => {
-    // The AddEducationDialog already handles the actual education creation
-    window.dispatchEvent(new CustomEvent("education:changed"));
-  };
-
-  const handleEmploymentDialogSuccess = async () => {
-    // The AddEmploymentDialog already handles the actual employment creation
-    window.dispatchEvent(new CustomEvent("employment:changed"));
-  };
-
-  const handleProjectDialogSuccess = async () => {
-    // The AddProjectDialog already handles the actual project creation
-    window.dispatchEvent(new CustomEvent("projects:changed"));
-  };
-
-  const renderField = (field: FieldBase) => {
-    // If the user marked the entry as current, hide/disable the end date field
-    const isEndDate = field.name === "end_date" && formData["is_current"];
-
-    const commonProps = {
-      name: field.name,
-      fullWidth: true,
-      value: String(formData[field.name] ?? ""),
-      onChange: handleInputChange,
-      InputLabelProps: { shrink: true },
-      disabled: Boolean(isEndDate),
-      required: field.required || false,
-    };
-
-    switch (field.type) {
-      case "text":
-      case "date":
-      case "number":
-        return (
-          <TextField {...commonProps} label={field.label} type={field.type} />
-        );
-      case "select":
-        return (
-          <TextField {...commonProps} select label={field.label}>
-            {field.options?.map((opt) => (
-              <MenuItem key={opt} value={opt}>
-                {opt}
-              </MenuItem>
-            ))}
-          </TextField>
-        );
-      case "checkbox":
-        return (
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={Boolean(formData[field.name])}
-                onChange={handleInputChange}
-                name={field.name}
-              />
-            }
-            label={field.label}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+  // Success handlers - memoized, dialogs dispatch events
+  const handleSuccess = useCallback(() => {
+    // Dialogs already dispatch their own events (skills:changed, etc.)
+    // The useDashboardData hook listens for these events and refreshes
+  }, []);
 
   return (
     <Box
       sx={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 2,
-        justifyContent: "space-between",
-        mt: 3,
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "repeat(2, 1fr)",
+          lg: "repeat(4, 1fr)",
+        },
+        gap: 2.5,
+        mt: 2,
         mb: 3,
       }}
+      role="region"
+      aria-label="Profile summary cards"
     >
-      {cardsData.map((card) => (
-        <React.Fragment key={card.title}>
+      {cardsConfig.map((card) => {
+        const cardColor = theme.palette[card.colorPath].main;
+        const lightBg = alpha(cardColor, 0.08);
+        const count = counts[card.countKey];
+
+        return (
           <Card
+            key={card.title}
+            elevation={0}
             sx={{
-              flex: "1 1 240px",
-              minWidth: 220,
-              borderRadius: 2,
-              boxShadow: 2,
-              transition: "0.2s",
-              "&:hover": { boxShadow: 4 },
+              borderRadius: 3,
+              border: `1px solid ${alpha(cardColor, 0.2)}`,
+              backgroundColor: theme.palette.background.paper,
+              position: "relative",
+              overflow: "visible",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: `0 8px 24px ${alpha(cardColor, 0.15)}`,
+                borderColor: alpha(cardColor, 0.4),
+              },
             }}
           >
-            <CardContent>
+            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+              {/* Top row: Icon and Add button */}
               <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="flex-start"
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  mb: 2,
+                }}
               >
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Box
-                    sx={{
-                      backgroundColor: card.color,
-                      borderRadius: 2,
-                      p: 1.2,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {card.icon}
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {card.title}
-                    </Typography>
-                    <Typography variant="h5" fontWeight="bold">
-                      {card.count}
-                    </Typography>
-                  </Box>
+                {/* Icon container */}
+                <Box
+                  sx={{
+                    backgroundColor: lightBg,
+                    borderRadius: 2,
+                    width: 48,
+                    height: 48,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: cardColor,
+                  }}
+                  aria-hidden="true"
+                >
+                  {card.icon}
                 </Box>
 
-                <Button
-                  onClick={() => handleOpenDialog(card.title)}
-                  size="small"
+                {/* Add button */}
+                <Tooltip title={`Add ${card.title}`} arrow>
+                  <IconButton
+                    onClick={() => openDialog(card.dialogKey)}
+                    size="small"
+                    sx={{
+                      backgroundColor: lightBg,
+                      color: cardColor,
+                      width: 32,
+                      height: 32,
+                      "&:hover": {
+                        backgroundColor: cardColor,
+                        color: theme.palette.getContrastText(cardColor),
+                        transform: "rotate(90deg)",
+                      },
+                      transition: "all 0.2s ease",
+                    }}
+                    aria-label={`Add new ${card.title.toLowerCase()}`}
+                  >
+                    <AddIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              {/* Count - large and prominent */}
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 700,
+                  color: theme.palette.text.primary,
+                  lineHeight: 1,
+                  mb: 0.5,
+                }}
+              >
+                {count}
+              </Typography>
+
+              {/* Title */}
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.text.primary,
+                  lineHeight: 1.3,
+                }}
+              >
+                {card.title}
+              </Typography>
+
+              {/* Subtitle */}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  display: "block",
+                }}
+              >
+                {card.subtitle}
+              </Typography>
+
+              {/* Status indicator */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  mt: 1.5,
+                  pt: 1.5,
+                  borderTop: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Box
                   sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    color: theme.palette.primary.main,
-                    "&:hover": { color: theme.palette.primary.dark },
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    backgroundColor:
+                      count > 0
+                        ? theme.palette.success.main
+                        : theme.palette.warning.main,
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color:
+                      count > 0
+                        ? theme.palette.success.main
+                        : theme.palette.warning.main,
+                    fontWeight: 500,
                   }}
                 >
-                  + Add
-                </Button>
+                  {count > 0 ? "Active" : "Add entries"}
+                </Typography>
               </Box>
             </CardContent>
           </Card>
+        );
+      })}
 
-          <Dialog
-            open={openDialog === card.title}
-            onClose={handleCloseDialog}
-            maxWidth="sm"
-            fullWidth
-          >
-            <DialogTitle>{`Add ${card.title}`}</DialogTitle>
-            <DialogContent
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                mt: 2, // extra top padding to prevent label cutoff
-                mb: 2,
-              }}
-            >
-              {card.fields.map((field) => (
-                <Box key={field.name} sx={{ mt: 2 }}>
-                  {renderField(field)}
-                </Box>
-              ))}
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseDialog} disabled={submitting}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => void handleSubmit(card)}
-                variant="contained"
-                disabled={submitting}
-              >
-                {submitting ? "Adding..." : "Add"}
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </React.Fragment>
-      ))}
-
-      {/* Skills Dialog */}
+      {/* Dedicated Dialogs - Each handles its own form, validation, and DB operations */}
       <AddSkillDialog
-        open={skillDialogOpen}
-        onClose={() => setSkillDialogOpen(false)}
-        onSuccess={handleSkillDialogSuccess}
+        open={dialogState.skill}
+        onClose={() => closeDialog("skill")}
+        onSuccess={handleSuccess}
         mode="add"
       />
 
-      {/* Education Dialog */}
       <AddEducationDialog
-        open={educationDialogOpen}
-        onClose={() => setEducationDialogOpen(false)}
-        onSuccess={handleEducationDialogSuccess}
+        open={dialogState.education}
+        onClose={() => closeDialog("education")}
+        onSuccess={handleSuccess}
         mode="add"
       />
 
-      {/* Employment Dialog */}
       <AddEmploymentDialog
-        open={employmentDialogOpen}
-        onClose={() => setEmploymentDialogOpen(false)}
-        onSuccess={handleEmploymentDialogSuccess}
+        open={dialogState.employment}
+        onClose={() => closeDialog("employment")}
+        onSuccess={handleSuccess}
         mode="add"
       />
 
-      {/* Project Dialog */}
       <AddProjectDialog
-        open={projectDialogOpen}
-        onClose={() => setProjectDialogOpen(false)}
-        onSuccess={handleProjectDialogSuccess}
+        open={dialogState.project}
+        onClose={() => closeDialog("project")}
+        onSuccess={handleSuccess}
         mode="add"
       />
 
+      {/* Snackbar for any error notifications */}
       <Snackbar
         open={notification.open}
         autoHideDuration={notification.autoHideDuration}
@@ -524,4 +357,4 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({
   );
 };
 
-export default SummaryCards;
+export default memo(SummaryCards);

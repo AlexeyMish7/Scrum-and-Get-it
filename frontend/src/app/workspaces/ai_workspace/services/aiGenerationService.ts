@@ -23,6 +23,7 @@
 
 import aiGeneration from "@shared/services/ai/aiGeneration";
 import { withUser, getRow } from "@shared/services/crud";
+import { supabase } from "@shared/services/supabaseClient";
 import type {
   GenerationDocumentType,
   GenerationOptions,
@@ -257,32 +258,77 @@ export async function generateResume(
   // Save to documents table
   const userCrud = withUser(userId);
 
-  // Validate that we have database UUIDs, not static string IDs
-  if (
-    !template.id.match(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    )
-  ) {
-    throw new Error(
-      `Template ID "${template.id}" is not a valid UUID. Please select a template from the database, not static fallback data. Try refreshing the page.`
+  // Check if we have database UUIDs or static fallback IDs
+  // Static fallback templates have IDs like "resume-chronological" instead of UUIDs
+  // We'll use null for template_id and theme_id if they're not valid UUIDs
+  // This allows generation to succeed even when database templates aren't loaded
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const templateIdForDb = uuidPattern.test(template.id) ? template.id : null;
+  const themeIdForDb = uuidPattern.test(_theme.id) ? _theme.id : null;
+
+  // Log warning if using fallback templates (non-UUID IDs)
+  if (!templateIdForDb) {
+    console.warn(
+      `Template ID "${template.id}" is not a UUID - using fallback template. Document will save without template reference.`
     );
   }
-  if (
-    !_theme.id.match(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    )
-  ) {
-    throw new Error(
-      `Theme ID "${_theme.id}" is not a valid UUID. Please select a theme from the database, not static fallback data. Try refreshing the page.`
+  if (!themeIdForDb) {
+    console.warn(
+      `Theme ID "${_theme.id}" is not a UUID - using fallback theme. Document will save without theme reference.`
     );
   }
+
+  // Debug: Log document insert payload to verify user_id is correct
+  console.log("[Resume Gen] Inserting document for user:", userId);
+  console.log("[Resume Gen] Template ID for DB:", templateIdForDb);
+  console.log("[Resume Gen] Theme ID for DB:", themeIdForDb);
+
+  // Refresh session before database insert to ensure token is valid
+  // The AI generation call to the backend may have taken a while,
+  // and the session token could be stale
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    console.warn("[Resume Gen] Session refresh warning:", refreshError.message);
+  }
+
+  // Verify session is valid after refresh
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    console.error("[Resume Gen] Session error:", sessionError);
+    throw new Error(
+      "Your session has expired. Please refresh the page and try again."
+    );
+  }
+
+  // Verify the session user matches the userId we're trying to insert for
+  if (session.user.id !== userId) {
+    console.error(
+      "[Resume Gen] User ID mismatch! Session:",
+      session.user.id,
+      "Requested:",
+      userId
+    );
+    throw new Error(
+      "Session user mismatch. Please refresh the page and try again."
+    );
+  }
+
+  console.log(
+    "[Resume Gen] Session verified, auth.uid() should be:",
+    session.user.id
+  );
 
   const documentData = {
     type: "resume" as const,
     status: "draft" as const,
     name: jobContext?.jobTitle ? `Resume - ${jobContext.jobTitle}` : "Resume",
-    template_id: template.id,
-    theme_id: _theme.id,
+    template_id: templateIdForDb,
+    theme_id: themeIdForDb,
     template_overrides: {},
     theme_overrides: {},
     content: resumeContent, // Use transformed content instead of raw AI response
@@ -317,8 +363,8 @@ export async function generateResume(
     document_id: document.id,
     version_number: 1,
     content: resumeContent, // Use transformed content instead of raw AI response
-    template_id: template.id,
-    theme_id: _theme.id,
+    template_id: templateIdForDb,
+    theme_id: themeIdForDb,
     template_overrides: {},
     theme_overrides: {},
     job_id: jobContext?.jobId || null,
@@ -442,12 +488,32 @@ export async function generateCoverLetter(
   // Save to documents table
   const userCrud = withUser(userId);
 
+  // Check if we have database UUIDs or static fallback IDs
+  // Static fallback templates have IDs like "theme-professional" instead of UUIDs
+  // We'll use null for template_id and theme_id if they're not valid UUIDs
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const templateIdForCl = uuidPattern.test(template.id) ? template.id : null;
+  const themeIdForCl = uuidPattern.test(_theme.id) ? _theme.id : null;
+
+  // Log warning if using fallback templates (non-UUID IDs)
+  if (!templateIdForCl) {
+    console.warn(
+      `Cover Letter Template ID "${template.id}" is not a UUID - using fallback template.`
+    );
+  }
+  if (!themeIdForCl) {
+    console.warn(
+      `Cover Letter Theme ID "${_theme.id}" is not a UUID - using fallback theme.`
+    );
+  }
+
   const documentData = {
     type: "cover-letter" as const,
     status: "draft" as const,
     name: `Cover Letter - ${jobContext.jobTitle}`,
-    template_id: template.id,
-    theme_id: _theme.id,
+    template_id: templateIdForCl,
+    theme_id: themeIdForCl,
     template_overrides: {},
     theme_overrides: {},
     content: result.content || {},
@@ -524,8 +590,8 @@ export async function generateCoverLetter(
     document_id: document.id,
     version_number: 1,
     content: transformedContent,
-    template_id: template.id,
-    theme_id: _theme.id,
+    template_id: templateIdForCl,
+    theme_id: themeIdForCl,
     template_overrides: {},
     theme_overrides: {},
     job_id: jobContext.jobId,

@@ -4,7 +4,10 @@ import GlobalTopBar from "./GlobalTopBar.tsx";
 import SystemLayer from "./SystemLayer.tsx";
 import { MockDataNotificationProvider } from "@shared/components/feedback/MockDataNotificationProvider";
 import { ErrorNotificationProvider } from "@shared/components/feedback/ErrorNotificationProvider";
-import { BackgroundGradientAnimation } from "@shared/components/backgrounds";
+import {
+  BackgroundGradientAnimation,
+  FlickeringGrid,
+} from "@shared/components/backgrounds";
 import { useThemeContext } from "@shared/context/ThemeContext";
 
 type AppShellProps = {
@@ -15,10 +18,17 @@ type AppShellProps = {
 export default function AppShell({ sidebar, children }: AppShellProps) {
   const { backgroundMode } = useThemeContext();
 
+  // Check if we're using an animated background (gradient or flickering)
+  const hasAnimatedBackground =
+    backgroundMode === "gradient" || backgroundMode === "flickering";
+
   return (
     <>
       {/* Animated gradient background - rendered when backgroundMode is 'gradient' */}
       {backgroundMode === "gradient" && <BackgroundGradientAnimation />}
+
+      {/* Flickering grid background - rendered when backgroundMode is 'flickering' */}
+      {backgroundMode === "flickering" && <FlickeringGrid />}
 
       <Box
         sx={{
@@ -26,11 +36,8 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          // When using gradient background, make content background transparent
-          bgcolor:
-            backgroundMode === "gradient"
-              ? "transparent"
-              : "background.default",
+          // When using animated background, make content background transparent
+          bgcolor: hasAnimatedBackground ? "transparent" : "background.default",
           position: "relative",
           zIndex: 1,
         }}

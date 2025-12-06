@@ -8,9 +8,15 @@
  * - This caused the avatar to "flash" or reload when navigating between pages
  *
  * Solution:
- * - Single context provider loads avatar once at app root
+ * - Uses React Query for caching profile data (shared with profile workspace)
+ * - Single context provider at app root
  * - All components share the same cached avatar URL via context
  * - Still supports real-time updates when avatar changes
+ *
+ * Performance:
+ * - Profile data is cached via React Query (5 min stale time)
+ * - Avatar signed URLs are cached in localStorage (1 hour TTL)
+ * - No duplicate Supabase calls between AvatarContext and profile dashboard
  *
  * Usage:
  * ```tsx
@@ -32,8 +38,9 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./AuthContext";
-import { getUserProfile } from "@shared/services/crud";
+import { useGlobalProfileMetadata, globalProfileKeys } from "@shared/cache";
 import { supabase } from "@shared/services/supabaseClient";
 
 // ============ Types ============
@@ -112,54 +119,35 @@ export function useAvatarContext(): AvatarContextValue {
 /**
  * AvatarProvider
  * Wraps the app to provide global avatar state.
- * Loads avatar once on auth and caches it in memory + localStorage.
+ * Uses React Query for profile data caching, localStorage for signed URLs.
  */
 export function AvatarProvider({ children }: AvatarProviderProps) {
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load avatar from profile metadata
-  const loadAvatar = useCallback(async () => {
-    if (!user?.id) {
-      setAvatarUrl(null);
-      setLoading(false);
-      return;
-    }
+  // Get profile metadata from React Query cache (shared with profile dashboard)
+  const { data: profileData, isLoading: profileLoading } =
+    useGlobalProfileMetadata(user?.id);
 
-    try {
-      const res = await getUserProfile(user.id);
-      if (res.error) {
-        console.warn("[AvatarContext] Failed to fetch profile:", res.error);
-        setLoading(false);
-        return;
-      }
+  // Extract avatar info from cached profile metadata
+  const avatarPath = profileData?.metadata?.avatar_path ?? null;
+  const avatarBucket = profileData?.metadata?.avatar_bucket ?? "avatars";
 
-      // Profile data - access metadata field which contains avatar_path
-      const profileData = res.data as Record<string, unknown> | null;
-      const metadata =
-        (profileData?.metadata as {
-          avatar_path?: string | null;
-          avatar_bucket?: string | null;
-        }) ?? {};
-      const avatarPath = metadata.avatar_path ?? null;
-      const avatarBucket = metadata.avatar_bucket ?? "avatars";
-
-      if (!avatarPath) {
-        setAvatarUrl(null);
-        setLoading(false);
-        return;
-      }
-
+  // Generate signed URL from cached profile metadata
+  // This only handles URL generation, profile fetching is done by useGlobalProfileMetadata
+  const generateSignedUrl = useCallback(
+    async (path: string, bucket: string) => {
       // External URL (e.g., Google profile picture) - use directly
-      if (/^https?:\/\//.test(avatarPath)) {
-        setAvatarUrl(avatarPath);
+      if (/^https?:\/\//.test(path)) {
+        setAvatarUrl(path);
         setLoading(false);
         return;
       }
 
-      // Check localStorage cache first
-      const cached = readCachedAvatar(avatarBucket, avatarPath);
+      // Check localStorage cache first for signed URLs
+      const cached = readCachedAvatar(bucket, path);
       if (cached) {
         setAvatarUrl(cached);
         setLoading(false);
@@ -167,28 +155,46 @@ export function AvatarProvider({ children }: AvatarProviderProps) {
       }
 
       // Create signed URL for storage-based avatar
-      const { data, error } = await supabase.storage
-        .from(avatarBucket)
-        .createSignedUrl(avatarPath, AVATAR_TTL_SECONDS);
+      try {
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(path, AVATAR_TTL_SECONDS);
 
-      if (!error && data?.signedUrl) {
-        setAvatarUrl(data.signedUrl);
-        writeCachedAvatar(avatarBucket, avatarPath, data.signedUrl);
+        if (!error && data?.signedUrl) {
+          setAvatarUrl(data.signedUrl);
+          writeCachedAvatar(bucket, path, data.signedUrl);
+        }
+      } catch (err) {
+        console.error("[AvatarContext] Error creating signed URL:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("[AvatarContext] Error loading avatar:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    },
+    []
+  );
 
-  // Load avatar when user changes
+  // Update avatar URL when profile metadata changes (from React Query cache)
   useEffect(() => {
-    if (authLoading) return;
-    loadAvatar();
-  }, [authLoading, loadAvatar]);
+    if (authLoading || profileLoading) return;
+
+    if (!user?.id || !avatarPath) {
+      setAvatarUrl(null);
+      setLoading(false);
+      return;
+    }
+
+    generateSignedUrl(avatarPath, avatarBucket);
+  }, [
+    authLoading,
+    profileLoading,
+    user?.id,
+    avatarPath,
+    avatarBucket,
+    generateSignedUrl,
+  ]);
 
   // Subscribe to profile changes for real-time updates
+  // When profile changes, invalidate React Query cache which triggers re-fetch
   useEffect(() => {
     if (!user?.id) return;
 
@@ -202,24 +208,37 @@ export function AvatarProvider({ children }: AvatarProviderProps) {
           table: "profiles",
           filter: `id=eq.${user.id}`,
         },
-        () => loadAvatar()
+        () => {
+          // Invalidate React Query cache to trigger fresh profile fetch
+          queryClient.invalidateQueries({
+            queryKey: globalProfileKeys.profile(user.id),
+          });
+        }
       )
       .subscribe();
 
     // Listen for custom avatar:updated event from ProfilePicture component
-    const handleAvatarUpdate = () => loadAvatar();
+    const handleAvatarUpdate = () => {
+      queryClient.invalidateQueries({
+        queryKey: globalProfileKeys.profile(user.id),
+      });
+    };
     window.addEventListener("avatar:updated", handleAvatarUpdate);
 
     return () => {
       channel.unsubscribe();
       window.removeEventListener("avatar:updated", handleAvatarUpdate);
     };
-  }, [user?.id, loadAvatar]);
+  }, [user?.id, queryClient]);
 
+  // Refresh forces cache invalidation and re-fetch
   const refresh = useCallback(() => {
+    if (!user?.id) return;
     setLoading(true);
-    loadAvatar();
-  }, [loadAvatar]);
+    queryClient.invalidateQueries({
+      queryKey: globalProfileKeys.profile(user.id),
+    });
+  }, [user?.id, queryClient]);
 
   return (
     <AvatarContext.Provider value={{ avatarUrl, loading, refresh }}>

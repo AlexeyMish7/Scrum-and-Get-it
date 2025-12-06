@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { SelectChangeEvent } from "@mui/material/Select";
+import { useQueryClient } from "@tanstack/react-query";
+import { profileKeys } from "@profile/cache/queryKeys";
 import {
   Button,
   TextField,
@@ -75,6 +77,7 @@ const AddProjectForm: React.FC = () => {
   const { markProfileChanged } = useProfileChange();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Check if we're editing an existing project
   const params = useParams<{ id?: string }>();
@@ -424,6 +427,10 @@ const AddProjectForm: React.FC = () => {
         : "Project added successfully";
       showSuccess(msg);
       markProfileChanged(); // Invalidate analytics cache
+      // Invalidate projects cache so list refetches on next view
+      queryClient.invalidateQueries({
+        queryKey: profileKeys.projects(user.id),
+      });
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: msg, severity: "success" },

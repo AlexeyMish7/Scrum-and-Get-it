@@ -13,8 +13,10 @@ import {
   Box,
   Stack,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
+import { profileKeys } from "@profile/cache";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
@@ -37,6 +39,7 @@ export const AddProjectDialog = ({
   existingEntry,
 }: AddProjectDialogProps) => {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
   const { markProfileChanged } = useProfileChange();
   const {
     notification,
@@ -169,6 +172,12 @@ export const AddProjectDialog = ({
             ? "Project updated successfully!"
             : "Project added successfully!"
         );
+
+        // Invalidate React Query cache so all components get fresh data
+        await queryClient.invalidateQueries({
+          queryKey: profileKeys.projects(user.id),
+        });
+
         window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();
@@ -206,6 +215,12 @@ export const AddProjectDialog = ({
         handleError(res.error);
       } else {
         showSuccess("Project deleted successfully!");
+
+        // Invalidate React Query cache so all components get fresh data
+        await queryClient.invalidateQueries({
+          queryKey: profileKeys.projects(user.id),
+        });
+
         window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();

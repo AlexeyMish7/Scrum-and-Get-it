@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
+import { profileKeys } from "@profile/cache";
 import skillsService from "../../services/skills";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -195,6 +197,7 @@ export const AddSkillDialog = ({
   existingSkills = [],
 }: AddSkillDialogProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { handleError, showSuccess } = useErrorHandler();
   const { confirm } = useConfirmDialog();
   const { markProfileChanged } = useProfileChange();
@@ -290,6 +293,11 @@ export const AddSkillDialog = ({
         showSuccess("Skill updated");
       }
 
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.skills(user.id),
+      });
+
       window.dispatchEvent(new CustomEvent("skills:changed"));
       markProfileChanged();
       onSuccess?.();
@@ -325,6 +333,12 @@ export const AddSkillDialog = ({
       }
 
       showSuccess("Skill deleted");
+
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.skills(user.id),
+      });
+
       window.dispatchEvent(new CustomEvent("skills:changed"));
       markProfileChanged();
       onSuccess?.();
