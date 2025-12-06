@@ -72,6 +72,9 @@ export { get as getAnalyticsOverview } from "./analytics.js";
 export { getTrends as getAnalyticsTrends } from "./analytics.js";
 export { getBenchmarks as getAnalyticsBenchmarks } from "./analytics.js";
 
+// ===== PREDICTIONS =====
+export { post as postPredictionsResponseTime } from "./predictions/response-time.js";
+
 // ===== LEGACY COMPATIBILITY EXPORTS =====
 // Maintain old function names for server.ts during transition
 // These match the old handleXyz naming convention used in server.ts routing
