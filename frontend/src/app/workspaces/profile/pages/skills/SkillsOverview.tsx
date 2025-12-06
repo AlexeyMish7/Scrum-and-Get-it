@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { formatNumericLevel, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import { useAuth } from "@shared/context/AuthContext";
 import skillsService from "../../services/skills";
@@ -29,6 +35,7 @@ import Icon from "@shared/components/common/Icon";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AddSkillDialog } from "../../components/dialogs/AddSkillDialog";
+import { useSkillsList } from "@profile/cache";
 
 /*
   SkillsOverview — plain-language notes
@@ -56,9 +63,16 @@ import { AddSkillDialog } from "../../components/dialogs/AddSkillDialog";
 // in src/constants/skills.ts so other components reuse the same labels.
 
 const SkillsOverview: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
+
+  // Use React Query hook for cached skills data
+  const {
+    data: skillsData,
+    isLoading: queryLoading,
+    refetch: refetchSkills,
+  } = useSkillsList();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,18 +89,102 @@ const SkillsOverview: React.FC = () => {
 
   // Local UI state (simple and user-facing):
   // - `categories` holds the visible columns and their skills
-  // - `isLoading`/`search` control small bits of UI
+  // - `search` controls filtering
   // Put handleError into a ref so the fetch effect can call a stable
   // reference without re-running when the hook returns a new function
-  // identity on every render. This prevents an effect loop that made
-  // the page flash/loading spinner repeatedly.
+  // identity on every render.
   const handleErrorRef = useRef(handleError);
   useEffect(() => {
     handleErrorRef.current = handleError;
   }, [handleError]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  // Transform raw skills data into category columns
+  const transformSkillsToCategories = useCallback(
+    (rows: SkillItem[]): Category[] => {
+      const byCategory: Record<string, Skill[]> = {};
+      // Ensure common categories exist even when empty
+      SKILL_CATEGORY_OPTIONS.forEach(
+        (c) => (byCategory[c] = byCategory[c] || [])
+      );
+      const enumToNum: Record<string, number> = {
+        beginner: 1,
+        intermediate: 2,
+        advanced: 3,
+        expert: 4,
+      };
+      rows.forEach((r) => {
+        const alt = r as unknown as Record<string, unknown>;
+        const cat =
+          r.category ??
+          (typeof alt.skill_category === "string"
+            ? (alt.skill_category as string)
+            : undefined) ??
+          "Technical";
+        const name =
+          r.name ??
+          (typeof alt.skill_name === "string"
+            ? (alt.skill_name as string)
+            : undefined) ??
+          "Unnamed";
+        const rawLevel = r.level ?? "beginner";
+        const lvlStr =
+          typeof rawLevel === "string" ? rawLevel : String(rawLevel);
+        const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
+
+        const skill: Skill = {
+          id:
+            r.id ??
+            ((): string => {
+              const maybeRand = (
+                globalThis.crypto as unknown as {
+                  randomUUID?: () => string;
+                }
+              ).randomUUID;
+              return typeof maybeRand === "function"
+                ? maybeRand()
+                : `${name}-${Math.random().toString(36).slice(2, 8)}`;
+            })(),
+          name,
+          level: levelNum,
+          position: r.position,
+        };
+        byCategory[cat] = byCategory[cat] || [];
+        byCategory[cat].push(skill);
+      });
+
+      // Sort by position then name
+      Object.keys(byCategory).forEach((k) => {
+        byCategory[k].sort((a, b) => {
+          const pa =
+            typeof a.position === "number"
+              ? a.position
+              : Number.POSITIVE_INFINITY;
+          const pb =
+            typeof b.position === "number"
+              ? b.position
+              : Number.POSITIVE_INFINITY;
+          if (pa !== pb) return pa - pb;
+          return a.name.localeCompare(b.name);
+        });
+      });
+
+      return Object.entries(byCategory).map(([k, v]) => ({
+        id: k.toLowerCase().replace(/\s+/g, "-"),
+        name: k,
+        skills: v,
+      }));
+    },
+    []
+  );
+
+  // Update categories when skills data changes
+  useEffect(() => {
+    if (skillsData) {
+      setCategories(transformSkillsToCategories(skillsData));
+    }
+  }, [skillsData, transformSkillsToCategories]);
 
   const filteredCategories = useMemo(() => {
     if (!search) return categories;
@@ -398,137 +496,6 @@ const SkillsOverview: React.FC = () => {
     })();
   };
 
-  useEffect(() => {
-    if (loading) {
-      setIsLoading(true);
-      return;
-    }
-    if (!user) {
-      setCategories([]);
-      setIsLoading(false);
-      return;
-    }
-
-    let mounted = true;
-    // Fetch skills for the current user and map them into simple
-    // category columns. We normalize a few field names so the UI can
-    // handle different shapes returned by the service.
-    const fetchSkills = async () => {
-      setIsLoading(true);
-      try {
-        const res = await skillsService.listSkills(user.id);
-        if (res.error) {
-          console.error("Failed to load skills for overview", res.error);
-          handleErrorRef.current?.(res.error);
-          if (mounted) setCategories([]);
-          return;
-        }
-        const rows = (res.data ?? []) as SkillItem[];
-        const byCategory: Record<string, Skill[]> = {};
-        // Ensure common categories exist even when empty so users can drop into them.
-        // Use shared category options so the overview and add pages stay consistent.
-        SKILL_CATEGORY_OPTIONS.forEach(
-          (c) => (byCategory[c] = byCategory[c] || [])
-        );
-        const enumToNum: Record<string, number> = {
-          beginner: 1,
-          intermediate: 2,
-          advanced: 3,
-          expert: 4,
-        };
-        rows.forEach((r) => {
-          // support multiple possible field names coming from the service
-          const alt = r as unknown as Record<string, unknown>;
-          const cat =
-            r.category ??
-            (typeof alt.skill_category === "string"
-              ? (alt.skill_category as string)
-              : undefined) ??
-            "Technical";
-          const name =
-            r.name ??
-            (typeof alt.skill_name === "string"
-              ? (alt.skill_name as string)
-              : undefined) ??
-            "Unnamed";
-          // level can be stored as enum string or a number; normalize safely
-          const rawLevel = r.level ?? "beginner";
-          const lvlStr =
-            typeof rawLevel === "string" ? rawLevel : String(rawLevel);
-          const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
-
-          const skill: Skill = {
-            id:
-              r.id ??
-              ((): string => {
-                const maybeRand = (
-                  globalThis.crypto as unknown as {
-                    randomUUID?: () => string;
-                  }
-                ).randomUUID;
-                return typeof maybeRand === "function"
-                  ? maybeRand()
-                  : `${name}-${Math.random().toString(36).slice(2, 8)}`;
-              })(),
-            name,
-            level: levelNum,
-            position: r.position,
-          };
-          byCategory[cat] = byCategory[cat] || [];
-          byCategory[cat].push(skill);
-        });
-        // Prefer a stored position for ordering when present so reorders
-        // survive page reloads. Otherwise fall back to name order.
-        Object.keys(byCategory).forEach((k) => {
-          byCategory[k].sort((a, b) => {
-            const pa =
-              typeof a.position === "number"
-                ? a.position
-                : Number.POSITIVE_INFINITY;
-            const pb =
-              typeof b.position === "number"
-                ? b.position
-                : Number.POSITIVE_INFINITY;
-            if (pa !== pb) return pa - pb;
-            return a.name.localeCompare(b.name);
-          });
-        });
-
-        const mappedCats: Category[] = Object.entries(byCategory).map(
-          ([k, v]) => ({
-            id: k.toLowerCase().replace(/\s+/g, "-"),
-            name: k,
-            skills: v,
-          })
-        );
-        if (!mounted) return;
-        setCategories(mappedCats);
-      } catch (err) {
-        console.error("Error fetching skills overview", err);
-        handleErrorRef.current?.(err);
-        if (mounted) setCategories([]);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    fetchSkills();
-
-    // Listen for skills:changed event to refetch when skills are added/edited/deleted
-    const handleSkillsChanged = () => {
-      if (mounted) {
-        fetchSkills();
-      }
-    };
-
-    window.addEventListener("skills:changed", handleSkillsChanged);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener("skills:changed", handleSkillsChanged);
-    };
-  }, [user, loading]);
-
   const handleExport = () => {
     const exportData = categories.map((cat) => ({
       category: cat.name,
@@ -569,105 +536,11 @@ const SkillsOverview: React.FC = () => {
   };
 
   const handleDialogSuccess = () => {
-    // Refetch skills after add/edit/delete
-    if (!user) return;
-
-    const fetchSkills = async () => {
-      setIsLoading(true);
-      try {
-        const res = await skillsService.listSkills(user.id);
-        if (res.error) {
-          console.error("Failed to load skills for overview", res.error);
-          handleErrorRef.current?.(res.error);
-          setCategories([]);
-          return;
-        }
-        const rows = (res.data ?? []) as SkillItem[];
-        const byCategory: Record<string, Skill[]> = {};
-        SKILL_CATEGORY_OPTIONS.forEach(
-          (c) => (byCategory[c] = byCategory[c] || [])
-        );
-        const enumToNum: Record<string, number> = {
-          beginner: 1,
-          intermediate: 2,
-          advanced: 3,
-          expert: 4,
-        };
-        rows.forEach((r) => {
-          const alt = r as unknown as Record<string, unknown>;
-          const cat =
-            r.category ??
-            (typeof alt.skill_category === "string"
-              ? (alt.skill_category as string)
-              : undefined) ??
-            "Technical";
-          const name =
-            r.name ??
-            (typeof alt.skill_name === "string"
-              ? (alt.skill_name as string)
-              : undefined) ??
-            "Unnamed";
-          const rawLevel = r.level ?? "beginner";
-          const lvlStr =
-            typeof rawLevel === "string" ? rawLevel : String(rawLevel);
-          const levelNum = enumToNum[lvlStr.toLowerCase()] ?? 1;
-
-          const skill: Skill = {
-            id:
-              r.id ??
-              ((): string => {
-                const maybeRand = (
-                  globalThis.crypto as unknown as {
-                    randomUUID?: () => string;
-                  }
-                ).randomUUID;
-                return typeof maybeRand === "function"
-                  ? maybeRand()
-                  : `${name}-${Math.random().toString(36).slice(2, 8)}`;
-              })(),
-            name,
-            level: levelNum,
-            position: r.position,
-          };
-          byCategory[cat] = byCategory[cat] || [];
-          byCategory[cat].push(skill);
-        });
-        Object.keys(byCategory).forEach((k) => {
-          byCategory[k].sort((a, b) => {
-            const pa =
-              typeof a.position === "number"
-                ? a.position
-                : Number.POSITIVE_INFINITY;
-            const pb =
-              typeof b.position === "number"
-                ? b.position
-                : Number.POSITIVE_INFINITY;
-            if (pa !== pb) return pa - pb;
-            return a.name.localeCompare(b.name);
-          });
-        });
-
-        const mappedCats: Category[] = Object.entries(byCategory).map(
-          ([k, v]) => ({
-            id: k.toLowerCase().replace(/\s+/g, "-"),
-            name: k,
-            skills: v,
-          })
-        );
-        setCategories(mappedCats);
-      } catch (err) {
-        console.error("Error fetching skills overview", err);
-        handleErrorRef.current?.(err);
-        setCategories([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSkills();
+    // Use React Query refetch to update cached skills data
+    refetchSkills();
   };
 
-  if (isLoading || loading) return <LoadingSpinner />;
+  if (queryLoading || authLoading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>

@@ -17,6 +17,7 @@ import GenerateProfileTips from "../../components/profile/GenerateProfileTips";
 // Note: removed legacy ProfileDetails.css to rely on theme tokens and MUI sx props
 import type { ProfileData } from "../../types/profile";
 import { Breadcrumbs } from "@shared/components/navigation";
+import { useFullProfile, useProfileCacheUtils } from "../../cache";
 
 const industries = [
   "Technology",
@@ -102,6 +103,10 @@ const ProfileDetails: React.FC = () => {
   const location = useLocation();
   const navPrefill = (location.state as any)?.prefill ?? null;
 
+  // Use cached profile data from React Query - shares cache with dashboard
+  const { data: cachedProfile, isLoading: profileLoading } = useFullProfile();
+  const { invalidateAll } = useProfileCacheUtils();
+
   const [formData, setFormData] = useState<ProfileData>({
     fullName: "",
     email: "",
@@ -122,75 +127,33 @@ const ProfileDetails: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // Load profile from DB when user is available
+  // Sync form data when cached profile loads
+  // Uses React Query cache - no duplicate network requests
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      if (authLoading) return;
-      if (!user) return;
-      try {
-        // Ask the profileService to fetch and map the profile row.
-        // This keeps DB-specific shape (first_name/last_name etc.) out of the UI.
-        const res = await profileService.getProfile(user.id);
-        if (!mounted) return;
-        if (res.error) {
-          // Non-fatal: show in console but don't crash the page
-          console.warn("Failed to load profile", res.error);
-          return;
-        }
-        const p = res.data as Record<string, unknown> | null;
-        if (!p) return;
-        const mapped = profileService.mapRowToProfile(p);
-        // If navigation provided prefill values, let them override mapped values
-        if (navPrefill) {
-          const prefillMapped: Partial<ProfileData> = {};
-          if (navPrefill.first_name || navPrefill.last_name) {
-            const fn = navPrefill.first_name ?? "";
-            const ln = navPrefill.last_name ?? "";
-            prefillMapped.fullName = `${fn} ${ln}`.trim();
-          }
-          // Accept either `headline` or `professional_title` from prefill (mapping sources vary)
-          if (navPrefill.headline) prefillMapped.headline = navPrefill.headline;
-          else if (navPrefill.professional_title)
-            prefillMapped.headline = navPrefill.professional_title;
-          // Merge with mapped, prefilling wins
-          setFormData({ ...mapped, ...prefillMapped });
-        } else {
-          setFormData(mapped);
-        }
-      } catch (err) {
-        // Unexpected error while loading profile
-        console.error("Error loading profile", err);
-      }
-    };
-    // If navigation state included prefill, apply it immediately and open edit mode
+    if (profileLoading || !cachedProfile) return;
+
+    // If navigation provided prefill values, merge them with cached data
     if (navPrefill) {
-      const initial: ProfileData = {
-        ...formData,
-        fullName:
-          navPrefill.first_name || navPrefill.fullName || formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
-        state: formData.state,
-        // Prefer either headline or professional_title from prefill
-        headline:
-          navPrefill.headline ??
-          navPrefill.professional_title ??
-          formData.headline,
-        bio: formData.bio,
-        industry: formData.industry,
-        experience: formData.experience,
-      };
-      setFormData(initial);
+      const prefillMapped: Partial<ProfileData> = {};
+      if (navPrefill.first_name || navPrefill.last_name) {
+        const fn = navPrefill.first_name ?? "";
+        const ln = navPrefill.last_name ?? "";
+        prefillMapped.fullName = `${fn} ${ln}`.trim();
+      }
+      // Accept either `headline` or `professional_title` from prefill
+      if (navPrefill.headline) prefillMapped.headline = navPrefill.headline;
+      else if (navPrefill.professional_title)
+        prefillMapped.headline = navPrefill.professional_title;
+
+      setFormData({ ...cachedProfile, ...prefillMapped });
       setEditMode(true);
+    } else {
+      setFormData(cachedProfile);
     }
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user, authLoading]);
+    // Update bio character count
+    setBioCount(cachedProfile.bio?.length ?? 0);
+  }, [cachedProfile, profileLoading, navPrefill]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -255,6 +218,8 @@ const ProfileDetails: React.FC = () => {
           setOpenErrorSnackbar(true);
           return;
         }
+        // Invalidate the profile cache so dashboard sees updated data
+        invalidateAll();
         setOpenSnackbar(true);
         setEditMode(false);
       } catch (err) {

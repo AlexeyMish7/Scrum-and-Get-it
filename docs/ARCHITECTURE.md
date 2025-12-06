@@ -663,6 +663,10 @@ npm run dev
 
 ### Frontend
 
+- **React Query Caching** - Profile data cached with configurable stale time
+  - Eliminates duplicate API calls when navigating between pages
+  - ENV-configurable: `VITE_CACHE_STALE_TIME_MINUTES` (default: 5)
+  - Cache invalidated after mutations (add/edit/delete)
 - **Code splitting** - Lazy load workspace modules
 - **Memoization** - Prevent unnecessary re-renders
 - **Debouncing** - Reduce search API calls
@@ -681,6 +685,31 @@ npm run dev
 - **RLS** - Automatic user filtering
 - **JSONB** - Flexible structured data
 - **Denormalization** - Store company_name in jobs for performance
+
+---
+
+## Developer Tools
+
+### Dev Log Panel
+
+A floating debug panel that shows real-time API and Supabase calls:
+
+- **API Tab** - Backend server calls
+- **Supabase Tab** - Database operations with color-coded badges
+  - SELECT (blue), INSERT (green), UPDATE (yellow), DELETE (red)
+  - Shows table name, timing, row count, filters
+
+**Location:** `frontend/src/app/shared/components/dev/`
+
+**How it works:**
+
+1. Fetch interceptor captures all HTTP requests
+2. Routes calls to appropriate tab based on URL
+3. Parses Supabase REST API to extract operation details
+
+**Usage:** Panel appears automatically in development. Use to verify caching, debug duplicate queries, monitor performance.
+
+See `.github/instructions/dev-tools.instructions.md` for full documentation.
 
 ---
 

@@ -28,6 +28,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ImageIcon from "@mui/icons-material/Image";
 import GradientIcon from "@mui/icons-material/Gradient";
+import GridViewIcon from "@mui/icons-material/GridView";
 import {
   useThemeContext,
   type BackgroundMode,
@@ -369,7 +370,7 @@ export function ThemeSettingsPanel({
             Background Style
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Choose between solid or animated gradient background
+            Choose between solid, gradient, or flickering grid background
           </Typography>
           <ToggleButtonGroup
             value={backgroundMode}
@@ -377,13 +378,17 @@ export function ThemeSettingsPanel({
             onChange={(_e, val) => val && handleBackgroundModeChange(val)}
             size="medium"
           >
-            <ToggleButton value="default" sx={{ gap: 1, px: 3 }}>
+            <ToggleButton value="default" sx={{ gap: 1, px: 2 }}>
               <ImageIcon fontSize="small" />
               Default
             </ToggleButton>
-            <ToggleButton value="gradient" sx={{ gap: 1, px: 3 }}>
+            <ToggleButton value="gradient" sx={{ gap: 1, px: 2 }}>
               <GradientIcon fontSize="small" />
               Gradient
+            </ToggleButton>
+            <ToggleButton value="flickering" sx={{ gap: 1, px: 2 }}>
+              <GridViewIcon fontSize="small" />
+              Flickering
             </ToggleButton>
           </ToggleButtonGroup>
         </Box>

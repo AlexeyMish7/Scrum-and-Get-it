@@ -34,6 +34,7 @@ import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { Breadcrumbs } from "@shared/components/navigation";
+import { useCertificationsList } from "@profile/cache";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
 
@@ -57,12 +58,18 @@ const organizations = [
 ];
 
 // Certifications page — list, add, edit and delete user certifications.
-// Uses the centralized `certificationsService` for DB and storage operations
+// Uses React Query via useCertificationsList hook for cached data fetching
 // and `useErrorHandler` for consistent error/success messaging.
 const Certifications: React.FC = () => {
-  // Local state for the certifications list and UI flags
+  // Use React Query hook for cached certifications data
+  const {
+    data: certificationsData,
+    isLoading: queryLoading,
+    refetch: refetchCertifications,
+  } = useCertificationsList();
+
+  // Local state for certifications (allows optimistic updates)
   const [certifications, setCertifications] = useState<CertificationType[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // loading while fetching data
   const [search, setSearch] = useState(""); // simple organization search filter
   const [newCert, setNewCert] = useState<NewCert>({
     name: "",
@@ -86,6 +93,15 @@ const Certifications: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<NewCert>>({});
   const [addOpen, setAddOpen] = useState(false);
 
+  const { user, loading: authLoading } = useAuth();
+
+  // Update local state when query data changes
+  useEffect(() => {
+    if (certificationsData) {
+      setCertifications(certificationsData);
+    }
+  }, [certificationsData]);
+
   // Filtered by organization search
   const filteredCerts = useMemo(() => {
     if (!search) return certifications;
@@ -94,67 +110,12 @@ const Certifications: React.FC = () => {
     );
   }, [certifications, search]);
 
-  const { user, loading } = useAuth();
-
-  // Load certifications for the signed-in user. Resolves signed URLs for attached files.
-  useEffect(() => {
-    let mounted = true;
-    if (loading) {
-      setIsLoading(true);
-      return;
-    }
-    if (!user) {
-      setCertifications([]);
-      setIsLoading(false);
-      return;
-    }
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const res = await certificationsService.listCertifications(user.id);
-        if (!mounted) return;
-        if (res.error) {
-          throw res.error;
-        }
-        const rows = Array.isArray(res.data)
-          ? res.data
-          : res.data
-          ? [res.data]
-          : [];
-        // Convert DB rows to the UI-friendly Certification type then
-        // attempt to resolve any stored file paths into signed URLs.
-        const mapped = rows.map(certificationsService.mapRowToCertification);
-        // Resolve media URLs in parallel (fastest practical approach)
-        await Promise.all(
-          mapped.map(async (m) => {
-            if (m.media_path)
-              m.mediaUrl = await certificationsService.resolveMediaUrl(
-                m.media_path
-              );
-          })
-        );
-        setCertifications(mapped);
-      } catch (err) {
-        handleError(err, "Failed to load certifications");
-        setCertifications([]);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user, loading, handleError]);
-
-  if (loading || isLoading) return <LoadingSpinner />;
+  if (authLoading || queryLoading) return <LoadingSpinner />;
 
   // Handler for saving a new certification. Validates required fields,
   // uploads an attached file (if provided) and inserts the DB row.
   const handleAddCert = async () => {
-    if (loading) return;
+    if (authLoading) return;
     if (!user)
       return handleError(new Error("Please sign in to add a certification"));
     if (!newCert.name || !newCert.organization || !newCert.dateEarned)
@@ -194,7 +155,9 @@ const Certifications: React.FC = () => {
           created.media_path
         );
 
+      // Optimistic update then refetch to sync with cache
       setCertifications((prev) => [created, ...prev]);
+      refetchCertifications();
       setNewCert({
         name: "",
         organization: "",

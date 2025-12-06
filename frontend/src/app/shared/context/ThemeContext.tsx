@@ -63,8 +63,8 @@ import {
 import lightPaletteTokens from "@shared/theme/palettes/lightPalette";
 import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
 
-/** Background mode - default is solid background, gradient uses animated gradient */
-export type BackgroundMode = "default" | "gradient";
+/** Background mode - default is solid, gradient uses animated gradient, flickering uses grid animation */
+export type BackgroundMode = "default" | "gradient" | "flickering";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -171,8 +171,8 @@ const readStoredBackgroundMode = (): BackgroundMode => {
   }
 
   const stored = window.localStorage.getItem(BACKGROUND_MODE_KEY);
-  if (stored === "gradient") {
-    return "gradient";
+  if (stored === "gradient" || stored === "flickering") {
+    return stored;
   }
 
   return "default";

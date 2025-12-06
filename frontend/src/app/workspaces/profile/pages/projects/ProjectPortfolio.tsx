@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -32,15 +32,20 @@ import { FolderOpen as ProjectIcon } from "@mui/icons-material";
 import type { Project } from "../../types/project.ts";
 import type { ProjectRow } from "../../types/project";
 import { AddProjectDialog } from "../../components/dialogs/AddProjectDialog";
-// Removed Projects.css dependency; rely on MUI theme defaults and layout-only sx
+import { useProjectsList } from "@profile/cache";
 
 // Main portfolio page showing all user's projects in a grid layout
 const ProjectPortfolio: React.FC = () => {
-  // All projects from database
+  // Use React Query hook for cached projects data
+  const {
+    data: projectsData,
+    isLoading: queryLoading,
+    refetch: refetchProjects,
+  } = useProjectsList();
+
+  // Projects with resolved media URLs (updated in background)
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  // Projects after applying search and filters
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+
   // Filter and search controls
   const [search, setSearch] = useState("");
   const [filterTech, setFilterTech] = useState("");
@@ -61,10 +66,33 @@ const ProjectPortfolio: React.FC = () => {
   >();
 
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { markProfileChanged } = useProfileChange();
   const { notification, closeNotification, showSuccess, handleError } =
     useErrorHandler();
+
+  // Update projects when query data changes and resolve media URLs
+  useEffect(() => {
+    if (!projectsData) return;
+
+    setProjects(projectsData);
+
+    // Resolve media URLs in background
+    projectsData.forEach(async (p) => {
+      if (p.mediaPath && !p.mediaUrl) {
+        try {
+          const url = await projectsService.resolveMediaUrl(p.mediaPath);
+          if (url) {
+            setProjects((prev) =>
+              prev.map((x) => (x.id === p.id ? { ...x, mediaUrl: url } : x))
+            );
+          }
+        } catch (err) {
+          console.warn("Failed to resolve media URL", err);
+        }
+      }
+    });
+  }, [projectsData]);
 
   // Listen for success/error messages from other components (like add/edit forms)
   useEffect(() => {
@@ -91,74 +119,8 @@ const ProjectPortfolio: React.FC = () => {
       );
   }, [showSuccess, handleError]);
 
-  // Load all projects for the current user
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      if (loading) {
-        setIsLoading(true);
-        return;
-      }
-
-      if (!user) {
-        if (!mounted) return;
-        setProjects([]);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const res = await projectsService.listProjects(user.id);
-        if (!mounted) return;
-        if (res.error) {
-          console.error("Failed to load projects:", res.error);
-          setProjects([]);
-          return;
-        }
-
-        const rows = Array.isArray(res.data)
-          ? res.data
-          : res.data
-          ? [res.data]
-          : [];
-        const mapped = rows.map(projectsService.mapRowToProject);
-        setProjects(mapped);
-        // Load image URLs in background - don't block the main display
-        mapped.forEach(async (p) => {
-          if (p.mediaPath) {
-            try {
-              const url = await projectsService.resolveMediaUrl(p.mediaPath);
-              if (url) {
-                setProjects((prev) =>
-                  prev.map((x) => (x.id === p.id ? { ...x, mediaUrl: url } : x))
-                );
-              }
-            } catch (err) {
-              console.warn("Failed to resolve media URL", err);
-            }
-          }
-        });
-      } catch (err) {
-        console.error("Error loading projects:", err);
-        setProjects([]);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    load();
-    const handler = () => void load();
-    window.addEventListener("projects:changed", handler);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener("projects:changed", handler);
-    };
-  }, [user, loading]);
-
-  // Apply search filters and sorting whenever inputs change
-  useEffect(() => {
+  // Apply search filters and sorting
+  const filteredProjects = useMemo(() => {
     let temp = [...projects];
 
     // Filter by project name search
@@ -180,10 +142,10 @@ const ProjectPortfolio: React.FC = () => {
         : new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
 
-    setFilteredProjects(temp);
+    return temp;
   }, [projects, search, filterTech, filterIndustry, sortOrder]);
 
-  if (loading || isLoading) return <LoadingSpinner />;
+  if (authLoading || queryLoading) return <LoadingSpinner />;
 
   // Handle deleting a project with confirmation
   const performDelete = async (projectId: string) => {
@@ -197,7 +159,8 @@ const ProjectPortfolio: React.FC = () => {
       }
       showSuccess("Project deleted");
       markProfileChanged(); // Invalidate analytics cache
-      // Notify other components and reload the list
+      // Refetch using React Query
+      refetchProjects();
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: "Project deleted", severity: "success" },
@@ -247,7 +210,7 @@ const ProjectPortfolio: React.FC = () => {
   };
 
   const handleProjectDialogSuccess = () => {
-    fetchProjects();
+    refetchProjects();
   };
 
   return (
@@ -354,7 +317,7 @@ const ProjectPortfolio: React.FC = () => {
         </Stack>
 
         {/* Loading State */}
-        {(loading || isLoading) && (
+        {queryLoading && (
           <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
             <LoadingSpinner />
             <Typography sx={{ mt: 1 }}>Loading projects...</Typography>
@@ -362,7 +325,7 @@ const ProjectPortfolio: React.FC = () => {
         )}
 
         {/* Empty State */}
-        {!loading && !isLoading && filteredProjects.length === 0 && (
+        {!queryLoading && filteredProjects.length === 0 && (
           <EmptyState
             icon={<ProjectIcon />}
             title="No Projects Found"
@@ -386,7 +349,7 @@ const ProjectPortfolio: React.FC = () => {
         )}
 
         {/* Project Cards */}
-        {!loading && !isLoading && filteredProjects.length > 0 && (
+        {!queryLoading && filteredProjects.length > 0 && (
           <Box
             sx={{
               display: "grid",

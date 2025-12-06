@@ -1,12 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 
 // EmploymentHistoryList — high-level overview
-// - Shows the signed-in user's employment entries.
-// - Supports add (navigates), edit (modal), and delete (confirm then remove).
-// - Uses a delayed spinner to avoid flicker on fast networks.
-// Notes for students: this file uses React hooks (useEffect/useCallback)
-// and a ref to keep track of the previous user id so we don't refetch
-// unnecessarily during quick auth transitions.
+// - Shows the signed-in user's employment entries using React Query cache.
+// - Supports add (dialog), edit (dialog), and delete (confirm then remove).
+// - Uses useEmploymentList hook for cached data fetching.
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
@@ -21,13 +18,18 @@ import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { Work as WorkIcon } from "@mui/icons-material";
 import type { EmploymentRow } from "../../types/employment";
+import { useEmploymentList } from "@profile/cache";
 
 export default function EmploymentHistoryList() {
-  const { user, loading } = useAuth();
-  const [entries, setEntries] = useState<EmploymentRow[] | null>(null);
-  // Start false to avoid a visible flash on quick loads; we show the spinner only
-  // if loading lasts longer than spinnerDelayMs.
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+
+  // Use React Query hook for cached employment data
+  const {
+    data: entries,
+    isLoading: queryLoading,
+    isError,
+    refetch,
+  } = useEmploymentList();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,6 +37,7 @@ export default function EmploymentHistoryList() {
   const [selectedEntry, setSelectedEntry] = useState<
     EmploymentRow | undefined
   >();
+
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
   const { markProfileChanged } = useProfileChange();
@@ -42,74 +45,12 @@ export default function EmploymentHistoryList() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fetchEntries = useCallback(async () => {
-    // Fetch the user's employment rows from the backend and update state.
-    // - Avoid fetching while auth is still initializing.
-    // - Show a delayed spinner (small UX tweak) to prevent brief flashes.
-    // - On error, surface it via centralized error handler.
-    // The function is memoized so it can be safely referenced in effects.
-    // If you change dependencies, double-check the useEffect that triggers it.
-    // If auth is still initializing, don't trigger a fetch yet.
-    if (loading) {
-      // ensure a spinner appears if auth loading takes noticeable time
-      setIsLoading(true);
-      return;
-    }
-    if (!user) {
-      setEntries([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Small UX tweak: avoid showing the loading spinner for very short loads
-    // to prevent layout flicker. Use a delayed spinner toggle.
-    const spinnerDelayMs = 120;
-    const spinnerTimer = setTimeout(() => setIsLoading(true), spinnerDelayMs);
-    try {
-      // clear any prior early-loading flag if auth finished quickly
-      // (we'll clear in finally)
-      const res = await employmentService.listEmployment(user.id);
-
-      if (res.error) {
-        console.error("fetchEntries error:", res.error);
-        handleError(res.error);
-        setEntries([]);
-      } else {
-        const rows = (res.data ?? []) as EmploymentRow[];
-        setEntries(rows);
-      }
-    } catch (e) {
-      console.error("Unexpected fetchEntries error", e);
-      setEntries([]);
-    } finally {
-      clearTimeout(spinnerTimer);
-      setIsLoading(false);
-    }
-  }, [user, loading, handleError]);
-  // Include handleError in dependencies to avoid stale reference
-
-  // Only refetch when the authenticated user changes (or when auth finishes).
-  // Track the previous user id so we don't refetch multiple times during
-  // quick mount/auth transitions which can make the page feel like it reloads.
-  const prevUserIdRef = useRef<string | null>(null);
+  // Show error notification when query fails
   useEffect(() => {
-    if (loading) return;
-
-    const currentUserId = user?.id ?? null;
-    // If user became null, clear entries and spinner.
-    if (!currentUserId) {
-      prevUserIdRef.current = null;
-      setEntries([]);
-      setIsLoading(false);
-      return;
+    if (isError) {
+      handleError("Failed to load employment data. Please try again.");
     }
-
-    // If the user id hasn't changed since last fetch, skip refetching.
-    if (prevUserIdRef.current === currentUserId) return;
-    prevUserIdRef.current = currentUserId;
-
-    void fetchEntries();
-  }, [user?.id, loading, fetchEntries]);
+  }, [isError, handleError]);
 
   // If we were navigated here with a success message in location.state, show
   // a centralized snackbar and then clear the state so it doesn't show again.
@@ -120,10 +61,9 @@ export default function EmploymentHistoryList() {
       // Replace the history entry so the state is cleared
       navigate(location.pathname, { replace: true, state: {} });
     }
-    // Only run on mount/navigation changes
   }, [location, navigate, showSuccess]);
 
-  // Dialog handlers - defined before early return
+  // Dialog handlers
   const handleOpenAddDialog = () => {
     setDialogMode("add");
     setSelectedEntry(undefined);
@@ -142,7 +82,7 @@ export default function EmploymentHistoryList() {
   };
 
   const handleDialogSuccess = () => {
-    fetchEntries();
+    refetch();
   };
 
   const handleDelete = async (entryId: string) => {
@@ -167,10 +107,8 @@ export default function EmploymentHistoryList() {
         console.error(res.error);
         handleError(res.error);
       } else {
-        // After a successful deletion, refresh the list so the UI reflects
-        // the backend state. Then set navigation state so the list page shows
-        // a centralized success snackbar (consistent notification UX).
-        await fetchEntries();
+        // Refetch using React Query to update the cached list
+        await refetch();
         markProfileChanged(); // Invalidate analytics cache
         navigate(location.pathname, {
           replace: true,
@@ -183,7 +121,7 @@ export default function EmploymentHistoryList() {
     }
   };
 
-  if (isLoading || loading) return <LoadingSpinner />;
+  if (queryLoading || authLoading) return <LoadingSpinner />;
 
   return (
     <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>

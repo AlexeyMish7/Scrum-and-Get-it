@@ -170,3 +170,8 @@ junit.xml
 *.bak
 *.tmp
 
+# =========================
+# Local Copilot Instructions (personal tasks)
+# =========================
+.github/instructions/*.local.md
+
