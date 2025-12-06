@@ -113,6 +113,15 @@ To verify React Query caching is working:
    - Subsequent navigation: NO new queries (using cache)
    - After edit/save: New queries (cache invalidated)
 
+### Expected Supabase Call Counts
+
+| Scenario                          | Expected Calls                                                                          |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| Hard refresh (F5)                 | ~7 calls (profiles, education, employment, skills, projects, certifications, documents) |
+| Navigation between pages          | 0 calls (uses cached data)                                                              |
+| After add/edit/delete             | 1-2 calls (only invalidated cache refetches)                                            |
+| Window refocus (after stale time) | Background refetches for stale data                                                     |
+
 ### Testing Cache Timing
 
 Set short stale time in `.env` for testing:

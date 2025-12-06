@@ -10,10 +10,12 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
+import { profileKeys } from "@profile/cache";
 import employmentService from "../../services/employment";
 import type { EmploymentRow } from "../../types/employment";
 
@@ -33,6 +35,7 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
   existingEntry,
 }) => {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
   const { markProfileChanged } = useProfileChange();
   const {
     notification,
@@ -153,7 +156,12 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
         return;
       }
 
-      // Notify other components of the change
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.employment(user.id),
+      });
+
+      // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("employment:changed"));
       markProfileChanged();
 
@@ -201,7 +209,12 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
         return;
       }
 
-      // Notify other components of the change
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.employment(user.id),
+      });
+
+      // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("employment:changed"));
       markProfileChanged();
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { profileKeys } from "@profile/cache/queryKeys";
 import {
   Box,
   Card,
@@ -66,6 +68,7 @@ const ProjectPortfolio: React.FC = () => {
   >();
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const { markProfileChanged } = useProfileChange();
   const { notification, closeNotification, showSuccess, handleError } =
@@ -159,8 +162,10 @@ const ProjectPortfolio: React.FC = () => {
       }
       showSuccess("Project deleted");
       markProfileChanged(); // Invalidate analytics cache
-      // Refetch using React Query
-      refetchProjects();
+      // Invalidate projects cache so data is refetched
+      queryClient.invalidateQueries({
+        queryKey: profileKeys.projects(user.id),
+      });
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: "Project deleted", severity: "success" },

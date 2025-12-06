@@ -121,24 +121,55 @@ import {
 
 ### Cache Invalidation
 
-After mutations (add/edit/delete), invalidate the cache:
+After mutations (add/edit/delete), invalidate the specific cache:
 
 ```typescript
-const { invalidateAll } = useProfileCacheUtils();
+import { useQueryClient } from "@tanstack/react-query";
+import { profileKeys } from "@profile/cache/queryKeys";
 
-// After saving changes
-await saveData();
-invalidateAll(); // Forces refetch of all profile data
+const queryClient = useQueryClient();
+
+// After saving changes - invalidate specific cache
+await saveEducation();
+queryClient.invalidateQueries({ queryKey: profileKeys.education(userId) });
+
+// Or invalidate all profile data
+const { invalidateAll } = useProfileCacheUtils();
+invalidateAll();
 ```
+
+### Components with Cache Invalidation
+
+All dialogs and pages that modify data now include cache invalidation:
+
+| Component                   | Operations                     | Cache Invalidated            |
+| --------------------------- | ------------------------------ | ---------------------------- |
+| `AddEducationDialog.tsx`    | insert, update, delete         | `profileKeys.education`      |
+| `AddEmploymentDialog.tsx`   | insert, update, delete         | `profileKeys.employment`     |
+| `AddSkillDialog.tsx`        | insert, update, delete         | `profileKeys.skills`         |
+| `AddProjectDialog.tsx`      | insert, update, delete         | `profileKeys.projects`       |
+| `Certifications.tsx`        | insert, update, delete, verify | `profileKeys.certifications` |
+| `EmploymentHistoryList.tsx` | delete                         | `profileKeys.employment`     |
+| `SkillsOverview.tsx`        | batch reorder                  | `profileKeys.skills`         |
+| `ProfileDetails.tsx`        | profile update                 | `invalidateAll()`            |
+| `ProjectPortfolio.tsx`      | delete                         | `profileKeys.projects`       |
+| `AddProjectForm.tsx`        | insert, update                 | `profileKeys.projects`       |
 
 ### When Does Data Refetch?
 
-| Event                          | Refetches?                 |
-| ------------------------------ | -------------------------- |
-| Add/edit/delete data           | ✅ Yes (via invalidateAll) |
-| Navigate within staleTime      | ❌ No (uses cache)         |
-| Navigate after staleTime       | ✅ Yes (background)        |
-| Window refocus after staleTime | ✅ Yes (background)        |
+| Event                          | Refetches?                           |
+| ------------------------------ | ------------------------------------ |
+| Add/edit/delete data           | ✅ Yes (via cache invalidation)      |
+| Navigate within staleTime      | ❌ No (uses cache)                   |
+| Navigate after staleTime       | ✅ Yes (background refetch)          |
+| Window refocus after staleTime | ✅ Yes (background refetch)          |
+| Hard refresh (F5)              | ✅ Yes (~7 calls, one per data type) |
+
+### Expected Supabase Calls
+
+- **Hard refresh**: ~7 calls (profiles, education, employment, skills, projects, certifications, documents)
+- **Navigation between pages**: 0 calls (uses cached data)
+- **After data mutation**: Only invalidated cache refetches
 
 ---
 

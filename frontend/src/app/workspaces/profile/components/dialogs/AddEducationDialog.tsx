@@ -11,11 +11,13 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { isMonthAfter } from "@shared/utils/dateUtils";
+import { profileKeys } from "@profile/cache";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 
@@ -45,6 +47,7 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
   existingEntry,
 }) => {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
   const { markProfileChanged } = useProfileChange();
   const {
     notification,
@@ -183,7 +186,12 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
         return;
       }
 
-      // Notify other components of the change
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.education(user.id),
+      });
+
+      // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("education:changed"));
       markProfileChanged();
 
@@ -193,7 +201,7 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
           : "Education added successfully"
       );
 
-      // Call success callback if provided
+      // Call success callback if provided (parent can do additional work)
       onSuccess?.();
 
       // Close dialog
@@ -231,7 +239,12 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
         return;
       }
 
-      // Notify other components of the change
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.education(user.id),
+      });
+
+      // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("education:changed"));
       markProfileChanged();
 

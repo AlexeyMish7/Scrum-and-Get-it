@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 // - Supports add (dialog), edit (dialog), and delete (confirm then remove).
 // - Uses useEmploymentList hook for cached data fetching.
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
+import { profileKeys } from "@profile/cache";
 import employmentService from "../../services/employment";
 import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
@@ -22,13 +24,13 @@ import { useEmploymentList } from "@profile/cache";
 
 export default function EmploymentHistoryList() {
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
 
   // Use React Query hook for cached employment data
   const {
     data: entries,
     isLoading: queryLoading,
     isError,
-    refetch,
   } = useEmploymentList();
 
   // Dialog state
@@ -107,8 +109,10 @@ export default function EmploymentHistoryList() {
         console.error(res.error);
         handleError(res.error);
       } else {
-        // Refetch using React Query to update the cached list
-        await refetch();
+        // Invalidate React Query cache so all components get fresh data
+        await queryClient.invalidateQueries({
+          queryKey: profileKeys.employment(user.id),
+        });
         markProfileChanged(); // Invalidate analytics cache
         navigate(location.pathname, {
           replace: true,

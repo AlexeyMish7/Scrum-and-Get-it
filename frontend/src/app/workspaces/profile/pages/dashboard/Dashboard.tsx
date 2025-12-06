@@ -38,7 +38,7 @@ import {
 } from "@mui/material";
 import Icon from "@shared/components/common/Icon";
 import { useAuth } from "@shared/context/AuthContext";
-import { useAvatar } from "@shared/hooks/useAvatar";
+import { useAvatarContext } from "@shared/context/AvatarContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { Breadcrumbs } from "@shared/components/navigation";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
@@ -76,8 +76,8 @@ const Dashboard: FC = () => {
   // Auth context for user info
   const { user } = useAuth();
 
-  // Avatar hook for profile picture
-  const avatarUrl = useAvatar(user?.id);
+  // Avatar from global context (shared with navbar, no duplicate fetches)
+  const { avatarUrl } = useAvatarContext();
 
   // Centralized error handling with snackbar notifications
   const { notification, closeNotification, showSuccess } = useErrorHandler();

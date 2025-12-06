@@ -98,6 +98,31 @@ Modal form for new skill.
 - Category (Technical, Soft Skills, Tools, etc.)
 - Proficiency level (Beginner/Intermediate/Advanced/Expert)
 
+### Dialog Cache Invalidation Pattern
+
+All dialogs include cache invalidation after successful mutations:
+
+```typescript
+import { useQueryClient } from "@tanstack/react-query";
+import { profileKeys } from "@profile/cache/queryKeys";
+
+// In component:
+const queryClient = useQueryClient();
+const { user } = useAuth();
+
+// After successful save:
+const handleSave = async (data) => {
+  const res = await service.insertRow(user.id, data);
+  if (!res.error) {
+    // Invalidate cache so data refetches
+    queryClient.invalidateQueries({ queryKey: profileKeys.education(user.id) });
+    // Keep window event for backward compatibility
+    window.dispatchEvent(new Event("education:changed"));
+    onClose();
+  }
+};
+```
+
 ---
 
 ## LinkedIn Integration

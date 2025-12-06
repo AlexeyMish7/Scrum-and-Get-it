@@ -386,7 +386,8 @@ export function TeamProvider({ children }: TeamProviderProps) {
     return () => {
       mounted = false;
     };
-  }, [user]);
+    // Use user?.id instead of user object to prevent re-runs when user reference changes
+  }, [user?.id]);
 
   // Context value
   const value: TeamContextValue = {

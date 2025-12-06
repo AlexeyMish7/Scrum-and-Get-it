@@ -5,8 +5,10 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatNumericLevel, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import { useAuth } from "@shared/context/AuthContext";
+import { profileKeys } from "@profile/cache";
 import skillsService from "../../services/skills";
 import { Breadcrumbs } from "@shared/components/navigation";
 import type {
@@ -64,15 +66,12 @@ import { useSkillsList } from "@profile/cache";
 
 const SkillsOverview: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const { handleError, notification, closeNotification, showSuccess } =
     useErrorHandler();
 
   // Use React Query hook for cached skills data
-  const {
-    data: skillsData,
-    isLoading: queryLoading,
-    refetch: refetchSkills,
-  } = useSkillsList();
+  const { data: skillsData, isLoading: queryLoading } = useSkillsList();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -392,6 +391,11 @@ const SkillsOverview: React.FC = () => {
           );
           throw batchRes.error;
         }
+
+        // Invalidate React Query cache so all components get fresh data
+        await queryClient.invalidateQueries({
+          queryKey: profileKeys.skills(user.id),
+        });
 
         // On success show a brief confirmation and notify other pages
         showSuccess("Skill order saved");

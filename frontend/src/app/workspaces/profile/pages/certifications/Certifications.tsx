@@ -21,8 +21,10 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SearchIcon from "@mui/icons-material/Search";
 import dayjs from "dayjs";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
+import { profileKeys } from "@profile/cache";
 import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
@@ -61,6 +63,9 @@ const organizations = [
 // Uses React Query via useCertificationsList hook for cached data fetching
 // and `useErrorHandler` for consistent error/success messaging.
 const Certifications: React.FC = () => {
+  // React Query client for cache invalidation
+  const queryClient = useQueryClient();
+
   // Use React Query hook for cached certifications data
   const {
     data: certificationsData,
@@ -155,9 +160,14 @@ const Certifications: React.FC = () => {
           created.media_path
         );
 
-      // Optimistic update then refetch to sync with cache
+      // Optimistic update then invalidate cache
       setCertifications((prev) => [created, ...prev]);
-      refetchCertifications();
+
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.certifications(user.id),
+      });
+
       setNewCert({
         name: "",
         organization: "",
@@ -288,6 +298,11 @@ const Certifications: React.FC = () => {
         )
       );
 
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.certifications(user.id),
+      });
+
       // Close dialog and notify other parts of the app if needed
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
@@ -324,6 +339,12 @@ const Certifications: React.FC = () => {
       if (res.error) throw res.error;
       // remove from local state so the list updates immediately
       setCertifications((prev) => prev.filter((c) => c.id !== editingCertId));
+
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.certifications(user.id),
+      });
+
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
@@ -348,6 +369,12 @@ const Certifications: React.FC = () => {
           c.id === id ? { ...c, verification_status: "verified" } : c
         )
       );
+
+      // Invalidate React Query cache so all components get fresh data
+      await queryClient.invalidateQueries({
+        queryKey: profileKeys.certifications(user.id),
+      });
+
       window.dispatchEvent(new Event("certifications:changed"));
       showSuccess("Certification marked verified");
     } catch (err) {
