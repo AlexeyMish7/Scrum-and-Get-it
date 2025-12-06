@@ -45,6 +45,7 @@ import { useJobsPipeline } from '@job_pipeline/hooks/useJobsPipeline';
 import { useJobMatch } from "@job_pipeline/hooks/useJobMatch";
 import { useAuth } from "@shared/context/AuthContext";
 import MatchAnalysisPanel from "@job_pipeline/components/analytics/MatchAnalysisPanel/MatchAnalysisPanel";
+import CompetitiveAnalysis from "@job_pipeline/components/analytics/CompetitiveAnalysis/CompetitiveAnalysis";
 
 const SCHEDULE_KEY = "jobs:submission_schedules";
 const SUBMISSION_HISTORY_KEY = "jobs:submission_history";
@@ -634,6 +635,7 @@ export default function JobAnalyticsDialog({
           <Tab icon={<PrepIcon />} label="Interview Prep" />
           <Tab icon={<AccessTimeIcon />} label="Job Timing Optimizer" />
           <Tab icon={<AccessTimeIcon />} label="Employer Response Time Prediction" />
+          <Tab icon={<CompanyIcon />} label="Competitive Analysis" />
         </Tabs>
       </Box>
 
@@ -1205,7 +1207,36 @@ export default function JobAnalyticsDialog({
                           {apiResult.aiAnalysis && (
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="subtitle2">AI Analysis</Typography>
-                              {apiResult.aiAnalysis.json ? (
+                              {typeof apiResult.aiAnalysis === 'object' && (apiResult.aiAnalysis.median_days !== undefined || apiResult.aiAnalysis.mean_days !== undefined) ? (
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Median Days</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.median_days ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Mean Days</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.mean_days ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Confidence Interval</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.ci_low ?? '—'}–{apiResult.aiAnalysis.ci_high ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Confidence</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.confidence ?? '—'}</Typography>
+                                  </Box>
+                                  {Array.isArray(apiResult.aiAnalysis.recommendations) && apiResult.aiAnalysis.recommendations.length > 0 && (
+                                    <Box sx={{ gridColumn: '1 / -1' }}>
+                                      <Typography variant="body2" color="text.secondary">Recommendations</Typography>
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                                        {apiResult.aiAnalysis.recommendations.map((rec: string, idx: number) => (
+                                          <Chip key={idx} label={rec} size="small" />
+                                        ))}
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Box>
+                              ) : apiResult.aiAnalysis.json ? (
                                 <Typography variant="body2">{JSON.stringify(apiResult.aiAnalysis.json)}</Typography>
                               ) : (
                                 <Typography variant="body2">{apiResult.aiAnalysis.text ?? 'No textual analysis returned.'}</Typography>
@@ -1249,6 +1280,13 @@ export default function JobAnalyticsDialog({
                 })()}
               </CardContent>
             </Card>
+          </Box>
+        )}
+
+        {/* Tab 6: Competitive Analysis */}
+        {activeTab === 6 && !loading && (
+          <Box>
+            <CompetitiveAnalysis job={jobRow} matchData={matchData} />
           </Box>
         )}
       </DialogContent>
