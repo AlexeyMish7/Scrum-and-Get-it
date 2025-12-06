@@ -43,7 +43,8 @@ async function getAuthHeaders(
       // Primary auth method: JWT token
       return {
         Authorization: `Bearer ${session.access_token}`,
-        "Content-Type": "application/json",
+          "Content-Type": "application/json",
+          Accept: "application/json",
       };
     } else {
       // No session - require user to log in

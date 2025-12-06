@@ -46,6 +46,7 @@ import { useJobMatch } from "@job_pipeline/hooks/useJobMatch";
 import { useAuth } from "@shared/context/AuthContext";
 import MatchAnalysisPanel from "@job_pipeline/components/analytics/MatchAnalysisPanel/MatchAnalysisPanel";
 import CompetitiveAnalysis from "@job_pipeline/components/analytics/CompetitiveAnalysis/CompetitiveAnalysis";
+import ApplicationQualityScoring from "@job_pipeline/components/analytics/ApplicationQualityScoring/ApplicationQualityScoring";
 
 const SCHEDULE_KEY = "jobs:submission_schedules";
 const SUBMISSION_HISTORY_KEY = "jobs:submission_history";
@@ -636,6 +637,7 @@ export default function JobAnalyticsDialog({
           <Tab icon={<AccessTimeIcon />} label="Job Timing Optimizer" />
           <Tab icon={<AccessTimeIcon />} label="Employer Response Time Prediction" />
           <Tab icon={<CompanyIcon />} label="Competitive Analysis" />
+          <Tab icon={<PrepIcon />} label="Application Quality Scoring" />
         </Tabs>
       </Box>
 
@@ -1287,6 +1289,13 @@ export default function JobAnalyticsDialog({
         {activeTab === 6 && !loading && (
           <Box>
             <CompetitiveAnalysis job={jobRow} matchData={matchData} />
+          </Box>
+        )}
+
+        {/* Tab 7: Application Quality Scoring */}
+        {activeTab === 7 && !loading && (
+          <Box>
+            <ApplicationQualityScoring job={jobRow} matchData={matchData} />
           </Box>
         )}
       </DialogContent>
