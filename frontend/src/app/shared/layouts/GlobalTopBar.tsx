@@ -2,7 +2,6 @@ import {
   AppBar,
   Avatar,
   Box,
-  Button,
   Divider,
   Drawer,
   IconButton,
@@ -20,7 +19,7 @@ import {
   ToggleButtonGroup,
   useMediaQuery,
 } from "@mui/material";
-import { alpha, useTheme, type Theme } from "@mui/material/styles";
+import { alpha, useTheme, type Theme, keyframes } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -28,6 +27,12 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import PaletteIcon from "@mui/icons-material/Palette";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import WorkIcon from "@mui/icons-material/Work";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import PeopleIcon from "@mui/icons-material/People";
+import GroupsIcon from "@mui/icons-material/Groups";
+import PersonIcon from "@mui/icons-material/Person";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
@@ -35,11 +40,77 @@ import { useThemeContext } from "@shared/context/ThemeContext";
 import { useAvatarContext } from "@shared/context/AvatarContext";
 import logo from "@shared/assets/logos/logo-icon.png";
 
+// Lamp glow animation for active nav items
+const glowPulse = keyframes`
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+`;
+
+// Scale bounce animation when switching hubs
+const scaleIn = keyframes`
+  0% { transform: scale(0.92); opacity: 0.7; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+`;
+
+// Lamp bar slide animation
+const lampSlide = keyframes`
+  0% { width: 0%; opacity: 0; }
+  100% { width: 80%; opacity: 1; }
+`;
+
 type NavItem = {
   label: string;
   path: string;
   description?: string;
 };
+
+// Navigation items with icons and short labels
+type NavItemConfig = {
+  path: string;
+  shortLabel: string;
+  fullLabel: string;
+  icon: React.ReactNode;
+};
+
+const NAV_ITEMS: NavItemConfig[] = [
+  {
+    path: "/ai",
+    shortLabel: "Generate",
+    fullLabel: "AI Generation Hub",
+    icon: <AutoAwesomeIcon />,
+  },
+  {
+    path: "/jobs",
+    shortLabel: "Jobs",
+    fullLabel: "Jobs Pipeline",
+    icon: <WorkIcon />,
+  },
+  {
+    path: "/interviews",
+    shortLabel: "Interviews",
+    fullLabel: "Interview Hub",
+    icon: <EventNoteIcon />,
+  },
+  {
+    path: "/network",
+    shortLabel: "Network",
+    fullLabel: "Network Hub",
+    icon: <PeopleIcon />,
+  },
+  {
+    path: "/team",
+    shortLabel: "Team",
+    fullLabel: "Team Management",
+    icon: <GroupsIcon />,
+  },
+  {
+    path: "/profile",
+    shortLabel: "Profile",
+    fullLabel: "Profile Hub",
+    icon: <PersonIcon />,
+  },
+];
 
 const WORKSPACE_ITEMS: NavItem[] = [
   {
@@ -121,18 +192,133 @@ const MENU_ITEMS: NavItem[] = [
   { label: "Settings", path: "/profile/settings" },
 ];
 
-const getNavVariantStyles = (theme: Theme, highlight: boolean) => ({
-  color: highlight
-    ? theme.palette.primary.contrastText
-    : theme.palette.text.primary,
-  backgroundColor: highlight
-    ? alpha(theme.palette.primary.main, 0.28)
-    : alpha(theme.palette.text.primary, 0.04),
-  "&:hover": {
-    color: theme.palette.primary.contrastText,
-    backgroundColor: alpha(theme.palette.primary.main, 0.36),
-  },
-});
+// Styled nav button with lamp glow effect and switch animation
+interface NavButtonProps {
+  item: NavItemConfig;
+  isActive: boolean;
+  theme: Theme;
+}
+
+function NavButton({ item, isActive, theme }: NavButtonProps) {
+  return (
+    <Tooltip title={item.fullLabel} arrow enterDelay={500}>
+      <Box
+        component={NavLink}
+        to={item.path}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0.5,
+          px: 2,
+          py: 1,
+          borderRadius: 2,
+          textDecoration: "none",
+          position: "relative",
+          overflow: "visible",
+          minWidth: 72,
+          transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          color: isActive
+            ? theme.palette.primary.main
+            : theme.palette.text.secondary,
+          backgroundColor: isActive
+            ? alpha(theme.palette.primary.main, 0.1)
+            : "transparent",
+          // Animation plays when becoming active
+          animation: isActive ? `${scaleIn} 0.3s ease-out` : "none",
+          "&:hover": {
+            color: theme.palette.primary.main,
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+            transform: "translateY(-2px)",
+            "& .nav-icon svg": {
+              transform: "scale(1.1)",
+            },
+          },
+        }}
+      >
+        {/* Icon - bigger size with glow effect when active */}
+        <Box
+          className="nav-icon"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            "& svg": {
+              fontSize: 26,
+              transition: "all 0.25s ease",
+              filter: isActive
+                ? `drop-shadow(0 0 8px ${alpha(
+                    theme.palette.primary.main,
+                    0.6
+                  )})`
+                : "none",
+            },
+          }}
+        >
+          {item.icon}
+        </Box>
+
+        {/* Label - bigger font */}
+        <Typography
+          sx={{
+            fontSize: "0.8rem",
+            fontWeight: isActive ? 600 : 500,
+            letterSpacing: 0.3,
+            lineHeight: 1.2,
+            transition: "all 0.2s ease",
+          }}
+        >
+          {item.shortLabel}
+        </Typography>
+
+        {/* Animated lamp indicator bar with glow */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            height: 3,
+            borderRadius: 1.5,
+            backgroundColor: theme.palette.primary.main,
+            boxShadow: isActive
+              ? `0 2px 12px 2px ${alpha(
+                  theme.palette.primary.main,
+                  0.5
+                )}, 0 4px 20px 4px ${alpha(theme.palette.primary.main, 0.25)}`
+              : "none",
+            // Animated lamp bar
+            width: isActive ? "80%" : "0%",
+            opacity: isActive ? 1 : 0,
+            animation: isActive
+              ? `${lampSlide} 0.35s ease-out forwards`
+              : "none",
+          }}
+        />
+
+        {/* Glow backdrop effect when active */}
+        {isActive && (
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "100%",
+              height: "70%",
+              background: `radial-gradient(ellipse at bottom, ${alpha(
+                theme.palette.primary.main,
+                0.15
+              )} 0%, transparent 65%)`,
+              pointerEvents: "none",
+              animation: `${glowPulse} 2.5s ease-in-out infinite`,
+            }}
+          />
+        )}
+      </Box>
+    </Tooltip>
+  );
+}
 
 export default function GlobalTopBar() {
   const theme = useTheme();
@@ -257,7 +443,8 @@ export default function GlobalTopBar() {
         color: appBarColor,
       }}
     >
-      <Toolbar sx={{ px: { xs: 2, md: 3 }, py: { xs: 1, md: 1.25 }, gap: 2 }}>
+      <Toolbar sx={{ px: { xs: 2, md: 3 }, py: 1.5, gap: 2 }}>
+        {/* Logo and brand - cohesive styling */}
         <Box
           component={NavLink}
           to="/profile"
@@ -267,6 +454,13 @@ export default function GlobalTopBar() {
             textDecoration: "none",
             color: "inherit",
             gap: 1.5,
+            px: 1,
+            py: 0.5,
+            borderRadius: 2,
+            transition: "all 0.2s ease",
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.text.primary, 0.04),
+            },
           }}
         >
           <Box
@@ -274,21 +468,38 @@ export default function GlobalTopBar() {
             src={logo}
             alt="Flow ATS logo"
             sx={{
-              height: 52,
+              height: 44,
               width: "auto",
+              transition: "filter 0.3s ease",
               filter: highlightAi
-                ? "drop-shadow(0 0 12px rgba(63,123,255,0.45))"
-                : "drop-shadow(0 4px 12px rgba(15,23,42,0.2))",
+                ? `drop-shadow(0 0 10px ${alpha(
+                    theme.palette.primary.main,
+                    0.5
+                  )})`
+                : "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
             }}
           />
           <Box>
             <Typography
-              variant="overline"
-              sx={{ letterSpacing: "0.18em", fontSize: 12 }}
+              sx={{
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: theme.palette.text.secondary,
+                lineHeight: 1,
+              }}
             >
               Flow ATS
             </Typography>
-            <Typography variant="h6" fontWeight={800}>
+            <Typography
+              sx={{
+                fontSize: "1.1rem",
+                fontWeight: 700,
+                lineHeight: 1.3,
+                color: theme.palette.text.primary,
+              }}
+            >
               {pageTitle}
             </Typography>
           </Box>
@@ -297,135 +508,130 @@ export default function GlobalTopBar() {
         <Box sx={{ flexGrow: 1 }} />
 
         {!isMobile ? (
-          <Stack direction="row" spacing={1.25} alignItems="center">
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/ai"
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, highlightAi),
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              Generation Hub
-            </Button>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {/* Main navigation items with icons and lamp effect */}
+            {NAV_ITEMS.slice(0, 5).map((item) => {
+              const isActive =
+                item.path === "/interviews"
+                  ? location.pathname.startsWith("/interviews")
+                  : item.path === "/team"
+                  ? currentWorkspace === "TEAM"
+                  : item.path === "/ai"
+                  ? highlightAi
+                  : item.path === "/jobs"
+                  ? highlightJobs
+                  : item.path === "/network"
+                  ? highlightNetwork
+                  : false;
 
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/jobs"
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, highlightJobs),
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              Jobs Pipeline
-            </Button>
+              return (
+                <NavButton
+                  key={item.path}
+                  item={item}
+                  isActive={isActive}
+                  theme={theme}
+                />
+              );
+            })}
 
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/interviews"
-              size="large"
-              sx={{
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-                backgroundColor: alpha(theme.palette.text.primary, 0.04),
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.text.primary, 0.12),
-                },
-              }}
-            >
-              Interviews
-            </Button>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
+            />
 
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/network"
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, highlightNetwork),
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              Network Hub
-            </Button>
+            {/* Profile nav item */}
+            <NavButton
+              item={NAV_ITEMS[5]}
+              isActive={highlightProfile}
+              theme={theme}
+            />
 
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/team"
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, currentWorkspace === "TEAM"),
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              Team
-            </Button>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
+            />
 
-            <Box sx={{ flexGrow: 1 }} />
-
-            <Button
-              color="inherit"
-              component={NavLink}
-              to="/profile"
-              size="large"
-              sx={{
-                ...getNavVariantStyles(theme, highlightProfile),
-                fontSize: theme.typography.body1.fontSize,
-                px: theme.spacing(2),
-                py: theme.spacing(1),
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              Profile Hub
-            </Button>
-
-            <Tooltip title={themeToggleLabel}>
-              <IconButton
-                color="inherit"
+            {/* Theme toggle - matching nav style */}
+            <Tooltip title={themeToggleLabel} arrow>
+              <Box
+                component="button"
                 onClick={toggleMode}
                 sx={{
-                  borderRadius: theme.shape.borderRadius,
-                  backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 1.5,
+                  py: 1,
+                  border: "none",
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  minWidth: 56,
+                  backgroundColor: alpha(theme.palette.text.primary, 0.04),
+                  color: theme.palette.text.secondary,
+                  transition: "all 0.2s ease",
                   "&:hover": {
-                    backgroundColor: alpha(theme.palette.text.primary, 0.16),
+                    backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                    color: theme.palette.text.primary,
+                    transform: "translateY(-2px)",
+                  },
+                  "& svg": {
+                    fontSize: 24,
+                    transition: "transform 0.2s ease",
+                  },
+                  "&:hover svg": {
+                    transform: "rotate(15deg)",
                   },
                 }}
-                size="large"
               >
                 {themeToggleIcon}
-              </IconButton>
+                <Typography
+                  sx={{ fontSize: "0.7rem", fontWeight: 500, lineHeight: 1 }}
+                >
+                  {mode === "dark" ? "Light" : "Dark"}
+                </Typography>
+              </Box>
             </Tooltip>
 
-            <IconButton
-              onClick={(event) => setProfileAnchor(event.currentTarget)}
-              sx={{ p: 0, ml: theme.spacing(0.5) }}
-              aria-haspopup="true"
-              aria-controls={profileAnchor ? "profile-menu" : undefined}
-            >
-              <Avatar src={avatarUrl ?? undefined} alt="User avatar">
-                {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
-              </Avatar>
-            </IconButton>
+            {/* Avatar - matching style */}
+            <Tooltip title="Account menu" arrow>
+              <IconButton
+                onClick={(event) => setProfileAnchor(event.currentTarget)}
+                sx={{
+                  p: 0.5,
+                  ml: 0.5,
+                  borderRadius: 2,
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.text.primary, 0.06),
+                    transform: "translateY(-2px)",
+                  },
+                }}
+                aria-haspopup="true"
+                aria-controls={profileAnchor ? "profile-menu" : undefined}
+              >
+                <Avatar
+                  src={avatarUrl ?? undefined}
+                  alt="User avatar"
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    border: `2px solid ${alpha(
+                      theme.palette.primary.main,
+                      0.2
+                    )}`,
+                    transition: "border-color 0.2s ease",
+                    "&:hover": {
+                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                    },
+                  }}
+                >
+                  {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
             <Menu
               id="profile-menu"
               anchorEl={profileAnchor}
