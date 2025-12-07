@@ -56,9 +56,17 @@ import {
   darkTheme,
   lightTheme,
   type ThemeMode,
+  // Legacy preset support (kept for backwards compatibility)
   type PresetId,
   applyPresetById,
   isValidPreset,
+  // New preset system
+  type ColorPresetId,
+  type DesignPresetId,
+  isValidColorPreset,
+  isValidDesignPreset,
+  // New theme composer
+  composeTheme,
 } from "@shared/theme";
 import lightPaletteTokens from "@shared/theme/palettes/lightPalette";
 import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
@@ -66,24 +74,63 @@ import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
 /** Background mode - default is solid, gradient uses animated gradient, flickering uses grid animation */
 export type BackgroundMode = "default" | "gradient" | "flickering";
 
+/** Font scale for accessibility - affects all text sizes */
+export type FontScale = "small" | "default" | "large" | "x-large";
+
+/** UI density - affects spacing and component sizes */
+export type UIDensity = "compact" | "comfortable" | "spacious";
+
 interface ThemeContextValue {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
   toggleMode: () => void;
   radiusMode: "tiny" | "default";
   toggleRadiusMode: () => void;
-  // Preset support
+
+  // Legacy preset support (kept for backwards compatibility)
   currentPreset: PresetId | null;
   applyPreset: (presetId: PresetId) => void;
   clearPreset: () => void;
+
+  // New preset system - separated color and design
+  colorPreset: ColorPresetId;
+  setColorPreset: (presetId: ColorPresetId) => void;
+  designPreset: DesignPresetId;
+  setDesignPreset: (presetId: DesignPresetId) => void;
+
   // Background mode
   backgroundMode: BackgroundMode;
   setBackgroundMode: (mode: BackgroundMode) => void;
+
+  // Accessibility and customization
+  fontScale: FontScale;
+  setFontScale: (scale: FontScale) => void;
+  reducedMotion: boolean;
+  setReducedMotion: (enabled: boolean) => void;
+  uiDensity: UIDensity;
+  setUIDensity: (density: UIDensity) => void;
+
+  // Custom accent color (overrides color preset primary)
+  customAccentColor: string | null;
+  setCustomAccentColor: (color: string | null) => void;
+
+  // Reset all settings to defaults
+  resetToDefaults: () => void;
+
+  // Export/import theme settings
+  exportSettings: () => string;
+  importSettings: (settings: string) => boolean;
 }
 
 const STORAGE_KEY = "app.theme.mode";
 const PRESET_STORAGE_KEY = "app.theme.preset";
+const COLOR_PRESET_KEY = "app.theme.colorPreset";
+const DESIGN_PRESET_KEY = "app.theme.designPreset";
 const BACKGROUND_MODE_KEY = "app.theme.backgroundMode";
+const FONT_SCALE_KEY = "app.theme.fontScale";
+const REDUCED_MOTION_KEY = "app.theme.reducedMotion";
+const UI_DENSITY_KEY = "app.theme.uiDensity";
+const CUSTOM_ACCENT_KEY = "app.theme.customAccent";
 
 // ******************** Context & Hook *******************
 
@@ -190,6 +237,138 @@ const persistBackgroundMode = (bgMode: BackgroundMode) => {
   }
 };
 
+// New preset system helpers
+const readStoredColorPreset = (): ColorPresetId => {
+  if (typeof window === "undefined") {
+    return "default";
+  }
+
+  const stored = window.localStorage.getItem(COLOR_PRESET_KEY);
+  if (stored && isValidColorPreset(stored)) {
+    return stored;
+  }
+
+  return "default";
+};
+
+const persistColorPreset = (presetId: ColorPresetId) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(COLOR_PRESET_KEY, presetId);
+  } catch {
+    // Swallow storage errors
+  }
+};
+
+const readStoredDesignPreset = (): DesignPresetId => {
+  if (typeof window === "undefined") {
+    return "modern";
+  }
+
+  const stored = window.localStorage.getItem(DESIGN_PRESET_KEY);
+  if (stored && isValidDesignPreset(stored)) {
+    return stored;
+  }
+
+  return "modern";
+};
+
+const persistDesignPreset = (presetId: DesignPresetId) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(DESIGN_PRESET_KEY, presetId);
+  } catch {
+    // Swallow storage errors
+  }
+};
+
+// New accessibility/customization helpers
+const readStoredFontScale = (): FontScale => {
+  if (typeof window === "undefined") return "default";
+  const stored = window.localStorage.getItem(FONT_SCALE_KEY);
+  if (stored === "small" || stored === "large" || stored === "x-large") {
+    return stored;
+  }
+  return "default";
+};
+
+const persistFontScale = (scale: FontScale) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FONT_SCALE_KEY, scale);
+  } catch {
+    // Swallow
+  }
+};
+
+const readStoredReducedMotion = (): boolean => {
+  if (typeof window === "undefined") return false;
+  // Default to system preference
+  const prefersReduced = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+  const stored = window.localStorage.getItem(REDUCED_MOTION_KEY);
+  if (stored === "true") return true;
+  if (stored === "false") return false;
+  return prefersReduced;
+};
+
+const persistReducedMotion = (enabled: boolean) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(REDUCED_MOTION_KEY, String(enabled));
+  } catch {
+    // Swallow
+  }
+};
+
+const readStoredUIDensity = (): UIDensity => {
+  if (typeof window === "undefined") return "comfortable";
+  const stored = window.localStorage.getItem(UI_DENSITY_KEY);
+  if (stored === "compact" || stored === "spacious") {
+    return stored;
+  }
+  return "comfortable";
+};
+
+const persistUIDensity = (density: UIDensity) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(UI_DENSITY_KEY, density);
+  } catch {
+    // Swallow
+  }
+};
+
+const readStoredCustomAccent = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(CUSTOM_ACCENT_KEY);
+  // Validate it's a hex color
+  if (stored && /^#[0-9A-Fa-f]{6}$/.test(stored)) {
+    return stored;
+  }
+  return null;
+};
+
+const persistCustomAccent = (color: string | null) => {
+  if (typeof window === "undefined") return;
+  try {
+    if (color) {
+      window.localStorage.setItem(CUSTOM_ACCENT_KEY, color);
+    } else {
+      window.localStorage.removeItem(CUSTOM_ACCENT_KEY);
+    }
+  } catch {
+    // Swallow
+  }
+};
+
 // ******************** Provider Component *******************
 
 export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
@@ -201,11 +380,33 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     const stored = window.localStorage.getItem("app.theme.radiusMode");
     return stored === "default" ? "default" : "tiny";
   });
+  // Legacy preset state (for backwards compatibility)
   const [currentPreset, setCurrentPreset] = useState<PresetId | null>(() =>
     readStoredPreset()
   );
+  // New preset system - separate color and design
+  const [colorPreset, setColorPresetState] = useState<ColorPresetId>(() =>
+    readStoredColorPreset()
+  );
+  const [designPreset, setDesignPresetState] = useState<DesignPresetId>(() =>
+    readStoredDesignPreset()
+  );
   const [backgroundMode, setBackgroundModeState] = useState<BackgroundMode>(
     () => readStoredBackgroundMode()
+  );
+
+  // New accessibility and customization state
+  const [fontScale, setFontScaleState] = useState<FontScale>(() =>
+    readStoredFontScale()
+  );
+  const [reducedMotion, setReducedMotionState] = useState<boolean>(() =>
+    readStoredReducedMotion()
+  );
+  const [uiDensity, setUIDensityState] = useState<UIDensity>(() =>
+    readStoredUIDensity()
+  );
+  const [customAccentColor, setCustomAccentState] = useState<string | null>(
+    () => readStoredCustomAccent()
   );
 
   useEffect(() => {
@@ -221,25 +422,192 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     persistPreset(currentPreset);
   }, [currentPreset]);
 
+  // Persist new preset changes
+  useEffect(() => {
+    persistColorPreset(colorPreset);
+  }, [colorPreset]);
+
+  useEffect(() => {
+    persistDesignPreset(designPreset);
+  }, [designPreset]);
+
   // Persist background mode changes
   useEffect(() => {
     persistBackgroundMode(backgroundMode);
   }, [backgroundMode]);
+
+  // Persist new accessibility/customization settings
+  useEffect(() => {
+    persistFontScale(fontScale);
+    // Apply font scale to document
+    if (typeof document !== "undefined") {
+      const scales: Record<FontScale, string> = {
+        small: "14px",
+        default: "16px",
+        large: "18px",
+        "x-large": "20px",
+      };
+      document.documentElement.style.fontSize = scales[fontScale];
+    }
+  }, [fontScale]);
+
+  useEffect(() => {
+    persistReducedMotion(reducedMotion);
+    // Apply reduced motion to document
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.reducedMotion = String(reducedMotion);
+    }
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    persistUIDensity(uiDensity);
+    // Apply UI density as data attribute for CSS targeting
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.density = uiDensity;
+    }
+  }, [uiDensity]);
+
+  useEffect(() => {
+    persistCustomAccent(customAccentColor);
+  }, [customAccentColor]);
 
   // Background mode setter with persistence
   const setBackgroundMode = useCallback((newMode: BackgroundMode) => {
     setBackgroundModeState(newMode);
   }, []);
 
-  // Determine theme: use preset if set, otherwise use default light/dark theme
+  // New preset setters
+  const setColorPreset = useCallback((presetId: ColorPresetId) => {
+    setColorPresetState(presetId);
+  }, []);
+
+  const setDesignPreset = useCallback((presetId: DesignPresetId) => {
+    setDesignPresetState(presetId);
+  }, []);
+
+  // New accessibility/customization setters
+  const setFontScale = useCallback((scale: FontScale) => {
+    setFontScaleState(scale);
+  }, []);
+
+  const setReducedMotion = useCallback((enabled: boolean) => {
+    setReducedMotionState(enabled);
+  }, []);
+
+  const setUIDensity = useCallback((density: UIDensity) => {
+    setUIDensityState(density);
+  }, []);
+
+  const setCustomAccentColor = useCallback((color: string | null) => {
+    setCustomAccentState(color);
+  }, []);
+
+  // Reset all settings to defaults
+  const resetToDefaults = useCallback(() => {
+    setModeState(detectPreferredMode());
+    setColorPresetState("default");
+    setDesignPresetState("modern");
+    setBackgroundModeState("default");
+    setFontScaleState("default");
+    setReducedMotionState(false);
+    setUIDensityState("comfortable");
+    setCustomAccentState(null);
+    setCurrentPreset(null);
+  }, []);
+
+  // Export all theme settings as JSON string
+  const exportSettings = useCallback(() => {
+    return JSON.stringify({
+      version: 1,
+      mode,
+      colorPreset,
+      designPreset,
+      backgroundMode,
+      fontScale,
+      reducedMotion,
+      uiDensity,
+      customAccentColor,
+    });
+  }, [
+    mode,
+    colorPreset,
+    designPreset,
+    backgroundMode,
+    fontScale,
+    reducedMotion,
+    uiDensity,
+    customAccentColor,
+  ]);
+
+  // Import theme settings from JSON string
+  const importSettings = useCallback((settingsJson: string): boolean => {
+    try {
+      const settings = JSON.parse(settingsJson);
+      if (settings.version !== 1) return false;
+
+      if (settings.mode) setModeState(settings.mode);
+      if (settings.colorPreset && isValidColorPreset(settings.colorPreset)) {
+        setColorPresetState(settings.colorPreset);
+      }
+      if (settings.designPreset && isValidDesignPreset(settings.designPreset)) {
+        setDesignPresetState(settings.designPreset);
+      }
+      if (settings.backgroundMode)
+        setBackgroundModeState(settings.backgroundMode);
+      if (settings.fontScale) setFontScaleState(settings.fontScale);
+      if (typeof settings.reducedMotion === "boolean") {
+        setReducedMotionState(settings.reducedMotion);
+      }
+      if (settings.uiDensity) setUIDensityState(settings.uiDensity);
+      if (settings.customAccentColor) {
+        setCustomAccentState(settings.customAccentColor);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Determine theme using the new composition system
+  // Priority: new presets > legacy presets > default themes
   const theme = useMemo(() => {
+    // If using new preset system or any customization
+    const usingNewSystem =
+      colorPreset !== "default" ||
+      designPreset !== "modern" ||
+      customAccentColor ||
+      reducedMotion;
+
+    if (usingNewSystem) {
+      // Use the new composer to create theme from mode + colorPreset + designPreset
+      // Also pass custom accent color and reduced motion preferences
+      return composeTheme({
+        mode,
+        colorPresetId: colorPreset,
+        designPresetId: designPreset,
+        customAccentColor,
+        reducedMotion,
+      });
+    }
+
+    // Legacy preset support - if a legacy preset is active, use it
     if (currentPreset) {
       const baseTokens =
         mode === "dark" ? darkPaletteTokens : lightPaletteTokens;
       return applyPresetById(currentPreset, baseTokens);
     }
+
+    // Default: use the standard light/dark themes
     return mode === "dark" ? darkTheme : lightTheme;
-  }, [mode, currentPreset]);
+  }, [
+    mode,
+    currentPreset,
+    colorPreset,
+    designPreset,
+    customAccentColor,
+    reducedMotion,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined" || readStoredMode() !== null) {
@@ -320,11 +688,31 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       radiusMode,
       toggleRadiusMode: () =>
         setRadiusMode((p) => (p === "tiny" ? "default" : "tiny")),
+      // Legacy preset support
       currentPreset,
       applyPreset: handleApplyPreset,
       clearPreset: handleClearPreset,
+      // New preset system
+      colorPreset,
+      setColorPreset,
+      designPreset,
+      setDesignPreset,
+      // Background mode
       backgroundMode,
       setBackgroundMode,
+      // Accessibility and customization
+      fontScale,
+      setFontScale,
+      reducedMotion,
+      setReducedMotion,
+      uiDensity,
+      setUIDensity,
+      customAccentColor,
+      setCustomAccentColor,
+      // Utility functions
+      resetToDefaults,
+      exportSettings,
+      importSettings,
     }),
     [
       mode,
@@ -334,8 +722,23 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       currentPreset,
       handleApplyPreset,
       handleClearPreset,
+      colorPreset,
+      setColorPreset,
+      designPreset,
+      setDesignPreset,
       backgroundMode,
       setBackgroundMode,
+      fontScale,
+      setFontScale,
+      reducedMotion,
+      setReducedMotion,
+      uiDensity,
+      setUIDensity,
+      customAccentColor,
+      setCustomAccentColor,
+      resetToDefaults,
+      exportSettings,
+      importSettings,
     ]
   );
 

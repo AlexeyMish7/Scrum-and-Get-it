@@ -18,7 +18,15 @@ export type PresetId =
   | "accessible-light"
   | "accessible-dark"
   | "minimal-light"
-  | "minimal-dark";
+  | "minimal-dark"
+  | "ocean-light"
+  | "ocean-dark"
+  | "forest-light"
+  | "forest-dark"
+  | "sunset-light"
+  | "sunset-dark"
+  | "rose-light"
+  | "rose-dark";
 
 /**
  * Preset category for organizing presets
@@ -27,7 +35,11 @@ export type PresetCategory =
   | "professional"
   | "creative"
   | "accessible"
-  | "minimal";
+  | "minimal"
+  | "ocean"
+  | "forest"
+  | "sunset"
+  | "rose";
 
 /**
  * Partial token override for presets

@@ -5,3 +5,69 @@ body,
 #root {
   height: 100%;
 }
+
+/* =============================================
+   ACCESSIBILITY: Reduced Motion
+   When enabled, all animations and transitions are disabled
+   ============================================= */
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* =============================================
+   UI DENSITY: Compact mode adjustments
+   Reduces spacing and sizes throughout the app
+   ============================================= */
+html[data-density="compact"] {
+  /* Reduce MUI component spacing */
+  --mui-spacing-unit: 6px;
+}
+
+html[data-density="compact"] .MuiButton-root {
+  padding: 4px 12px;
+  min-height: 32px;
+}
+
+html[data-density="compact"] .MuiTextField-root .MuiInputBase-input {
+  padding: 8px 12px;
+}
+
+html[data-density="compact"] .MuiCard-root {
+  padding: 12px;
+}
+
+html[data-density="compact"] .MuiListItem-root {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* =============================================
+   UI DENSITY: Spacious mode adjustments
+   Increases spacing for better readability
+   ============================================= */
+html[data-density="spacious"] {
+  --mui-spacing-unit: 10px;
+}
+
+html[data-density="spacious"] .MuiButton-root {
+  padding: 12px 24px;
+  min-height: 48px;
+}
+
+html[data-density="spacious"] .MuiTextField-root .MuiInputBase-input {
+  padding: 16px 18px;
+}
+
+html[data-density="spacious"] .MuiCard-root {
+  padding: 24px;
+}
+
+html[data-density="spacious"] .MuiListItem-root {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
