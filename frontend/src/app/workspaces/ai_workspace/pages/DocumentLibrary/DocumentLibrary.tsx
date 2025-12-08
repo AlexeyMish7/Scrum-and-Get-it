@@ -6,6 +6,8 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,
   Typography,
@@ -116,7 +118,7 @@ export default function DocumentLibrary() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4, pt: 10 }}>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
         Document Library
       </Typography>

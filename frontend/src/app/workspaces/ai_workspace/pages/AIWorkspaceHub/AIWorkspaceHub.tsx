@@ -18,6 +18,7 @@ import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
 import type { RecentDocument } from "../../types";
 import type { DocumentRow } from "@shared/types/database";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { useJobPredictions } from "../../hooks/useJobPredictions";
 
 interface DocumentStats {
@@ -183,7 +184,8 @@ export default function AIWorkspaceHub() {
   // }, [jobs]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Stack spacing={4}>
         {/* Header */}
         <Box>

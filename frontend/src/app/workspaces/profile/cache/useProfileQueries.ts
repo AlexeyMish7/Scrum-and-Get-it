@@ -154,55 +154,156 @@ async function fetchCertificationsList(
 
 // ============================================================================
 // INDIVIDUAL DATA HOOKS (Full data for detail pages)
+// NOW USING UNIFIED CACHE - reads from single cache entry with `select`
 // ============================================================================
+
+// Import unified cache fetcher and keys
+import {
+  unifiedProfileKeys,
+  type UnifiedProfileData,
+} from "./useUnifiedProfileCache";
+
+/**
+ * Fetches ALL profile data in parallel and returns unified object
+ * This is the single source of truth - all other hooks read from this cache
+ */
+async function fetchUnifiedProfile(
+  userId: string
+): Promise<UnifiedProfileData> {
+  // Fetch all data in parallel
+  const [
+    profileResult,
+    skillsResult,
+    employmentResult,
+    educationResult,
+    projectsResult,
+    certificationsResult,
+  ] = await Promise.all([
+    getProfile(userId),
+    listSkills(userId),
+    employmentService.listEmployment(userId),
+    listEducation(userId),
+    projectsService.listProjects(userId),
+    certificationsService.listCertifications(userId),
+  ]);
+
+  // Map profile
+  const profile = profileResult?.data
+    ? profileService.mapRowToProfile(
+        profileResult.data as Record<string, unknown>
+      )
+    : null;
+
+  // Map employment - cast to the proper type since service returns unknown[]
+  const employmentRaw = employmentResult?.data;
+  const employment: EmploymentRow[] = Array.isArray(employmentRaw)
+    ? (employmentRaw as EmploymentRow[])
+    : employmentRaw
+    ? [employmentRaw as EmploymentRow]
+    : [];
+
+  // Map skills
+  const skills: SkillItem[] = skillsResult?.data ?? [];
+
+  // Map education
+  const education: EducationEntry[] = educationResult?.data ?? [];
+
+  // Map projects
+  const projectsRaw = projectsResult?.data;
+  const projectRows = Array.isArray(projectsRaw)
+    ? projectsRaw
+    : projectsRaw
+    ? [projectsRaw]
+    : [];
+  const projects: Project[] = projectRows.map((row) =>
+    projectsService.mapRowToProject(row)
+  );
+
+  // Map certifications
+  const certificationsRaw = certificationsResult?.data;
+  const certRows = Array.isArray(certificationsRaw)
+    ? certificationsRaw
+    : certificationsRaw
+    ? [certificationsRaw]
+    : [];
+  const certifications: Certification[] = certRows.map((row) =>
+    certificationsService.mapRowToCertification(row)
+  );
+
+  return {
+    profile,
+    skills,
+    employment,
+    education,
+    projects,
+    certifications,
+    fetchedAt: Date.now(),
+  };
+}
 
 /**
  * Hook for profile header data
+ * Now uses unified cache with select
  */
 export function useProfileHeader() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.header(userId),
-    queryFn: () => fetchProfileHeader(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data): ProfileHeader | null => {
+      if (!data.profile) return null;
+      const fullName = data.profile.fullName || "";
+      const nameParts = fullName.trim().split(/\s+/);
+      return {
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        name: fullName || "Your Name",
+        email: data.profile.email || "",
+      };
+    },
   });
 }
 
 /**
  * Hook for full profile data (all fields)
  * Used by ProfileDetails page for editing
+ * Now uses unified cache with select
  */
 export function useFullProfile() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.fullProfile(userId),
-    queryFn: () => fetchFullProfile(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.profile,
   });
 }
 
 /**
  * Hook for full employment list
  * Used by both dashboard (for count/events) and EmploymentHistoryList page
+ * Now uses unified cache with select
  */
 export function useEmployment() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.employment(userId),
-    queryFn: () => fetchEmploymentList(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.employment,
   });
 }
 
@@ -211,17 +312,19 @@ export const useEmploymentList = useEmployment;
 
 /**
  * Hook for full education list
+ * Now uses unified cache with select
  */
 export function useEducation() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.education(userId),
-    queryFn: () => fetchEducationList(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.education,
   });
 }
 
@@ -230,17 +333,19 @@ export const useEducationList = useEducation;
 
 /**
  * Hook for full skills list
+ * Now uses unified cache with select
  */
 export function useSkills() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.skills(userId),
-    queryFn: () => fetchSkillsList(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.skills,
   });
 }
 
@@ -249,17 +354,19 @@ export const useSkillsList = useSkills;
 
 /**
  * Hook for full projects list
+ * Now uses unified cache with select
  */
 export function useProjects() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.projects(userId),
-    queryFn: () => fetchProjectsList(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.projects,
   });
 }
 
@@ -268,17 +375,19 @@ export const useProjectsList = useProjects;
 
 /**
  * Hook for full certifications list
+ * Now uses unified cache with select
  */
 export function useCertifications() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
 
   return useQuery({
-    queryKey: profileKeys.certifications(userId),
-    queryFn: () => fetchCertificationsList(userId),
+    queryKey: unifiedProfileKeys.user(userId),
+    queryFn: () => fetchUnifiedProfile(userId),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
     gcTime: CACHE_GC_TIME,
+    select: (data) => data.certifications,
   });
 }
 

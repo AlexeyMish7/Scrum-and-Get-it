@@ -8,19 +8,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
-import { profileKeys } from "@profile/cache";
+import { unifiedProfileKeys } from "@profile/cache";
 import employmentService from "../../services/employment";
+
 import { AddEmploymentDialog } from "../../components/dialogs/AddEmploymentDialog";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
-import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { Work as WorkIcon } from "@mui/icons-material";
 import type { EmploymentRow } from "../../types/employment";
 import { useEmploymentList } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 export default function EmploymentHistoryList() {
   const { user, loading: authLoading } = useAuth();
@@ -31,6 +32,7 @@ export default function EmploymentHistoryList() {
     data: entries,
     isLoading: queryLoading,
     isError,
+    refetch,
   } = useEmploymentList();
 
   // Dialog state
@@ -109,9 +111,9 @@ export default function EmploymentHistoryList() {
         console.error(res.error);
         handleError(res.error);
       } else {
-        // Invalidate React Query cache so all components get fresh data
+        // Invalidate unified cache so all components get fresh data
         await queryClient.invalidateQueries({
-          queryKey: profileKeys.employment(user.id),
+          queryKey: unifiedProfileKeys.user(user.id),
         });
         markProfileChanged(); // Invalidate analytics cache
         navigate(location.pathname, {
@@ -128,13 +130,8 @@ export default function EmploymentHistoryList() {
   if (queryLoading || authLoading) return <LoadingSpinner />;
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
-      <Breadcrumbs
-        items={[
-          { label: "Profile", path: "/profile" },
-          { label: "Employment" },
-        ]}
-      />
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Box
         sx={{
           display: "flex",
@@ -153,7 +150,7 @@ export default function EmploymentHistoryList() {
         </Button>
       </Box>
 
-      {entries !== null && entries.length === 0 && (
+      {entries && entries.length === 0 && (
         <EmptyState
           icon={<WorkIcon />}
           title="No employment entries yet"

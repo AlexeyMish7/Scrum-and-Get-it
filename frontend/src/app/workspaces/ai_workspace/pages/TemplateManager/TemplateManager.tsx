@@ -30,7 +30,8 @@ export default function TemplateManager() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
         Templates & Themes
       </Typography>

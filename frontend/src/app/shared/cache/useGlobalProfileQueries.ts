@@ -27,6 +27,10 @@ export const globalProfileKeys = {
   profile: (userId: string) => [...globalProfileKeys.all, userId] as const,
 };
 
+// Disabled query key - used when userId is not available
+// The query won't run but React Query requires a stable key
+const DISABLED_QUERY_KEY = [...globalProfileKeys.all, "disabled"] as const;
+
 /**
  * Profile metadata type - contains avatar info
  */
@@ -64,9 +68,7 @@ async function fetchGlobalProfile(
  */
 export function useGlobalProfileMetadata(userId: string | undefined) {
   return useQuery({
-    queryKey: userId
-      ? globalProfileKeys.profile(userId)
-      : ["global-profile", "none"],
+    queryKey: userId ? globalProfileKeys.profile(userId) : DISABLED_QUERY_KEY,
     queryFn: () => (userId ? fetchGlobalProfile(userId) : null),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,
@@ -86,9 +88,7 @@ export function useGlobalProfileMetadata(userId: string | undefined) {
  */
 export function useGlobalProfile(userId: string | undefined) {
   return useQuery({
-    queryKey: userId
-      ? globalProfileKeys.profile(userId)
-      : ["global-profile", "none"],
+    queryKey: userId ? globalProfileKeys.profile(userId) : DISABLED_QUERY_KEY,
     queryFn: () => (userId ? fetchGlobalProfile(userId) : null),
     enabled: !!userId,
     staleTime: CACHE_STALE_TIME,

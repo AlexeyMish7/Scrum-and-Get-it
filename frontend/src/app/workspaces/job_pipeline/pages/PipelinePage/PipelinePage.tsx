@@ -21,6 +21,8 @@ import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { EmptyState } from "@shared/components/feedback";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -484,7 +486,8 @@ export default function PipelinePage() {
   }
 
   return (
-    <Box sx={{ width: "100%", p: 3 }}>
+    <Box sx={{ width: "100%", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Box sx={{ maxWidth: 1400, mx: "auto" }}>
         {/* Action Bar */}
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>

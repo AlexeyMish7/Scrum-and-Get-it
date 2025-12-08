@@ -19,7 +19,6 @@ import SchoolIcon from "@mui/icons-material/School";
 import StarIcon from "@mui/icons-material/Star";
 import FolderIcon from "@mui/icons-material/Folder";
 import CardMembershipIcon from "@mui/icons-material/CardMembership";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 /**
  * ProfileSidebar - Animated navigation for Profile workspace
@@ -63,11 +62,6 @@ export default function ProfileSidebar() {
           to="/profile/certifications"
           icon={<CardMembershipIcon />}
           label="Certifications"
-        />
-        <AnimatedSidebarLink
-          to="/profile/analytics"
-          icon={<AnalyticsIcon />}
-          label="Analytics"
         />
       </AnimatedSidebar>
     </SidebarProvider>

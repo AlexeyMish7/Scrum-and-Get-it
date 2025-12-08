@@ -21,10 +21,10 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SearchIcon from "@mui/icons-material/Search";
 import dayjs from "dayjs";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
-import { profileKeys } from "@profile/cache";
+import { useUnifiedCacheUtils } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import certificationsService from "../../services/certifications";
 import type {
   Certification as CertificationType,
@@ -35,7 +35,6 @@ import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
-import { Breadcrumbs } from "@shared/components/navigation";
 import { useCertificationsList } from "@profile/cache";
 
 /* NewCert type moved to `src/types/certification.ts` for reuse and clarity */
@@ -63,15 +62,9 @@ const organizations = [
 // Uses React Query via useCertificationsList hook for cached data fetching
 // and `useErrorHandler` for consistent error/success messaging.
 const Certifications: React.FC = () => {
-  // React Query client for cache invalidation
-  const queryClient = useQueryClient();
-
   // Use React Query hook for cached certifications data
-  const {
-    data: certificationsData,
-    isLoading: queryLoading,
-    refetch: refetchCertifications,
-  } = useCertificationsList();
+  const { data: certificationsData, isLoading: queryLoading } =
+    useCertificationsList();
 
   // Local state for certifications (allows optimistic updates)
   const [certifications, setCertifications] = useState<CertificationType[]>([]);
@@ -87,8 +80,13 @@ const Certifications: React.FC = () => {
     file: null,
   });
 
-  const { handleError, notification, closeNotification, showSuccess } =
-    useErrorHandler();
+  const {
+    handleError,
+    notification,
+    closeNotification,
+    showSuccess,
+    showWarning,
+  } = useErrorHandler();
   const { markProfileChanged } = useProfileChange();
   const { confirm } = useConfirmDialog();
 
@@ -97,8 +95,14 @@ const Certifications: React.FC = () => {
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<NewCert>>({});
   const [addOpen, setAddOpen] = useState(false);
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [addShowErrors, setAddShowErrors] = useState(false);
+  const [editShowErrors, setEditShowErrors] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
+  const { invalidateAll } = useUnifiedCacheUtils();
 
   // Update local state when query data changes
   useEffect(() => {
@@ -119,28 +123,41 @@ const Certifications: React.FC = () => {
 
   // Handler for saving a new certification. Validates required fields,
   // uploads an attached file (if provided) and inserts the DB row.
-  const handleAddCert = async () => {
-    if (authLoading) return;
-    if (!user)
-      return handleError(new Error("Please sign in to add a certification"));
-    if (!newCert.name || !newCert.organization || !newCert.dateEarned)
-      return handleError(
-        new Error(
-          "Please fill required fields (name, organization, date earned)"
-        )
+  const handleAddCert = async (): Promise<boolean> => {
+    if (addSubmitting || authLoading) return false;
+
+    setAddShowErrors(true);
+
+    const trimmedName = newCert.name.trim();
+    const trimmedOrg = newCert.organization.trim();
+    const trimmedDate = newCert.dateEarned.trim();
+    const trimmedCertId = (newCert.certId || "").trim();
+
+    if (!user) {
+      showWarning("Please sign in to add a certification");
+      return false;
+    }
+
+    if (!trimmedName || !trimmedOrg || !trimmedDate) {
+      showWarning(
+        "Please fill required fields (name, organization, date earned)"
       );
+      return false;
+    }
+
+    setAddSubmitting(true);
 
     try {
       const payload: Record<string, unknown> = {
-        name: newCert.name,
-        issuing_org: newCert.organization,
+        name: trimmedName,
+        issuing_org: trimmedOrg,
         category: newCert.category || null,
-        date_earned: newCert.dateEarned,
+        date_earned: trimmedDate,
         expiration_date: newCert.doesNotExpire
           ? null
           : newCert.expirationDate || null,
         does_not_expire: Boolean(newCert.doesNotExpire),
-        certification_id: newCert.certId || null,
+        certification_id: trimmedCertId || null,
         verification_status: "unverified",
       };
 
@@ -163,20 +180,20 @@ const Certifications: React.FC = () => {
       // Optimistic update then invalidate cache
       setCertifications((prev) => [created, ...prev]);
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.certifications(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       setNewCert({
         name: "",
         organization: "",
         category: "",
         dateEarned: "",
+        expirationDate: undefined,
         doesNotExpire: false,
         certId: "",
         file: null,
       });
+      setAddShowErrors(false);
       window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
       const typedRes = res as {
@@ -194,8 +211,13 @@ const Certifications: React.FC = () => {
       } else {
         showSuccess("Certification added");
       }
+
+      return true;
     } catch (err) {
       handleError(err, "Failed to add certification");
+      return false;
+    } finally {
+      setAddSubmitting(false);
     }
   };
 
@@ -207,6 +229,7 @@ const Certifications: React.FC = () => {
 
   const closeAdd = () => {
     setAddOpen(false);
+    setAddShowErrors(false);
     setNewCert({
       name: "",
       organization: "",
@@ -222,6 +245,7 @@ const Certifications: React.FC = () => {
   // Populate the Edit dialog with the certification's current values
   const startEdit = (c: CertificationType) => {
     setEditingCertId(c.id);
+    setEditShowErrors(false);
     setEditForm({
       name: c.name,
       organization: c.organization,
@@ -236,35 +260,47 @@ const Certifications: React.FC = () => {
 
   const closeEdit = () => {
     setEditOpen(false);
+    setEditShowErrors(false);
     setEditForm({});
     setEditingCertId(null);
   };
 
   // Save changes made in the Edit dialog (metadata only).
   // File replacement is intentionally not supported here yet.
-  const handleSaveEdit = async () => {
-    if (loading) return;
-    if (!user)
-      return handleError(new Error("Please sign in to edit a certification"));
-    if (!editingCertId) return;
-    if (!editForm.name || !editForm.organization || !editForm.dateEarned)
-      return handleError(
-        new Error(
-          "Please fill required fields (name, organization, date earned)"
-        )
+  const handleSaveEdit = async (): Promise<boolean> => {
+    if (editSubmitting) return false;
+    setEditShowErrors(true);
+    if (!user) {
+      showWarning("Please sign in to edit a certification");
+      return false;
+    }
+    if (!editingCertId) return false;
+
+    const trimmedName = (editForm.name ?? "").trim();
+    const trimmedOrg = (editForm.organization ?? "").trim();
+    const trimmedDate = (editForm.dateEarned ?? "").trim();
+    const trimmedCertId = (editForm.certId ?? "").trim();
+
+    if (!trimmedName || !trimmedOrg || !trimmedDate) {
+      showWarning(
+        "Please fill required fields (name, organization, date earned)"
       );
+      return false;
+    }
+
+    setEditSubmitting(true);
 
     try {
       const payload: Record<string, unknown> = {
-        name: editForm.name,
-        issuing_org: editForm.organization,
+        name: trimmedName,
+        issuing_org: trimmedOrg,
         category: editForm.category || null,
-        date_earned: editForm.dateEarned,
+        date_earned: trimmedDate,
         expiration_date: editForm.doesNotExpire
           ? null
           : editForm.expirationDate || null,
         does_not_expire: Boolean(editForm.doesNotExpire),
-        certification_id: editForm.certId || null,
+        certification_id: trimmedCertId || null,
       };
 
       // Send updated fields to the service and optimistically update UI on success
@@ -298,27 +334,33 @@ const Certifications: React.FC = () => {
         )
       );
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.certifications(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       // Close dialog and notify other parts of the app if needed
+      setEditShowErrors(false);
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification updated");
+
+      return true;
     } catch (err) {
       handleError(err, "Failed to update certification");
+      return false;
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
   // Delete the certification and any associated storage/documents.
   // Uses the service which attempts to clean up storage objects.
   const handleDeleteCertification = async () => {
-    if (loading) return;
-    if (!user)
-      return handleError(new Error("Please sign in to delete a certification"));
+    if (editSubmitting) return;
+    if (!user) {
+      showWarning("Please sign in to delete a certification");
+      return;
+    }
     if (!editingCertId) return;
 
     const confirmed = await confirm({
@@ -331,6 +373,8 @@ const Certifications: React.FC = () => {
 
     if (!confirmed) return;
 
+    setEditSubmitting(true);
+
     try {
       const res = await certificationsService.deleteCertification(
         user.id,
@@ -340,10 +384,8 @@ const Certifications: React.FC = () => {
       // remove from local state so the list updates immediately
       setCertifications((prev) => prev.filter((c) => c.id !== editingCertId));
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.certifications(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       closeEdit();
       window.dispatchEvent(new Event("certifications:changed"));
@@ -351,13 +393,21 @@ const Certifications: React.FC = () => {
       showSuccess("Certification deleted");
     } catch (err) {
       handleError(err, "Failed to delete certification");
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
   // Mark a certification as verified
   const handleVerify = async (id: string) => {
-    if (loading) return;
-    if (!user) return handleError(new Error("Please sign in to verify"));
+    if (verifyingId === id) return;
+    if (!user) {
+      showWarning("Please sign in to verify");
+      return;
+    }
+
+    setVerifyingId(id);
+
     try {
       const res = await certificationsService.updateCertification(user.id, id, {
         verification_status: "verified",
@@ -370,15 +420,15 @@ const Certifications: React.FC = () => {
         )
       );
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.certifications(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       window.dispatchEvent(new Event("certifications:changed"));
       showSuccess("Certification marked verified");
     } catch (err) {
       handleError(err, "Failed to verify certification");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -389,15 +439,18 @@ const Certifications: React.FC = () => {
   const isExpiringSoon = (date?: string) =>
     date ? dayjs(date).diff(today, "day") <= 30 : false;
 
+  const addNameError = addShowErrors && !newCert.name.trim();
+  const addOrgError = addShowErrors && !newCert.organization.trim();
+  const addDateError = addShowErrors && !newCert.dateEarned.trim();
+
+  const editNameError = editShowErrors && !editForm.name?.trim();
+  const editOrgError = editShowErrors && !editForm.organization?.trim();
+  const editDateError = editShowErrors && !editForm.dateEarned?.trim();
+
   return (
-    <Box sx={{ width: "100%", p: 3 }}>
+    <Box sx={{ width: "100%", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
-        <Breadcrumbs
-          items={[
-            { label: "Profile", path: "/profile" },
-            { label: "Certifications" },
-          ]}
-        />
         <Typography variant="h4" sx={{ mb: 2 }}>
           Manage Your Certifications
         </Typography>
@@ -420,7 +473,7 @@ const Certifications: React.FC = () => {
         {/* Add dialog */}
         <Dialog open={addOpen} onClose={closeAdd} fullWidth maxWidth="sm">
           <DialogTitle>Add Certification</DialogTitle>
-          <DialogContent>
+          <DialogContent dividers sx={{ pt: 3 }}>
             <Stack spacing={2}>
               <TextField
                 required
@@ -429,6 +482,12 @@ const Certifications: React.FC = () => {
                 value={newCert.name}
                 onChange={(e) =>
                   setNewCert({ ...newCert, name: e.target.value })
+                }
+                error={addNameError}
+                helperText={
+                  addNameError
+                    ? "Certification name is required"
+                    : "e.g., AWS Solutions Architect"
                 }
               />
 
@@ -440,6 +499,12 @@ const Certifications: React.FC = () => {
                 value={newCert.organization}
                 onChange={(e) =>
                   setNewCert({ ...newCert, organization: e.target.value })
+                }
+                error={addOrgError}
+                helperText={
+                  addOrgError
+                    ? "Issuing organization is required"
+                    : "Select or type the provider"
                 }
               >
                 {organizations.map((org) => (
@@ -476,6 +541,8 @@ const Certifications: React.FC = () => {
                   onChange={(e) =>
                     setNewCert({ ...newCert, dateEarned: e.target.value })
                   }
+                  error={addDateError}
+                  helperText={addDateError ? "Date earned is required" : ""}
                 />
                 {!newCert.doesNotExpire && (
                   <TextField
@@ -534,18 +601,23 @@ const Certifications: React.FC = () => {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeAdd}>Cancel</Button>
+            <Button onClick={closeAdd} disabled={addSubmitting}>
+              Cancel
+            </Button>
             <Button
               variant="contained"
               onClick={async () => {
-                await handleAddCert();
-                closeAdd();
+                const saved = await handleAddCert();
+                if (saved) closeAdd();
               }}
               disabled={
-                !newCert.name || !newCert.organization || !newCert.dateEarned
+                addSubmitting ||
+                !newCert.name ||
+                !newCert.organization ||
+                !newCert.dateEarned
               }
             >
-              Save
+              {addSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogActions>
         </Dialog>
@@ -553,7 +625,7 @@ const Certifications: React.FC = () => {
         {/* Edit dialog */}
         <Dialog open={editOpen} onClose={closeEdit} fullWidth maxWidth="sm">
           <DialogTitle>Edit Certification</DialogTitle>
-          <DialogContent>
+          <DialogContent dividers sx={{ pt: 3 }}>
             <Stack spacing={2}>
               <TextField
                 required
@@ -562,6 +634,12 @@ const Certifications: React.FC = () => {
                 value={editForm.name ?? ""}
                 onChange={(e) =>
                   setEditForm({ ...editForm, name: e.target.value })
+                }
+                error={editNameError}
+                helperText={
+                  editNameError
+                    ? "Certification name is required"
+                    : "e.g., Google Data Engineer"
                 }
               />
 
@@ -573,6 +651,12 @@ const Certifications: React.FC = () => {
                 value={editForm.organization ?? ""}
                 onChange={(e) =>
                   setEditForm({ ...editForm, organization: e.target.value })
+                }
+                error={editOrgError}
+                helperText={
+                  editOrgError
+                    ? "Issuing organization is required"
+                    : "Select or type the provider"
                 }
               >
                 {organizations.map((org) => (
@@ -609,6 +693,8 @@ const Certifications: React.FC = () => {
                   onChange={(e) =>
                     setEditForm({ ...editForm, dateEarned: e.target.value })
                   }
+                  error={editDateError}
+                  helperText={editDateError ? "Date earned is required" : ""}
                 />
                 {!editForm.doesNotExpire && (
                   <TextField
@@ -671,21 +757,27 @@ const Certifications: React.FC = () => {
               onClick={async () => {
                 await handleDeleteCertification();
               }}
+              disabled={editSubmitting}
             >
               Delete
             </Button>
             <Box sx={{ flex: 1 }} />
-            <Button onClick={closeEdit}>Cancel</Button>
+            <Button onClick={closeEdit} disabled={editSubmitting}>
+              Cancel
+            </Button>
             <Button
               variant="contained"
               onClick={async () => {
                 await handleSaveEdit();
               }}
               disabled={
-                !editForm.name || !editForm.organization || !editForm.dateEarned
+                editSubmitting ||
+                !editForm.name ||
+                !editForm.organization ||
+                !editForm.dateEarned
               }
             >
-              Save
+              {editSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogActions>
         </Dialog>
@@ -741,8 +833,11 @@ const Certifications: React.FC = () => {
                         size="small"
                         onClick={() => void handleVerify(cert.id)}
                         variant="outlined"
+                        disabled={verifyingId === cert.id || editSubmitting}
                       >
-                        Mark Verified
+                        {verifyingId === cert.id
+                          ? "Marking..."
+                          : "Mark Verified"}
                       </Button>
                     )}
                   </Stack>

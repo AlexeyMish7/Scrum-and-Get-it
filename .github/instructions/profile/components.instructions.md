@@ -98,30 +98,13 @@ Modal form for new skill.
 - Category (Technical, Soft Skills, Tools, etc.)
 - Proficiency level (Beginner/Intermediate/Advanced/Expert)
 
-### Dialog Cache Invalidation Pattern
+### Dialog UX & Cache Defaults (Sprint 4)
 
-All dialogs include cache invalidation after successful mutations:
-
-```typescript
-import { useQueryClient } from "@tanstack/react-query";
-import { profileKeys } from "@profile/cache/queryKeys";
-
-// In component:
-const queryClient = useQueryClient();
-const { user } = useAuth();
-
-// After successful save:
-const handleSave = async (data) => {
-  const res = await service.insertRow(user.id, data);
-  if (!res.error) {
-    // Invalidate cache so data refetches
-    queryClient.invalidateQueries({ queryKey: profileKeys.education(user.id) });
-    // Keep window event for backward compatibility
-    window.dispatchEvent(new Event("education:changed"));
-    onClose();
-  }
-};
-```
+- Use `useUnifiedCacheUtils().invalidateAll()` after any add/edit/delete so every profile section refetches from the unified cache.
+- Guard duplicate submissions with `isSubmitting` and disable all dialog actions while async work is in flight (buttons show `Saving...` when applicable).
+- Trim inputs before validation; surface user-facing validation with `showWarning`, and reserve `handleError` for API errors.
+- Delete flows use `useConfirmDialog` with explicit title/message and disable buttons while deleting.
+- Preserve legacy `window.dispatchEvent` events (e.g., `education:changed`, `skills:changed`) alongside React Query invalidation.
 
 ---
 

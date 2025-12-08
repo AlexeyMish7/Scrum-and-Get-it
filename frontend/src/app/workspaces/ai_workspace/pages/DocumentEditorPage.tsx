@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,
   Stack,
@@ -615,7 +616,8 @@ export const DocumentEditorPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+        <AutoBreadcrumbs />
         <Stack spacing={3}>
           <Skeleton variant="rectangular" height={60} />
           <Skeleton variant="rectangular" height={400} />
@@ -626,14 +628,16 @@ export const DocumentEditorPage: React.FC = () => {
 
   if (error || !document || !template || !theme) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+        <AutoBreadcrumbs />
         <Alert severity="error">{error || "Failed to load document"}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Stack spacing={3}>
         {/* Breadcrumbs */}
         <Breadcrumbs>

@@ -119,41 +119,38 @@ import {
 } from "@profile/cache";
 ```
 
-### Cache Invalidation
+### Cache Invalidation (Unified Cache)
 
-After mutations (add/edit/delete), invalidate the specific cache:
+After mutations (add/edit/delete), invalidate the unified cache so all profile slices refetch together:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query";
-import { profileKeys } from "@profile/cache/queryKeys";
+import { useUnifiedCacheUtils } from "@profile/cache";
 
-const queryClient = useQueryClient();
+const { invalidateAll } = useUnifiedCacheUtils();
 
-// After saving changes - invalidate specific cache
+// After saving changes
 await saveEducation();
-queryClient.invalidateQueries({ queryKey: profileKeys.education(userId) });
-
-// Or invalidate all profile data
-const { invalidateAll } = useProfileCacheUtils();
-invalidateAll();
+await invalidateAll();
 ```
+
+Legacy window events (`education:changed`, `skills:changed`, etc.) remain for non-React Query listeners, but `invalidateAll()` is the source of truth for refreshing data.
 
 ### Components with Cache Invalidation
 
-All dialogs and pages that modify data now include cache invalidation:
+All dialogs and pages that modify profile data now call `invalidateAll()` after successful mutations:
 
-| Component                   | Operations                     | Cache Invalidated            |
-| --------------------------- | ------------------------------ | ---------------------------- |
-| `AddEducationDialog.tsx`    | insert, update, delete         | `profileKeys.education`      |
-| `AddEmploymentDialog.tsx`   | insert, update, delete         | `profileKeys.employment`     |
-| `AddSkillDialog.tsx`        | insert, update, delete         | `profileKeys.skills`         |
-| `AddProjectDialog.tsx`      | insert, update, delete         | `profileKeys.projects`       |
-| `Certifications.tsx`        | insert, update, delete, verify | `profileKeys.certifications` |
-| `EmploymentHistoryList.tsx` | delete                         | `profileKeys.employment`     |
-| `SkillsOverview.tsx`        | batch reorder                  | `profileKeys.skills`         |
-| `ProfileDetails.tsx`        | profile update                 | `invalidateAll()`            |
-| `ProjectPortfolio.tsx`      | delete                         | `profileKeys.projects`       |
-| `AddProjectForm.tsx`        | insert, update                 | `profileKeys.projects`       |
+| Component                   | Operations                     | Cache Action      |
+| --------------------------- | ------------------------------ | ----------------- |
+| `AddEducationDialog.tsx`    | insert, update, delete         | `invalidateAll()` |
+| `AddEmploymentDialog.tsx`   | insert, update, delete         | `invalidateAll()` |
+| `AddSkillDialog.tsx`        | insert, update, delete         | `invalidateAll()` |
+| `AddProjectDialog.tsx`      | insert, update, delete         | `invalidateAll()` |
+| `Certifications.tsx`        | insert, update, delete, verify | `invalidateAll()` |
+| `ProfileDetails.tsx`        | profile update                 | `invalidateAll()` |
+| `ProjectPortfolio.tsx`      | delete                         | `invalidateAll()` |
+| `AddProjectForm.tsx`        | insert, update                 | `invalidateAll()` |
+| `SkillsOverview.tsx`        | batch reorder                  | `invalidateAll()` |
+| `EmploymentHistoryList.tsx` | delete                         | `invalidateAll()` |
 
 ### When Does Data Refetch?
 
