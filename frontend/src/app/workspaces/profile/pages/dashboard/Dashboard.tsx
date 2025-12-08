@@ -37,11 +37,10 @@ import {
   Skeleton,
 } from "@mui/material";
 import Icon from "@shared/components/common/Icon";
-import { useAuth } from "@shared/context/AuthContext";
 import { useAvatarContext } from "@shared/context/AvatarContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { Breadcrumbs } from "@shared/components/navigation";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 // Dashboard-specific hook for data management
 import { useDashboardData } from "../../hooks/useDashboardData";
@@ -73,9 +72,6 @@ const ChartSkeleton = () => (
 );
 
 const Dashboard: FC = () => {
-  // Auth context for user info
-  const { user } = useAuth();
-
   // Avatar from global context (shared with navbar, no duplicate fetches)
   const { avatarUrl } = useAvatarContext();
 
@@ -100,6 +96,8 @@ const Dashboard: FC = () => {
    * Memoized to prevent recreation on every render
    */
   const handleExport = useCallback(() => {
+    if (!header) return;
+
     const exportData = {
       profile: {
         name: header.name,
@@ -168,86 +166,64 @@ const Dashboard: FC = () => {
       sx={{
         width: "100%",
         minHeight: "100vh",
+        pt: 2,
       }}
     >
-      {/* Header Section with glassmorphic background */}
+      <AutoBreadcrumbs />
+
+      {/* Dashboard Header - Welcome message with large avatar */}
       <Box
         sx={{
-          // Glassmorphism effect for header section
-          background: (theme) =>
-            theme.palette.mode === "dark"
-              ? "rgba(30, 30, 40, 0.7)"
-              : "rgba(255, 255, 255, 0.7)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderBottom: (theme) =>
-            `1px solid ${
-              theme.palette.mode === "dark"
-                ? "rgba(255, 255, 255, 0.1)"
-                : "rgba(0, 0, 0, 0.08)"
-            }`,
-          mb: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: 3,
+          mb: 3,
         }}
       >
-        {/* Breadcrumb Navigation */}
-        <Box sx={{ px: 3, pt: 2 }}>
-          <Breadcrumbs items={[{ label: "Profile" }]} />
-        </Box>
-
-        {/* Dashboard Header - Welcome message with large avatar and export button */}
-        <Box
+        <Avatar
+          src={avatarUrl ?? undefined}
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            p: 3,
-            pt: 2,
+            width: 80,
+            height: 80,
+            fontSize: "2rem",
+            border: (theme) =>
+              `2px solid ${
+                theme.palette.mode === "dark"
+                  ? "rgba(255, 255, 255, 0.2)"
+                  : "rgba(0, 0, 0, 0.12)"
+              }`,
+            boxShadow: (theme) =>
+              theme.palette.mode === "dark"
+                ? "0 2px 8px rgba(0,0,0,0.3)"
+                : "0 2px 8px rgba(0,0,0,0.1)",
           }}
+          aria-label={`Profile picture for ${header?.name || "User"}`}
         >
-          <Box display="flex" alignItems="center" gap={3}>
-            <Avatar
-              src={avatarUrl ?? undefined}
-              sx={{
-                width: 80,
-                height: 80,
-                fontSize: "2rem",
-                border: (theme) =>
-                  `2px solid ${
-                    theme.palette.mode === "dark"
-                      ? "rgba(255, 255, 255, 0.2)"
-                      : "rgba(0, 0, 0, 0.12)"
-                  }`,
-                boxShadow: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "0 2px 8px rgba(0,0,0,0.3)"
-                    : "0 2px 8px rgba(0,0,0,0.1)",
-              }}
-              aria-label={`Profile picture for ${header.name}`}
-            >
-              {/* Fallback to first letter of name */}
-              {!avatarUrl && header.name
-                ? header.name.charAt(0).toUpperCase()
-                : "U"}
-            </Avatar>
-            <Box>
-              <Typography variant="h4" fontWeight={700}>
-                Welcome back, {header.firstName || header.name}!
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {header.email}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Button
-            variant="contained"
-            startIcon={<Icon name="Download" color="inherit" />}
-            onClick={handleExport}
-            aria-label="Export profile as JSON"
-          >
-            Export Profile
-          </Button>
+          {/* Fallback to first letter of name */}
+          {!avatarUrl && header?.name
+            ? header.name.charAt(0).toUpperCase()
+            : "U"}
+        </Avatar>
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            Welcome back, {header?.firstName || header?.name || "User"}!
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {header?.email || ""}
+          </Typography>
         </Box>
+      </Box>
+
+      {/* Export Button - Positioned separately */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<Icon name="Download" color="inherit" />}
+          onClick={handleExport}
+          aria-label="Export profile as JSON"
+        >
+          Export Profile
+        </Button>
       </Box>
 
       {/* Main Dashboard Content */}

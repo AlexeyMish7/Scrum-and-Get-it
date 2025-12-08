@@ -16,8 +16,8 @@ import profileService from "../../services/profileService";
 import GenerateProfileTips from "../../components/profile/GenerateProfileTips";
 // Note: removed legacy ProfileDetails.css to rely on theme tokens and MUI sx props
 import type { ProfileData } from "../../types/profile";
-import { Breadcrumbs } from "@shared/components/navigation";
 import { useFullProfile, useProfileCacheUtils } from "../../cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 const industries = [
   "Technology",
@@ -93,6 +93,16 @@ const usStates = [
 ];
 
 // ProfileDetails
+// Navigation state type for profile prefill
+interface ProfilePrefillState {
+  prefill?: {
+    first_name?: string;
+    last_name?: string;
+    headline?: string;
+    professional_title?: string;
+  };
+}
+
 // Responsible for rendering and editing a user's profile information.
 // - Shows an editable form (Edit mode) and a read-only summary (View mode).
 // - Uses `profileService` to load and save profile data. The service
@@ -101,7 +111,8 @@ const usStates = [
 const ProfileDetails: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
-  const navPrefill = (location.state as any)?.prefill ?? null;
+  const navPrefill =
+    (location.state as ProfilePrefillState | null)?.prefill ?? null;
 
   // Use cached profile data from React Query - shares cache with dashboard
   const { data: cachedProfile, isLoading: profileLoading } = useFullProfile();
@@ -238,10 +249,8 @@ const ProfileDetails: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, sm: 3 } }}>
-      <Breadcrumbs
-        items={[{ label: "Profile", path: "/profile" }, { label: "Details" }]}
-      />
+    <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, sm: 3 }, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
         <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
           {editMode ? "Edit Profile" : "Profile Details"}

@@ -4,13 +4,14 @@ import WorkIcon from "@mui/icons-material/Work";
 import BusinessIcon from "@mui/icons-material/Business";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
+// Career event from unified cache
 interface CareerEvent {
   id: string;
-  title: string;
   company: string;
+  title: string;
   startDate: string;
-  endDate?: string;
-  description?: string;
+  endDate: string | null;
+  isCurrent: boolean;
 }
 
 interface CareerTimelineProps {

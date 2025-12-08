@@ -1,10 +1,13 @@
 import React, { memo } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 
+// Activity item from unified cache
 interface ActivityItem {
   id: string;
-  date: string; // ISO string or formatted date
-  description: string;
+  type: "employment" | "skill" | "education" | "project" | "certification";
+  title: string;
+  subtitle: string;
+  date: string;
 }
 
 interface RecentActivityTimelineProps {
@@ -45,7 +48,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
             borderLeft: `2px solid ${theme.palette.divider}`,
           }}
         >
-          {safeActivities.map(({ id, date, description }) => (
+          {safeActivities.map(({ id, date, title, subtitle }) => (
             <Box
               key={id}
               component="li"
@@ -74,8 +77,11 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
               <Typography variant="body2" color="text.secondary">
                 {new Date(date).toLocaleString()}
               </Typography>
-              <Typography variant="body1" color="text.primary">
-                {description}
+              <Typography variant="body1" color="text.primary" fontWeight={600}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {subtitle}
               </Typography>
             </Box>
           ))}

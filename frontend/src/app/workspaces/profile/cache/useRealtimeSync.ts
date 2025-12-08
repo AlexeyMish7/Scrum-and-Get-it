@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@shared/services/supabaseClient";
 import { useAuth } from "@shared/context/AuthContext";
 import { profileKeys } from "./queryKeys";
+import { unifiedProfileKeys } from "./useUnifiedProfileCache";
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -112,6 +113,16 @@ export function useRealtimeSync(options: UseRealtimeSyncOptions = {}) {
               queryClient.invalidateQueries({ queryKey });
             });
 
+            // Also invalidate the unified cache (single cache entry for all data)
+            const unifiedKey = unifiedProfileKeys.user(userId);
+            if (debug) {
+              console.log(
+                `[RealtimeSync] Invalidating unified cache:`,
+                unifiedKey
+              );
+            }
+            queryClient.invalidateQueries({ queryKey: unifiedKey });
+
             // Also dispatch window event for backward compatibility
             const eventName = `${
               table === "profiles" ? "profile" : table
@@ -146,6 +157,7 @@ export function useRealtimeSync(options: UseRealtimeSyncOptions = {}) {
 /**
  * Hook that provides manual cache invalidation utilities.
  * Useful for triggering refreshes after mutations.
+ * Now also invalidates the unified cache.
  */
 export function useProfileCacheUtils() {
   const queryClient = useQueryClient();
@@ -153,18 +165,27 @@ export function useProfileCacheUtils() {
   const userId = user?.id;
 
   return {
-    /** Invalidate all profile queries for the current user */
+    /** Invalidate all profile queries for the current user (legacy + unified) */
     invalidateAll: () => {
       if (!userId) return;
+      // Legacy separate cache keys
       queryClient.invalidateQueries({ queryKey: profileKeys.user(userId) });
+      // Unified cache key
+      queryClient.invalidateQueries({
+        queryKey: unifiedProfileKeys.user(userId),
+      });
     },
 
-    /** Invalidate specific profile query */
+    /** Invalidate specific profile query (legacy cache only) */
     invalidate: (key: keyof typeof profileKeys) => {
       if (!userId) return;
       const queryKey =
         key === "all" ? profileKeys.all : profileKeys[key](userId);
       queryClient.invalidateQueries({ queryKey });
+      // Also invalidate unified cache since data changed
+      queryClient.invalidateQueries({
+        queryKey: unifiedProfileKeys.user(userId),
+      });
     },
 
     /** Prefetch a query (useful before navigation) */
@@ -181,7 +202,9 @@ export function useProfileCacheUtils() {
 
     /** Clear all profile cache (logout, user switch) */
     clearAll: () => {
+      // Clear both legacy and unified caches
       queryClient.removeQueries({ queryKey: profileKeys.all });
+      queryClient.removeQueries({ queryKey: unifiedProfileKeys.all });
     },
   };
 }

@@ -11,13 +11,12 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { isMonthAfter } from "@shared/utils/dateUtils";
-import { profileKeys } from "@profile/cache";
+import { useUnifiedCacheUtils } from "@profile/cache";
 import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 
@@ -47,7 +46,6 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
   existingEntry,
 }) => {
   const { user, loading } = useAuth();
-  const queryClient = useQueryClient();
   const { markProfileChanged } = useProfileChange();
   const {
     notification,
@@ -56,6 +54,7 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
     showSuccess,
     showWarning,
   } = useErrorHandler();
+  const { invalidateAll } = useUnifiedCacheUtils();
 
   // Initialize form data
   const [formData, setFormData] = useState<Partial<EducationEntry>>({
@@ -69,6 +68,9 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
     honors: undefined,
     active: false,
   });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Reset form when dialog opens or mode changes
   useEffect(() => {
@@ -106,6 +108,11 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
   const updateField = (k: keyof EducationEntry, v: unknown) =>
     setFormData((s) => ({ ...(s ?? {}), [k]: v }));
 
+  const handleClose = () => {
+    setShowErrors(false);
+    onClose();
+  };
+
   // Validate form data
   const validate = (): { isValid: boolean; message?: string } => {
     // User must provide either a degree type OR field of study (or both)
@@ -142,6 +149,8 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
 
   // Handle form submission
   const handleSubmit = async () => {
+    if (submitting) return;
+    setShowErrors(true);
     const validation = validate();
     if (!validation.isValid) {
       showWarning(validation.message ?? "Please complete required fields");
@@ -152,6 +161,8 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
       showWarning("Please log in to save education entries");
       return;
     }
+
+    setSubmitting(true);
 
     try {
       // Prepare data to send to database
@@ -186,10 +197,8 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
         return;
       }
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.education(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("education:changed"));
@@ -205,10 +214,13 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
       onSuccess?.();
 
       // Close dialog
+      setShowErrors(false);
       onClose();
     } catch (err) {
       console.error("Error saving education", err);
       handleError(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -227,6 +239,9 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
       return;
     }
 
+    if (submitting) return;
+    setSubmitting(true);
+
     try {
       const res = await educationService.deleteEducation(
         user.id,
@@ -239,10 +254,8 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
         return;
       }
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.education(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("education:changed"));
@@ -254,21 +267,24 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
       onSuccess?.();
 
       // Close dialog
+      setShowErrors(false);
       onClose();
     } catch (err) {
       console.error("Error deleting education", err);
       handleError(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           {mode === "edit" ? "Edit Education" : "Add Education"}
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <DialogContent dividers sx={{ pt: 3 }}>
+          <Stack spacing={2.5}>
             {/* Degree Type */}
             <TextField
               select
@@ -277,6 +293,18 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
               label="Degree Type"
               value={formData.degree ?? ""}
               onChange={(e) => updateField("degree", e.target.value)}
+              error={
+                showErrors &&
+                !(formData.degree && String(formData.degree).trim()) &&
+                !(formData.fieldOfStudy && String(formData.fieldOfStudy).trim())
+              }
+              helperText={
+                showErrors &&
+                !(formData.degree && String(formData.degree).trim()) &&
+                !(formData.fieldOfStudy && String(formData.fieldOfStudy).trim())
+                  ? "Add a degree or field of study"
+                  : ""
+              }
             >
               {DEGREE_OPTIONS.map((degree) => (
                 <MenuItem key={degree} value={degree}>
@@ -293,8 +321,12 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
               required
               value={formData.institution ?? ""}
               onChange={(e) => updateField("institution", e.target.value)}
-              error={!formData.institution}
-              helperText={!formData.institution ? "Required" : ""}
+              error={showErrors && !formData.institution?.trim()}
+              helperText={
+                showErrors && !formData.institution?.trim()
+                  ? "Institution is required"
+                  : "School, university, or provider"
+              }
             />
 
             {/* Field of Study */}
@@ -304,6 +336,18 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
               label="Field of Study"
               value={formData.fieldOfStudy ?? ""}
               onChange={(e) => updateField("fieldOfStudy", e.target.value)}
+              error={
+                showErrors &&
+                !(formData.degree && String(formData.degree).trim()) &&
+                !(formData.fieldOfStudy && String(formData.fieldOfStudy).trim())
+              }
+              helperText={
+                showErrors &&
+                !(formData.degree && String(formData.degree).trim()) &&
+                !(formData.fieldOfStudy && String(formData.fieldOfStudy).trim())
+                  ? "Add a degree or a field of study"
+                  : "Optional if degree provided"
+              }
             />
 
             {/* Start Date */}
@@ -316,8 +360,12 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
               InputLabelProps={{ shrink: true }}
               value={formData.startDate ?? ""}
               onChange={(e) => updateField("startDate", e.target.value)}
-              error={!formData.startDate}
-              helperText={!formData.startDate ? "Required" : ""}
+              error={showErrors && !formData.startDate}
+              helperText={
+                showErrors && !formData.startDate
+                  ? "Start date is required"
+                  : "When did you begin?"
+              }
             />
 
             {/* Currently Enrolled Toggle */}
@@ -343,6 +391,7 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
                 onChange={(e) =>
                   updateField("endDate", e.target.value || undefined)
                 }
+                helperText="Leave blank if still enrolled"
               />
             )}
 
@@ -360,6 +409,7 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
                 )
               }
               inputProps={{ min: 0, max: 4, step: 0.01 }}
+              helperText="0.0 - 4.0"
             />
 
             {/* Hide GPA Toggle */}
@@ -382,17 +432,29 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
               onChange={(e) => updateField("honors", e.target.value)}
               multiline
               rows={2}
+              placeholder="Dean's list, scholarships, publications"
             />
           </Stack>
         </DialogContent>
         <DialogActions>
           {mode === "edit" && (
-            <Button onClick={handleDelete} color="error" sx={{ mr: "auto" }}>
+            <Button
+              onClick={handleDelete}
+              color="error"
+              sx={{ mr: "auto" }}
+              disabled={submitting}
+            >
               Delete
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
+          <Button onClick={handleClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={loading || submitting}
+          >
             {mode === "edit" ? "Save Changes" : "Add Education"}
           </Button>
         </DialogActions>

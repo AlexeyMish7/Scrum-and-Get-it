@@ -42,6 +42,7 @@ import { AddSkillDialog } from "../dialogs/AddSkillDialog";
 import { AddEducationDialog } from "../dialogs/AddEducationDialog";
 import { AddEmploymentDialog } from "../dialogs/AddEmploymentDialog";
 import { AddProjectDialog } from "../dialogs/AddProjectDialog";
+import { GlowBorder } from "@shared/components/effects/GlowBorder";
 
 interface SummaryCardsProps {
   counts: {
@@ -165,147 +166,154 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ counts }) => {
         const count = counts[card.countKey];
 
         return (
-          <Card
+          <GlowBorder
             key={card.title}
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: `1px solid ${alpha(cardColor, 0.2)}`,
-              backgroundColor: theme.palette.background.paper,
-              position: "relative",
-              overflow: "visible",
-              transition: "all 0.2s ease",
-              "&:hover": {
-                transform: "translateY(-2px)",
-                boxShadow: `0 8px 24px ${alpha(cardColor, 0.15)}`,
-                borderColor: alpha(cardColor, 0.4),
-              },
-            }}
+            intensity={0.25}
+            spread={15}
+            glowColor={cardColor}
+            borderRadius={3}
           >
-            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
-              {/* Top row: Icon and Add button */}
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  mb: 2,
-                }}
-              >
-                {/* Icon container */}
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: `1px solid ${alpha(cardColor, 0.2)}`,
+                backgroundColor: theme.palette.background.paper,
+                position: "relative",
+                overflow: "visible",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: `0 8px 24px ${alpha(cardColor, 0.15)}`,
+                  borderColor: alpha(cardColor, 0.4),
+                },
+              }}
+            >
+              <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                {/* Top row: Icon and Add button */}
                 <Box
                   sx={{
-                    backgroundColor: lightBg,
-                    borderRadius: 2,
-                    width: 48,
-                    height: 48,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: cardColor,
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    mb: 2,
                   }}
-                  aria-hidden="true"
                 >
-                  {card.icon}
-                </Box>
-
-                {/* Add button */}
-                <Tooltip title={`Add ${card.title}`} arrow>
-                  <IconButton
-                    onClick={() => openDialog(card.dialogKey)}
-                    size="small"
+                  {/* Icon container */}
+                  <Box
                     sx={{
                       backgroundColor: lightBg,
+                      borderRadius: 2,
+                      width: 48,
+                      height: 48,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       color: cardColor,
-                      width: 32,
-                      height: 32,
-                      "&:hover": {
-                        backgroundColor: cardColor,
-                        color: theme.palette.getContrastText(cardColor),
-                        transform: "rotate(90deg)",
-                      },
-                      transition: "all 0.2s ease",
                     }}
-                    aria-label={`Add new ${card.title.toLowerCase()}`}
+                    aria-hidden="true"
                   >
-                    <AddIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+                    {card.icon}
+                  </Box>
 
-              {/* Count - large and prominent */}
-              <Typography
-                variant="h3"
-                sx={{
-                  fontWeight: 700,
-                  color: theme.palette.text.primary,
-                  lineHeight: 1,
-                  mb: 0.5,
-                }}
-              >
-                {count}
-              </Typography>
+                  {/* Add button */}
+                  <Tooltip title={`Add ${card.title}`} arrow>
+                    <IconButton
+                      onClick={() => openDialog(card.dialogKey)}
+                      size="small"
+                      sx={{
+                        backgroundColor: lightBg,
+                        color: cardColor,
+                        width: 32,
+                        height: 32,
+                        "&:hover": {
+                          backgroundColor: cardColor,
+                          color: theme.palette.getContrastText(cardColor),
+                          transform: "rotate(90deg)",
+                        },
+                        transition: "all 0.2s ease",
+                      }}
+                      aria-label={`Add new ${card.title.toLowerCase()}`}
+                    >
+                      <AddIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
 
-              {/* Title */}
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.text.primary,
-                  lineHeight: 1.3,
-                }}
-              >
-                {card.title}
-              </Typography>
-
-              {/* Subtitle */}
-              <Typography
-                variant="caption"
-                sx={{
-                  color: theme.palette.text.secondary,
-                  display: "block",
-                }}
-              >
-                {card.subtitle}
-              </Typography>
-
-              {/* Status indicator */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  mt: 1.5,
-                  pt: 1.5,
-                  borderTop: `1px solid ${theme.palette.divider}`,
-                }}
-              >
-                <Box
+                {/* Count - large and prominent */}
+                <Typography
+                  variant="h3"
                   sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    backgroundColor:
-                      count > 0
-                        ? theme.palette.success.main
-                        : theme.palette.warning.main,
+                    fontWeight: 700,
+                    color: theme.palette.text.primary,
+                    lineHeight: 1,
+                    mb: 0.5,
                   }}
-                />
+                >
+                  {count}
+                </Typography>
+
+                {/* Title */}
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 600,
+                    color: theme.palette.text.primary,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {card.title}
+                </Typography>
+
+                {/* Subtitle */}
                 <Typography
                   variant="caption"
                   sx={{
-                    color:
-                      count > 0
-                        ? theme.palette.success.main
-                        : theme.palette.warning.main,
-                    fontWeight: 500,
+                    color: theme.palette.text.secondary,
+                    display: "block",
                   }}
                 >
-                  {count > 0 ? "Active" : "Add entries"}
+                  {card.subtitle}
                 </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+
+                {/* Status indicator */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    mt: 1.5,
+                    pt: 1.5,
+                    borderTop: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      backgroundColor:
+                        count > 0
+                          ? theme.palette.success.main
+                          : theme.palette.warning.main,
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color:
+                        count > 0
+                          ? theme.palette.success.main
+                          : theme.palette.warning.main,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {count > 0 ? "Active" : "Add entries"}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </GlowBorder>
         );
       })}
 

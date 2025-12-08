@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
-import { profileKeys } from "@profile/cache";
 import skillsService from "../../services/skills";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -15,9 +13,11 @@ import {
   Button,
   MenuItem,
   Autocomplete,
+  Stack,
 } from "@mui/material";
 import type { DbSkillRow } from "../../types/skill.ts";
 import { SKILL_LEVEL_OPTIONS, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
+import { useUnifiedCacheUtils } from "@profile/cache";
 
 const suggestedSkillList = [
   // Frontend
@@ -197,8 +197,8 @@ export const AddSkillDialog = ({
   existingSkills = [],
 }: AddSkillDialogProps) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { handleError, showSuccess } = useErrorHandler();
+  const { invalidateAll } = useUnifiedCacheUtils();
+  const { handleError, showSuccess, showWarning } = useErrorHandler();
   const { confirm } = useConfirmDialog();
   const { markProfileChanged } = useProfileChange();
 
@@ -207,6 +207,7 @@ export const AddSkillDialog = ({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Initialize form when editing
   useEffect(() => {
@@ -228,45 +229,54 @@ export const AddSkillDialog = ({
     setInputValue("");
     setSelectedCategory("");
     setSelectedLevel("");
+    setShowErrors(false);
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!selectedSkill || !selectedCategory || !selectedLevel) {
-      handleError("Please fill out all fields before saving.");
+    if (isSubmitting) return;
+
+    setShowErrors(true);
+
+    const trimmedSkill = selectedSkill.trim();
+    const trimmedCategory = selectedCategory.trim();
+    const trimmedLevel = selectedLevel.trim();
+
+    if (!trimmedSkill || !trimmedCategory || !trimmedLevel) {
+      showWarning("Please fill out all fields before saving.");
       return;
     }
 
     if (!user) {
-      handleError("Please sign in to manage skills");
+      showWarning("Please sign in to manage skills");
       return;
+    }
+
+    if (mode === "add") {
+      // Prevent duplicate skill names (case-insensitive)
+      const exists = existingSkills.some(
+        (skill) => skill.name.toLowerCase() === trimmedSkill.toLowerCase()
+      );
+      if (exists) {
+        showWarning("You already added this skill!");
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
       if (mode === "add") {
-        // Check for duplicates
-        const exists = existingSkills.some(
-          (skill) => skill.name.toLowerCase() === selectedSkill.toLowerCase()
-        );
-        if (exists) {
-          handleError("You already added this skill!");
-          setIsSubmitting(false);
-          return;
-        }
-
         const payload: DbSkillRow = {
-          skill_name: selectedSkill,
-          proficiency_level: selectedLevel.toLowerCase(),
-          skill_category: selectedCategory,
+          skill_name: trimmedSkill,
+          proficiency_level: trimmedLevel.toLowerCase(),
+          skill_category: trimmedCategory,
         };
 
         const res = await skillsService.createSkill(user.id, payload);
 
         if (res.error) {
           handleError(res.error);
-          setIsSubmitting(false);
           return;
         }
 
@@ -275,28 +285,24 @@ export const AddSkillDialog = ({
         // Edit mode
         if (!existingSkill?.id) {
           handleError("Skill ID not found");
-          setIsSubmitting(false);
           return;
         }
 
         const res = await skillsService.updateSkill(user.id, existingSkill.id, {
-          proficiency_level: selectedLevel.toLowerCase(),
-          skill_category: selectedCategory,
+          proficiency_level: trimmedLevel.toLowerCase(),
+          skill_category: trimmedCategory,
         });
 
         if (res.error) {
           handleError(res.error);
-          setIsSubmitting(false);
           return;
         }
 
         showSuccess("Skill updated");
       }
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.skills(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       window.dispatchEvent(new CustomEvent("skills:changed"));
       markProfileChanged();
@@ -311,6 +317,7 @@ export const AddSkillDialog = ({
   };
 
   const handleDelete = async () => {
+    if (isSubmitting) return;
     if (!existingSkill?.id || !user) return;
 
     const confirmed = await confirm({
@@ -334,10 +341,8 @@ export const AddSkillDialog = ({
 
       showSuccess("Skill deleted");
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.skills(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       window.dispatchEvent(new CustomEvent("skills:changed"));
       markProfileChanged();
@@ -351,6 +356,10 @@ export const AddSkillDialog = ({
     }
   };
 
+  const skillError = showErrors && !selectedSkill.trim();
+  const categoryError = showErrors && !selectedCategory.trim();
+  const levelError = showErrors && !selectedLevel.trim();
+
   return (
     <Dialog
       open={open}
@@ -362,70 +371,86 @@ export const AddSkillDialog = ({
       <DialogTitle id="skill-dialog-title">
         {mode === "add" ? "Add Skill" : "Edit Skill"}
       </DialogTitle>
-      <DialogContent>
-        <Autocomplete
-          freeSolo
-          options={suggestedSkillList}
-          inputValue={inputValue}
-          disabled={mode === "edit"} // Can't change skill name when editing
-          onInputChange={(_, newInputValue) => {
-            setInputValue(newInputValue);
-            setSelectedSkill(newInputValue);
-          }}
-          onChange={(_, newValue) => {
-            const v = typeof newValue === "string" ? newValue : newValue || "";
-            setSelectedSkill(v);
-            setInputValue(v);
-          }}
-          filterOptions={(options, state) =>
-            options.filter((o) =>
-              o.toLowerCase().includes((state.inputValue || "").toLowerCase())
-            )
-          }
-          getOptionLabel={(option) => option}
-          noOptionsText="No matching skill"
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Skill"
-              fullWidth
-              required
-              sx={{ mt: 2 }}
-            />
-          )}
-        />
+      <DialogContent dividers sx={{ pt: 3 }}>
+        <Stack spacing={2.5}>
+          <Autocomplete
+            freeSolo
+            options={suggestedSkillList}
+            inputValue={inputValue}
+            disabled={mode === "edit"} // Can't change skill name when editing
+            onInputChange={(_, newInputValue) => {
+              setInputValue(newInputValue);
+              setSelectedSkill(newInputValue);
+            }}
+            onChange={(_, newValue) => {
+              const v =
+                typeof newValue === "string" ? newValue : newValue || "";
+              setSelectedSkill(v);
+              setInputValue(v);
+            }}
+            filterOptions={(options, state) =>
+              options.filter((o) =>
+                o.toLowerCase().includes((state.inputValue || "").toLowerCase())
+              )
+            }
+            getOptionLabel={(option) => option}
+            noOptionsText="No matching skill"
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Skill Name"
+                fullWidth
+                required
+                error={skillError}
+                helperText={
+                  skillError ? "Skill name is required" : "Type or pick a skill"
+                }
+              />
+            )}
+          />
 
-        <TextField
-          label="Category"
-          select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          fullWidth
-          required
-          sx={{ mt: 2 }}
-        >
-          {SKILL_CATEGORY_OPTIONS.map((cat: string) => (
-            <MenuItem key={cat} value={cat}>
-              {cat}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            label="Category"
+            select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            fullWidth
+            required
+            error={categoryError}
+            helperText={
+              categoryError
+                ? "Select a category"
+                : "Group this skill for clarity"
+            }
+          >
+            {SKILL_CATEGORY_OPTIONS.map((cat: string) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <TextField
-          label="Proficiency"
-          select
-          value={selectedLevel}
-          onChange={(e) => setSelectedLevel(e.target.value)}
-          fullWidth
-          required
-          sx={{ mt: 2, mb: 1 }}
-        >
-          {SKILL_LEVEL_OPTIONS.map((lvl: string) => (
-            <MenuItem key={lvl} value={lvl}>
-              {lvl}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            label="Proficiency"
+            select
+            value={selectedLevel}
+            onChange={(e) => setSelectedLevel(e.target.value)}
+            fullWidth
+            required
+            error={levelError}
+            helperText={
+              levelError
+                ? "Select your proficiency"
+                : "Beginner, Intermediate, Advanced, or Expert"
+            }
+          >
+            {SKILL_LEVEL_OPTIONS.map((lvl: string) => (
+              <MenuItem key={lvl} value={lvl}>
+                {lvl}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </DialogContent>
 
       <DialogActions>

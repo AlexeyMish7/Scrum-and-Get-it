@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import { useQueryClient } from "@tanstack/react-query";
 import { profileKeys } from "@profile/cache/queryKeys";
+import { unifiedProfileKeys } from "@profile/cache";
 import {
   Button,
   TextField,
@@ -427,9 +428,9 @@ const AddProjectForm: React.FC = () => {
         : "Project added successfully";
       showSuccess(msg);
       markProfileChanged(); // Invalidate analytics cache
-      // Invalidate projects cache so list refetches on next view
+      // Invalidate unified cache so list refetches on next view
       queryClient.invalidateQueries({
-        queryKey: profileKeys.projects(user.id),
+        queryKey: unifiedProfileKeys.user(user.id),
       });
       window.dispatchEvent(
         new CustomEvent("projects:notification", {

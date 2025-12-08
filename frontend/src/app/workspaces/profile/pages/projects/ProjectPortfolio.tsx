@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { profileKeys } from "@profile/cache/queryKeys";
+import { unifiedProfileKeys } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Box,
   Card,
@@ -27,7 +27,6 @@ import projectsService from "../../services/projects";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
-import { Breadcrumbs } from "@shared/components/navigation";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { FolderOpen as ProjectIcon } from "@mui/icons-material";
@@ -67,7 +66,6 @@ const ProjectPortfolio: React.FC = () => {
     ProjectRow | undefined
   >();
 
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const { markProfileChanged } = useProfileChange();
@@ -162,9 +160,9 @@ const ProjectPortfolio: React.FC = () => {
       }
       showSuccess("Project deleted");
       markProfileChanged(); // Invalidate analytics cache
-      // Invalidate projects cache so data is refetched
+      // Invalidate unified cache so data is refetched
       queryClient.invalidateQueries({
-        queryKey: profileKeys.projects(user.id),
+        queryKey: unifiedProfileKeys.user(user.id),
       });
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
@@ -219,14 +217,9 @@ const ProjectPortfolio: React.FC = () => {
   };
 
   return (
-    <Box sx={{ width: "100%", p: 3 }}>
+    <Box sx={{ width: "100%", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
-        <Breadcrumbs
-          items={[
-            { label: "Profile", path: "/profile" },
-            { label: "Projects" },
-          ]}
-        />
         <Box sx={{ textAlign: "center", mb: 3 }}>
           <Typography variant="h3">My Projects Portfolio</Typography>
           <Typography variant="subtitle1" color="text.secondary">

@@ -8,9 +8,9 @@ import React, {
 import { useQueryClient } from "@tanstack/react-query";
 import { formatNumericLevel, SKILL_CATEGORY_OPTIONS } from "@shared/constants";
 import { useAuth } from "@shared/context/AuthContext";
-import { profileKeys } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
+import { unifiedProfileKeys } from "@profile/cache";
 import skillsService from "../../services/skills";
-import { Breadcrumbs } from "@shared/components/navigation";
 import type {
   SkillItem,
   DropResult,
@@ -392,9 +392,9 @@ const SkillsOverview: React.FC = () => {
           throw batchRes.error;
         }
 
-        // Invalidate React Query cache so all components get fresh data
+        // Invalidate unified cache so all components get fresh data
         await queryClient.invalidateQueries({
-          queryKey: profileKeys.skills(user.id),
+          queryKey: unifiedProfileKeys.user(user.id),
         });
 
         // On success show a brief confirmation and notify other pages
@@ -547,11 +547,9 @@ const SkillsOverview: React.FC = () => {
   if (queryLoading || authLoading) return <LoadingSpinner />;
 
   return (
-    <Box sx={{ width: "100%", p: 3 }}>
+    <Box sx={{ width: "100%", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>
-        <Breadcrumbs
-          items={[{ label: "Profile", path: "/profile" }, { label: "Skills" }]}
-        />
         <Stack
           direction="row"
           justifyContent="space-between"

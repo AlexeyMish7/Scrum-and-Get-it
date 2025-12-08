@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { School as SchoolIcon, Edit as EditIcon } from "@mui/icons-material";
 import type { EducationEntry } from "../../types/education";
@@ -30,6 +29,7 @@ import { Add } from "@mui/icons-material";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { parseMonthToMs } from "@shared/utils/dateUtils";
 import { useEducationList } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 /*
   EducationOverview
@@ -106,10 +106,8 @@ const EducationOverview: React.FC = () => {
   }
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
-      <Breadcrumbs
-        items={[{ label: "Profile", path: "/profile" }, { label: "Education" }]}
-      />
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
@@ -173,6 +171,10 @@ const EducationOverview: React.FC = () => {
                   ? "Present"
                   : edu.endDate?.substring(0, 4) || "";
 
+                // Determine if this item is on the left or right side
+                // Even indices (0, 2, 4...) are on the right, odd indices (1, 3, 5...) are on the left
+                const isRightSide = index % 2 === 0;
+
                 // Each timeline item shows dates on the side, a dot/connector,
                 // and a white card with the education details and action buttons.
                 return (
@@ -233,13 +235,21 @@ const EducationOverview: React.FC = () => {
                           </Typography>
                         )}
 
-                        {/* Action buttons: Edit opens the dialog */}
-                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        {/* Action buttons: Edit button positioned based on timeline side */}
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            mt: 1,
+                            justifyContent: isRightSide
+                              ? "flex-end"
+                              : "flex-start",
+                          }}
+                        >
                           <IconButton
                             size="small"
                             color="primary"
                             onClick={() => handleOpenEditDialog(edu)}
-                            sx={{ ml: "auto" }}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>

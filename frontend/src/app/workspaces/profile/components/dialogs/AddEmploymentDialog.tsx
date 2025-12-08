@@ -10,12 +10,11 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import { profileKeys } from "@profile/cache";
+import { useUnifiedCacheUtils } from "@profile/cache";
 import employmentService from "../../services/employment";
 import type { EmploymentRow } from "../../types/employment";
 
@@ -35,7 +34,6 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
   existingEntry,
 }) => {
   const { user, loading } = useAuth();
-  const queryClient = useQueryClient();
   const { markProfileChanged } = useProfileChange();
   const {
     notification,
@@ -44,6 +42,7 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
     showSuccess,
     showWarning,
   } = useErrorHandler();
+  const { invalidateAll } = useUnifiedCacheUtils();
 
   // Initialize form data
   const [formData, setFormData] = useState({
@@ -55,6 +54,9 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
     isCurrent: false,
     description: "",
   });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Reset form when dialog opens or mode changes
   useEffect(() => {
@@ -88,6 +90,11 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
   const updateField = (k: keyof typeof formData, v: string | boolean) =>
     setFormData((s) => ({ ...s, [k]: v }));
 
+  const handleClose = () => {
+    setShowErrors(false);
+    onClose();
+  };
+
   // Validate form data
   const validate = (): { isValid: boolean; message?: string } => {
     if (!formData.jobTitle?.trim()) {
@@ -114,6 +121,8 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
 
   // Handle form submission
   const handleSubmit = async () => {
+    if (submitting) return;
+    setShowErrors(true);
     const validation = validate();
     if (!validation.isValid) {
       showWarning(validation.message ?? "Please complete required fields");
@@ -124,6 +133,8 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
       showWarning("Please log in to save employment entries");
       return;
     }
+
+    setSubmitting(true);
 
     try {
       // Prepare data to send to database using correct column names
@@ -156,10 +167,8 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
         return;
       }
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.employment(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("employment:changed"));
@@ -175,10 +184,13 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
       onSuccess?.();
 
       // Close dialog
+      setShowErrors(false);
       onClose();
     } catch (err) {
       console.error("Error saving employment", err);
       handleError(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -197,6 +209,9 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
       return;
     }
 
+    if (submitting) return;
+    setSubmitting(true);
+
     try {
       const res = await employmentService.deleteEmployment(
         user.id,
@@ -209,10 +224,8 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
         return;
       }
 
-      // Invalidate React Query cache so all components get fresh data
-      await queryClient.invalidateQueries({
-        queryKey: profileKeys.employment(user.id),
-      });
+      // Invalidate unified cache so all components get fresh data
+      await invalidateAll();
 
       // Notify other components of the change (for non-React Query listeners)
       window.dispatchEvent(new Event("employment:changed"));
@@ -224,21 +237,24 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
       onSuccess?.();
 
       // Close dialog
+      setShowErrors(false);
       onClose();
     } catch (err) {
       console.error("Error deleting employment", err);
       handleError(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           {mode === "edit" ? "Edit Employment" : "Add Employment"}
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <DialogContent dividers sx={{ pt: 3 }}>
+          <Stack spacing={2.5}>
             {/* Job Title */}
             <TextField
               fullWidth
@@ -247,8 +263,12 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
               required
               value={formData.jobTitle}
               onChange={(e) => updateField("jobTitle", e.target.value)}
-              error={!formData.jobTitle}
-              helperText={!formData.jobTitle ? "Required" : ""}
+              error={showErrors && !formData.jobTitle?.trim()}
+              helperText={
+                showErrors && !formData.jobTitle?.trim()
+                  ? "Job title is required"
+                  : "What was your role title?"
+              }
             />
 
             {/* Company Name */}
@@ -259,8 +279,12 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
               required
               value={formData.companyName}
               onChange={(e) => updateField("companyName", e.target.value)}
-              error={!formData.companyName}
-              helperText={!formData.companyName ? "Required" : ""}
+              error={showErrors && !formData.companyName?.trim()}
+              helperText={
+                showErrors && !formData.companyName?.trim()
+                  ? "Company name is required"
+                  : "Who did you work for?"
+              }
             />
 
             {/* Location */}
@@ -282,8 +306,12 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
               InputLabelProps={{ shrink: true }}
               value={formData.startDate}
               onChange={(e) => updateField("startDate", e.target.value)}
-              error={!formData.startDate}
-              helperText={!formData.startDate ? "Required" : ""}
+              error={showErrors && !formData.startDate}
+              helperText={
+                showErrors && !formData.startDate
+                  ? "Start date is required"
+                  : "When did you start?"
+              }
             />
 
             {/* Currently Working Toggle */}
@@ -307,6 +335,7 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
                 InputLabelProps={{ shrink: true }}
                 value={formData.endDate}
                 onChange={(e) => updateField("endDate", e.target.value)}
+                helperText="Leave blank if the role has no end date"
               />
             )}
 
@@ -319,6 +348,7 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
               onChange={(e) => updateField("description", e.target.value)}
               multiline
               rows={4}
+              placeholder="Summarize your impact, scope, and outcomes"
             />
           </Stack>
         </DialogContent>
@@ -328,8 +358,14 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
               Delete
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
+          <Button onClick={handleClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={submitting}
+          >
             {mode === "edit" ? "Save Changes" : "Add Employment"}
           </Button>
         </DialogActions>
