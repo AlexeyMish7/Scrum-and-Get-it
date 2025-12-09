@@ -27,6 +27,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import PaletteIcon from "@mui/icons-material/Palette";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -399,6 +400,17 @@ export default function GlobalTopBar() {
               Profile Hub
             </Button>
 
+            <Tooltip title="Help & Getting Started">
+              <IconButton
+                color="inherit"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-getting-started"))}
+                size="large"
+                sx={{ ml: 0.5 }}
+              >
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+
             <Tooltip title={themeToggleLabel}>
               <IconButton
                 color="inherit"
@@ -580,6 +592,14 @@ export default function GlobalTopBar() {
                 <ListItemText primary={item.label} />
               </ListItemButton>
             ))}
+            <ListItemButton
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open-getting-started"));
+                handleDrawerToggle(false)();
+              }}
+            >
+              <ListItemText primary="Help & Getting Started" />
+            </ListItemButton>
           </List>
         </Box>
       </Drawer>
