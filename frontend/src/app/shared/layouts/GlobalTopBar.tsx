@@ -33,6 +33,7 @@ import EventNoteIcon from "@mui/icons-material/EventNote";
 import PeopleIcon from "@mui/icons-material/People";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
@@ -170,7 +171,7 @@ const AI_TOOL_ITEMS: NavItem[] = [
   { label: "Templates", path: "/ai/templates" },
 ];
 
-const NETWORK_TOOL_ITEMS: ToolItem[] = [
+const NETWORK_TOOL_ITEMS: NavItem[] = [ //this used to be ToolItem, changed to NavItem due to error?
   { label: "Network Hub", path: "/network" },
   { label: "Contacts", path: "/network" },
   { label: "Peer Groups", path: "/network/peer-groups" },
@@ -358,6 +359,11 @@ export default function GlobalTopBar() {
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
 
   const { avatarUrl } = useAvatarContext();
+
+  // Open Getting Started modal
+  const handleOpenGettingStarted = () => {
+    window.dispatchEvent(new Event("open-getting-started"));
+  };
 
   const currentWorkspace = useMemo(() => {
     if (location.pathname.startsWith("/ai")) return "AI";
@@ -701,6 +707,10 @@ export default function GlobalTopBar() {
               </Box>
 
               <Divider sx={{ my: theme.spacing(0.5) }} />
+              <MenuItem onClick={handleOpenGettingStarted} sx={{ gap: theme.spacing(1) }}>
+                <HelpOutlineIcon fontSize="small" />
+                Help & Getting Started
+              </MenuItem>
               <MenuItem onClick={handleLogout} sx={{ gap: theme.spacing(1) }}>
                 <LogoutIcon fontSize="small" />
                 Logout
