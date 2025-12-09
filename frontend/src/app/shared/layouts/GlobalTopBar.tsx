@@ -170,7 +170,7 @@ const AI_TOOL_ITEMS: NavItem[] = [
   { label: "Templates", path: "/ai/templates" },
 ];
 
-const NETWORK_TOOL_ITEMS: ToolItem[] = [
+const NETWORK_TOOL_ITEMS: NavItem[] = [ //changed to NavItem from ToolItem
   { label: "Network Hub", path: "/network" },
   { label: "Contacts", path: "/network" },
   { label: "Peer Groups", path: "/network/peer-groups" },
