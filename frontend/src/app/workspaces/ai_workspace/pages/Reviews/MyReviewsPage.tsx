@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,
   Stack,
@@ -358,7 +359,8 @@ export function MyReviewsPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Stack spacing={3}>
         {/* Header */}
         <Stack

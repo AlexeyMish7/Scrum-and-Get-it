@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -29,6 +30,7 @@ import {
   Card,
   CardContent,
   Divider,
+  Button,
   Alert,
 } from "@mui/material";
 import {
@@ -38,9 +40,16 @@ import {
   Business as CompanyIcon,
   Assignment as PrepIcon,
 } from "@mui/icons-material";
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { useJobsPipeline } from '@job_pipeline/hooks/useJobsPipeline';
 import { useJobMatch } from "@job_pipeline/hooks/useJobMatch";
 import { useAuth } from "@shared/context/AuthContext";
 import MatchAnalysisPanel from "@job_pipeline/components/analytics/MatchAnalysisPanel/MatchAnalysisPanel";
+import CompetitiveAnalysis from "@job_pipeline/components/analytics/CompetitiveAnalysis/CompetitiveAnalysis";
+import ApplicationQualityScoring from "@job_pipeline/components/analytics/ApplicationQualityScoring/ApplicationQualityScoring";
+
+const SCHEDULE_KEY = "jobs:submission_schedules";
+const SUBMISSION_HISTORY_KEY = "jobs:submission_history";
 
 interface JobAnalyticsDialogProps {
   jobId: number | null;
@@ -53,10 +62,539 @@ export default function JobAnalyticsDialog({
   open,
   onClose,
 }: JobAnalyticsDialogProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
 
   const { data: matchData, loading } = useJobMatch(user?.id, jobId);
+  const { allJobs } = useJobsPipeline();
+
+  // helper: find job row from centralized jobs list
+  const jobRow = jobId ? allJobs.find((j) => Number(j.id) === Number(jobId)) : null;
+
+  function daysInStage(row?: typeof jobRow) {
+    if (!row) return null;
+    const d = row.status_changed_at ?? row.updated_at ?? row.created_at;
+    if (!d) return null;
+    try {
+      const then = new Date(String(d));
+      const diff = Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24));
+      return diff;
+    } catch {
+      return null;
+    }
+  }
+
+  function daysUntilDeadline(row?: typeof jobRow) {
+    if (!row) return null;
+    const d = (row as any).application_deadline ?? (row as any).applicationDeadline;
+    if (!d) return null;
+    try {
+      const then = new Date(String(d));
+      const diff = Math.ceil((then.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return Number.isFinite(diff) ? diff : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function parseDate(d?: string | null) {
+    if (!d) return null;
+    const t = new Date(String(d));
+    return isNaN(t.getTime()) ? null : t;
+  }
+
+  function historicalTimingStats(rows: typeof allJobs) {
+    // Compute simple response rates by weekday (0=Sun) and hour (0-23)
+    const byWeekday: Record<number, { responded: number; total: number }> = {};
+    const byHour: Record<number, { responded: number; total: number }> = {};
+    for (let i = 0; i < 7; i++) byWeekday[i] = { responded: 0, total: 0 };
+    for (let h = 0; h < 24; h++) byHour[h] = { responded: 0, total: 0 };
+
+    for (const j of rows) {
+      const created = parseDate(j.created_at ?? (j as any).application_submitted_at ?? null);
+      if (!created) continue;
+      const wd = created.getDay();
+      const hr = created.getHours();
+      byWeekday[wd].total += 1;
+      byHour[hr].total += 1;
+      // consider responded if moved to phone screen/interview/offer
+      const success = ((j.job_status ?? "") as string).toLowerCase();
+      const isResp = ["phone screen", "interview", "offer"].includes(success);
+      if (isResp) {
+        byWeekday[wd].responded += 1;
+        byHour[hr].responded += 1;
+      }
+    }
+
+    const weekdayRate = Object.keys(byWeekday).map((k) => {
+      const idx = Number(k);
+      const v = byWeekday[idx];
+      return { day: idx, rate: v.total ? v.responded / v.total : 0, total: v.total };
+    });
+    const hourRate = Object.keys(byHour).map((k) => {
+      const idx = Number(k);
+      const v = byHour[idx];
+      return { hour: idx, rate: v.total ? v.responded / v.total : 0, total: v.total };
+    });
+
+    return { weekdayRate, hourRate };
+  }
+
+  function bestSlotFor(rows: typeof allJobs) {
+    const stats = historicalTimingStats(rows);
+    // Choose weekday with highest rate (tie-break by total count)
+    const bestDay = stats.weekdayRate.slice().sort((a, b) => {
+      if (b.rate === a.rate) return b.total - a.total;
+      return b.rate - a.rate;
+    })[0];
+    // Choose hour with highest rate
+    const bestHour = stats.hourRate.slice().sort((a, b) => {
+      if (b.rate === a.rate) return b.total - a.total;
+      return b.rate - a.rate;
+    })[0];
+    return { bestDay: bestDay?.day ?? 2, bestHour: bestHour?.hour ?? 10 };
+  }
+
+  function nextOccurrenceFor(day: number, hour: number) {
+    // return a Date for the next occurrence of weekday `day` at `hour` in local timezone
+    const now = new Date();
+    const today = now.getDay();
+    let delta = day - today;
+    if (delta < 0) delta += 7;
+    // if same day but hour already passed, schedule next week
+    if (delta === 0 && now.getHours() >= hour) delta = 7;
+    const d = new Date(now.getTime() + delta * 24 * 60 * 60 * 1000);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  }
+
+  function isFridayEvening(d: Date) {
+    // Friday evening: Friday (5) after 5pm
+    return d.getDay() === 5 && d.getHours() >= 17;
+  }
+
+  function isUSHoliday(d: Date) {
+    // Basic US holiday checks: New Year's, Independence, Christmas, Thanksgiving (4th Thu of Nov)
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1; // 1-12
+    const day = d.getDate();
+
+    // Fixed-date holidays
+    if ((m === 1 && day === 1) || (m === 7 && day === 4) || (m === 12 && day === 25)) return true;
+
+    // Thanksgiving: 4th Thursday of November
+    if (m === 11) {
+      // find 1st day of Nov
+      const first = new Date(y, 10, 1);
+      const firstWeekday = first.getDay();
+      // day of 4th Thursday
+      const fourthThu = 1 + ((11 - firstWeekday + 7) % 7) + 21; // adjust to Thursday
+      if (day === fourthThu) return true;
+    }
+
+    // Simple: treat Jul 5 as observed if Jul4 is on weekend (observed holidays not exhaustively handled)
+    if (m === 7 && day === 5) {
+      const j4 = new Date(y, 6, 4);
+      if (j4.getDay() === 0 || j4.getDay() === 6) return true;
+    }
+
+    return false;
+  }
+
+  function isEndOfFiscalQuarter(d: Date) {
+    const month = d.getMonth(); // 0-11
+    // quarter end months: Mar(2), Jun(5), Sep(8), Dec(11)
+    const quarterEnds = [2, 5, 8, 11];
+    // find quarter end for this date's quarter
+    const q = Math.floor(month / 3);
+    const endMonth = quarterEnds[q];
+    const year = d.getFullYear();
+    const lastDay = new Date(year, endMonth + 1, 0).getDate();
+    const quarterEndDate = new Date(year, endMonth, lastDay);
+    const diffDays = Math.ceil((quarterEndDate.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 7;
+  }
+
+  function checkBadTimingForDate(d: Date | null) {
+    if (!d) return [] as string[];
+    const warns: string[] = [];
+    if (isFridayEvening(d)) warns.push('Selected time is Friday after 5pm — avoid Friday evenings as recruiter activity is low.');
+    if (isUSHoliday(d)) warns.push('Selected time falls on a US holiday — hiring teams may be offline or slow to respond.');
+    if (isEndOfFiscalQuarter(d)) warns.push('Selected time is within the last week of a fiscal quarter — teams may be busy with close activities.');
+    return warns;
+  }
+
+  // local persistence for schedules and submission history
+  function saveScheduleEntry(entry: { jobId: number | string; when: string; group?: string }) {
+    try {
+      const raw = localStorage.getItem(SCHEDULE_KEY) || "[]";
+      const arr = JSON.parse(raw);
+      arr.push(entry);
+      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(arr));
+    } catch {}
+  }
+
+  function saveSubmissionRecord(record: { jobId: number | string; submittedAt: string; responded?: boolean; respondedAt?: string; group?: string; companySize?: string | null; industry?: string | null; jobLevel?: string | null }) {
+    try {
+      // Augment record with job metadata when available so server-side
+      // grouping by companySize/industry/jobLevel works correctly.
+      const rec = { ...record } as any;
+      try {
+        const recJob = allJobs.find((j) => String(j.id) === String(record.jobId));
+        if (recJob) {
+          rec.companySize = rec.companySize ?? (recJob as any).company_size ?? null;
+          rec.industry = rec.industry ?? recJob.industry ?? null;
+          rec.jobLevel = rec.jobLevel ?? (recJob as any).job_level ?? null;
+        }
+      } catch {
+        // ignore augmentation failures
+      }
+
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = JSON.parse(raw);
+      arr.push(rec);
+      localStorage.setItem(SUBMISSION_HISTORY_KEY, JSON.stringify(arr));
+    } catch {}
+  }
+
+  function loadSchedulesForJob(jobId: number | string | null) {
+    try {
+      if (!jobId) return setScheduledEntries([]);
+      const raw = localStorage.getItem(SCHEDULE_KEY) || "[]";
+      const arr = JSON.parse(raw) as Array<{jobId: number | string; when: string; group?: string}>;
+      const mine = arr.filter((e) => String(e.jobId) === String(jobId)).sort((a,b) => new Date(a.when).getTime() - new Date(b.when).getTime());
+      setScheduledEntries(mine);
+    } catch {
+      setScheduledEntries([]);
+    }
+  }
+
+  function deleteScheduleEntry(jobId: number | string, whenIso: string) {
+    try {
+      const raw = localStorage.getItem(SCHEDULE_KEY) || "[]";
+      const arr = JSON.parse(raw) as Array<{jobId: number | string; when: string; group?: string}>;
+      const filtered = arr.filter((e) => !(String(e.jobId) === String(jobId) && e.when === whenIso));
+      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(filtered));
+      loadSchedulesForJob(jobId);
+    } catch {}
+  }
+
+  // compute correlation from local submission history for the same industry/company size
+  function computeCorrelation(job: typeof jobRow | null) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = JSON.parse(raw) as any[];
+      if (!job) return null;
+      const same = arr.filter((r) => {
+        // we look for records where job meta matches industry or company name
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        const sameIndustry = (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+        const sameCompany = (recJob.company_name ?? "").toString() === (job.company_name ?? "").toString();
+        return sameIndustry || sameCompany;
+      });
+      if (same.length === 0) return null;
+      const groups: Record<string, { total: number; responded: number }> = {};
+      for (const r of same) {
+        const g = r.group || "default";
+        groups[g] = groups[g] || { total: 0, responded: 0 };
+        groups[g].total += 1;
+        if (r.responded) groups[g].responded += 1;
+      }
+      return groups;
+    } catch {
+      return null;
+    }
+  }
+
+  const [recommendedWhen, setRecommendedWhen] = useState<Date | null>(null);
+  const [scheduleWhen, setScheduleWhen] = useState<string>("");
+  const [abGroup, setAbGroup] = useState<string>("A");
+  const [correlation, setCorrelation] = useState<any>(null);
+  const [scheduleSavedMsg, setScheduleSavedMsg] = useState<string | null>(null);
+  const [realtimeRecMsg, setRealtimeRecMsg] = useState<string | null>(null);
+  const [scheduledEntries, setScheduledEntries] = useState<Array<{jobId: number | string; when: string; group?: string}>>([]);
+  const [abTimingResults, setAbTimingResults] = useState<any | null>(null);
+  const [dataVersion, setDataVersion] = useState<number>(0);
+  const [apiLoading, setApiLoading] = useState<boolean>(false);
+  const [apiResult, setApiResult] = useState<any | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // compute initial recommended slot based on similar jobs (industry/company)
+    if (!jobRow) return;
+    const similar = allJobs.filter((j) => {
+      if (!jobRow) return false;
+      const sameIndustry = (j.industry ?? "").toString() === (jobRow.industry ?? "").toString();
+      const sameSize = (j as any).company_size === (jobRow as any).company_size;
+      return sameIndustry || sameSize;
+    });
+    const { bestDay, bestHour } = bestSlotFor(similar.length ? similar : allJobs);
+    const next = nextOccurrenceFor(bestDay, bestHour);
+    setRecommendedWhen(next);
+    setScheduleWhen(next.toISOString().slice(0,16)); // datetime-local format
+    setCorrelation(computeCorrelation(jobRow));
+    // load any existing schedules for this job so the UI shows them
+    try {
+      const raw = localStorage.getItem(SCHEDULE_KEY) || "[]";
+      const arr = JSON.parse(raw) as Array<{jobId: number | string; when: string; group?: string}>;
+      const mine = arr.filter((e) => String(e.jobId) === String(jobRow.id)).sort((a,b) => new Date(a.when).getTime() - new Date(b.when).getTime());
+      setScheduledEntries(mine);
+    } catch {
+      setScheduledEntries([]);
+    }
+    // compute A/B timing results for this job
+    try {
+      setAbTimingResults(computeAbTimingResults(jobRow));
+    } catch {
+      setAbTimingResults(null);
+    }
+  }, [jobRow, allJobs]);
+
+  function computeAbTimingResults(job: typeof jobRow | null) {
+    // Read local submission history and compute response rates by A/B group and time bucket
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = JSON.parse(raw) as Array<any>;
+      if (!job) return null;
+
+      // Filter records for similar jobs (industry or company) to improve sample size
+      const same = arr.filter((r) => {
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        const sameIndustry = (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+        const sameCompany = (recJob.company_name ?? "").toString() === (job.company_name ?? "").toString();
+        return sameIndustry || sameCompany;
+      });
+
+      if (same.length === 0) return null;
+
+      // Define time buckets
+      const buckets = {
+        morning: { start: 8, end: 11 },
+        midday: { start: 11, end: 15 },
+        afternoon: { start: 15, end: 18 },
+        evening: { start: 18, end: 23 },
+        night: { start: 0, end: 8 },
+      };
+
+      const groups: Record<string, { total: number; responded: number; byBucket: Record<string, { total: number; responded: number }> }> = {};
+
+      for (const r of same) {
+        const g = r.group || 'default';
+        groups[g] = groups[g] || { total: 0, responded: 0, byBucket: {} };
+        for (const b of Object.keys(buckets)) {
+          groups[g].byBucket[b] = groups[g].byBucket[b] || { total: 0, responded: 0 };
+        }
+
+        const submittedAt = r.submittedAt ? new Date(r.submittedAt) : null;
+        if (!submittedAt || isNaN(submittedAt.getTime())) continue;
+        const hour = submittedAt.getHours();
+        let bucketName = 'midday';
+        for (const [bk, range] of Object.entries(buckets)) {
+          if (hour >= (range as any).start && hour < (range as any).end) {
+            bucketName = bk;
+            break;
+          }
+        }
+
+        groups[g].total += 1;
+        if (r.responded) groups[g].responded += 1;
+        groups[g].byBucket[bucketName].total += 1;
+        if (r.responded) groups[g].byBucket[bucketName].responded += 1;
+      }
+
+      // compute percentages
+      const result: any = { buckets: Object.keys(buckets), groups: {} };
+      for (const g of Object.keys(groups)) {
+        const info = groups[g];
+        const pct = info.total ? (info.responded / info.total) : 0;
+        result.groups[g] = {
+          total: info.total,
+          responded: info.responded,
+          pct: pct,
+          byBucket: {},
+        };
+        for (const bk of Object.keys(info.byBucket)) {
+          const b = info.byBucket[bk];
+          result.groups[g].byBucket[bk] = {
+            total: b.total,
+            responded: b.responded,
+            pct: b.total ? (b.responded / b.total) : 0,
+          };
+        }
+      }
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  function computeResponseTimePrediction(job: typeof jobRow | null) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = (JSON.parse(raw) as Array<any>) || [];
+      if (!job) return null;
+
+      // Filter records by similarity: same company OR same industry OR same company_size OR same job_level
+      const same = arr.filter((r) => {
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        const sameIndustry = (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+        const sameCompany = (recJob.company_name ?? "").toString() === (job.company_name ?? "").toString();
+        const sameSize = (recJob as any).company_size && (job as any).company_size && (recJob as any).company_size === (job as any).company_size;
+        const sameLevel = (recJob as any).job_level && (job as any).job_level && (recJob as any).job_level === (job as any).job_level;
+        return sameCompany || sameIndustry || sameSize || sameLevel;
+      });
+
+      if (same.length === 0) return null;
+
+      // Gather responded entries with valid timestamps
+      const responded = same.filter((r) => r.responded && r.respondedAt && r.submittedAt).map((r) => ({ submittedAt: new Date(r.submittedAt), respondedAt: new Date(r.respondedAt) })).filter((p) => !isNaN(p.submittedAt.getTime()) && !isNaN(p.respondedAt.getTime()));
+
+      // If no responded records, we can still return sample counts and default benchmark values
+      if (responded.length === 0) return { sampleCount: same.length, respondedCount: 0, meanDays: 0, medianDays: 0, ciDays: [0,0], mae: 0, recent: [], industryBenchmark: { median: 0, lower: 0, upper: 0 } };
+
+      // Compute diffs in days
+      const diffsDays = responded.map((p) => (p.respondedAt.getTime() - p.submittedAt.getTime()) / (1000*60*60*24));
+      const meanDays = diffsDays.reduce((s, v) => s + v, 0) / diffsDays.length;
+      const sorted = diffsDays.slice().sort((a,b) => a-b);
+      const medianDays = (sorted.length % 2 === 1) ? sorted[Math.floor(sorted.length/2)] : (sorted[sorted.length/2 - 1] + sorted[sorted.length/2]) / 2;
+
+      // 80% confidence interval (10th and 90th percentiles)
+      const p = (arr: number[], q: number) => {
+        if (arr.length === 0) return 0;
+        const idx = (arr.length - 1) * q;
+        const lo = Math.floor(idx);
+        const hi = Math.ceil(idx);
+        if (lo === hi) return arr[lo];
+        return arr[lo] * (hi - idx) + arr[hi] * (idx - lo);
+      };
+      const lower = p(sorted, 0.1);
+      const upper = p(sorted, 0.9);
+
+      // Seasonality: compare recent same-period records (same month or quarter) vs overall
+      function samePeriodAdjust() {
+        try {
+          const now = new Date();
+          const month = now.getMonth();
+          const recentPeriod = responded.filter((p) => p.submittedAt.getMonth() === month);
+          if (recentPeriod.length < 3) return 0; // not enough data
+          const recentDiffs = recentPeriod.map((p) => (p.respondedAt.getTime() - p.submittedAt.getTime()) / (1000*60*60*24));
+          const recentMean = recentDiffs.reduce((s,v) => s+v,0)/recentDiffs.length;
+          return recentMean - meanDays; // positive means responses are slower this month
+        } catch { return 0; }
+      }
+
+      const seasonAdj = samePeriodAdjust();
+
+      // Model performance: mean absolute error between actual and median prediction
+      const mae = diffsDays.reduce((s, v) => s + Math.abs(v - medianDays), 0) / diffsDays.length;
+
+      const recent = same.filter((r) => r.responded && r.respondedAt && r.submittedAt).sort((a,b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0,5);
+
+      // Industry benchmarks: compute median and 10/90 for same industry across all jobs
+      const industryRecs = arr.filter((r) => {
+        const recJob = allJobs.find((j) => String(j.id) === String(r.jobId));
+        if (!recJob) return false;
+        return (recJob.industry ?? "").toString() === (job.industry ?? "").toString();
+      }).filter((r) => r.responded && r.respondedAt && r.submittedAt).map((r) => (new Date(r.respondedAt).getTime() - new Date(r.submittedAt).getTime())/(1000*60*60*24));
+      const industrySorted = industryRecs.slice().sort((a,b) => a-b);
+      const industryMedian = industrySorted.length ? p(industrySorted, 0.5) : 0;
+      const industryLower = industrySorted.length ? p(industrySorted, 0.1) : 0;
+      const industryUpper = industrySorted.length ? p(industrySorted, 0.9) : 0;
+
+      return {
+        sampleCount: same.length,
+        respondedCount: responded.length,
+        meanDays: meanDays + seasonAdj,
+        medianDays: medianDays + seasonAdj,
+        ciDays: [lower + seasonAdj, upper + seasonAdj],
+        mae,
+        recent,
+        industryBenchmark: { median: industryMedian, lower: industryLower, upper: industryUpper },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function markLatestUnrespondedSubmission(jobId: number | string) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      const candidates = arr.filter((r: any) => String(r.jobId) === String(jobId) && !r.responded && r.submittedAt).sort((a: any,b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      if (candidates.length === 0) return false;
+      const pick = candidates[0];
+      // find index in original array
+      const idx = arr.findIndex((r: any) => r === pick);
+      if (idx === -1) return false;
+      arr[idx] = { ...arr[idx], responded: true, respondedAt: new Date().toISOString() };
+      localStorage.setItem(SUBMISSION_HISTORY_KEY, JSON.stringify(arr));
+      setDataVersion(v => v + 1);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function getSubmissionsForJob(jobId: number | string) {
+    try {
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      return arr.filter((r: any) => String(r.jobId) === String(jobId)).sort((a: any,b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    } catch {
+      return [];
+    }
+  }
+
+  async function refineWithAI() {
+    setApiError(null);
+    setApiResult(null);
+    setApiLoading(true);
+    try {
+      // Prepare payload: prefer job metadata (no local seeding required)
+      const raw = localStorage.getItem(SUBMISSION_HISTORY_KEY) || "[]";
+      const arr = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      const headers: Record<string,string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+      let payload: any = {};
+      if (jobRow) {
+        payload.job = {
+          id: jobRow.id,
+          title: (jobRow as any).title ?? (jobRow as any).job_title ?? null,
+          company: (jobRow as any).company_name ?? (jobRow as any).company ?? null,
+          industry: (jobRow as any).industry ?? null,
+          companySize: (jobRow as any).company_size ?? null,
+          jobLevel: (jobRow as any).job_level ?? null,
+          location: (jobRow as any).location ?? null,
+        };
+      } else {
+        payload.submissions = arr;
+      }
+
+      const resp = await fetch(`/api/predictions/response-time`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`Server error ${resp.status}: ${txt}`);
+      }
+      const json = await resp.json();
+      if (!json || !json.success) {
+        throw new Error(json?.error || "Invalid response from server");
+      }
+      setApiResult(json);
+    } catch (e: any) {
+      console.error("refineWithAI failed", e);
+      setApiError(e?.message ?? String(e));
+    } finally {
+      setApiLoading(false);
+    }
+  }
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -84,7 +622,7 @@ export default function JobAnalyticsDialog({
           borderColor: "divider",
         }}
       >
-        <Typography variant="h6">Job Analytics</Typography>
+        <Typography variant="h6" component="div">Job Analytics</Typography>
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
@@ -96,6 +634,10 @@ export default function JobAnalyticsDialog({
           <Tab icon={<SkillsIcon />} label="Skills Gaps" />
           <Tab icon={<CompanyIcon />} label="Company Insights" />
           <Tab icon={<PrepIcon />} label="Interview Prep" />
+          <Tab icon={<AccessTimeIcon />} label="Job Timing Optimizer" />
+          <Tab icon={<AccessTimeIcon />} label="Employer Response Time Prediction" />
+          <Tab icon={<CompanyIcon />} label="Competitive Analysis" />
+          <Tab icon={<PrepIcon />} label="Application Quality Scoring" />
         </Tabs>
       </Box>
 
@@ -280,6 +822,480 @@ export default function JobAnalyticsDialog({
                 </List>
               </>
             )}
+          </Box>
+        )}
+
+        {/* Tab 4: Job Timing Optimizer */}
+        {activeTab === 4 && !loading && (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Job Timing Optimizer
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Practical timing recommendations to maximize visibility and response rates.
+            </Typography>
+
+            <Stack spacing={2}>
+              
+
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2">Optimizer Recommendations</Typography>
+                  <Typography variant="body2" component="div" sx={{ mt: 1 }}>
+                    {(() => {
+                      // heuristics
+                      if (!jobRow) return 'No job information available to generate recommendations.';
+                      const d = daysUntilDeadline(jobRow);
+                      const inStage = daysInStage(jobRow) ?? 0;
+
+                      const recs: string[] = [];
+                      if (d !== null) {
+                        if (d <= 7) {
+                          recs.push('Apply immediately and send a brief follow-up 3 business days after applying.');
+                          recs.push('If you have referrals or internal contacts, reach out now to accelerate review.');
+                        } else if (d <= 14) {
+                          recs.push('Prepare your tailored application and submit within 3 days to be early in the review cycle.');
+                          recs.push('Plan a follow-up 5 business days after applying.');
+                        } else {
+                          recs.push('There is time — optimize your resume and cover letter. Apply 7-10 days before your ideal start date to appear timely.');
+                          recs.push('Consider applying on a Tuesday morning when hiring teams are most active.');
+                        }
+                      } else {
+                        // no deadline
+                        if (inStage <= 3) {
+                          recs.push('Apply when you can submit a tailored resume and cover letter — aim for Tuesday-Wednesday mornings.');
+                        } else {
+                          recs.push('If already in process, focus on timely follow-ups and scheduling interviews within 3-5 business days.');
+                        }
+                      }
+
+                      // generic scheduling advice
+                      recs.push('Follow-up cadence: 1) After application: 3–7 business days. 2) After interview: thank-you within 24 hours, follow-up after 5 business days if no update.');
+
+                      return recs.map((r, i) => (
+                        <Typography variant="body2" component="div" key={i}>• {r}</Typography>
+                      ));
+                    })()}
+                  </Typography>
+                </CardContent>
+              </Card>
+              {/* New: Timing optimizer controls and scheduling */}
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle2">Timing Analysis & Scheduler</Typography>
+                  <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>
+                    {recommendedWhen ? (
+                      <>Best next slot: <strong>{recommendedWhen.toLocaleString()}</strong></>
+                    ) : (
+                      'Calculating recommended slot...'
+                    )}
+                  </Typography>
+                  {(() => {
+                    const warns: string[] = [];
+                    if (recommendedWhen) {
+                      if (isFridayEvening(recommendedWhen)) warns.push('Recommended slot is on a Friday evening — avoid Friday evenings as they have low recruiter activity. Prefer Tuesday or Wednesday morning.');
+                      if (isUSHoliday(recommendedWhen)) warns.push('Recommended slot falls on a US holiday — hiring teams may be offline or slow to respond. Consider another workday.');
+                      if (isEndOfFiscalQuarter(recommendedWhen)) warns.push('Recommended slot is within the end of a fiscal quarter — recruiters and finance teams may be busy with quarterly close activities. Consider avoiding the last week of the quarter.');
+                    }
+
+                    if (warns.length > 0) {
+                      return (
+                        <Alert severity="warning" sx={{ mt: 1 }}>
+                          <div>
+                            {warns.map((w, i) => (
+                              <Typography key={i} variant="body2">• {w}</Typography>
+                            ))}
+                          </div>
+                        </Alert>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Button size="small" onClick={() => {
+                      // schedule at recommended time and show success feedback
+                      setScheduleSavedMsg(null);
+                      if (!recommendedWhen || !jobRow) {
+                        setScheduleSavedMsg('No recommended time available to schedule.');
+                        return;
+                      }
+                      const whenDate = recommendedWhen;
+                      const now = new Date();
+                      if (whenDate.getTime() <= now.getTime()) {
+                        setScheduleSavedMsg('Recommended time is in the past and cannot be scheduled.');
+                        return;
+                      }
+                      try {
+                        saveScheduleEntry({ jobId: jobRow.id, when: whenDate.toISOString(), group: abGroup });
+                        setScheduleWhen(whenDate.toISOString().slice(0,16));
+                        const msg = `Scheduled for ${whenDate.toLocaleString()}`;
+                        setScheduleSavedMsg(msg);
+                        // refresh displayed schedules
+                        loadSchedulesForJob(jobRow.id);
+                        // clear after 12s
+                        setTimeout(() => setScheduleSavedMsg(null), 12000);
+                      } catch (e) {
+                        setScheduleSavedMsg('Failed to save recommended schedule.');
+                      }
+                    }}>Schedule recommended time</Button>
+                    <Button size="small" onClick={() => {
+                      // schedule now (record a submission event locally)
+                      if (!jobRow) return;
+                      const now = new Date();
+                      saveSubmissionRecord({ jobId: jobRow.id, submittedAt: now.toISOString(), responded: false, group: abGroup });
+                      // refresh schedules and recompute A/B timing results so UI updates immediately
+                      try {
+                        loadSchedulesForJob(jobRow.id);
+                        setAbTimingResults(computeAbTimingResults(jobRow));
+                        setScheduleSavedMsg('Recorded submission for now.');
+                        setTimeout(() => setScheduleSavedMsg(null), 5000);
+                      } catch {}
+                    }}>Record submission (now)</Button>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Typography variant="body2">A/B group:</Typography>
+                    <Button size="small" onClick={() => setAbGroup('A')} variant={abGroup==='A' ? 'contained' : 'outlined'}>A</Button>
+                    <Button size="small" onClick={() => setAbGroup('B')} variant={abGroup==='B' ? 'contained' : 'outlined'}>B</Button>
+                  </Stack>
+
+                    <Stack spacing={1}>
+                    <Typography variant="body2">Schedule custom time</Typography>
+                    <input type="datetime-local" value={scheduleWhen} onChange={(e) => setScheduleWhen(e.target.value)} />
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Button size="small" onClick={() => {
+                        setScheduleSavedMsg(null);
+                        if (!jobRow || !scheduleWhen) {
+                          setScheduleSavedMsg('Please choose a valid date and job before saving.');
+                          return;
+                        }
+                        const whenDate = new Date(scheduleWhen);
+                        if (isNaN(whenDate.getTime())) {
+                          setScheduleSavedMsg('Invalid date format. Please pick a valid date/time.');
+                          return;
+                        }
+                        const now = new Date();
+                        if (whenDate.getTime() <= now.getTime()) {
+                          setScheduleSavedMsg('Cannot schedule in the past. Please pick a future time.');
+                          return;
+                        }
+                        // persist
+                        try {
+                          saveScheduleEntry({ jobId: jobRow.id, when: whenDate.toISOString(), group: abGroup });
+                          setScheduleSavedMsg(`Scheduled for ${whenDate.toLocaleString()}`);
+                          // refresh displayed schedules
+                          loadSchedulesForJob(jobRow.id);
+                        } catch (e) {
+                          setScheduleSavedMsg('Failed to save schedule.');
+                        }
+                      }}>Save schedule</Button>
+                      <Button size="small" onClick={() => {
+                        // quick heuristic: show now vs wait — display inline instead of alert
+                        setRealtimeRecMsg(null);
+                        if (!recommendedWhen) {
+                          setRealtimeRecMsg('Recommendation not available yet.');
+                          return;
+                        }
+                        const now = new Date();
+                        const diffMs = recommendedWhen.getTime() - now.getTime();
+                        const diffHours = Math.round(diffMs / (1000*60*60));
+                        const msg = diffHours <= 2
+                          ? 'Recommendation: Submit now.'
+                          : `Recommendation: Wait ${diffHours} hour(s) until ${recommendedWhen.toLocaleString()}.`;
+                        setRealtimeRecMsg(msg);
+                        // auto-clear after 12 seconds
+                        setTimeout(() => setRealtimeRecMsg(null), 12000);
+                      }}>Real-time recommendation</Button>
+                    </Stack>
+                  </Stack>
+
+                  {scheduleSavedMsg && (
+                    <Alert severity={scheduleSavedMsg.startsWith('Scheduled') ? 'success' : 'warning'} sx={{ mt: 1 }}>{scheduleSavedMsg}</Alert>
+                  )}
+
+                  {/* Live / saved schedule warnings (e.g., Friday evening, holiday, quarter-end) */}
+                  {(() => {
+                    const scheduleDate = scheduleWhen ? new Date(scheduleWhen) : null;
+                    const scheduleWarns = scheduleDate && !isNaN(scheduleDate.getTime()) ? checkBadTimingForDate(scheduleDate) : [];
+                    return (
+                      <>
+                        {scheduleWarns.length > 0 && (
+                          <Alert severity="warning" sx={{ mt: 1 }}>
+                            {scheduleWarns.map((w, i) => (
+                              <Typography key={i} variant="body2">• {w}</Typography>
+                            ))}
+                          </Alert>
+                        )}
+                        {realtimeRecMsg && (
+                          <Alert severity="info" sx={{ mt: 1 }}>{realtimeRecMsg}</Alert>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  {/* Saved schedules for this job (local) */}
+                  {scheduledEntries && scheduledEntries.length > 0 && (
+                    <Box sx={{ mt: 1, mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Upcoming Scheduled Submissions</Typography>
+                      <Stack spacing={1}>
+                        {scheduledEntries.map((s, idx) => {
+                          const d = new Date(s.when);
+                          return (
+                            <Card key={idx} variant="outlined">
+                              <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Typography variant="body2">Your application will be sent at <strong>{isNaN(d.getTime()) ? s.when : d.toLocaleString()}</strong></Typography>
+                                <Stack direction="row" spacing={1}>
+                                  <Button size="small" onClick={() => {
+                                    // remove schedule
+                                    deleteScheduleEntry(s.jobId, s.when);
+                                    setScheduleSavedMsg('Cancelled scheduled submission.');
+                                    setTimeout(() => setScheduleSavedMsg(null), 6000);
+                                  }}>Cancel</Button>
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2">Correlation & A/B Results</Typography>
+                  {correlation ? (
+                    Object.keys(correlation).map((g) => (
+                      <Typography key={g} variant="body2">Group {g}: {correlation[g].responded}/{correlation[g].total} responses ({Math.round((correlation[g].responded/correlation[g].total||0)*100)}%)</Typography>
+                    ))
+                  ) : (
+                    <Typography variant="body2">No local submission history for this industry/company size yet. Record submissions to build correlation data.</Typography>
+                  )}
+
+                  {/* A/B timing analysis */}
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="subtitle2">A/B Timing Analysis</Typography>
+                    {abTimingResults ? (
+                      <Box sx={{ mt: 1 }}>
+                        {Object.keys(abTimingResults.groups).map((g) => (
+                          <Box key={g} sx={{ mb: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Group {g}: {abTimingResults.groups[g].responded}/{abTimingResults.groups[g].total} responses ({Math.round((abTimingResults.groups[g].pct||0)*100)}%)</Typography>
+                            <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                              {abTimingResults.buckets.map((bk: string) => {
+                                const b = abTimingResults.groups[g].byBucket[bk];
+                                return (
+                                  <Chip key={bk} label={`${bk}: ${b.responded}/${b.total} (${Math.round((b.pct||0)*100)}%)`} size="small" />
+                                );
+                              })}
+                            </Stack>
+                          </Box>
+                        ))}
+
+                        {/* Quick comparison between A and B if both exist */}
+                        {abTimingResults.groups['A'] && abTimingResults.groups['B'] && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>A vs B Summary</Typography>
+                            {(() => {
+                              const a = abTimingResults.groups['A'];
+                              const b = abTimingResults.groups['B'];
+                              const delta = Math.round(((b.pct||0) - (a.pct||0)) * 100);
+                              return (
+                                <Typography variant="body2">Overall difference: B {Math.round((b.pct||0)*100)}% vs A {Math.round((a.pct||0)*100)}% — delta {delta} percentage points (B - A).</Typography>
+                              );
+                            })()}
+                          </Box>
+                        )}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2">No A/B timing data available yet. Record submissions to build timing correlation.</Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Stack>
+          </Box>
+        )}
+
+        {/* Tab 5: Employer Response Time Prediction */}
+        {activeTab === 5 && !loading && (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Employer Response Time Prediction
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Predicts how long it typically takes this employer (or similar employers) to respond after an application is submitted.
+            </Typography>
+
+            <Card variant="outlined">
+              <CardContent>
+                {(() => {
+                  // include dataVersion to re-evaluate when user marks responses
+                  void dataVersion;
+                  const pred = computeResponseTimePrediction(jobRow);
+                  if (!pred) {
+                    return <Alert severity="info">No submission/response data available yet to build a prediction. Record submissions and responses to collect data.</Alert>;
+                  }
+
+                  const { sampleCount, respondedCount, meanDays, medianDays, ciDays, mae, recent, industryBenchmark } = pred;
+                  const medianText = medianDays >= 1 ? `${Math.round(medianDays)} day(s)` : `${Math.round(medianDays*24)} hour(s)`;
+                  const meanText = meanDays >= 1 ? `${meanDays.toFixed(1)} day(s)` : `${Math.round(meanDays*24)} hour(s)`;
+                  const ciText = `${Math.max(0, Math.round(ciDays[0]))}–${Math.max(0, Math.round(ciDays[1]))} day(s)`;
+
+                  // find unresponded submissions for this job (to show overdue/mark-as-responded)
+                  const subs = jobRow ? getSubmissionsForJob(jobRow.id) : [];
+                  const unresponded = subs.filter((s: any) => !s.responded && s.submittedAt).map((s:any) => ({ ...s, submittedAtDate: new Date(s.submittedAt) }));
+
+                  // overdue detection: any unresponded submission older than upper CI
+                  let overdue = false;
+                  if (unresponded.length > 0 && ciDays && ciDays[1] > 0) {
+                    const now = new Date();
+                    for (const u of unresponded) {
+                      const submitted = new Date(u.submittedAt);
+                      if (isNaN(submitted.getTime())) continue;
+                      const diffDays = (now.getTime() - submitted.getTime())/(1000*60*60*24);
+                      if (diffDays > ciDays[1]) { overdue = true; break; }
+                    }
+                  }
+
+                  // suggested follow-up: medianDays (rounded) after submission; if not submitted, suggest after applying (medianDays)
+                  const suggestedFollowUpDays = Math.max(1, Math.round(medianDays));
+
+                  return (
+                    <Box>
+                      {overdue && (
+                        <Alert severity="warning" sx={{ mb: 1 }}>One or more submissions to this employer are overdue compared to the predicted response window.</Alert>
+                      )}
+                      <Typography variant="subtitle1">Prediction</Typography>
+                      <Typography variant="body2" sx={{ mt: 1 }}>Based on {sampleCount} submission(s) ({respondedCount} responses), typically responds in <strong>{ciText}</strong> (80% CI). Median: <strong>{medianText}</strong>, average: {meanText}.</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Confidence: ~80% of responses fall within the interval shown. Model MAE: {Math.round(mae*10)/10} day(s).</Typography>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Suggested follow-up</Typography>
+                      <Typography variant="body2">Optimal follow-up: around <strong>{suggestedFollowUpDays} day(s)</strong> after application. If you've already applied, pick the most recent submission and follow up on that date.</Typography>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Button size="small" variant="contained" onClick={() => refineWithAI()} disabled={apiLoading}>Refine with AI</Button>
+                        <Button size="small" onClick={() => { setApiResult(null); setApiError(null); }}>Clear AI result</Button>
+                        {apiLoading && <Typography variant="body2" color="text.secondary">Calling AI service…</Typography>}
+                      </Stack>
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Industry benchmark</Typography>
+                      <Typography variant="body2">Industry typical: {Math.round(industryBenchmark.median)} day(s) (80% CI: {Math.round(industryBenchmark.lower)}–{Math.round(industryBenchmark.upper)} day(s)).</Typography>
+
+                      {apiError && (
+                        <Alert severity="error" sx={{ mt: 1 }}>{apiError}</Alert>
+                      )}
+
+                      {apiResult && apiResult.grouped && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="subtitle2">Aggregated historical groups (server)</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Company size</Typography>
+                          {Object.entries(apiResult.grouped.companySize || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Industry</Typography>
+                          {Object.entries(apiResult.grouped.industry || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Job level</Typography>
+                          {Object.entries(apiResult.grouped.jobLevel || {}).map(([k, v]: any) => (
+                            <Typography key={k} variant="body2">{k}: n={v.sampleCount} median={v.medianDays ? Math.round(v.medianDays) + 'd' : '—'} mean={v.meanDays ? v.meanDays.toFixed(1) + 'd' : '—'}</Typography>
+                          ))}
+
+                          {apiResult.aiAnalysis && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="subtitle2">AI Analysis</Typography>
+                              {typeof apiResult.aiAnalysis === 'object' && (apiResult.aiAnalysis.median_days !== undefined || apiResult.aiAnalysis.mean_days !== undefined) ? (
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Median Days</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.median_days ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Mean Days</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.mean_days ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Confidence Interval</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.ci_low ?? '—'}–{apiResult.aiAnalysis.ci_high ?? '—'}</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="body2" color="text.secondary">Confidence</Typography>
+                                    <Typography variant="body1">{apiResult.aiAnalysis.confidence ?? '—'}</Typography>
+                                  </Box>
+                                  {Array.isArray(apiResult.aiAnalysis.recommendations) && apiResult.aiAnalysis.recommendations.length > 0 && (
+                                    <Box sx={{ gridColumn: '1 / -1' }}>
+                                      <Typography variant="body2" color="text.secondary">Recommendations</Typography>
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                                        {apiResult.aiAnalysis.recommendations.map((rec: string, idx: number) => (
+                                          <Chip key={idx} label={rec} size="small" />
+                                        ))}
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Box>
+                              ) : apiResult.aiAnalysis.json ? (
+                                <Typography variant="body2">{JSON.stringify(apiResult.aiAnalysis.json)}</Typography>
+                              ) : (
+                                <Typography variant="body2">{apiResult.aiAnalysis.text ?? 'No textual analysis returned.'}</Typography>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Recent responded submissions</Typography>
+                      {recent.length === 0 ? (
+                        <Typography variant="body2">No recent responded submissions to show.</Typography>
+                      ) : (
+                        <List dense>
+                          {recent.map((r: any, i: number) => (
+                            <ListItem key={i} sx={{ py: 0.5 }}>
+                              <ListItemText primary={`${new Date(r.submittedAt).toLocaleString()} → ${new Date(r.respondedAt).toLocaleString()}`} secondary={`${Math.round(((new Date(r.respondedAt).getTime() - new Date(r.submittedAt).getTime())/(1000*60*60))) } hours`} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2">Your recent submissions (unresponded)</Typography>
+                      {unresponded.length === 0 ? (
+                        <Typography variant="body2">No outstanding submissions recorded for this job.</Typography>
+                      ) : (
+                        <List dense>
+                          {unresponded.map((u: any, i: number) => (
+                            <ListItem key={i} sx={{ py: 0.5 }} secondaryAction={(
+                              <Button size="small" onClick={() => { if (jobRow) { markLatestUnrespondedSubmission(jobRow.id); setScheduleSavedMsg('Marked latest submission as responded.'); setTimeout(() => setScheduleSavedMsg(null), 4000); } }}>Mark responded</Button>
+                            )}>
+                              <ListItemText primary={`${u.submittedAtDate.toLocaleString()}`} secondary={`${Math.round(((Date.now() - u.submittedAtDate.getTime())/(1000*60*60*24)))} day(s) ago`} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+                    </Box>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
+        {/* Tab 6: Competitive Analysis */}
+        {activeTab === 6 && !loading && (
+          <Box>
+            <CompetitiveAnalysis job={jobRow} matchData={matchData} />
+          </Box>
+        )}
+
+        {/* Tab 7: Application Quality Scoring */}
+        {activeTab === 7 && !loading && (
+          <Box>
+            <ApplicationQualityScoring job={jobRow} matchData={matchData} />
           </Box>
         )}
       </DialogContent>

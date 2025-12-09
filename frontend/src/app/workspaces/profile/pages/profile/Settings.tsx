@@ -2,15 +2,13 @@ import React from "react";
 import { Box, Typography, Divider, Paper } from "@mui/material";
 import PaletteIcon from "@mui/icons-material/Palette";
 import DeleteAccount from "./DeleteAccount";
-import { Breadcrumbs } from "@shared/components/navigation";
 import { ThemeSettingsPanel } from "@shared/components/theme";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 const Settings: React.FC = () => {
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", p: { xs: 2, sm: 3, md: 4 } }}>
-      <Breadcrumbs
-        items={[{ label: "Profile", path: "/profile" }, { label: "Settings" }]}
-      />
+    <Box sx={{ maxWidth: 800, mx: "auto", p: { xs: 2, sm: 3, md: 4 }, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Typography variant="h2" gutterBottom>
         Settings
       </Typography>

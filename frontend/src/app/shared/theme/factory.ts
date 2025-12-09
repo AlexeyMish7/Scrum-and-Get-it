@@ -189,6 +189,8 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
     includeGlow: boolean
   ): string => {
     if (!includeGlow || !tokens.effects.glow) return baseShadow;
+    // Only apply glow in light mode, skip in dark mode
+    if (tokens.mode === "dark") return baseShadow;
     const glow = tokens.effects.glow;
     return baseShadow === "none"
       ? `${glow.spread} ${glow.color}`
@@ -304,6 +306,73 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
 
     components: {
       // ============================================================
+      // TYPOGRAPHY - Enhanced readability on backgrounds
+      // ============================================================
+      MuiTypography: {
+        styleOverrides: {
+          root: {
+            // Add subtle text shadow for better readability on animated backgrounds
+            // Only applies when text is not inside a Paper/Card component
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.7)"
+                : "0 2px 4px rgba(255, 255, 255, 1), 0 0 8px rgba(255, 255, 255, 0.8)",
+          },
+          // Headings get stronger shadows for better prominence
+          h1: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 3px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(0, 0, 0, 0.8)"
+                : "0 3px 6px rgba(255, 255, 255, 1), 0 0 16px rgba(255, 255, 255, 0.9)",
+          },
+          h2: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 3px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(0, 0, 0, 0.8)"
+                : "0 3px 6px rgba(255, 255, 255, 1), 0 0 16px rgba(255, 255, 255, 0.9)",
+          },
+          h3: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 2px 5px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.7)"
+                : "0 2px 5px rgba(255, 255, 255, 1), 0 0 10px rgba(255, 255, 255, 0.8)",
+          },
+          h4: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 2px 5px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.7)"
+                : "0 2px 5px rgba(255, 255, 255, 1), 0 0 10px rgba(255, 255, 255, 0.8)",
+          },
+          h5: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.7)"
+                : "0 2px 4px rgba(255, 255, 255, 1), 0 0 8px rgba(255, 255, 255, 0.8)",
+          },
+          h6: {
+            textShadow:
+              tokens.mode === "dark"
+                ? "0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.7)"
+                : "0 2px 4px rgba(255, 255, 255, 1), 0 0 8px rgba(255, 255, 255, 0.8)",
+          },
+        },
+      },
+
+      // ============================================================
+      // PAPER & CARD - Remove text shadows inside containers
+      // ============================================================
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            // Remove text shadows from typography inside Paper/Card
+            "& .MuiTypography-root": {
+              textShadow: "none",
+            },
+          },
+        },
+      },
+
+      // ============================================================
       // CARD COMPONENT - Modern glass morphism with subtle depth
       // ============================================================
       MuiCard: {
@@ -355,6 +424,10 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
                   WebkitBackdropFilter: `blur(${tokens.effects.glass.blur}px) saturate(${tokens.effects.glass.saturation})`,
                 }
               : {}),
+            // Remove text shadows from typography inside Cards
+            "& .MuiTypography-root": {
+              textShadow: "none",
+            },
           },
         },
       },

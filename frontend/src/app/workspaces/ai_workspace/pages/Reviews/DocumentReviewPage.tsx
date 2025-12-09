@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Box,
   Container,
@@ -351,7 +352,8 @@ export function DocumentReviewPage() {
   // Loading state
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Container maxWidth="xl" sx={{ py: 3, pt: 2 }}>
+        <AutoBreadcrumbs />
         <Stack spacing={3}>
           <Skeleton variant="rectangular" height={40} width={300} />
           <Stack direction="row" spacing={3}>
@@ -366,7 +368,8 @@ export function DocumentReviewPage() {
   // Review not found
   if (!review) {
     return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Container maxWidth="xl" sx={{ py: 3, pt: 2 }}>
+        <AutoBreadcrumbs />
         <Alert severity="error">
           Review not found or you don't have access to it.
         </Alert>
@@ -385,7 +388,8 @@ export function DocumentReviewPage() {
   const unresolvedCount = comments.filter((c) => !c.is_resolved).length;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={{ py: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       <Stack spacing={3}>
         {/* Header with breadcrumbs and actions */}
         <Stack

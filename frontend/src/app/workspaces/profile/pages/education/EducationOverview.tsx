@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
-import { Breadcrumbs } from "@shared/components/navigation";
 import EmptyState from "@shared/components/feedback/EmptyState";
 import { School as SchoolIcon, Edit as EditIcon } from "@mui/icons-material";
-import educationService from "../../services/education";
 import type { EducationEntry } from "../../types/education";
 import { AddEducationDialog } from "../../components/dialogs/AddEducationDialog";
 import {
@@ -30,34 +27,31 @@ import {
 } from "@mui/lab";
 import { Add } from "@mui/icons-material";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
-// Removed CSS overrides to respect global theme; rely on MUI defaults
 import { parseMonthToMs } from "@shared/utils/dateUtils";
+import { useEducationList } from "@profile/cache";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 
 /*
   EducationOverview
   - Shows the user's education timeline as a vertical, alternating list.
-  - Uses the shared `educationService` to load/update/delete entries.
+  - Uses React Query via useEducationList hook for cached data fetching.
   - Uses centralized error handling and theme button variants for consistency.
   - Contains small dialogs for editing and confirming deletes.
 */
 
 const EducationOverview: React.FC = () => {
-  // Auth + navigation
-  // `user` comes from AuthContext; `loading` is true while auth initializes.
-  const { user, loading } = useAuth();
+  const { loading: authLoading } = useAuth();
+
+  // Use React Query hook for cached education data
+  const {
+    data: educationData,
+    isLoading: queryLoading,
+    isError,
+    refetch,
+  } = useEducationList();
 
   // Centralized error handling
-  // useErrorHandler gives us a simple way to show errors and success notifications.
-  const { notification, closeNotification, handleError, showSuccess } =
-    useErrorHandler();
-
-  // Local UI state
-  // - `education` holds the list shown in the timeline
-  // - `isLoading` shows a loading spinner while requests are in-flight
-  // - `error` is a transient error message forwarded to handleError
-  const [education, setEducation] = useState<EducationEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { notification, closeNotification, handleError } = useErrorHandler();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,77 +60,23 @@ const EducationOverview: React.FC = () => {
     EducationEntry | undefined
   >();
 
-  // Use shared date utility to convert YYYY-MM strings to milliseconds.
-  // Returns 0 for invalid/missing input so sorting is stable.
+  // Use shared date utility to convert YYYY-MM strings to milliseconds
   const dateToMs = (s?: string | undefined) => parseMonthToMs(s ?? undefined);
 
-  // Fetch the user's education entries from the shared service.
-  // Keeps loading state and funnels any errors into the centralized handler.
-  const loadEducation = useCallback(async () => {
-    if (!user?.id) {
-      setIsLoading(false);
-      return;
-    }
+  // Sort education entries by start date (most recent first)
+  const education = useMemo(() => {
+    const entries = educationData ?? [];
+    return [...entries].sort(
+      (a, b) => dateToMs(b.startDate) - dateToMs(a.startDate)
+    );
+  }, [educationData]);
 
-    try {
-      setIsLoading(true);
-      const result = await educationService.listEducation(user.id);
-
-      if (result.error) {
-        // Surface a friendly message; the hook will display it.
-        setError("Failed to load education data. Please try again.");
-        return;
-      }
-
-      // Sort by start date descending (most recent first) so newest entries appear at top.
-      const sorted = result.data.sort(
-        (a, b) => dateToMs(b.startDate) - dateToMs(a.startDate)
-      );
-      setEducation(sorted);
-    } catch (err) {
-      // Keep a console trace for developers and show a friendly UI message.
-      console.error("Error loading education:", err);
-      setError("Failed to load education data. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id]);
-
-  // Initial load
+  // Show error notification when query fails
   useEffect(() => {
-    if (!loading && user?.id) {
-      loadEducation();
+    if (isError) {
+      handleError("Failed to load education data. Please try again.");
     }
-  }, [user?.id, loading, loadEducation]);
-
-  // Listen for education changes
-  useEffect(() => {
-    let mounted = true;
-
-    const handler = () => {
-      if (mounted && user?.id) {
-        loadEducation();
-      }
-    };
-
-    window.addEventListener("education:changed", handler);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener("education:changed", handler);
-    };
-  }, [user?.id, loading, loadEducation]);
-
-  // When an error string is set we forward it to the global handler and clear it.
-
-  // If any code sets `error`, hand it to the shared UI error handler.
-  // The handler shows a snack/toast and we clear the local string afterwards.
-  useEffect(() => {
-    if (error) {
-      handleError(error);
-      setError(null); // Clear error after showing it
-    }
-  }, [error, handleError]);
+  }, [isError, handleError]);
 
   // Dialog handlers
   const handleOpenAddDialog = () => {
@@ -157,18 +97,17 @@ const EducationOverview: React.FC = () => {
   };
 
   const handleDialogSuccess = () => {
-    loadEducation();
+    // Refetch education data after successful add/edit
+    refetch();
   };
 
-  if (isLoading || loading) {
+  if (queryLoading || authLoading) {
     return <LoadingSpinner />;
   }
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", p: 3 }}>
-      <Breadcrumbs
-        items={[{ label: "Profile", path: "/profile" }, { label: "Education" }]}
-      />
+    <Box sx={{ width: "100%", minHeight: "100vh", p: 3, pt: 2 }}>
+      <AutoBreadcrumbs />
       {/* Header Section
       - Title and short description on the left
       - Primary action (Add Education) on the right
@@ -232,6 +171,10 @@ const EducationOverview: React.FC = () => {
                   ? "Present"
                   : edu.endDate?.substring(0, 4) || "";
 
+                // Determine if this item is on the left or right side
+                // Even indices (0, 2, 4...) are on the right, odd indices (1, 3, 5...) are on the left
+                const isRightSide = index % 2 === 0;
+
                 // Each timeline item shows dates on the side, a dot/connector,
                 // and a white card with the education details and action buttons.
                 return (
@@ -292,13 +235,21 @@ const EducationOverview: React.FC = () => {
                           </Typography>
                         )}
 
-                        {/* Action buttons: Edit opens the dialog */}
-                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        {/* Action buttons: Edit button positioned based on timeline side */}
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            mt: 1,
+                            justifyContent: isRightSide
+                              ? "flex-end"
+                              : "flex-start",
+                          }}
+                        >
                           <IconButton
                             size="small"
                             color="primary"
                             onClick={() => handleOpenEditDialog(edu)}
-                            sx={{ ml: "auto" }}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>

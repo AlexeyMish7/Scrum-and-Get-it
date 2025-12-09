@@ -7,4 +7,5 @@ export {
   BackgroundGradientAnimation,
   type GradientColors,
 } from "./BackgroundGradientAnimation";
+export { FlickeringGrid } from "./FlickeringGrid";
 export { default } from "./BackgroundGradientAnimation";

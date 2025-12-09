@@ -866,6 +866,15 @@ async function handleRequest(
       return;
     }
 
+    // POST /api/predictions/response-time
+    if (method === "POST" && pathname === "/api/predictions/response-time") {
+      const userId = await requireAuth(req);
+      const mod = await import("./routes/predictions/response-time.js");
+      await mod.post(req, res, url, ctx.reqId, userId, counters as any);
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
     // ------------------------------------------------------------------
     // 404 NOT FOUND
     // ------------------------------------------------------------------

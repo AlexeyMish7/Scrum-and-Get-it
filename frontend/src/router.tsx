@@ -328,6 +328,17 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  // Interview Analytics page
+  {
+    path: "/interviews/analytics",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <ProfileAnalytics />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
   // Network Hub - Contacts
   {
     path: "/network",
@@ -609,14 +620,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
-      {
-        path: "analytics",
-        element: (
-          <Suspense fallback={<LazyLoadFallback />}>
-            <ProfileAnalytics />
-          </Suspense>
-        ),
-      },
       { path: "education", element: <EducationOverview /> },
       { path: "skills", element: <SkillsOverview /> },
       { path: "employment", element: <EmploymentHistoryList /> },

@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useProfileChange } from "@shared/context";
+import { useUnifiedCacheUtils } from "@profile/cache";
 import projectsService from "../../services/projects";
 import type { ProjectRow } from "../../types/project";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
@@ -25,7 +26,7 @@ interface AddProjectDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  mode: "add" | "edit";
+  mode?: "add" | "edit";
   existingEntry?: ProjectRow;
 }
 
@@ -33,11 +34,12 @@ export const AddProjectDialog = ({
   open,
   onClose,
   onSuccess,
-  mode,
+  mode = "add",
   existingEntry,
 }: AddProjectDialogProps) => {
   const { user, loading } = useAuth();
   const { markProfileChanged } = useProfileChange();
+  const { invalidateAll } = useUnifiedCacheUtils();
   const {
     notification,
     closeNotification,
@@ -64,6 +66,7 @@ export const AddProjectDialog = ({
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Reset form when dialog opens or mode/entry changes
   useEffect(() => {
@@ -108,20 +111,30 @@ export const AddProjectDialog = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async () => {
-    if (!user) {
-      handleError("Please sign in to continue.");
-      return;
-    }
+  const handleClose = () => {
+    setShowErrors(false);
+    onClose();
+  };
 
-    // Validation
-    if (!formData.proj_name.trim()) {
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setShowErrors(true);
+
+    const trimmedName = formData.proj_name.trim();
+    const trimmedStart = formData.start_date;
+
+    if (!trimmedName) {
       showWarning("Project name is required.");
       return;
     }
 
-    if (!formData.start_date) {
+    if (!trimmedStart) {
       showWarning("Start date is required.");
+      return;
+    }
+
+    if (!user) {
+      showWarning("Please sign in to continue.");
       return;
     }
 
@@ -135,10 +148,10 @@ export const AddProjectDialog = ({
         .filter((s) => s.length > 0);
 
       const payload: Partial<ProjectRow> = {
-        proj_name: formData.proj_name.trim(),
+        proj_name: trimmedName,
         proj_description: formData.proj_description.trim() || null,
         role: formData.role.trim() || null,
-        start_date: formData.start_date || null,
+        start_date: trimmedStart || null,
         end_date: formData.end_date || null,
         status: formData.status,
         tech_and_skills: techArray.length > 0 ? techArray : null,
@@ -169,10 +182,14 @@ export const AddProjectDialog = ({
             ? "Project updated successfully!"
             : "Project added successfully!"
         );
+
+        // Invalidate unified cache so all components get fresh data
+        await invalidateAll();
+
         window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();
-        onClose();
+        handleClose();
       }
     } catch (e) {
       console.error("Project submit error:", e);
@@ -183,6 +200,7 @@ export const AddProjectDialog = ({
   };
 
   const handleDelete = async () => {
+    if (submitting) return;
     if (!user || !existingEntry) return;
 
     const confirmed = await confirm({
@@ -206,6 +224,10 @@ export const AddProjectDialog = ({
         handleError(res.error);
       } else {
         showSuccess("Project deleted successfully!");
+
+        // Invalidate unified cache so all components get fresh data
+        await invalidateAll();
+
         window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();
@@ -223,18 +245,24 @@ export const AddProjectDialog = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {mode === "edit" ? "Edit Project" : "Add Project"}
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <DialogContent dividers sx={{ pt: 3 }}>
+          <Stack spacing={2}>
             <TextField
               label="Project Name"
               value={formData.proj_name}
               onChange={(e) => handleChange("proj_name", e.target.value)}
               required
               fullWidth
+              error={showErrors && !formData.proj_name.trim()}
+              helperText={
+                showErrors && !formData.proj_name.trim()
+                  ? "Project name is required"
+                  : "Give this project a clear title"
+              }
             />
 
             <TextField
@@ -262,6 +290,12 @@ export const AddProjectDialog = ({
                 InputLabelProps={{ shrink: true }}
                 required
                 fullWidth
+                error={showErrors && !formData.start_date}
+                helperText={
+                  showErrors && !formData.start_date
+                    ? "Start date is required"
+                    : "When did you begin?"
+                }
               />
 
               <TextField
@@ -271,6 +305,7 @@ export const AddProjectDialog = ({
                 onChange={(e) => handleChange("end_date", e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 fullWidth
+                helperText="Leave blank if ongoing"
               />
             </Box>
 
@@ -334,6 +369,7 @@ export const AddProjectDialog = ({
               onChange={(e) => handleChange("project_url", e.target.value)}
               placeholder="https://github.com/username/project"
               fullWidth
+              helperText="Public link, demo, or repo"
             />
 
             <TextField
@@ -358,7 +394,7 @@ export const AddProjectDialog = ({
               Delete
             </Button>
           )}
-          <Button onClick={onClose} disabled={submitting}>
+          <Button onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
           <Button

@@ -28,4 +28,4 @@ foreach ($it in $items) {
   Post-Payload $it
 }
 
-Write-Host "Seeding complete. Open http://localhost:5173/profile/analytics?userId=$UserId to view dashboard." -ForegroundColor Green
+Write-Host "Seeding complete. Open http://localhost:5173/interviews/analytics?userId=$UserId to view dashboard." -ForegroundColor Green

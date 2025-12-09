@@ -1,14 +1,238 @@
 # GitHub Copilot Instructions for FlowATS
 
-## Primary Instructions Location
+## Application Overview
 
-Your main context and coding guidelines are located in:
+FlowATS is a full-stack job application tracking system with AI-powered features. The app helps job seekers manage their job search, build resumes, prepare for interviews, and collaborate with teams.
+
+### Current Status: Sprint 4
+
+We are in **Sprint 4** which focuses on:
+
+- External integrations (LinkedIn, Google Calendar)
+- Bug fixing and stability improvements
+- Production readiness (performance, error handling)
+- Polish and UX refinements
+
+**See detailed Sprint 4 tasks:** `.github/instructions/sprint4.instructions.md`
+
+---
+
+## Architecture Summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        FRONTEND                             │
+│  React + TypeScript + Material-UI                           │
+│  Location: frontend/src/                                    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Supabase Client (frontend/src/shared/services/)    │   │
+│  │  - Direct database access via REST API              │   │
+│  │  - Authentication (login, signup, OAuth)            │   │
+│  │  - File storage (avatars, documents)                │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          │ Database calls go directly
+                          │ to Supabase (no server needed)
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SUPABASE (PostgreSQL)                    │
+│  - All data storage (profiles, jobs, documents)             │
+│  - Row Level Security (users only see their data)           │
+│  - Real-time subscriptions                                  │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                         SERVER                              │
+│  Node.js + Express                                          │
+│  Location: server/src/                                      │
+│                                                             │
+│  ONLY used for:                                             │
+│  - AI/OpenAI API calls (resume generation, analysis)        │
+│  - External API integrations                                │
+│  - Operations requiring server-side secrets                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Point:** The frontend connects **directly** to Supabase for all database operations. The server is only used for AI features and external APIs that require server-side processing.
+
+---
+
+## Frontend Workspaces
+
+The frontend is organized into **workspaces** - each handling a major feature area:
+
+```
+frontend/src/app/workspaces/
+├── profile/           # User profile, skills, education, employment
+├── job_pipeline/      # Kanban board for tracking job applications
+├── ai_workspace/      # Resume/cover letter generation
+├── interview_hub/     # Interview scheduling and prep
+├── network_hub/       # Networking contacts and references
+└── team_management/   # Team collaboration features
+```
+
+### UI Flow
+
+```
+Login → Dashboard (profile workspace) → Navigate via sidebar to other workspaces
+         │
+         ├── Profile → Skills, Education, Employment, Projects
+         ├── Jobs → Kanban board with drag-and-drop
+         ├── AI → Generate resumes and cover letters
+         ├── Interviews → Schedule and prepare
+         └── Teams → Collaborate with others
+```
+
+### Workspace-Specific Instructions
+
+**When working in a specific workspace**, check for detailed instructions:
 
 ```
 .github/instructions/
-├── frontend.instructions.md    # React/TypeScript frontend patterns
-├── server.instructions.md      # Node.js/Express backend patterns
-└── database.instructions.md    # PostgreSQL/Supabase schema and queries
+├── profile/           # Profile workspace patterns
+├── job_pipeline/      # Job tracking patterns
+├── ai_workspace/      # AI generation patterns
+├── interview_hub/     # Interview feature patterns
+├── network_hub/       # Networking patterns
+├── team_management/   # Team collaboration patterns
+└── database/          # Database schema and queries
+```
+
+Each workspace folder contains:
+
+- `overview.instructions.md` - Structure and key concepts
+- `components.instructions.md` - UI component patterns
+- `services.instructions.md` - Data fetching patterns
+- `types.instructions.md` - TypeScript type definitions
+
+---
+
+## React Contexts
+
+The app uses React Context for global state management:
+
+### AuthContext (`@shared/context/AuthContext`)
+
+- Manages user authentication state
+- Provides `user`, `session`, `signIn`, `signOut`
+- Wraps the entire app
+
+### ThemeContext (`@shared/context/ThemeContext`)
+
+- Light/dark mode toggle
+- Persists preference to localStorage
+
+### AvatarContext (`@shared/context/AvatarContext`)
+
+- User profile picture management
+- Provides `avatarUrl` and upload functionality
+
+### ApiLogDebugProvider (`@shared/components/dev/`)
+
+- Development tool for debugging API/Supabase calls
+- Shows real-time request logs in a floating panel
+
+### React Query (Profile Workspace)
+
+- Profile data cached via React Query
+- Cache config in `profile/cache/cacheConfig.ts`
+- ENV-configurable stale time: `VITE_CACHE_STALE_TIME_MINUTES`
+
+---
+
+## Database Connection Pattern
+
+**All database calls happen in the frontend** via Supabase client:
+
+```typescript
+// frontend/src/app/shared/services/supabaseClient.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+```
+
+### Use the CRUD Helper
+
+**Always use the shared CRUD utility** for database operations:
+
+```typescript
+// frontend/src/app/shared/services/crud.ts
+import * as crud from "@shared/services/crud";
+
+// Examples:
+await crud.getUserProfile(userId);
+await crud.listRows("skills", userId);
+await crud.insertRow("education", { user_id: userId, ... });
+await crud.updateRow("employment", id, { job_title: "..." });
+await crud.deleteRow("projects", id);
+await crud.upsertRow("profiles", data, "id");
+```
+
+### Service Layer with Mappers
+
+Each workspace has service files that:
+
+1. Use the CRUD helper for database operations
+2. Map database rows (snake_case) to UI types (camelCase)
+
+```typescript
+// Example: frontend/src/app/workspaces/profile/services/education.ts
+
+// DB Row shape (from database)
+type DbEducationRow = {
+  institution_name: string;
+  degree_type: string;
+  field_of_study: string;
+};
+
+// UI Type shape (for components)
+type EducationEntry = {
+  institution: string;
+  degree: string;
+  field: string;
+};
+
+// Mapper function
+function mapRowToEducation(row: DbEducationRow): EducationEntry {
+  return {
+    institution: row.institution_name,
+    degree: row.degree_type,
+    field: row.field_of_study,
+  };
+}
+```
+
+**Pattern:**
+
+```
+Component → Service (with mapper) → CRUD Helper → Supabase Client → Database
+```
+
+**When adding new database features:**
+
+1. Check if a mapper already exists in the workspace's `services/` folder
+2. If not, create a mapper following the pattern above
+3. Use the CRUD helper, don't call Supabase directly in components
+
+---
+
+## Primary Instructions Location
+
+```
+.github/instructions/
+├── dev-tools.instructions.md   # Dev panel and debugging tools
+├── profile/                    # Profile workspace
+├── job_pipeline/               # Jobs workspace
+├── ai_workspace/               # AI generation
+├── interview_hub/              # Interviews
+├── network_hub/                # Networking
+├── team_management/            # Teams
+└── database/                   # Schema reference
 ```
 
 **Always read these files first** when working on code to understand:
@@ -17,29 +241,22 @@ Your main context and coding guidelines are located in:
 - Coding patterns and conventions
 - Service layer usage
 - Database schema and relationships
-- API endpoints and request/response formats
 
 ---
 
 ## Additional Context
 
-For broader understanding of the application:
+For broader understanding:
 
 ```
 docs/
-├── ARCHITECTURE.md              # How the entire system works
-├── GIT_COLLABORATION.md         # Git workflow and branching strategy
-├── frontend/                    # Frontend deep-dive docs
-├── server/                      # Server deep-dive docs
-└── database/                    # Database schema reference
+├── ARCHITECTURE.md              # System overview and data flows
+├── GIT_COLLABORATION.md         # Git workflow
+├── frontend/                    # Frontend deep-dive
+├── server/                      # Server documentation
+├── database/                    # Schema reference
+└── performance/                 # Performance baselines
 ```
-
-Use these when you need to understand:
-
-- How different parts of the app connect
-- User flows and data flows
-- Feature locations in the codebase
-- System design decisions
 
 ---
 
@@ -240,10 +457,25 @@ Response:
 
 ## Quick Reference
 
-**Before coding:** Read `.github/instructions/[relevant].instructions.md`
-**Need context:** Check `docs/ARCHITECTURE.md` and specific docs
+**Before coding:** Read `.github/instructions/[workspace]/` for that workspace
+**Need context:** Check `docs/ARCHITECTURE.md` and workspace-specific docs
 **Making changes:** Add comments, keep it simple, no summary files
+**After completing changes:** Update the relevant instruction files
 **User says "update instructions":** Full scan + update instructions + update docs
+
+---
+
+## After Making Changes
+
+**Always update the relevant instruction files** when you:
+
+- Add new components, services, or hooks
+- Change file structure or patterns
+- Add new API endpoints
+- Modify database schema
+- Change how features work
+
+This keeps documentation in sync with the codebase for future development.
 
 ---
 

@@ -58,3 +58,6 @@ export type {
   JobMatchRequest,
   JobMatchResponse,
 } from "./api";
+
+export type { ApiLogEntry } from "./apiLog";
+export type { SupabaseLogEntry } from "./supabaseLog";

@@ -164,7 +164,8 @@ export default function JobDetailsPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+        <AutoBreadcrumbs />
         <DetailViewSkeleton />
       </Container>
     );
@@ -172,7 +173,8 @@ export default function JobDetailsPage() {
 
   if (!job) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+        <AutoBreadcrumbs />
         <Alert severity="error">Job not found</Alert>
         <Button onClick={handleBack} sx={{ mt: 2 }}>
           Back to Jobs
@@ -209,9 +211,8 @@ export default function JobDetailsPage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs items={breadcrumbItems} />
+    <Container maxWidth="lg" sx={{ py: 4, pt: 2 }}>
+      <AutoBreadcrumbs />
 
       {/* Header */}
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>

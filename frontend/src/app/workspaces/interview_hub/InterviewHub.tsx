@@ -9,9 +9,19 @@
  * - Preparation tasks and STAR stories
  * - Interview outcome tracking
  * - Calendar download (.ics files)
+ * - Interview analytics dashboard
  */
 
-import { Box, Container, Typography, Paper } from "@mui/material";
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Button,
+  Stack,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import AnalyticsIcon from "@mui/icons-material/Analytics";
 import AppShell from "@shared/layouts/AppShell";
 import InterviewScheduling from "./components/InterviewScheduling";
 import InterviewQuestionBank from "./components/InterviewQuestionBank";
@@ -21,16 +31,35 @@ import MockInterview from "./components/MockInterview";
 import InterviewSuccess from "./components/InterviewSuccess";
 
 export default function InterviewHub() {
+  const navigate = useNavigate();
+
   return (
     <AppShell sidebar={null}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" gutterBottom>
-            Interview Hub
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Schedule, prepare, and track your interviews in one place
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={2}
+          >
+            <Box>
+              <Typography variant="h4" gutterBottom>
+                Interview Hub
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Schedule, prepare, and track your interviews in one place
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<AnalyticsIcon />}
+              onClick={() => navigate("/interviews/analytics")}
+              size="large"
+            >
+              View Analytics
+            </Button>
+          </Stack>
         </Box>
 
         <Paper elevation={0} sx={{ p: 3, mb: 3 }}>
@@ -44,7 +73,7 @@ export default function InterviewHub() {
         <Paper elevation={0} sx={{ p: 3 }}>
           <InterviewQuestionBank />
         </Paper>
-        
+
         <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
           <TechnicalPrep />
         </Paper>
@@ -52,7 +81,7 @@ export default function InterviewHub() {
         <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
           <MockInterview />
         </Paper>
-        
+
         <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
           <SalaryPrep />
         </Paper>

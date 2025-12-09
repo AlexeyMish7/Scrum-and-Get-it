@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 
 interface ProfileData {
@@ -61,14 +61,13 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
   return (
     <Box
       sx={{
-        my: 4,
         p: 3,
-        border: `1px solid ${theme.palette.primary.main}`,
+        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h6" fontWeight={600} gutterBottom>
         Profile Completion:{" "}
         <Box component="span" sx={{ color: theme.palette.success.main }}>
           {completionPercentage.toFixed(0)}%
@@ -77,8 +76,8 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
 
       <Box
         sx={{
-          backgroundColor: theme.palette.grey[300],
-          height: 10,
+          backgroundColor: theme.palette.action.hover,
+          height: 8,
           borderRadius: 1,
           overflow: "hidden",
           mb: 2,
@@ -96,19 +95,21 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
 
       {suggestions.length > 0 ? (
         <>
-          <Typography variant="h5" gutterBottom>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Suggestions:
           </Typography>
-          <Box component="ul" sx={{ color: theme.palette.primary.main, pl: 3 }}>
+          <Box component="ul" sx={{ m: 0, pl: 4, pr: 2 }}>
             {suggestions.map((sugg, idx) => (
               <li key={idx}>
-                <Typography variant="body1">{sugg}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {sugg}
+                </Typography>
               </li>
             ))}
           </Box>
         </>
       ) : (
-        <Typography variant="body1" sx={{ color: theme.palette.success.main }}>
+        <Typography variant="body2" sx={{ color: theme.palette.success.main }}>
           Your profile is complete! 🎉
         </Typography>
       )}
@@ -116,4 +117,4 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
   );
 };
 
-export default ProfileCompletion;
+export default memo(ProfileCompletion);
