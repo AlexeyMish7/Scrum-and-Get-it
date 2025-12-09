@@ -105,6 +105,10 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
         <SystemLayer />
         <MockDataNotificationProvider />
         <ErrorNotificationProvider />
+        <GettingStartedModal
+          open={showGettingStarted}
+          onClose={() => setShowGettingStarted(false)}
+        />
       </Box>
     </>
   );
