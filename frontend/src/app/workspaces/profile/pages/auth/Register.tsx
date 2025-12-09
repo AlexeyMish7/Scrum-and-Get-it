@@ -22,11 +22,14 @@ import {
   Toolbar,
   IconButton,
   Link as MuiLink,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useThemeContext } from "@shared/context/ThemeContext";
-// Uses global ThemeContext; no local ThemeProvider/CssBaseline here.
+import TermsOfService from "@shared/components/TermsOfService";
+import PrivacyPolicy from "@shared/components/PrivacyPolicy";
 
 // Type for our registration form fields
 type RegisterForm = {
@@ -35,6 +38,8 @@ type RegisterForm = {
   email: string;
   password: string;
   confirmPassword: string;
+  agreedToTerms: boolean;
+  agreedToPrivacy: boolean;
 };
 
 export default function Register() {
@@ -52,22 +57,32 @@ export default function Register() {
     email: "",
     password: "",
     confirmPassword: "",
+    agreedToTerms: false,
+    agreedToPrivacy: false,
   });
 
   // Error message displayed to the user (for validation or Supabase errors)
   const [error, setError] = useState<string>("");
 
-  // Informational message (like “Check your email for confirmation”)
+  // Informational message (like "Check your email for confirmation")
   const [info, setInfo] = useState<string>("");
 
   // Loading flag to disable form and show progress while submitting
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Dialog state for Terms and Privacy
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+
   // Keep form state in sync with inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
     setInfo("");
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setForm({
+      ...form,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   const { mode, toggleMode } = useThemeContext();
@@ -92,6 +107,10 @@ export default function Register() {
     // Confirm password must match
     if (form.password !== form.confirmPassword)
       errors.push("Passwords do not match");
+
+    // Terms and Privacy agreement
+    if (!form.agreedToTerms) errors.push("You must agree to Terms of Service");
+    if (!form.agreedToPrivacy) errors.push("You must agree to Privacy Policy");
 
     // Join errors with commas (or newline) if any exist
     return errors.join(", ");
@@ -274,6 +293,57 @@ export default function Register() {
             fullWidth
           />
 
+          {/* Terms and Privacy Checkboxes */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                name="agreedToTerms"
+                checked={form.agreedToTerms}
+                onChange={handleChange}
+              />
+            }
+            label={
+              <Typography variant="body2">
+                I agree to the{" "}
+                <MuiLink
+                  component="button"
+                  variant="body2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setTermsOpen(true);
+                  }}
+                >
+                  Terms of Service
+                </MuiLink>
+              </Typography>
+            }
+          />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                name="agreedToPrivacy"
+                checked={form.agreedToPrivacy}
+                onChange={handleChange}
+              />
+            }
+            label={
+              <Typography variant="body2">
+                I agree to the{" "}
+                <MuiLink
+                  component="button"
+                  variant="body2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPrivacyOpen(true);
+                  }}
+                >
+                  Privacy Policy
+                </MuiLink>
+              </Typography>
+            }
+          />
+
           {/* Disable submit button while loading */}
           <Button
             type="submit"
@@ -293,7 +363,7 @@ export default function Register() {
             Already have an account?{" "}
             <MuiLink
               component={RouterLink}
-              to="/Login"
+              to="/login"
               sx={{ textDecoration: "none", color: "primary.main" }}
             >
               Sign in
@@ -330,6 +400,10 @@ export default function Register() {
           </Alert>
         )}
       </Paper>
+
+      {/* Terms and Privacy Dialogs */}
+      <TermsOfService open={termsOpen} onClose={() => setTermsOpen(false)} />
+      <PrivacyPolicy open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </Box>
   );
 }
