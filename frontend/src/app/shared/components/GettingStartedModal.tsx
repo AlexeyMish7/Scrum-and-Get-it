@@ -1,282 +1,241 @@
-import { useState } from "react";
+import React from "react";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  Box,
   Typography,
+  Stack,
+  Divider,
+  Box,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Divider,
-  Stack,
-  useTheme,
 } from "@mui/material";
-import {
-  ExpandMore as ExpandMoreIcon,
-  Close as CloseIcon,
-  AutoAwesome as AIIcon,
-  Work as WorkIcon,
-  People as NetworkIcon,
-  EventNote as InterviewIcon,
-  School as EducationIcon,
-} from "@mui/icons-material";
-import IconButton from "@mui/material/IconButton";
-
-interface GettingStartedModalProps {
-  open: boolean;
-  onClose: () => void;
-}
-
-const GETTING_STARTED_CONTENT = {
-  welcome:
-    "Welcome to Flow ATS! This guide will help you get started with your job search journey.",
-  sections: [
-    {
-      title: "Profile Setup",
-      icon: <EducationIcon />,
-      description:
-        "Complete your professional profile with education, employment history, and skills.",
-      steps: [
-        "Go to Profile > Education to add your academic background",
-        "Add your work experience in Profile > Employment",
-        "List your technical and soft skills in Profile > Skills",
-        "Upload certifications and courses in Profile > Certifications",
-      ],
-    },
-    {
-      title: "Create Your Resume",
-      icon: <AIIcon />,
-      description:
-        "Generate tailored resumes using AI or create them manually.",
-      steps: [
-        "Navigate to AI Hub to start generating documents",
-        "Use the Resume Generator to create tailored versions",
-        "Customize templates to match your style",
-        "Save drafts and manage multiple versions",
-      ],
-    },
-    {
-      title: "Track Job Applications",
-      icon: <WorkIcon />,
-      description:
-        "Organize and monitor your job applications in one place.",
-      steps: [
-        "Add jobs to your pipeline with job details",
-        "Track application status through different stages",
-        "Set application deadlines to stay organized",
-        "View analytics to understand your job search metrics",
-      ],
-    },
-    {
-      title: "Prepare for Interviews",
-      icon: <InterviewIcon />,
-      description:
-        "Access interview prep resources and schedule practice sessions.",
-      steps: [
-        "Use the Interview Hub for preparation materials",
-        "Create custom prep checklists for specific roles",
-        "Schedule interviews and set reminders",
-        "Track follow-ups and interview feedback",
-      ],
-    },
-    {
-      title: "Build Your Network",
-      icon: <NetworkIcon />,
-      description: "Manage professional contacts and leverage your network.",
-      steps: [
-        "Add contacts to your professional network",
-        "Organize contacts by industry, company, or relationship",
-        "Track interactions and follow-ups",
-        "Join peer groups for collaborative support",
-      ],
-    },
-  ],
-  faq: [
-    {
-      question: "How do I get started?",
-      answer:
-        "Start by completing your profile with your education, employment history, and skills. This will help generate more personalized resume recommendations.",
-    },
-    {
-      question: "Can I generate multiple resumes?",
-      answer:
-        "Yes! You can generate and save multiple versions of your resume tailored to different job applications. Each version can be customized separately.",
-    },
-    {
-      question: "How does the job matching work?",
-      answer:
-        "Our AI analyzes your profile and compares it against job requirements to calculate match scores. This helps you prioritize applications and understand your competitiveness.",
-    },
-    {
-      question: "Can I track multiple applications?",
-      answer:
-        "Absolutely. Use the Pipeline view to track all your applications across different stages from 'Interested' to 'Offer'.",
-    },
-    {
-      question: "How do I use the Interview Hub?",
-      answer:
-        "Visit the Interview Hub to access prep materials, create custom checklists, and schedule interview practice sessions.",
-    },
-    {
-      question: "Is my data private?",
-      answer:
-        "Yes, your data is encrypted and stored securely. You have full control over what information you share and can delete it anytime.",
-    },
-    {
-      question: "How do I reset my password?",
-      answer:
-        "Go to Profile > Settings and click 'Reset Password'. You'll receive an email with instructions.",
-    },
-  ],
-};
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { useNavigate } from "react-router-dom";
 
 export default function GettingStartedModal({
   open,
   onClose,
-}: GettingStartedModalProps) {
-  const theme = useTheme();
-  const [expandedFaq, setExpandedFaq] = useState<string | false>(false);
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
 
-  const handleClose = () => {
-    // Mark as seen
+  function closeAndMark() {
     try {
-      localStorage.setItem("sgt:seen_getting_started", "true");
+      localStorage.setItem("sgt:seen_getting_started", "1");
     } catch {}
     onClose();
-  };
+  }
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          maxHeight: "90vh",
-          borderRadius: 2,
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          pb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="h6" component="span" fontWeight={700}>
-            Getting Started with Flow ATS
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Getting Started — Scrum-and-Get-it</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Typography variant="body1">
+            Welcome — this short guide will show you the main areas of the
+            product and how to get the most value from them. Use the quick
+            actions at the bottom to jump directly to pages.
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            {GETTING_STARTED_CONTENT.welcome}
-          </Typography>
-        </Box>
-        <IconButton onClick={handleClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
 
-      <Divider />
+          <Divider />
 
-      <DialogContent sx={{ py: 3 }}>
-        <Stack spacing={3}>
-          {/* Quick Start Sections */}
-          {GETTING_STARTED_CONTENT.sections.map((section, idx) => (
-            <Accordion
-              key={idx}
-              defaultExpanded={idx === 0}
-              sx={{
-                backgroundColor:
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.02)",
-                "&:before": { display: "none" },
-              }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  <Box sx={{ color: theme.palette.primary.main }}>
-                    {section.icon}
-                  </Box>
-                  <Box>
-                    <Typography fontWeight={600}>{section.title}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {section.description}
-                    </Typography>
-                  </Box>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Stack component="ol" spacing={1} sx={{ pl: 2 }}>
-                  {section.steps.map((step, stepIdx) => (
-                    <Typography
-                      component="li"
-                      key={stepIdx}
-                      variant="body2"
-                      color="text.secondary"
-                    >
-                      {step}
-                    </Typography>
-                  ))}
-                </Stack>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-
-          <Divider sx={{ my: 1 }} />
-
-          {/* FAQ Section */}
           <Box>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
-              Frequently Asked Questions
+            <Typography variant="h6">Profile Hub</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Your Profile Hub is where you add and maintain your professional
+              information: headline, summary, employment history, education,
+              skills and projects. Completing your profile improves AI match
+              suggestions and makes generated resumes more accurate.
             </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: Add 6–10 focused skills and at least one project or role per
+              major employment entry to give the AI meaningful context.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h6">AI Generation Hub</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use the AI Workspace to generate tailored resumes, cover
+              letters, and other documents. The generator uses your profile
+              data and the job details you provide to craft role-specific
+              artifacts.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: When generating a resume or cover letter, provide the job
+              title and key responsibilities — the AI will prioritize relevant
+              skills and examples.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h6">Jobs Pipeline</Typography>
+            <Typography variant="body2" color="text.secondary">
+              The Jobs Pipeline is a kanban-style workspace for tracking
+              opportunities through the application lifecycle: Interested,
+              Applied, Phone Screen, Interview, Offer, Rejected. Add jobs,
+              attach documents, and move cards as you progress.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: Add an application deadline where applicable — the pipeline
+              and calendar will surface reminders and deadlines.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h6">Interview Hub</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track scheduled interviews, log preparation activities, and run
+              mock interview sessions. Preparation activities (time spent,
+              activity type, notes) increase your practice minutes and feed
+              readiness scoring shown on scheduled interview cards.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: Log mock interviews and focused practice with minutes and
+              short notes — this both improves scores and creates a useful
+              study record.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h6">Network Hub</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Build and manage your professional network. Add contacts,
+              organize them into groups, and track outreach and follow-ups.
+              Use networking to discover referrals and informational interviews.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: Tag contacts with how you met them and follow-up dates to
+              keep momentum in outreach.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="h6">Team Management</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Invite mentors, coaches, or collaborators to view your progress
+              and offer feedback. Team members can help review documents,
+              join mock interviews, and see analytics on your pipeline.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Tip: Add at least one mentor or reviewer early — external input
+              accelerates improvements and helps with interview prep.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <Typography variant="h6" sx={{ mb: 1 }}>Frequently Asked Questions</Typography>
             <Stack spacing={1}>
-              {GETTING_STARTED_CONTENT.faq.map((item, idx) => (
-                <Accordion
-                  key={idx}
-                  expanded={expandedFaq === `faq-${idx}`}
-                  onChange={() =>
-                    setExpandedFaq(
-                      expandedFaq === `faq-${idx}` ? false : `faq-${idx}`
-                    )
-                  }
-                  sx={{
-                    backgroundColor:
-                      theme.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.03)"
-                        : "rgba(0,0,0,0.01)",
-                    "&:before": { display: "none" },
-                  }}
-                >
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="body2" fontWeight={500}>
-                      {item.question}
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.answer}
-                    </Typography>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">How do I improve my AI-generated resume?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    Complete your Profile with detailed employment history, skills, and projects.
+                    When generating a resume for a specific role, provide the job title and key
+                    responsibilities — the AI uses these to prioritize relevant achievements and
+                    keywords. You can also edit drafts directly in the Document Editor.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">Why are my interview success scores so low?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    Success scores are based on preparation (practice minutes logged), company research
+                    completion, and role-match strength. To improve: (1) log preparation activities
+                    with time spent, (2) mark company research as complete in the interview checklist,
+                    and (3) ensure the interview is linked to the relevant job in the pipeline.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">How do I add a job to the pipeline?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    Go to the Jobs Pipeline and click "New Job" or use the "Add Job" button. Fill in
+                    the job title, company, and other details (location, salary, deadline). Once saved,
+                    the job card appears in the "Interested" stage — drag it across stages as you progress
+                    through the application process.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">Can mentors or coaches see my progress?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    Yes. Invite team members from the Team Management area — they can view your profile,
+                    generated documents, and pipeline analytics. You control which team members have
+                    access and at what permission level. This is useful for getting feedback from mentors
+                    or having coaches review your progress.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">How do I track my network and follow-ups?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    Use the Network Hub to add contacts, tag them with how you met them, and set
+                    follow-up dates. You can organize contacts into peer groups or industry categories.
+                    The system will help you stay on top of outreach and nurture your professional network.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">How do I export my pipeline analytics?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    From the Jobs Pipeline, click the "Analytics" button to open the full analytics page.
+                    You can generate custom reports filtered by company, role, or industry and export them
+                    as CSV. This is helpful for tracking conversion rates and understanding your job search trends.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">Where do I find my generated resumes and cover letters?</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2">
+                    All generated documents are stored in the AI Workspace — visit "Document Library" to
+                    view, edit, and download them. You can also save templates for recurring use and set
+                    up versioning to track changes over time.
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
             </Stack>
           </Box>
+
+          <Divider />
         </Stack>
       </DialogContent>
-
-      <Divider />
-
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} variant="contained">
-          Get Started
-        </Button>
+      <DialogActions>
+        <Button onClick={closeAndMark}> Close</Button>
       </DialogActions>
     </Dialog>
   );

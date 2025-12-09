@@ -32,9 +32,9 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
 
   // Listen for a global request to open the Getting Started modal
   React.useEffect(() => {
-    const handler = () => setShowGettingStarted(true);
-    window.addEventListener("open-getting-started", handler);
-    return () => window.removeEventListener("open-getting-started", handler);
+    const handler = (_e?: Event) => setShowGettingStarted(true);
+    window.addEventListener("open-getting-started", handler as EventListener);
+    return () => window.removeEventListener("open-getting-started", handler as EventListener);
   }, []);
 
   // Check if we're using an animated background (gradient or flickering)
@@ -97,6 +97,10 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
             {children}
           </Box>
         </Box>
+        <GettingStartedModal
+          open={showGettingStarted}
+          onClose={() => setShowGettingStarted(false)}
+        />
 
         <SystemLayer />
         <MockDataNotificationProvider />

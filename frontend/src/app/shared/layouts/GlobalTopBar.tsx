@@ -26,6 +26,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import PaletteIcon from "@mui/icons-material/Palette";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import WorkIcon from "@mui/icons-material/Work";
@@ -514,55 +515,122 @@ export default function GlobalTopBar() {
         <Box sx={{ flexGrow: 1 }} />
 
         {!isMobile ? (
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            {/* Main navigation items with icons and lamp effect */}
-            {NAV_ITEMS.slice(0, 5).map((item) => {
-              const isActive =
-                item.path === "/interviews"
-                  ? location.pathname.startsWith("/interviews")
-                  : item.path === "/team"
-                  ? currentWorkspace === "TEAM"
-                  : item.path === "/ai"
-                  ? highlightAi
-                  : item.path === "/jobs"
-                  ? highlightJobs
-                  : item.path === "/network"
-                  ? highlightNetwork
-                  : false;
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/ai"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightAi),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Generation Hub
+            </Button>
 
-              return (
-                <NavButton
-                  key={item.path}
-                  item={item}
-                  isActive={isActive}
-                  theme={theme}
-                />
-              );
-            })}
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/jobs"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightJobs),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Jobs Pipeline
+            </Button>
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
-            />
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/interviews"
+              size="large"
+              sx={{
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: alpha(theme.palette.text.primary, 0.04),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.text.primary, 0.12),
+                },
+              }}
+            >
+              Interviews
+            </Button>
 
-            {/* Profile nav item */}
-            <NavButton
-              item={NAV_ITEMS[5]}
-              isActive={highlightProfile}
-              theme={theme}
-            />
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/network"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightNetwork),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Network Hub
+            </Button>
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
-            />
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/team"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, currentWorkspace === "TEAM"),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Team
+            </Button>
 
-            {/* Theme toggle - matching nav style */}
-            <Tooltip title={themeToggleLabel} arrow>
-              <Box
-                component="button"
+            <Box sx={{ flexGrow: 1 }} />
+
+            <Button
+              color="inherit"
+              component={NavLink}
+              to="/profile"
+              size="large"
+              sx={{
+                ...getNavVariantStyles(theme, highlightProfile),
+                fontSize: theme.typography.body1.fontSize,
+                px: theme.spacing(2),
+                py: theme.spacing(1),
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              Profile Hub
+            </Button>
+
+            <Tooltip title="Help & Getting Started">
+              <IconButton
+                color="inherit"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-getting-started"))}
+                size="large"
+                sx={{ ml: 0.5 }}
+              >
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={themeToggleLabel}>
+              <IconButton
+                color="inherit"
                 onClick={toggleMode}
                 sx={{
                   display: "flex",
@@ -796,6 +864,14 @@ export default function GlobalTopBar() {
                 <ListItemText primary={item.label} />
               </ListItemButton>
             ))}
+            <ListItemButton
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open-getting-started"));
+                handleDrawerToggle(false)();
+              }}
+            >
+              <ListItemText primary="Help & Getting Started" />
+            </ListItemButton>
           </List>
         </Box>
       </Drawer>
