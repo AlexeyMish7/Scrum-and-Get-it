@@ -9,6 +9,8 @@ import {
   FlickeringGrid,
 } from "@shared/components/backgrounds";
 import { useThemeContext } from "@shared/context/ThemeContext";
+import GettingStartedModal from "@shared/components/GettingStartedModal";
+import { useAuth } from "@shared/context/AuthContext";
 
 type AppShellProps = {
   sidebar?: React.ReactNode;
@@ -17,6 +19,23 @@ type AppShellProps = {
 
 export default function AppShell({ sidebar, children }: AppShellProps) {
   const { backgroundMode } = useThemeContext();
+  const { user } = useAuth();
+  const [showGettingStarted, setShowGettingStarted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!user) return;
+    try {
+      const seen = localStorage.getItem("sgt:seen_getting_started");
+      if (!seen) setShowGettingStarted(true);
+    } catch {}
+  }, [user]);
+
+  // Listen for a global request to open the Getting Started modal
+  React.useEffect(() => {
+    const handler = (_e?: Event) => setShowGettingStarted(true);
+    window.addEventListener("open-getting-started", handler as EventListener);
+    return () => window.removeEventListener("open-getting-started", handler as EventListener);
+  }, []);
 
   // Check if we're using an animated background (gradient or flickering)
   const hasAnimatedBackground =
@@ -78,6 +97,10 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
             {children}
           </Box>
         </Box>
+        <GettingStartedModal
+          open={showGettingStarted}
+          onClose={() => setShowGettingStarted(false)}
+        />
 
         <SystemLayer />
         <MockDataNotificationProvider />
