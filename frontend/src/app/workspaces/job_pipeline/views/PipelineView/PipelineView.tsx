@@ -30,6 +30,9 @@ import {
   Tooltip,
   Alert,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
@@ -37,6 +40,7 @@ import {
   Work as WorkIcon,
   TrendingUp as TrendingUpIcon,
   Person as PersonIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import { alpha } from "@mui/material/styles";
@@ -60,6 +64,7 @@ import JobAnalyticsDialog from "@job_pipeline/components/dialogs/JobAnalyticsDia
 import SuggestContacts from "@job_pipeline/components/contacts/SuggestContacts";
 import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
 import OfferComparisonDialog from "@job_pipeline/components/OfferComparison/OfferComparisonDialog";
+import JobMap from "@job_pipeline/components/map/JobMap";
 
 const STAGES = [
   "Interested",
@@ -149,6 +154,7 @@ export default function PipelineView() {
   const [filter, setFilter] = useState<"All" | Stage | "Selected">("All");
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [offerCompareOpen, setOfferCompareOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Keyboard shortcut: A = add job
   useEffect(() => {
@@ -503,7 +509,20 @@ export default function PipelineView() {
           >
             {showFilters ? "Hide" : "Show"} Filters
           </Button>
-          <Button variant="outlined" onClick={() => setOfferCompareOpen(true)} size="small">Offer Comparison</Button>
+          <Button
+            variant="outlined"
+            onClick={() => setOfferCompareOpen(true)}
+            size="small"
+          >
+            Offer Comparison
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => setMapOpen(true)}
+            size="small"
+          >
+            Map
+          </Button>
           {/* suggest contacts moved into per-job action buttons */}
           {selectedCount > 0 && (
             <Button
@@ -1095,6 +1114,35 @@ export default function PipelineView() {
       >
         <JobDetails jobId={selectedJobId} />
       </RightDrawer>
+
+      {/* Job Locations Map Dialog */}
+      <Dialog
+        fullWidth
+        maxWidth="lg"
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          Job Locations Map
+          <IconButton
+            aria-label="close"
+            onClick={() => setMapOpen(false)}
+            size="small"
+            sx={{ ml: 2 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ width: "100%", height: "70vh", p: 0 }}>
+          <Box sx={{ width: "100%", height: "100%", p: 2 }}>
+            <JobMap onOpenJob={(jobId) => {
+              setSelectedJobId(String(jobId));
+              setOpen(true);
+              setMapOpen(false);
+            }} />
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Job Dialog */}
       <JobFormDialog

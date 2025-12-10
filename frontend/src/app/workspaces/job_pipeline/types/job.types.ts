@@ -43,6 +43,7 @@ export interface JobFormData {
   job_description?: string | null;
   industry?: string | null;
   job_type?: string | null;
+  location_type?: string | null;
 
   // Pipeline status (defaults to "Interested" if not provided)
   job_status?: string;

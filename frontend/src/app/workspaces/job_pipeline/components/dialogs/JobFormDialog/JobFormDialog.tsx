@@ -50,6 +50,12 @@ const jobTypes = [
   { label: "Freelance", value: "freelance" },
 ];
 
+const locationTypes = [
+  { label: "Remote", value: "remote" },
+  { label: "Hybrid", value: "hybrid" },
+  { label: "In person", value: "in person" },
+];
+
 interface JobFormDialogProps {
   open: boolean;
   onClose: () => void;
@@ -87,6 +93,7 @@ export default function JobFormDialog({
         job_description: editJob.job_description || "",
         industry: editJob.industry || "",
         job_type: editJob.job_type || "",
+        location_type: (editJob as any).location_type || "",
       };
     }
     return {
@@ -103,6 +110,7 @@ export default function JobFormDialog({
       job_description: "",
       industry: "",
       job_type: "",
+      location_type: "",
     };
   });
 
@@ -148,6 +156,7 @@ export default function JobFormDialog({
         job_description: form.job_description || undefined,
         industry: form.industry || undefined,
         job_type: form.job_type || undefined,
+        location_type: (form as any).location_type || undefined,
       };
 
       let res;
@@ -197,6 +206,7 @@ export default function JobFormDialog({
       job_description: "",
       industry: "",
       job_type: "",
+      location_type: "",
     });
     setShowImporter(false);
     onClose();
@@ -433,6 +443,20 @@ export default function JobFormDialog({
                 sx={{ flex: 1 }}
               >
                 {jobTypes.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Location"
+                name="location_type"
+                value={(form as any).location_type}
+                onChange={handleChange}
+                sx={{ flex: 1 }}
+              >
+                {locationTypes.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>

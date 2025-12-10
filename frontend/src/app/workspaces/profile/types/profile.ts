@@ -9,6 +9,7 @@ export interface ProfileData {
   bio: string;
   industry: string;
   experience: string;
+  zipcode?: string | null;
 }
 
 // DB row shape (partial) — for internal use in mapping functions

@@ -128,6 +128,7 @@ const ProfileDetails: React.FC = () => {
     bio: "",
     industry: "",
     experience: "",
+    zipcode: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -197,6 +198,9 @@ const ProfileDetails: React.FC = () => {
     if (!formData.city) newErrors.city = "City is required";
 
     if (!formData.state) newErrors.state = "Please select your state";
+
+    if (formData.zipcode && !/^[0-9]{5}$/.test(String(formData.zipcode)))
+      newErrors.zipcode = "Enter a valid 5-digit ZIP code";
 
     if (!formData.headline)
       newErrors.headline = "Professional headline is required";
@@ -337,6 +341,17 @@ const ProfileDetails: React.FC = () => {
                   ))}
                 </TextField>
               </Box>
+                <Box sx={{ width: 120 }}>
+                  <TextField
+                    label="ZIP"
+                    name="zipcode"
+                    value={formData.zipcode ?? ""}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.zipcode}
+                    helperText={errors.zipcode}
+                  />
+                </Box>
             </Box>
 
             <Box sx={{ mb: 2 }}>
@@ -435,7 +450,7 @@ const ProfileDetails: React.FC = () => {
               </Typography>
               <Typography>
                 <strong>Location:</strong>{" "}
-                {`${formData.city || "—"}, ${formData.state || "—"}`}
+                {`${formData.city || "—"}, ${formData.state || "—"} ${formData.zipcode ? ` ${formData.zipcode}` : ""}`}
               </Typography>
             </Box>
 
