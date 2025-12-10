@@ -170,6 +170,8 @@ export function DevLogPanel({
             size="small"
             onClick={() => setExpanded((prev) => !prev)}
             sx={{ ml: 0.5 }}
+            title={expanded ? "Collapse Dev Panel" : "Expand Dev Panel"}
+            aria-label={expanded ? "Collapse Dev Panel" : "Expand Dev Panel"}
           >
             {expanded ? (
               <ExpandMoreIcon fontSize="small" />

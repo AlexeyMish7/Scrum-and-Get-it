@@ -148,7 +148,7 @@ export default function RecentDocuments({
                     <Chip
                       label={doc.type === "resume" ? "Resume" : "Cover Letter"}
                       size="small"
-                      color={doc.type === "resume" ? "primary" : "success"}
+                      color={doc.type === "resume" ? "primary" : "primary"}
                     />
                     <Chip
                       label={`v${doc.versionNumber}`}
