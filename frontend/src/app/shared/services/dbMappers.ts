@@ -368,6 +368,30 @@ export const mapJob = (
 
   const job_type_value = normalizeJobType(formData.job_type);
 
+  // Normalize location_type to canonical values: 'remote', 'hybrid', 'in person'
+  const normalizeLocationType = (raw: unknown): string | null => {
+    if (raw == null) return null;
+    const s = String(raw).trim().toLowerCase();
+    if (!s) return null;
+    const map: Record<string, string> = {
+      remote: "remote",
+      "work from home": "remote",
+      wfh: "remote",
+      hybrid: "hybrid",
+      "in-person": "in person",
+      "in person": "in person",
+      "in_person": "in person",
+      onsite: "in person",
+      on_site: "in person",
+    };
+    if (map[s]) return map[s];
+    const allowed = new Set(["remote", "hybrid", "in person"]);
+    if (allowed.has(s)) return s;
+    return null;
+  };
+
+  const location_type_value = normalizeLocationType(formData.location_type);
+
   const payload: Record<string, unknown> = {
     job_title,
     company_name,
@@ -387,6 +411,7 @@ export const mapJob = (
     job_description: (formData.job_description as string) ?? null,
     industry: (formData.industry as string) ?? null,
     job_type: job_type_value,
+    location_type: location_type_value,
     experience_level: (formData.experience_level as string) ?? null,
     required_skills: Array.isArray(formData.required_skills)
       ? (formData.required_skills as string[])

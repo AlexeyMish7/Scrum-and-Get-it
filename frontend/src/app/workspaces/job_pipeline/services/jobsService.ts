@@ -213,6 +213,7 @@ const createJob = async (
     job_description: formData.job_description ?? null,
     industry: formData.industry ?? null,
     job_type: formData.job_type ?? null,
+    location_type: (formData as any).location_type ?? null,
     // Default to "Interested" if no status provided
     job_status: formData.job_status ?? "Interested",
     status_changed_at: new Date().toISOString(),

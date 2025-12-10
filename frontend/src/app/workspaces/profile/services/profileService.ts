@@ -24,6 +24,7 @@ export function mapRowToProfile(
       ? String(row["experience_level"]).charAt(0).toUpperCase() +
         String(row["experience_level"]).slice(1)
       : "",
+    zipcode: (row?.["zipcode"] as string) ?? null,
   };
 }
 
@@ -53,6 +54,7 @@ export async function upsertProfile(userId: string, data: ProfileData) {
     summary: data.bio ?? null,
     industry: data.industry ?? null,
     experience_level: data.experience ? data.experience.toLowerCase() : null,
+    zipcode: data.zipcode ?? null,
   };
 
   return crud.upsertRow("profiles", payload, "id");
