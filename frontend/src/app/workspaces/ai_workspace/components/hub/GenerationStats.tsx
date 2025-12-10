@@ -134,7 +134,7 @@ export default function GenerationStats({
                       </Typography>
 
                       {stat.subtitle && (
-                        <Typography variant="caption" color="success.main">
+                        <Typography variant="caption" color="primary.main">
                           {stat.subtitle}
                         </Typography>
                       )}
