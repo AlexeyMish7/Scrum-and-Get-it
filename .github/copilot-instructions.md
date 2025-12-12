@@ -121,13 +121,34 @@ The app uses React Context for global state management:
 
 ### ThemeContext (`@shared/context/ThemeContext`)
 
-- Light/dark mode toggle
-- Persists preference to localStorage
+- Light/dark mode toggle with radius mode support
+- NEW: Separated color presets (8 options) and design presets (6 options)
+- Background mode: default, gradient, flickering
+- Font scale and UI density controls
+- Persists all preferences to localStorage
+- Uses new theme composer system (`composeTheme()` from `@shared/theme`)
 
 ### AvatarContext (`@shared/context/AvatarContext`)
 
 - User profile picture management
 - Provides `avatarUrl` and upload functionality
+
+### ProfileChangeContext (`@shared/context/ProfileChangeContext`)
+
+- Tracks when profile data changes (skills, education, employment, etc.)
+- Provides `markProfileChanged()` to trigger analytics invalidation
+- Used by job analytics cache to determine when to regenerate match scores
+- Persists last change timestamp to localStorage
+
+### TeamContext (`@shared/context/TeamContext`)
+
+- Team collaboration features
+- Manages team members and permissions
+
+### SidebarContext (`@shared/context/SidebarContext`)
+
+- Controls sidebar open/close state
+- Provides `isOpen`, `toggleSidebar`, `openSidebar`, `closeSidebar`
 
 ### ApiLogDebugProvider (`@shared/components/dev/`)
 
@@ -136,9 +157,12 @@ The app uses React Context for global state management:
 
 ### React Query (Profile Workspace)
 
-- Profile data cached via React Query
+- **Unified Profile Cache** - ONE query fetches all profile data, individual hooks use selectors
 - Cache config in `profile/cache/cacheConfig.ts`
-- ENV-configurable stale time: `VITE_CACHE_STALE_TIME_MINUTES`
+- ENV-configurable stale time: `VITE_CACHE_STALE_TIME_MINUTES` (default 5 min)
+- ENV-configurable GC time: `VITE_CACHE_GC_TIME_MINUTES` (default 30 min)
+- Real-time sync with Supabase subscriptions
+- Cache utilities: `useUnifiedCacheUtils()` provides `invalidateAll()`
 
 ---
 
@@ -210,7 +234,7 @@ function mapRowToEducation(row: DbEducationRow): EducationEntry {
 **Pattern:**
 
 ```
-Component → Service (with mapper) → CRUD Helper → Supabase Client → Database
+Component → React Query Hook (cache layer) → Service (with mapper) → CRUD Helper → Supabase Client → Database
 ```
 
 **When adding new database features:**
@@ -218,6 +242,8 @@ Component → Service (with mapper) → CRUD Helper → Supabase Client → Data
 1. Check if a mapper already exists in the workspace's `services/` folder
 2. If not, create a mapper following the pattern above
 3. Use the CRUD helper, don't call Supabase directly in components
+4. For profile workspace: Use React Query hooks from `@profile/cache` for data fetching
+5. After mutations, call `invalidateAll()` from `useUnifiedCacheUtils()` to refresh cache
 
 ---
 

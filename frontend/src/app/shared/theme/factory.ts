@@ -363,12 +363,18 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
       // ============================================================
       MuiPaper: {
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
+            // Preset-based colored border for Papers too
+            border: `2px solid ${tokens.palette.primary}`,
             // Remove text shadows from typography inside Paper/Card
             "& .MuiTypography-root": {
               textShadow: "none",
             },
-          },
+            "&:hover": {
+              borderColor: tokens.palette.primary,
+              borderWidth: "3px",
+            },
+          }),
         },
       },
 
@@ -380,15 +386,15 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
           elevation: 0,
         },
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             borderRadius:
               tokens.components?.card?.borderRadius ??
               `var(--radius-lg, ${tokens.effects.borderRadius.lg}px)`,
             backgroundColor: tokens.components?.card?.bg ?? undefined,
-            // Subtle border for definition
+            // Preset-based colored border for visual distinction
             border: tokens.components?.card?.border
-              ? `1px solid ${tokens.components.card.border}`
-              : `1px solid ${alpha(tokens.palette.divider, 0.5)}`,
+              ? `2px solid ${tokens.components.card.border}`
+              : `2px solid ${tokens.palette.primary}`,
             // Refined shadow with depth
             boxShadow: buildGlowShadow(
               tokens.components?.card?.shadow ??
@@ -406,7 +412,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
               border-color ${tokens.motion.duration.short}ms ${tokens.motion.easing.standard},
               background-color ${tokens.motion.duration.short}ms ${tokens.motion.easing.standard}
             `,
-            // Modern hover effect with subtle lift
+            // Modern hover effect with subtle lift and thicker border
             "&:hover": {
               boxShadow:
                 tokens.components?.card?.hoverShadow ??
@@ -415,7 +421,8 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
                   tokens.effects.depth,
                   1.2
                 ),
-              borderColor: alpha(tokens.palette.primary, 0.15),
+              borderColor: tokens.palette.primary,
+              borderWidth: "3px",
             },
             // Glass morphism effect for supported surfaces
             ...(tokens.effects.glass
@@ -428,7 +435,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
             "& .MuiTypography-root": {
               textShadow: "none",
             },
-          },
+          }),
         },
       },
 

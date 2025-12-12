@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Typography, useTheme, Paper } from "@mui/material";
 
 interface ProfileData {
   employmentCount: number;
@@ -59,12 +59,11 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
   const theme = useTheme();
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
         p: 3,
-        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
-        backgroundColor: theme.palette.background.paper,
       }}
     >
       <Typography variant="h6" fontWeight={600} gutterBottom>
@@ -113,7 +112,7 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ profile }) => {
           Your profile is complete! 🎉
         </Typography>
       )}
-    </Box>
+    </Paper>
   );
 };
 

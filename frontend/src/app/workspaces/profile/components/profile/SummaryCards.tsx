@@ -177,15 +177,15 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ counts }) => {
               elevation={0}
               sx={{
                 borderRadius: 3,
-                border: `1px solid ${alpha(cardColor, 0.2)}`,
                 backgroundColor: theme.palette.background.paper,
                 position: "relative",
                 overflow: "visible",
                 transition: "all 0.2s ease",
+                // Theme border will apply automatically - don't override
                 "&:hover": {
                   transform: "translateY(-2px)",
                   boxShadow: `0 8px 24px ${alpha(cardColor, 0.15)}`,
-                  borderColor: alpha(cardColor, 0.4),
+                  // Theme hover border will apply automatically
                 },
               }}
             >

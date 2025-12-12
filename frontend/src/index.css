@@ -71,3 +71,260 @@ html[data-density="spacious"] .MuiListItem-root {
   padding-top: 12px;
   padding-bottom: 12px;
 }
+
+/* =============================================
+   CONTENT CONTRAST: Better visibility over animated backgrounds
+   Adds subtle backgrounds and shadows to make content stand out
+   ============================================= */
+
+/* Stronger backgrounds for paper-based components with elevation shadows */
+.MuiPaper-root,
+.MuiCard-root,
+.MuiAppBar-root,
+.MuiDrawer-paper,
+.MuiDialog-paper {
+  backdrop-filter: blur(16px) saturate(180%);
+  /* Much stronger shadows for floating effect */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.08) !important;
+  /* Completely solid background */
+  background-color: var(--mui-palette-background-paper) !important;
+  opacity: 1 !important;
+  /* VERY VISIBLE border for testing - using solid hex color */
+  border: 3px solid #2563eb !important;
+}
+
+/* Cards get even thicker visible border */
+.MuiCard-root {
+  border: 3px solid #2563eb !important;
+  border-radius: 12px !important;
+}
+
+/* Grid items within cards */
+.MuiGrid-item {
+  border: 2px solid #2563eb !important;
+  border-radius: 8px;
+}
+
+/* Divs with specific classes that act as cards */
+div[class*="Card"],
+div[class*="card"],
+div[class*="Box"],
+div[class*="box"],
+.card,
+.stat-card,
+.summary-card,
+.metric-card {
+  border: 3px solid #2563eb !important;
+  border-radius: 8px !important;
+  background-color: var(--mui-palette-background-paper) !important;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Target any Box component */
+.MuiBox-root {
+  border: 2px solid #2563eb !important;
+}
+
+/* Target specific MuiBox patterns used in cards/grids */
+.MuiBox-root.css-j62ns1,
+.MuiBox-root.css-1upa6p0,
+.MuiBox-root.css-mj5skf,
+.MuiBox-root.css-1yuhdh,
+.MuiBox-root.css-crr4sa,
+.MuiBox-root[class*="css-"] {
+  border: 3px solid #2563eb !important;
+  border-radius: 12px !important;
+  background-color: var(--mui-palette-background-paper) !important;
+}
+
+/* Extra specificity for nested boxes */
+div.MuiBox-root,
+section.MuiBox-root,
+article.MuiBox-root {
+  border: 3px solid #2563eb !important;
+}
+
+/* SOLID backgrounds for text containers to completely block flickering */
+.MuiContainer-root,
+.MuiBox-root,
+[class*="MuiGrid-root"] {
+  position: relative;
+  /* Stronger shadow to lift content off background */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
+}
+
+/* Grid containers get solid backgrounds */
+[class*="MuiGrid-container"] {
+  background-color: var(--mui-palette-background-default);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+/* Main content areas get solid backgrounds with elevation */
+main,
+section,
+article,
+.MuiContainer-root > * {
+  background-color: var(--mui-palette-background-default);
+  position: relative;
+  z-index: 1;
+  /* Strong shadow for depth */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Add a semi-opaque overlay on main content wrapper for extra contrast */
+main::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--mui-palette-background-default);
+  opacity: 0.85;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Input fields MUST have completely solid backgrounds with subtle shadows */
+.MuiInputBase-root,
+.MuiOutlinedInput-root,
+.MuiTextField-root .MuiInputBase-root,
+.MuiFilledInput-root,
+.MuiInput-root {
+  background-color: var(--mui-palette-background-paper) !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  /* Small shadow to separate from background */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Text fields with variants - accent border using preset color */
+.MuiOutlinedInput-notchedOutline {
+  border-width: 2px !important;
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.2) !important;
+}
+
+/* Focused inputs get preset primary border */
+.MuiInputBase-root.Mui-focused,
+.MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--mui-palette-primary-main) !important;
+  border-width: 2px !important;
+}
+
+/* Ensure all text has strong contrast with subtle shadows */
+.MuiTypography-root,
+.MuiButton-root,
+.MuiTextField-root label,
+.MuiInputBase-root,
+.MuiInputLabel-root,
+.MuiFormLabel-root,
+.MuiListItemText-primary,
+.MuiListItemText-secondary {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.1),
+    0 0 12px var(--mui-palette-background-default);
+}
+
+/* Body text gets a crisp shadow for light mode readability */
+.MuiTypography-body1,
+.MuiTypography-body2,
+.MuiTypography-caption,
+p,
+span,
+label {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.15),
+    0 0 12px var(--mui-palette-background-default);
+}
+
+/* Extra strong contrast for headings */
+.MuiTypography-h1,
+.MuiTypography-h2,
+.MuiTypography-h3,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15),
+    0 0 20px var(--mui-palette-background-default),
+    0 0 40px var(--mui-palette-background-default);
+  font-weight: 600 !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Buttons need strong contrast with elevation shadow */
+.MuiButton-root {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08) !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Outlined buttons get preset border */
+.MuiButton-outlined {
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.5) !important;
+  border-width: 2px !important;
+}
+
+/* Buttons on hover get stronger shadow */
+.MuiButton-root:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* List items and menu items with subtle shadows */
+.MuiListItem-root,
+.MuiMenuItem-root {
+  backdrop-filter: blur(8px);
+  background-color: rgba(
+    var(--mui-palette-background-paper-rgb),
+    0.95
+  ) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Table cells get solid backgrounds with borders for separation */
+.MuiTableCell-root {
+  background-color: var(--mui-palette-background-paper);
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.08) !important;
+}
+
+/* Table headers get accent border */
+.MuiTableCell-head {
+  border-bottom: 2px solid rgba(var(--mui-palette-primary-main-rgb), 0.2) !important;
+  font-weight: 600;
+}
+
+/* Avatars and images get subtle shadows for depth */
+.MuiAvatar-root,
+img {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+}
+
+/* Chips and badges */
+.MuiChip-root,
+.MuiBadge-badge {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Outlined chips get preset border */
+.MuiChip-outlined {
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.3) !important;
+  border-width: 2px !important;
+}
+
+/* Dividers use preset color */
+.MuiDivider-root {
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.12) !important;
+}
+
+/* List item borders */
+.MuiListItem-root + .MuiListItem-root {
+  border-top: 1px solid rgba(var(--mui-palette-primary-main-rgb), 0.08);
+}

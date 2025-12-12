@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Typography, useTheme, Paper } from "@mui/material";
 import {
   FaCheckCircle,
   FaExclamationTriangle,
@@ -103,12 +103,11 @@ const ProfileStrength: React.FC<ProfileStrengthProps> = ({ profile }) => {
   }
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
         p: 3,
-        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
-        backgroundColor: theme.palette.background.paper,
       }}
     >
       <Typography
@@ -160,7 +159,7 @@ const ProfileStrength: React.FC<ProfileStrengthProps> = ({ profile }) => {
           Your profile looks strong! 🎉
         </Typography>
       )}
-    </Box>
+    </Paper>
   );
 };
 

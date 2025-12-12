@@ -1,6 +1,20 @@
 import type { DesignTokens } from "./types";
 
 /**
+ * Converts hex color to RGB object
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+/**
  * Inject CSS custom properties for use outside of MUI components.
  * This keeps non-MUI areas, CSS files, and dev tools in sync with the active theme.
  *
@@ -21,11 +35,21 @@ export function exportCssVars(tokens: DesignTokens) {
   // PALETTE COLORS
   // ═══════════════════════════════════════════════════════════════════════════
   root.style.setProperty("--color-primary", p.primary);
+  root.style.setProperty("--mui-palette-primary-main", p.primary);
   root.style.setProperty("--on-primary", p.onPrimary);
   if (p.primaryLight)
     root.style.setProperty("--color-primary-light", p.primaryLight);
   if (p.primaryDark)
     root.style.setProperty("--color-primary-dark", p.primaryDark);
+
+  // Export RGB values for rgba() usage
+  const primaryRgb = hexToRgb(p.primary);
+  if (primaryRgb) {
+    root.style.setProperty(
+      "--mui-palette-primary-main-rgb",
+      `${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}`
+    );
+  }
 
   root.style.setProperty("--color-secondary", p.secondary);
   root.style.setProperty("--on-secondary", p.onSecondary);
@@ -39,6 +63,8 @@ export function exportCssVars(tokens: DesignTokens) {
 
   // Backgrounds
   root.style.setProperty("--color-bg", p.background);
+  root.style.setProperty("--mui-palette-background-default", p.background);
+  root.style.setProperty("--mui-palette-background-paper", p.surface);
   root.style.setProperty("--on-bg", p.onBackground);
   if (p.backgroundAlt)
     root.style.setProperty("--color-bg-alt", p.backgroundAlt);
@@ -46,6 +72,22 @@ export function exportCssVars(tokens: DesignTokens) {
   root.style.setProperty("--color-surface", p.surface);
   root.style.setProperty("--on-surface", p.onSurface);
   if (p.surfaceAlt) root.style.setProperty("--color-surface-alt", p.surfaceAlt);
+
+  // Export RGB values for background (for rgba usage in CSS)
+  const bgRgb = hexToRgb(p.background);
+  if (bgRgb) {
+    root.style.setProperty(
+      "--mui-palette-background-default-rgb",
+      `${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b}`
+    );
+  }
+  const paperRgb = hexToRgb(p.surface);
+  if (paperRgb) {
+    root.style.setProperty(
+      "--mui-palette-background-paper-rgb",
+      `${paperRgb.r}, ${paperRgb.g}, ${paperRgb.b}`
+    );
+  }
 
   // Semantic colors
   root.style.setProperty("--color-error", p.error);

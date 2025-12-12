@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Typography, useTheme, Paper } from "@mui/material";
 
 // Activity item from unified cache
 interface ActivityItem {
@@ -21,14 +21,13 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   const safeActivities = Array.isArray(activities) ? activities : [];
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
         p: 3,
         height: 323,
         overflowY: "auto",
-        backgroundColor: theme.palette.background.paper,
       }}
     >
       <Typography variant="h6" fontWeight={600} sx={{ mt: 0, mb: 2 }}>
@@ -87,7 +86,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           ))}
         </Box>
       )}
-    </Box>
+    </Paper>
   );
 };
 
