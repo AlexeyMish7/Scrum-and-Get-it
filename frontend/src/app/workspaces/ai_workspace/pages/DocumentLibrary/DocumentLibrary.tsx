@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
+//import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,

@@ -65,6 +65,7 @@ import SuggestContacts from "@job_pipeline/components/contacts/SuggestContacts";
 import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
 import OfferComparisonDialog from "@job_pipeline/components/OfferComparison/OfferComparisonDialog";
 import JobMap from "@job_pipeline/components/map/JobMap";
+import ApplicationMaterialComparison from "@job_pipeline/components/applicationSuccess/ApplicationMaterialComparison";
 
 const STAGES = [
   "Interested",
@@ -155,6 +156,7 @@ export default function PipelineView() {
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [offerCompareOpen, setOfferCompareOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [applicationMaterialCompareOpen, setApplicationMaterialCompareOpen] = useState(false);
 
   // Keyboard shortcut: A = add job
   useEffect(() => {
@@ -522,6 +524,13 @@ export default function PipelineView() {
             size="small"
           >
             Map
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => setApplicationMaterialCompareOpen(true)}
+            size="small"
+          >
+            Application Material Comparison
           </Button>
           {/* suggest contacts moved into per-job action buttons */}
           {selectedCount > 0 && (
@@ -1140,6 +1149,31 @@ export default function PipelineView() {
               setOpen(true);
               setMapOpen(false);
             }} />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Application Material Comparison Dialog */}
+      <Dialog
+        fullWidth
+        maxWidth="lg"
+        open={applicationMaterialCompareOpen}
+        onClose={() => setApplicationMaterialCompareOpen(false)}
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          Application Material Comparison
+          <IconButton
+            aria-label="close"
+            onClick={() => setApplicationMaterialCompareOpen(false)}
+            size="small"
+            sx={{ ml: 2 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ width: "100%", height: "70vh", p: 0 }}>
+          <Box sx={{ width: "100%", height: "100%", p: 2 }}>
+            <ApplicationMaterialComparison />
           </Box>
         </DialogContent>
       </Dialog>
