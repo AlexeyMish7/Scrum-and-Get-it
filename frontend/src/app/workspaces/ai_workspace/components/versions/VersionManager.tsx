@@ -4,7 +4,7 @@
  * Manages document versions with selection, comparison, and merge capabilities.
  */
 
-import { useState, useEffect, Fragment, useCallback } from "react";
+import { useMemo, useState, Fragment } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -36,6 +36,8 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { withUser } from "@shared/services/crud";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { aiKeys } from "@shared/cache/aiQueryKeys";
 
 interface DocumentVersion {
   id: string;
@@ -72,46 +74,44 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
   onVersionRestore,
 }) => {
   const { user } = useAuth();
-  const [versions, setVersions] = useState<DocumentVersion[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareVersions, setCompareVersions] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadVersions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const queryClient = useQueryClient();
+  const versionsQueryKey = useMemo(() => {
+    return aiKeys.documentVersions(user?.id ?? "anon", documentId ?? "none");
+  }, [user?.id, documentId]);
 
-    try {
+  const versionsQuery = useQuery({
+    queryKey: versionsQueryKey,
+    enabled: open && Boolean(user?.id) && Boolean(documentId),
+    staleTime: 2 * 60 * 1000,
+    queryFn: async (): Promise<DocumentVersion[]> => {
       const userCrud = withUser(user!.id);
       const result = await userCrud.listRows<DocumentVersion>(
         "document_versions",
         "*",
         {
           eq: { document_id: documentId },
+          neq: { status: "deleted" },
           order: { column: "version_number", ascending: false },
         }
       );
 
       if (result.error) {
-        throw new Error(result.error.message);
+        throw new Error(result.error.message || "Failed to load versions");
       }
 
-      setVersions(result.data || []);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId, user]);
+      return result.data || [];
+    },
+  });
 
-  // Load versions when dialog opens
-  useEffect(() => {
-    if (open && documentId && user?.id) {
-      loadVersions();
-    }
-  }, [open, documentId, user?.id, loadVersions]);
+  const versions = versionsQuery.data ?? [];
+  const loading = versionsQuery.isLoading;
+  const error = versionsQuery.error
+    ? (versionsQuery.error as Error).message
+    : null;
 
   const handleVersionClick = (versionId: string) => {
     if (compareMode) {
@@ -169,9 +169,9 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         { eq: { id: versionId } }
       );
 
-      // Update local state
-      setVersions((prev) =>
-        prev.map((v) =>
+      // Update cached list (no refetch needed)
+      queryClient.setQueryData<DocumentVersion[]>(versionsQueryKey, (prev) =>
+        (prev ?? []).map((v) =>
           v.id === versionId ? { ...v, is_starred: !v.is_starred } : v
         )
       );
@@ -193,8 +193,10 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         { eq: { id: versionId } }
       );
 
-      // Remove from local state
-      setVersions((prev) => prev.filter((v) => v.id !== versionId));
+      // Remove from cached list (no refetch needed)
+      queryClient.setQueryData<DocumentVersion[]>(versionsQueryKey, (prev) =>
+        (prev ?? []).filter((v) => v.id !== versionId)
+      );
     } catch (err) {
       console.error("Failed to delete version:", err);
     }

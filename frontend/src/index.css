@@ -90,60 +90,6 @@ html[data-density="spacious"] .MuiListItem-root {
   /* Completely solid background */
   background-color: var(--mui-palette-background-paper) !important;
   opacity: 1 !important;
-  /* VERY VISIBLE border for testing - using solid hex color */
-  border: 3px solid #2563eb !important;
-}
-
-/* Cards get even thicker visible border */
-.MuiCard-root {
-  border: 3px solid #2563eb !important;
-  border-radius: 12px !important;
-}
-
-/* Grid items within cards */
-.MuiGrid-item {
-  border: 2px solid #2563eb !important;
-  border-radius: 8px;
-}
-
-/* Divs with specific classes that act as cards */
-div[class*="Card"],
-div[class*="card"],
-div[class*="Box"],
-div[class*="box"],
-.card,
-.stat-card,
-.summary-card,
-.metric-card {
-  border: 3px solid #2563eb !important;
-  border-radius: 8px !important;
-  background-color: var(--mui-palette-background-paper) !important;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Target any Box component */
-.MuiBox-root {
-  border: 2px solid #2563eb !important;
-}
-
-/* Target specific MuiBox patterns used in cards/grids */
-.MuiBox-root.css-j62ns1,
-.MuiBox-root.css-1upa6p0,
-.MuiBox-root.css-mj5skf,
-.MuiBox-root.css-1yuhdh,
-.MuiBox-root.css-crr4sa,
-.MuiBox-root[class*="css-"] {
-  border: 3px solid #2563eb !important;
-  border-radius: 12px !important;
-  background-color: var(--mui-palette-background-paper) !important;
-}
-
-/* Extra specificity for nested boxes */
-div.MuiBox-root,
-section.MuiBox-root,
-article.MuiBox-root {
-  border: 3px solid #2563eb !important;
 }
 
 /* SOLID backgrounds for text containers to completely block flickering */
@@ -172,20 +118,6 @@ article,
   z-index: 1;
   /* Strong shadow for depth */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-/* Add a semi-opaque overlay on main content wrapper for extra contrast */
-main::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--mui-palette-background-default);
-  opacity: 0.85;
-  z-index: -1;
-  pointer-events: none;
 }
 
 /* Input fields MUST have completely solid backgrounds with subtle shadows */

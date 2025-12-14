@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import { useQueryClient } from "@tanstack/react-query";
-import { profileKeys } from "@profile/cache/queryKeys";
-import { unifiedProfileKeys } from "@profile/cache";
+import { useUnifiedCacheUtils } from "@profile/cache";
+import { coreKeys } from "@shared/cache";
 import {
   Button,
   TextField,
@@ -77,6 +77,7 @@ const AddProjectForm: React.FC = () => {
     useErrorHandler();
   const { markProfileChanged } = useProfileChange();
   const { user, loading: authLoading } = useAuth();
+  const { invalidateAll } = useUnifiedCacheUtils();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -415,7 +416,9 @@ const AddProjectForm: React.FC = () => {
                 },
               })
             );
-            window.dispatchEvent(new Event("documents:changed"));
+            queryClient.invalidateQueries({
+              queryKey: coreKeys.documents(user.id),
+            });
           }
         } catch (docErr) {
           handleError(docErr as Error);
@@ -428,16 +431,13 @@ const AddProjectForm: React.FC = () => {
         : "Project added successfully";
       showSuccess(msg);
       markProfileChanged(); // Invalidate analytics cache
-      // Invalidate unified cache so list refetches on next view
-      queryClient.invalidateQueries({
-        queryKey: unifiedProfileKeys.user(user.id),
-      });
+      // Keep profile pages in sync (both unified + legacy queries)
+      invalidateAll();
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: msg, severity: "success" },
         })
       );
-      window.dispatchEvent(new Event("projects:changed"));
       navigate("/profile/projects");
     } catch (err) {
       console.error(err);

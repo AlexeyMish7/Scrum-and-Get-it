@@ -18,8 +18,10 @@ import {
 import PersonIcon from "@mui/icons-material/Person";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreContacts } from "@shared/cache/coreFetchers";
 import { useAuth } from "@shared/context/AuthContext";
-import * as db from "@shared/services/dbMappers";
 import { aiClient } from "@shared/services/ai/client";
 import ContactsListItem from "@workspaces/network_hub/components/ContactsList/ContactsListItem";
 import ContactDetailsDialog from "@workspaces/network_hub/components/ContactDetails/ContactDetailsDialog";
@@ -76,7 +78,10 @@ export default function SuggestContacts({
     let cancelled = false;
 
     // helpers
-    const normalize = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const normalize = (v: unknown) =>
+      String(v ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
 
     function levenshtein(a: string, b: string) {
       if (a === b) return 0;
@@ -84,7 +89,9 @@ export default function SuggestContacts({
       const bl = b.length;
       if (al === 0) return bl;
       if (bl === 0) return al;
-      const matrix: number[][] = Array.from({ length: al + 1 }, () => Array(bl + 1).fill(0));
+      const matrix: number[][] = Array.from({ length: al + 1 }, () =>
+        Array(bl + 1).fill(0)
+      );
       for (let i = 0; i <= al; i++) matrix[i][0] = i;
       for (let j = 0; j <= bl; j++) matrix[0][j] = j;
       for (let i = 1; i <= al; i++) {
@@ -122,23 +129,36 @@ export default function SuggestContacts({
       try {
         if (!user) throw new Error("Not signed in");
 
-        const res = await db.listContacts(user.id);
-        if (res.error) throw new Error(res.error?.message ?? "Failed to load contacts");
+        const queryClient = getAppQueryClient();
+        const contacts = await queryClient.ensureQueryData({
+          queryKey: coreKeys.contacts(user.id),
+          queryFn: () => fetchCoreContacts<any>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
 
-        const contacts = Array.isArray(res.data) ? (res.data as any[]) : [];
+        const contactsArr = Array.isArray(contacts) ? (contacts as any[]) : [];
 
-        const filtered = contacts.filter((c) => {
+        const filtered = contactsArr.filter((c) => {
           try {
             // support multiple possible company/title keys
-            const companyFields = [c.company, c.employer, c.organization, c.company_name];
+            const companyFields = [
+              c.company,
+              c.employer,
+              c.organization,
+              c.company_name,
+            ];
             const roleFields = [c.role, c.title, c.job_title];
 
             const matchesCompany = companyName
-              ? companyFields.some((f) => f && fuzzyMatch(String(f), String(companyName)))
+              ? companyFields.some(
+                  (f) => f && fuzzyMatch(String(f), String(companyName))
+                )
               : false;
 
             const matchesRole = jobTitle
-              ? roleFields.some((f) => f && fuzzyMatch(String(f), String(jobTitle)))
+              ? roleFields.some(
+                  (f) => f && fuzzyMatch(String(f), String(jobTitle))
+                )
               : false;
 
             return matchesCompany || matchesRole;
@@ -148,7 +168,11 @@ export default function SuggestContacts({
         });
 
         // Sort by relationship_strength descending (treat missing as 0)
-        filtered.sort((a, b) => (Number(b.relationship_strength) || 0) - (Number(a.relationship_strength) || 0));
+        filtered.sort(
+          (a, b) =>
+            (Number(b.relationship_strength) || 0) -
+            (Number(a.relationship_strength) || 0)
+        );
 
         if (!cancelled) {
           setRealPeople(filtered);
@@ -186,7 +210,11 @@ export default function SuggestContacts({
     setError(null);
     setGenerating(true);
     try {
-      const payload = { job_title: jobTitle ?? null, job_company: companyName ?? null, alumni_school: alumniSchool ?? null };
+      const payload = {
+        job_title: jobTitle ?? null,
+        job_company: companyName ?? null,
+        alumni_school: alumniSchool ?? null,
+      };
       const rawResp = await aiClient
         .postJson<unknown>("/api/generate/suggest-contacts", payload)
         .catch((e) => {
@@ -345,21 +373,25 @@ export default function SuggestContacts({
         <PersonIcon />
         Suggested Contacts
         <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
-  
           <Button
             size="small"
             variant="contained"
             onClick={() => loadAiSuggestions()}
             disabled={generating}
           >
-            {generating ? <CircularProgress size={16} color="inherit" /> : "Generate Recommended Contacts"}
+            {generating ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              "Generate Recommended Contacts"
+            )}
           </Button>
         </Box>
       </DialogTitle>
       <DialogContent dividers>
         <Box sx={{ mb: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Suggested contacts based off of job and company, sorted by relationship strength. 
+            Suggested contacts based off of job and company, sorted by
+            relationship strength.
           </Typography>
           <Typography sx={{ mt: 1 }}>
             <strong>Job:</strong> {jobTitle ?? "—"}
@@ -381,9 +413,12 @@ export default function SuggestContacts({
           </Typography>
         )}
 
-        {!loading && realPeople.length === 0 && results.length === 0 && !error && (
-          <Typography color="text.secondary">No suggestions yet.</Typography>
-        )}
+        {!loading &&
+          realPeople.length === 0 &&
+          results.length === 0 &&
+          !error && (
+            <Typography color="text.secondary">No suggestions yet.</Typography>
+          )}
 
         {realPeople.length > 0 && (
           <Box sx={{ mb: 2 }}>
@@ -393,7 +428,10 @@ export default function SuggestContacts({
             <Box>
               {realPeople.map((p, i) => (
                 <Box key={`person-${i}`}>
-                  <ContactsListItem contact={p} onEdit={(c) => openContact(c)} />
+                  <ContactsListItem
+                    contact={p}
+                    onEdit={(c) => openContact(c)}
+                  />
                 </Box>
               ))}
             </Box>
@@ -411,13 +449,24 @@ export default function SuggestContacts({
                   <ListItemText
                     primary={`${l.name}${l.role ? ` — ${l.role}` : ""}`}
                     secondary={l.company || l.reason}
-                    sx={{ mr: 12, overflowWrap: 'anywhere' }}
+                    sx={{ mr: 12, overflowWrap: "anywhere" }}
                   />
                   <ListItemSecondaryAction>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: 0.5 }}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "auto auto",
+                        gap: 0.5,
+                      }}
+                    >
                       {l.referenceUrl ? (
                         <Tooltip key="ref" title="Open reference">
-                          <IconButton size="small" onClick={() => window.open(String(l.referenceUrl), "_blank")}>
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              window.open(String(l.referenceUrl), "_blank")
+                            }
+                          >
                             <OpenInNewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -425,20 +474,42 @@ export default function SuggestContacts({
 
                       {l.searchQuery ? (
                         <Tooltip key="search" title="Open search">
-                          <IconButton size="small" onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(l.searchQuery ?? "")}`, "_blank")}>
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              window.open(
+                                `https://www.google.com/search?q=${encodeURIComponent(
+                                  l.searchQuery ?? ""
+                                )}`,
+                                "_blank"
+                              )
+                            }
+                          >
                             <OpenInNewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
 
                       <Tooltip key="copy" title="Copy">
-                        <IconButton size="small" onClick={() => copyText(`${l.name}${l.role ? ` — ${l.role}` : ""}${l.referenceUrl ? ` \n${l.referenceUrl}` : ""}`)}>
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            copyText(
+                              `${l.name}${l.role ? ` — ${l.role}` : ""}${
+                                l.referenceUrl ? ` \n${l.referenceUrl}` : ""
+                              }`
+                            )
+                          }
+                        >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
 
                       <Tooltip key="add" title="Add to contacts">
-                        <IconButton size="small" onClick={() => createContactFromLeader(l)}>
+                        <IconButton
+                          size="small"
+                          onClick={() => createContactFromLeader(l)}
+                        >
                           <PersonIcon />
                         </IconButton>
                       </Tooltip>
@@ -461,20 +532,43 @@ export default function SuggestContacts({
                   <ListItemText
                     primary={`${r.name}${r.title ? ` — ${r.title}` : ""}`}
                     secondary={r.reason}
-                    sx={{ mr: 12, overflowWrap: 'anywhere' }}
+                    sx={{ mr: 12, overflowWrap: "anywhere" }}
                   />
                   <ListItemSecondaryAction>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: 0.5 }}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "auto auto",
+                        gap: 0.5,
+                      }}
+                    >
                       {r.searchQuery ? (
                         <Tooltip key="search" title="Open search">
-                          <IconButton size="small" onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(r.searchQuery ?? "")}`, "_blank")}>
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              window.open(
+                                `https://www.google.com/search?q=${encodeURIComponent(
+                                  r.searchQuery ?? ""
+                                )}`,
+                                "_blank"
+                              )
+                            }
+                          >
                             <OpenInNewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       ) : null}
 
                       <Tooltip key="copy" title="Copy">
-                        <IconButton size="small" onClick={() => copyText(`${r.name}${r.title ? ` — ${r.title}` : ""}`)}>
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            copyText(
+                              `${r.name}${r.title ? ` — ${r.title}` : ""}`
+                            )
+                          }
+                        >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -496,7 +590,9 @@ export default function SuggestContacts({
           open={contactDialogOpen}
           contact={selectedContact}
           onClose={() => closeContact()}
-          onUpdate={async (payload: Record<string, unknown>) => await handleUpdateContact(payload)}
+          onUpdate={async (payload: Record<string, unknown>) =>
+            await handleUpdateContact(payload)
+          }
           onDelete={async (id?: string) => await handleDeleteContact(id)}
           onRefresh={() => setRefreshKey((k) => k + 1)}
           initialSelectedJob={job ?? undefined}

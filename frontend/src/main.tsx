@@ -14,7 +14,7 @@ import { ProfileChangeProvider } from "@shared/context/ProfileChangeContext";
 import { ErrorBoundary } from "@shared/components/feedback/ErrorBoundary";
 import { ConfirmDialogProvider } from "@shared/components/dialogs";
 import { ApiLogDebugProvider } from "@shared/components/dev/ApiLogDebugProvider";
-import { AppQueryProvider } from "@shared/cache";
+import { AppBootstrapPrefetch, AppQueryProvider } from "@shared/cache";
 // import { initAccessibilityAudit } from "@shared/utils";
 
 // Initialize accessibility auditing in development mode
@@ -34,6 +34,7 @@ createRoot(document.getElementById("root")!).render(
         <ThemeContextProvider>
           <AppQueryProvider>
             <AuthContextProvider>
+              <AppBootstrapPrefetch />
               <AvatarProvider>
                 <TeamProvider>
                   <ProfileChangeProvider>

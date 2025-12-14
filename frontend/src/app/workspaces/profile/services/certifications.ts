@@ -1,5 +1,6 @@
 import * as crud from "@shared/services/crud";
 import { supabase } from "@shared/services/supabaseClient";
+import { coreKeys, getAppQueryClient } from "@shared/cache";
 import type {
   CertificationRow,
   Certification,
@@ -146,7 +147,9 @@ const insertCertification = async (
         const docRes = await userCrud.insertRow("documents", docPayload, "*");
         if (!docRes.error) {
           createdDoc = docRes.data as Record<string, unknown>;
-          window.dispatchEvent(new Event("documents:changed"));
+          getAppQueryClient().invalidateQueries({
+            queryKey: coreKeys.documents(userId),
+          });
         } else {
           console.warn(
             "Failed to create documents row for certification:",
@@ -205,7 +208,9 @@ const deleteCertification = async (userId: string, id: string) => {
         await userCrud.deleteRow("documents", {
           eq: { metadata: { certification_id: id } as unknown as string },
         });
-        window.dispatchEvent(new Event("documents:changed"));
+        getAppQueryClient().invalidateQueries({
+          queryKey: coreKeys.documents(userId),
+        });
       } catch (err) {
         console.warn("Failed to delete documents rows for certification:", err);
       }

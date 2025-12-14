@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { profileKeys } from "./queryKeys";
+import { unifiedProfileKeys } from "./useUnifiedProfileCache";
 import { useRealtimeSync } from "./useRealtimeSync";
 
 /**
@@ -38,6 +39,9 @@ function useProfileCacheInvalidation(userId: string | undefined) {
     const handlers = Object.entries(eventKeyMap).map(([event, queryKey]) => {
       const handler = () => {
         console.log(`[ProfileCache] Invalidating ${event}`, queryKey);
+        queryClient.invalidateQueries({
+          queryKey: unifiedProfileKeys.user(userId),
+        });
         queryClient.invalidateQueries({ queryKey });
       };
       window.addEventListener(event, handler);

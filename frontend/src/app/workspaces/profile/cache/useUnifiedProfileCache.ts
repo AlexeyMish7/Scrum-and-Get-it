@@ -20,6 +20,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
 import { CACHE_STALE_TIME, CACHE_GC_TIME } from "./cacheConfig";
+import { profileKeys } from "./queryKeys";
 
 // Services for data fetching
 import { listSkills } from "@profile/services/skills";
@@ -522,6 +523,12 @@ export function useProfileCacheUtils() {
       if (userId) {
         queryClient.invalidateQueries({
           queryKey: unifiedProfileKeys.user(userId),
+        });
+
+        // Some profile pages still use the legacy, section-scoped queries.
+        // Invalidate those too so all profile screens stay consistent.
+        queryClient.invalidateQueries({
+          queryKey: profileKeys.user(userId),
         });
       }
     },

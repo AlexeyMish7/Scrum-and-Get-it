@@ -1,25 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy component relies on dynamic row shapes; keep scoped until refactor */
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Paper,
   Typography,
-  Button,
   LinearProgress,
   Stack,
   Divider,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
-import jobsService from "@job_pipeline/services/jobsService";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import {
-  listPreparationActivities,
-  listScheduledInterviews,
-} from "@shared/services/dbMappers";
-import { getUserStorage } from "@shared/utils/userStorage";
+  fetchCoreJobs,
+  fetchCorePreparationActivities,
+  fetchScheduledInterviews,
+} from "@shared/cache/coreFetchers";
 
 // Local storage keys for checklist (kept locally for performance)
 const PREP_CHECKLIST_KEY = "sgt:interview_prep";
-// Local storage key for predictions (client-side tracking)
-const PREDICTIONS_KEY = "sgt:interview_predictions";
 
 function titleSimilarity(a?: string, b?: string) {
   if (!a || !b) return 0;
@@ -56,15 +55,6 @@ export default function InterviewSuccess() {
   const [jobsMap, setJobsMap] = useState<Record<string, any>>({});
   const [prepActivities, setPrepActivities] = useState<any[] | null>(null);
   const [localAttempts, setLocalAttempts] = useState<any[] | null>(null);
-  // Predictions state - stored in localStorage for client-side tracking
-  const [predictions, setPredictions] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem(PREDICTIONS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
 
   // Load interviews from database
   useEffect(() => {
@@ -72,16 +62,26 @@ export default function InterviewSuccess() {
 
     async function loadInterviewsFromDb() {
       try {
-        const result = await listScheduledInterviews(user!.id);
-        if (!result.error && result.data) {
+        const qc = getAppQueryClient();
+        const rows = await qc.ensureQueryData({
+          queryKey: coreKeys.scheduledInterviews(user!.id),
+          queryFn: () => fetchScheduledInterviews<any>(user!.id),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        if (rows) {
           // Map database format to component format
-          const dbInterviews = (result.data as any[]).map((iv: any) => ({
-            id: iv.id,
-            title: iv.title || iv.role || "Interview",
-            start: iv.interview_date,
-            linkedJob: iv.linked_job_id ? String(iv.linked_job_id) : undefined,
-            status: iv.status || "scheduled",
-          }));
+          const dbInterviews = (Array.isArray(rows) ? rows : []).map(
+            (iv: any) => ({
+              id: iv.id,
+              title: iv.title || iv.role || "Interview",
+              start: iv.interview_date,
+              linkedJob: iv.linked_job_id
+                ? String(iv.linked_job_id)
+                : undefined,
+              status: iv.status || "scheduled",
+            })
+          );
           setInterviews(dbInterviews);
         }
       } catch {
@@ -92,7 +92,17 @@ export default function InterviewSuccess() {
     loadInterviewsFromDb();
 
     // Also refresh when interviews-updated event fires
-    const onUpdate = () => loadInterviewsFromDb();
+    const onUpdate = () => {
+      try {
+        const qc = getAppQueryClient();
+        qc.invalidateQueries({
+          queryKey: coreKeys.scheduledInterviews(user!.id),
+        });
+      } catch {
+        // ignore
+      }
+      loadInterviewsFromDb();
+    };
     window.addEventListener("interviews-updated", onUpdate as any);
     return () =>
       window.removeEventListener("interviews-updated", onUpdate as any);
@@ -102,25 +112,33 @@ export default function InterviewSuccess() {
     // load job details for linked interviews to compute role-match
     (async () => {
       if (!user) return;
-      const map: Record<string, any> = {};
-      for (const iv of interviews) {
-        const linked = iv.linkedJob;
-        if (linked && String(linked).match(/^\d+$/)) {
-          try {
-            const res = await jobsService.getJob(user.id, Number(linked));
-            if (!res.error && res.data) map[String(linked)] = res.data;
-          } catch {
-            // ignore
-          }
+      try {
+        const queryClient = getAppQueryClient();
+        const jobs = await queryClient.ensureQueryData({
+          queryKey: coreKeys.jobs(user.id),
+          queryFn: () => fetchCoreJobs<any>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        const map: Record<string, any> = {};
+        for (const j of Array.isArray(jobs) ? jobs : []) {
+          const id = j?.id != null ? String(j.id) : null;
+          if (id) map[id] = j;
         }
+        setJobsMap(map);
+      } catch {
+        setJobsMap({});
       }
-      setJobsMap(map);
       // load preparation activities once for efficient per-interview scoring
       try {
-        const resp = await listPreparationActivities(user.id, { limit: 1000 });
-        if (!resp.error && Array.isArray(resp.data))
-          setPrepActivities(resp.data as any[]);
-      } catch (e) {
+        const queryClient = getAppQueryClient();
+        const data = await queryClient.ensureQueryData({
+          queryKey: coreKeys.preparationActivities(user.id),
+          queryFn: () => fetchCorePreparationActivities(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+        setPrepActivities(Array.isArray(data) ? (data as any[]) : []);
+      } catch {
         // ignore
       }
       // load local attempts snapshot
@@ -238,10 +256,12 @@ export default function InterviewSuccess() {
             sum += (Number(a.elapsedMs) || 0) / 60000;
           }
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       return Math.round(sum);
-    } catch (e) {
+    } catch {
       return 0;
     }
   }
@@ -341,8 +361,12 @@ export default function InterviewSuccess() {
             else if (company && txt.includes(company)) mockCount++;
           }
         }
-      } catch {}
-    } catch {}
+      } catch {
+        // ignore
+      }
+    } catch {
+      // ignore
+    }
 
     // base weights (tweakable)
     const wRole = 0.3;
@@ -423,40 +447,6 @@ export default function InterviewSuccess() {
       mounted = false;
     };
   }, [interviews, jobsMap]);
-
-  function savePrediction(iv: any) {
-    const p = computed[iv.id];
-    if (!p) return;
-    const rec = {
-      interviewId: iv.id,
-      predictedProbability: p.rawProbability,
-      predictedAt: new Date().toISOString(),
-      actualOutcome: null,
-      actualAt: null,
-    };
-    const next = [...predictions.filter((x) => x.interviewId !== iv.id), rec];
-    setPredictions(next);
-    try {
-      localStorage.setItem(PREDICTIONS_KEY, JSON.stringify(next));
-    } catch {}
-  }
-
-  // compute simple accuracy stats
-  const accuracy = useMemo(() => {
-    if (!predictions.length) return { count: 0, avgError: null };
-    const done = predictions.filter(
-      (p) =>
-        p.actualOutcome != null && typeof p.predictedProbability === "number"
-    );
-    if (!done.length) return { count: 0, avgError: null };
-    const errs = done.map((d) =>
-      Math.abs(
-        (d.actualOutcome === "successful" ? 100 : 0) - d.predictedProbability
-      )
-    );
-    const avg = Math.round(errs.reduce((a, b) => a + b, 0) / errs.length);
-    return { count: done.length, avgError: avg };
-  }, [predictions]);
 
   return (
     <Paper sx={{ p: 2, mb: 3 }} variant="outlined">

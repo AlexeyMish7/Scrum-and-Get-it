@@ -13,7 +13,7 @@
  *   <ShareJobFromPipelineDialog open={open} onClose={handleClose} />
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -47,6 +47,9 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
+import { useCoreJobs } from "@shared/cache/coreHooks";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import { supabase } from "@shared/services/supabaseClient";
 import type { JobRow } from "@shared/types/database";
 
@@ -95,11 +98,15 @@ export function ShareJobFromPipelineDialog({
   onShared,
 }: ShareJobFromPipelineDialogProps) {
   const { user } = useAuth();
+  const userId = user?.id;
   const { currentTeam } = useTeam();
 
+  const jobsQuery = useCoreJobs<JobRow>(userId, {
+    enabled: open,
+    staleTimeMs: 60 * 60 * 1000,
+  });
+
   // State
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<JobRow | null>(null);
   const [shareType, setShareType] = useState<ShareType>("recommendation");
@@ -108,43 +115,13 @@ export function ShareJobFromPipelineDialog({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Load user's jobs - extracted as a function so it can be called for retry
-  const loadJobs = useCallback(async () => {
-    if (!user?.id) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: fetchError } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (fetchError) {
-        console.error("Failed to load jobs:", fetchError);
-        setError("Failed to load your jobs. Please try again.");
-        setJobs([]);
-      } else {
-        setJobs(data || []);
-      }
-    } catch (err) {
-      console.error("Error loading jobs:", err);
-      setError("An unexpected error occurred.");
-      setJobs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
-
-  // Load jobs when dialog opens
   useEffect(() => {
-    if (open && user?.id) {
-      loadJobs();
+    if (jobsQuery.isError) {
+      setError("Failed to load your jobs. Please try again.");
+    } else {
+      setError(null);
     }
-  }, [open, user?.id, loadJobs]);
+  }, [jobsQuery.isError]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -159,7 +136,10 @@ export function ShareJobFromPipelineDialog({
   }, [open]);
 
   // Filter jobs based on search query
-  const filteredJobs = jobs.filter((job) => {
+  const allJobs = (jobsQuery.data || []) as JobRow[];
+  const limitedJobs = allJobs.slice(0, 50);
+
+  const filteredJobs = limitedJobs.filter((job) => {
     const query = searchQuery.toLowerCase();
     return (
       job.job_title.toLowerCase().includes(query) ||
@@ -173,28 +153,26 @@ export function ShareJobFromPipelineDialog({
   };
 
   const handleShare = async () => {
-    if (!user?.id || !currentTeam?.id || !selectedJob) return;
+    if (!userId || !currentTeam?.id || !selectedJob) return;
 
     setSharing(true);
     setError(null);
 
     try {
-      // Get user profile for the activity description
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, first_name")
-        .eq("id", user.id)
-        .single();
-
-      const userName =
-        profile?.full_name || profile?.first_name || "A team member";
+      // Avoid an extra profiles lookup; best-effort name from auth metadata.
+      const meta = user.user_metadata as unknown as Record<string, unknown>;
+      const candidateName =
+        (typeof meta?.full_name === "string" && meta.full_name.trim()) ||
+        (typeof meta?.first_name === "string" && meta.first_name.trim()) ||
+        null;
+      const userName = candidateName || "A team member";
 
       // Create activity log entry for the shared job
       const { error: activityError } = await supabase
         .from("team_activity_log")
         .insert({
           team_id: currentTeam.id,
-          actor_id: user.id,
+          actor_id: userId,
           activity_type: "settings_updated", // Using existing enum value
           description: `${userName} shared a job: ${selectedJob.job_title} at ${selectedJob.company_name}`,
           metadata: {
@@ -227,7 +205,7 @@ export function ShareJobFromPipelineDialog({
 
       await supabase.from("team_messages").insert({
         team_id: currentTeam.id,
-        sender_id: user.id,
+        sender_id: userId,
         message_text: messageText,
         metadata: {
           type: "job_share",
@@ -236,6 +214,11 @@ export function ShareJobFromPipelineDialog({
           company_name: selectedJob.company_name,
           share_type: shareType,
         },
+      });
+
+      // Ensure activity feed / shared job cards see the new share without reload.
+      getAppQueryClient().invalidateQueries({
+        queryKey: coreKeys.teamMessages(userId, currentTeam.id),
       });
 
       setSuccess(true);
@@ -278,14 +261,18 @@ export function ShareJobFromPipelineDialog({
           sx={{ mb: 2 }}
         />
 
-        {loading ? (
+        {jobsQuery.isLoading ? (
           <Box display="flex" justifyContent="center" py={4}>
             <CircularProgress />
           </Box>
         ) : error ? (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
-            <Button size="small" onClick={loadJobs} sx={{ ml: 2 }}>
+            <Button
+              size="small"
+              onClick={() => jobsQuery.refetch()}
+              sx={{ ml: 2 }}
+            >
               Retry
             </Button>
           </Alert>

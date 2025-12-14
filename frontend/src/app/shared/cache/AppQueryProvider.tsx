@@ -10,11 +10,13 @@
  * - React Query DevTools in development (controlled by VITE_DEV_MODE)
  * - Configurable stale/cache times
  */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import localforage from "localforage";
 import { type ReactNode, useMemo } from "react";
+import { shouldPersistQueryKey } from "@shared/cache/persistencePolicy";
+import { getAppQueryClient } from "@shared/cache/AppQueryClient";
 
 // Check if dev tools should be shown (same logic as ApiLogDebugProvider)
 const isDevToolsEnabled = () => {
@@ -44,48 +46,18 @@ const asyncStoragePersister = {
   },
 };
 
-// Default cache configuration
-const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutes
-const DEFAULT_CACHE_TIME = 30 * 60 * 1000; // 30 minutes
+// Default persistence maxAge for allowlisted queries.
+// Keep this reasonably short to avoid serving stale data across sessions.
+const DEFAULT_CACHE_TIME = 2 * 60 * 60 * 1000; // 2 hours
+
+// Persisting everything can grow IndexedDB quickly when query keys are high-cardinality
+// (e.g., per-job/per-contact datasets). We persist only a small set of “core” lists that
+// are broadly reused across the app and are relatively bounded in size.
 
 interface AppQueryProviderProps {
   children: ReactNode;
   /** Enable IndexedDB persistence (default: true in production) */
   enablePersistence?: boolean;
-}
-
-/**
- * Creates a QueryClient with app-wide defaults.
- */
-function createAppQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        // Data stays fresh for 5 minutes
-        staleTime: DEFAULT_STALE_TIME,
-        // Keep unused data in cache for 30 minutes
-        gcTime: DEFAULT_CACHE_TIME,
-        // Refetch when window regains focus
-        refetchOnWindowFocus: true,
-        // Don't refetch on mount if data is fresh
-        refetchOnMount: false,
-        // Retry failed requests once
-        retry: 1,
-        // Keep previous data while fetching new data
-        placeholderData: (prev: unknown) => prev,
-      },
-    },
-  });
-}
-
-// Singleton QueryClient instance - created once for entire app
-let appQueryClient: QueryClient | null = null;
-
-function getQueryClient(): QueryClient {
-  if (!appQueryClient) {
-    appQueryClient = createAppQueryClient();
-  }
-  return appQueryClient;
 }
 
 /**
@@ -97,7 +69,7 @@ export function AppQueryProvider({
   enablePersistence = import.meta.env.PROD,
 }: AppQueryProviderProps) {
   // Use singleton QueryClient
-  const queryClient = useMemo(() => getQueryClient(), []);
+  const queryClient = useMemo(() => getAppQueryClient(), []);
 
   // Render with or without persistence
   if (enablePersistence) {
@@ -111,7 +83,10 @@ export function AppQueryProvider({
           maxAge: DEFAULT_CACHE_TIME,
           dehydrateOptions: {
             // Only persist successful queries
-            shouldDehydrateQuery: (query) => query.state.status === "success",
+            // And only persist a small allowlist of low-cardinality datasets.
+            shouldDehydrateQuery: (query) =>
+              query.state.status === "success" &&
+              shouldPersistQueryKey(query.queryKey),
           },
         }}
       >
@@ -137,14 +112,6 @@ export function AppQueryProvider({
       )}
     </QueryClientProvider>
   );
-}
-
-/**
- * Get the app-level QueryClient for manual cache operations.
- * Use this when you need to invalidate queries from outside React components.
- */
-export function getAppQueryClient(): QueryClient {
-  return getQueryClient();
 }
 
 export default AppQueryProvider;

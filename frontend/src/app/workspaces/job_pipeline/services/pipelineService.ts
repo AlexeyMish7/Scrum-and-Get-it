@@ -26,6 +26,10 @@ import type { JobRow } from "@shared/types/database";
 import type { PipelineStage } from "@job_pipeline/types";
 import { supabase } from "@shared/services/supabaseClient";
 import { checkAndCreateAchievement } from "../../team_management/services/progressSharingService";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
+import jobsService from "./jobsService";
 
 /**
  * MOVE JOB: Update job status to move between pipeline stages.
@@ -52,19 +56,10 @@ const moveJob = async (
   jobId: number,
   newStage: PipelineStage
 ): Promise<Result<JobRow>> => {
-  const userCrud = crud.withUser(userId);
-
-  const payload = {
+  // Delegate to jobsService so the shared React Query jobs cache stays in sync.
+  const result = await jobsService.updateJob(userId, jobId, {
     job_status: newStage,
-    status_changed_at: new Date().toISOString(),
-  };
-
-  const result = await userCrud.updateRow(
-    "jobs",
-    payload,
-    { eq: { id: jobId } },
-    "*"
-  );
+  } as any);
 
   // Trigger achievement check for milestone events
   if (result.data && !result.error) {
@@ -124,23 +119,23 @@ const moveJob = async (
 const getJobsByStage = async (
   userId: string
 ): Promise<Result<Record<string, JobRow[]>>> => {
-  const userCrud = crud.withUser(userId);
-
-  // Fetch all jobs for user
-  const result = await userCrud.listRows("jobs", "*", {
-    order: { column: "status_changed_at", ascending: false },
-  });
-
-  if (result.error) {
+  let jobs: JobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const cachedRows = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<JobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    jobs = Array.isArray(cachedRows) ? (cachedRows as JobRow[]) : [];
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return {
       data: null,
-      error: result.error,
-      status: result.status,
-    } as Result<Record<string, JobRow[]>>;
+      error: { message },
+      status: 500,
+    };
   }
-
-  // Group jobs by stage
-  const jobs = Array.isArray(result.data) ? result.data : [];
   const stages = [
     "Interested",
     "Applied",
@@ -166,10 +161,19 @@ const getJobsByStage = async (
     jobsByStage[status].push(job as JobRow);
   }
 
+  // Keep the UI stable by sorting each column by most recently changed.
+  for (const stage of Object.keys(jobsByStage)) {
+    jobsByStage[stage].sort((a, b) => {
+      const at = new Date(a.status_changed_at ?? 0).getTime();
+      const bt = new Date(b.status_changed_at ?? 0).getTime();
+      return bt - at;
+    });
+  }
+
   return {
     data: jobsByStage,
     error: null,
-    status: result.status,
+    status: 200,
   };
 };
 

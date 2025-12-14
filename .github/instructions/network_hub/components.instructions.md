@@ -128,6 +128,12 @@ network_hub/
 | `NetworkingImpact` | Impact metrics dashboard         |
 | `PrivacyControls`  | Privacy settings for groups      |
 
+### Data Fetching (Peer Groups)
+
+- Use TanStack React Query v5 for reads (cache-first) instead of `useEffect` + local loading state.
+- Use `networkKeys` from `@shared/cache/networkQueryKeys` so peer group datasets stay in-memory (not persisted to disk).
+- After writes (join/leave, like, reply, progress updates), prefer `queryClient.setQueryData()` for instant UI updates and/or `invalidateQueries()` for targeted refresh.
+
 ---
 
 ## Family Support Components (Standalone)

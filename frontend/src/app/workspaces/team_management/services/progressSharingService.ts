@@ -18,6 +18,9 @@
 
 import { supabase } from "@shared/services/supabaseClient";
 import type { Result } from "@shared/services/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchAccountabilityPartnershipsWithProfiles } from "@shared/cache/coreFetchers";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -530,6 +533,39 @@ export async function getAccountabilityPartnerships(
   userId: string,
   teamId?: string
 ): Promise<Result<AccountabilityPartnership[]>> {
+  // When scoped to a team, reuse the shared cache so multiple views don't requery.
+  if (teamId) {
+    try {
+      const qc = getAppQueryClient();
+      const rows = await qc.ensureQueryData({
+        queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+        queryFn: () =>
+          fetchAccountabilityPartnershipsWithProfiles<Record<string, unknown>>(
+            userId,
+            teamId
+          ),
+        staleTime: 60 * 60 * 1000,
+      });
+      return {
+        data: (Array.isArray(rows) ? rows : []).map(mapPartnershipFromDb),
+        error: null,
+        status: 200,
+      };
+    } catch (e: unknown) {
+      return {
+        data: null,
+        error: {
+          message:
+            e instanceof Error
+              ? e.message
+              : String(e) || "Failed to load partnerships",
+          status: null,
+        },
+        status: null,
+      };
+    }
+  }
+
   let query = supabase
     .from("accountability_partnerships")
     .select(
@@ -570,33 +606,39 @@ export async function getActivePartnerships(
   userId: string,
   teamId: string
 ): Promise<Result<AccountabilityPartnership[]>> {
-  const { data, error } = await supabase
-    .from("accountability_partnerships")
-    .select(
-      `
-      *,
-      partner:profiles!partner_id(full_name, email, professional_title),
-      user:profiles!user_id(full_name, email, professional_title)
-    `
-    )
-    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
-    .eq("team_id", teamId)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+  try {
+    const qc = getAppQueryClient();
+    const rows = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<Record<string, unknown>>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
 
-  if (error) {
+    const active = (Array.isArray(rows) ? rows : []).filter(
+      (p) => (p.status as string | undefined) === "active"
+    );
+    return {
+      data: active.map(mapPartnershipFromDb),
+      error: null,
+      status: 200,
+    };
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: error.message, status: null },
+      error: {
+        message:
+          e instanceof Error
+            ? e.message
+            : String(e) || "Failed to load partnerships",
+        status: null,
+      },
       status: null,
     };
   }
-
-  return {
-    data: data.map(mapPartnershipFromDb),
-    error: null,
-    status: 200,
-  };
 }
 
 /**
@@ -607,33 +649,43 @@ export async function getPendingPartnershipRequests(
   userId: string,
   teamId: string
 ): Promise<Result<AccountabilityPartnership[]>> {
-  const { data, error } = await supabase
-    .from("accountability_partnerships")
-    .select(
-      `
-      *,
-      partner:profiles!partner_id(full_name, email, professional_title),
-      user:profiles!user_id(full_name, email, professional_title)
-    `
-    )
-    .eq("partner_id", userId) // User is the recipient of the request
-    .eq("team_id", teamId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
+  try {
+    const qc = getAppQueryClient();
+    const rows = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<Record<string, unknown>>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
 
-  if (error) {
+    const pending = (Array.isArray(rows) ? rows : []).filter((p) => {
+      return (
+        (p.partner_id as string | undefined) === userId &&
+        (p.status as string | undefined) === "pending"
+      );
+    });
+
+    return {
+      data: pending.map(mapPartnershipFromDb),
+      error: null,
+      status: 200,
+    };
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: error.message, status: null },
+      error: {
+        message:
+          e instanceof Error
+            ? e.message
+            : String(e) || "Failed to load partnerships",
+        status: null,
+      },
       status: null,
     };
   }
-
-  return {
-    data: data.map(mapPartnershipFromDb),
-    error: null,
-    status: 200,
-  };
 }
 
 /**
@@ -669,6 +721,11 @@ export async function createPartnershipRequest(
       status: null,
     };
   }
+
+  getAppQueryClient().invalidateQueries({
+    queryKey: ["core", "accountability_partnerships"] as const,
+    exact: false,
+  });
 
   return {
     data: mapPartnershipFromDb(result),
@@ -707,6 +764,11 @@ export async function acceptPartnership(
     };
   }
 
+  getAppQueryClient().invalidateQueries({
+    queryKey: ["core", "accountability_partnerships"] as const,
+    exact: false,
+  });
+
   return {
     data: mapPartnershipFromDb(data),
     error: null,
@@ -735,6 +797,11 @@ export async function endPartnership(
       status: null,
     };
   }
+
+  getAppQueryClient().invalidateQueries({
+    queryKey: ["core", "accountability_partnerships"] as const,
+    exact: false,
+  });
 
   return { data: true, error: null, status: 200 };
 }

@@ -881,12 +881,27 @@ async function handleRequest(
     jsonReply(res, 404, { error: "Not Found", path: pathname });
     ctx.logComplete(method, pathname, 404);
   } catch (err: any) {
-    // Error handling
-    logError("Request failed", {
-      reqId: ctx.reqId,
-      error: err.message,
-      stack: err.stack,
-    });
+    // Error handling - log full details safely
+    try {
+      console.error("=== CAUGHT ERROR IN REQUEST HANDLER ===");
+      console.error("Error type:", typeof err);
+      console.error("Error constructor:", err?.constructor?.name);
+      console.error("Error object:", err);
+      console.error("Error keys:", Object.keys(err || {}));
+      console.error("========================================");
+
+      logError("Request failed", {
+        reqId: ctx.reqId,
+        message: err?.message || "Unknown error",
+        code: err?.code,
+        status: err?.status,
+        stack: err?.stack,
+        name: err?.name,
+      });
+    } catch (logErr) {
+      console.error("Failed to log error:", logErr);
+      console.error("Original error:", err);
+    }
     sendError(res, err);
     ctx.logComplete(
       req.method,

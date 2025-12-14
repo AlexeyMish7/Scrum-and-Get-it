@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Paper,
   Typography,
@@ -17,8 +17,8 @@ import {
   Download as DownloadIcon,
   Lightbulb as LightbulbIcon,
 } from "@mui/icons-material";
-import crud from "@shared/services/crud";
 import { useAuth } from "@shared/context/AuthContext";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 interface JobRecord {
   id: string;
@@ -43,40 +43,19 @@ interface ResponseSegment {
   avgDaysToResponse: number;
 }
 
+const EMPTY_JOBS: JobRecord[] = [];
+
 export default function ResponseRateCard() {
   const { session } = useAuth();
 
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch all jobs
-  useEffect(() => {
-    async function fetchJobs() {
-      if (!session?.user?.id) {
-        setError("Not authenticated");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const userCrud = crud.withUser(session.user.id);
-        const { data, error: fetchError } = await userCrud.listRows<JobRecord>(
-          "jobs",
-          "*"
-        );
-
-        if (fetchError) throw fetchError;
-        setJobs(data ?? []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load jobs");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchJobs();
-  }, [session?.user?.id]);
+  const jobsQuery = useCoreJobs<JobRecord>(session?.user?.id);
+  const jobs = jobsQuery.data ?? EMPTY_JOBS;
+  const loading = jobsQuery.isFetching;
+  const error = session?.user?.id
+    ? jobsQuery.isError
+      ? jobsQuery.error?.message ?? "Failed to load jobs"
+      : null
+    : "Not authenticated";
 
   // Calculate response rates segmented by various categories
   const segments = useMemo<ResponseSegment[]>(() => {

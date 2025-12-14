@@ -11,8 +11,13 @@
  * - Motivation widgets data
  */
 
-import { supabase } from "@shared/services/supabaseClient";
 import type { Result } from "@shared/services/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoreJobs,
+  fetchProgressMessagesSince,
+} from "@shared/cache/coreFetchers";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -226,18 +231,30 @@ export async function getStreakData(
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // Get job activity dates
-  const { data: jobs, error } = await supabase
-    .from("jobs")
-    .select("created_at, updated_at")
-    .eq("user_id", userId)
-    .gte("created_at", thirtyDaysAgo.toISOString())
-    .order("created_at", { ascending: false });
+  type StreakJobRow = { created_at: string; updated_at?: string | null };
 
-  if (error) {
+  // Use cached core jobs list and filter client-side.
+  let jobs: StreakJobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const all = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<StreakJobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    const startMs = thirtyDaysAgo.getTime();
+    jobs = (Array.isArray(all) ? all : []).filter((job) => {
+      const t = new Date(job.created_at).getTime();
+      return t >= startMs;
+    });
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: error.message, status: null },
+      error: {
+        message:
+          e instanceof Error ? e.message : String(e) || "Failed to load jobs",
+        status: null,
+      },
       status: null,
     };
   }
@@ -354,29 +371,58 @@ export async function getMotivationWidgetData(
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
 
-  const { data: weekJobs } = await supabase
-    .from("jobs")
-    .select("id")
-    .eq("user_id", userId)
-    .gte("created_at", weekStart.toISOString());
+  type JobRow = { id: number; created_at: string };
 
-  // Get encouragements received this week
-  const { data: encouragements } = await supabase
-    .from("progress_messages")
-    .select("id")
-    .eq("recipient_id", userId)
-    .eq("team_id", teamId)
-    .eq("message_type", "encouragement")
-    .gte("created_at", weekStart.toISOString());
+  // Use cached jobs list for weekly/total counts.
+  let allJobs: JobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const jobs = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<JobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    allJobs = Array.isArray(jobs) ? jobs : [];
+  } catch {
+    allJobs = [];
+  }
 
-  // Get total applications for milestone tracking
-  const { data: totalJobs } = await supabase
-    .from("jobs")
-    .select("id")
-    .eq("user_id", userId);
+  // Load messages via cache so the widget doesn't trigger extra reads on every render/navigation.
+  type ProgressMessageRow = {
+    id: string;
+    sender_id: string;
+    recipient_id: string;
+    message_type: string;
+    created_at: string;
+  };
 
-  const totalApplications = totalJobs?.length || 0;
-  const weeklyApplications = weekJobs?.length || 0;
+  let encouragementsReceived = 0;
+  try {
+    const sinceIso = weekStart.toISOString();
+    const qc = getAppQueryClient();
+    const messages = await qc.ensureQueryData({
+      queryKey: coreKeys.progressMessagesSince(userId, teamId, sinceIso),
+      queryFn: () =>
+        fetchProgressMessagesSince<ProgressMessageRow>(
+          userId,
+          teamId,
+          sinceIso
+        ),
+      staleTime: 2 * 60 * 1000,
+    });
+    encouragementsReceived = (Array.isArray(messages) ? messages : []).filter(
+      (m) => m.recipient_id === userId && m.message_type === "encouragement"
+    ).length;
+  } catch {
+    encouragementsReceived = 0;
+  }
+
+  const totalApplications = allJobs.length;
+  const weekStartMs = weekStart.getTime();
+  const weeklyApplications = allJobs.filter((j) => {
+    const t = new Date(j.created_at).getTime();
+    return t >= weekStartMs;
+  }).length;
   const weeklyGoal = 10; // Default weekly goal
 
   // Determine next milestone
@@ -387,7 +433,7 @@ export async function getMotivationWidgetData(
     quote: getDailyQuote(),
     streak: streakResult.data!,
     weeklyGoalProgress: Math.min(100, (weeklyApplications / weeklyGoal) * 100),
-    encouragementsReceived: encouragements?.length || 0,
+    encouragementsReceived,
     upcomingMilestone: nextMilestone
       ? {
           type: "applications",

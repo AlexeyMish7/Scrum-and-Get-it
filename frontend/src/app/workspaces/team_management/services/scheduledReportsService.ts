@@ -10,8 +10,27 @@
  * - Track report history
  */
 
-import { supabase } from "@shared/services/supabaseClient";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchAccountabilityPartnershipsWithProfiles,
+  fetchCoreJobs,
+} from "@shared/cache/coreFetchers";
 import type { Result } from "@shared/services/types";
+
+function toErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
+type DbPartnershipRow = {
+  user_id: string;
+  partner_id: string;
+  team_id: string;
+  status: string;
+};
+
+type DbJobRow = { id: number; job_status: string; created_at: string };
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -145,15 +164,29 @@ export async function getReportConfig(
   // Load from local storage
   const reportSettings = loadReportSettings(userId, teamId);
 
-  // Get accountability partners as potential recipients
-  const { data: partnerships } = await supabase
-    .from("accountability_partnerships")
-    .select("partner_id")
-    .eq("user_id", userId)
-    .eq("team_id", teamId)
-    .eq("status", "active");
-
-  const partnerIds = (partnerships || []).map((p) => p.partner_id);
+  // Load partnerships from cache so report config doesn't trigger extra reads.
+  let partnerIds: string[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const partnerships = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<DbPartnershipRow>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
+    partnerIds = (Array.isArray(partnerships) ? partnerships : [])
+      .filter(
+        (p) =>
+          p.user_id === userId && p.team_id === teamId && p.status === "active"
+      )
+      .map((p) => p.partner_id)
+      .filter(Boolean);
+  } catch {
+    partnerIds = [];
+  }
 
   const config: ReportConfig = {
     userId,
@@ -251,45 +284,60 @@ export async function generateProgressReport(
   const prevPeriodStart = new Date(periodStart.getTime() - periodLength);
   const prevPeriodEnd = periodStart;
 
-  // Get current period jobs
-  const { data: currentJobs, error: jobsError } = await supabase
-    .from("jobs")
-    .select("id, job_status, created_at")
-    .eq("user_id", userId)
-    .gte("created_at", periodStart.toISOString())
-    .lt("created_at", periodEnd.toISOString());
-
-  if (jobsError) {
+  // Use cached core jobs list and filter client-side.
+  let allJobs: DbJobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const jobs = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<DbJobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    allJobs = Array.isArray(jobs) ? jobs : [];
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: jobsError.message, status: null },
+      error: {
+        message: toErrorMessage(e) || "Failed to load jobs",
+        status: null,
+      },
       status: null,
     };
   }
 
-  // Get previous period jobs for comparison
-  const { data: prevJobs } = await supabase
-    .from("jobs")
-    .select("id, job_status")
-    .eq("user_id", userId)
-    .gte("created_at", prevPeriodStart.toISOString())
-    .lt("created_at", prevPeriodEnd.toISOString());
+  const startMs = periodStart.getTime();
+  const endMs = periodEnd.getTime();
+  const prevStartMs = prevPeriodStart.getTime();
+  const prevEndMs = prevPeriodEnd.getTime();
+
+  const currentJobs = allJobs.filter((j) => {
+    const t = new Date(j.created_at).getTime();
+    return t >= startMs && t < endMs;
+  });
+  const prevJobs = allJobs.filter((j) => {
+    const t = new Date(j.created_at).getTime();
+    return t >= prevStartMs && t < prevEndMs;
+  });
 
   // Get partnerships
-  const { data: partnerships } = await supabase
-    .from("accountability_partnerships")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("team_id", teamId)
-    .eq("status", "active");
-
-  // Get streak data
-  const { data: allJobs } = await supabase
-    .from("jobs")
-    .select("created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(30);
+  let partnerships: DbPartnershipRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const all = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<DbPartnershipRow>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
+    partnerships = (Array.isArray(all) ? all : []).filter(
+      (p) => p.user_id === userId && p.status === "active"
+    );
+  } catch {
+    partnerships = [];
+  }
 
   // Calculate metrics
   const currentApplications = currentJobs?.length || 0;

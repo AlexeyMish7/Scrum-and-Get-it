@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { Container, Typography, Box, Tabs, Tab, Divider } from "@mui/material";
+import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import type { Template, Theme, TemplateCategory } from "../../types";
 import { TemplateGallery } from "@ai_workspace/components/templates";
 import { ThemeGallery } from "@ai_workspace/components/themes";

@@ -24,7 +24,7 @@ interface FlickeringGridProps {
   squareSize?: number;
   /** Gap between squares in pixels (default: 8) */
   gridGap?: number;
-  /** Probability of a square changing opacity per second (default: 0.08, lower = slower, more subtle) */
+  /** Probability of a square changing opacity per second (default: 0.015, whisper-subtle for production) */
   flickerChance?: number;
   /** Override color (defaults to theme-based) */
   color?: string;
@@ -34,7 +34,7 @@ interface FlickeringGridProps {
   height?: number;
   /** Additional CSS class */
   className?: string;
-  /** Maximum opacity for squares (0-1) */
+  /** Maximum opacity for squares (0-1, default: 0.015 for barely-there visual texture) */
   maxOpacity?: number;
 }
 
@@ -45,12 +45,12 @@ interface FlickeringGridProps {
 const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   squareSize = 12,
   gridGap = 8,
-  flickerChance = 0.04,
+  flickerChance = 0.015,
   color,
   width,
   height,
   className,
-  maxOpacity = 0.06,
+  maxOpacity = 0.015,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

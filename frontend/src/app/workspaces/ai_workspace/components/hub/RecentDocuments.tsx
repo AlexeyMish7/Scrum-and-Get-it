@@ -72,18 +72,27 @@ export default function RecentDocuments({
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        sx={{ mb: 2 }}
+        sx={{ mb: 3 }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
+          }}
+        >
           Recent Documents
         </Typography>
 
         <Typography
           variant="body2"
-          color="primary"
           sx={{
+            color: "primary.main",
             cursor: "pointer",
-            "&:hover": { textDecoration: "underline" },
+            fontWeight: 600,
+            "&:hover": {
+              textDecoration: "underline",
+            },
           }}
           onClick={() => navigate("/ai/library")}
         >
@@ -91,85 +100,158 @@ export default function RecentDocuments({
         </Typography>
       </Stack>
 
-      <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", gap: 2 }}>
-        {displayDocuments.map((doc) => (
-          <Box
-            key={doc.id}
-            sx={{ flex: "1 1 calc(25% - 16px)", minWidth: 220 }}
-          >
-            <Card
-              elevation={0}
-              sx={{
-                border: 1,
-                borderColor: "divider",
-                height: "100%",
-                transition: "all 0.2s",
-                "&:hover": {
-                  borderColor: "primary.main",
-                  boxShadow: 2,
-                },
-              }}
+      <Stack direction="row" spacing={3} sx={{ flexWrap: "wrap", gap: 3 }}>
+        {displayDocuments.map((doc) => {
+          // Type-specific color accents
+          const typeColor =
+            doc.type === "resume"
+              ? "#1976d2" // Blue for resume
+              : "#388e3c"; // Green for cover letter
+
+          return (
+            <Box
+              key={doc.id}
+              sx={{ flex: "1 1 calc(25% - 24px)", minWidth: 240 }}
             >
-              <CardActionArea
-                onClick={() => navigate(`/ai/document/${doc.id}`)}
-                sx={{ height: "100%" }}
+              <Card
+                elevation={0}
+                sx={{
+                  height: "100%",
+                  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                  border: 1,
+                  borderColor: "divider",
+                  borderLeft: 3,
+                  borderLeftColor: typeColor,
+                  "&:hover": {
+                    borderColor: typeColor,
+                    borderLeftColor: typeColor,
+                    transform: "translateY(-4px)",
+                    boxShadow: `0 8px 16px ${typeColor}20`,
+                  },
+                }}
               >
-                <Box sx={{ p: 2 }}>
-                  {/* Document icon */}
-                  <Box
-                    sx={{
-                      width: "100%",
-                      height: 120,
-                      backgroundColor: "background.default",
-                      borderRadius: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      mb: 2,
-                    }}
-                  >
-                    {doc.type === "resume" ? (
-                      <ResumeIcon
-                        sx={{ fontSize: 48, color: "text.secondary" }}
+                <CardActionArea
+                  onClick={() => navigate(`/ai/document/${doc.id}`)}
+                  sx={{ height: "100%" }}
+                >
+                  <Box sx={{ p: 2.5 }}>
+                    {/* Document header with type-colored icon */}
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="flex-start"
+                      sx={{ mb: 2 }}
+                    >
+                      {doc.type === "resume" ? (
+                        <ResumeIcon
+                          sx={{
+                            fontSize: 28,
+                            color: typeColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <CoverLetterIcon
+                          sx={{
+                            fontSize: 28,
+                            color: typeColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      {/* Title with stronger weight for better scannability */}
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          flex: 1,
+                          fontWeight: 700,
+                          lineHeight: 1.3,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                        }}
+                      >
+                        {doc.name}
+                      </Typography>
+                    </Stack>
+
+                    {/* Document preview */}
+                    <Box
+                      sx={{
+                        width: "100%",
+                        height: 72,
+                        backgroundColor: "action.hover",
+                        borderRadius: 1,
+                        p: 1.5,
+                        mb: 2,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.disabled",
+                          lineHeight: 1.4,
+                          fontSize: "0.6875rem",
+                        }}
+                      >
+                        {doc.type === "resume"
+                          ? "Professional Experience\nSoftware Engineer | Company Name\n• Led development of key features..."
+                          : "Dear Hiring Manager,\n\nI am writing to express my strong interest..."}
+                      </Typography>
+                    </Box>
+
+                    {/* Metadata badges - reduced visual weight */}
+                    <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                      <Chip
+                        label={
+                          doc.type === "resume" ? "Resume" : "Cover Letter"
+                        }
+                        size="small"
+                        sx={{
+                          backgroundColor: `${typeColor}15`,
+                          color: typeColor,
+                          fontWeight: 600,
+                          borderColor: `${typeColor}30`,
+                          fontSize: "0.6875rem",
+                        }}
                       />
-                    ) : (
-                      <CoverLetterIcon
-                        sx={{ fontSize: 48, color: "text.secondary" }}
+                      <Chip
+                        label={`v${doc.versionNumber}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          fontSize: "0.6875rem",
+                          fontWeight: 500,
+                        }}
                       />
-                    )}
+                    </Stack>
+
+                    {/* Timestamp - reduced prominence */}
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <ClockIcon
+                        sx={{ fontSize: 14, color: "text.disabled" }}
+                      />
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.disabled",
+                          fontSize: "0.6875rem",
+                        }}
+                      >
+                        {formatDistanceToNow(new Date(doc.lastEditedAt), {
+                          addSuffix: true,
+                        })}
+                      </Typography>
+                    </Stack>
                   </Box>
-
-                  {/* Document info */}
-                  <Typography variant="subtitle2" noWrap gutterBottom>
-                    {doc.name}
-                  </Typography>
-
-                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                    <Chip
-                      label={doc.type === "resume" ? "Resume" : "Cover Letter"}
-                      size="small"
-                      color={doc.type === "resume" ? "primary" : "primary"}
-                    />
-                    <Chip
-                      label={`v${doc.versionNumber}`}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Stack>
-
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <ClockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDistanceToNow(new Date(doc.lastEditedAt), {
-                        addSuffix: true,
-                      })}
-                    </Typography>
-                  </Stack>
-                </Box>
-              </CardActionArea>
-            </Card>
-          </Box>
-        ))}
+                </CardActionArea>
+              </Card>
+            </Box>
+          );
+        })}
       </Stack>
     </Box>
   );

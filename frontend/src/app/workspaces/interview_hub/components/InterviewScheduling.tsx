@@ -35,6 +35,9 @@ import aiClient from "@shared/services/ai/client";
 import { useJobsPipeline } from "@job_pipeline/hooks/useJobsPipeline";
 import { pipelineService } from "@job_pipeline/services";
 import { useAuth } from "@shared/context/AuthContext";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchScheduledInterviews } from "@shared/cache/coreFetchers";
 import {
   createPreparationActivity,
   listScheduledInterviews,
@@ -111,6 +114,7 @@ export default function InterviewScheduling() {
 
   const { allJobs, loading: jobsLoading, refreshJobs } = useJobsPipeline();
   const { user } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
   const [notes, setNotes] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -158,30 +162,40 @@ export default function InterviewScheduling() {
 
   // Load interviews from database when user becomes available
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
 
     async function loadInterviews() {
       try {
-        const result = await listScheduledInterviews(user!.id);
-        if (!result.error && result.data) {
+        const qc = getAppQueryClient();
+        const rows = await qc.ensureQueryData({
+          queryKey: coreKeys.scheduledInterviews(userId),
+          queryFn: () => fetchScheduledInterviews<any>(userId),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        if (rows) {
           // Map database format to component format
-          const dbInterviews = (result.data as any[]).map((iv: any) => ({
-            id: iv.id,
-            title: iv.title || iv.role || "Interview",
-            interviewer: iv.interviewer,
-            type: (iv.format as Interview["type"]) || "video",
-            start: iv.interview_date,
-            end: new Date(
-              new Date(iv.interview_date).getTime() +
-                (iv.duration_minutes || 45) * 60000
-            ).toISOString(),
-            reminderMinutes: iv.reminder_minutes || 30,
-            location: iv.location,
-            linkedJob: iv.linked_job_id ? String(iv.linked_job_id) : undefined,
-            notes: iv.notes,
-            status: iv.status || "scheduled",
-            outcome: iv.outcome,
-          }));
+          const dbInterviews = (Array.isArray(rows) ? rows : []).map(
+            (iv: any) => ({
+              id: iv.id,
+              title: iv.title || iv.role || "Interview",
+              interviewer: iv.interviewer,
+              type: (iv.format as Interview["type"]) || "video",
+              start: iv.interview_date,
+              end: new Date(
+                new Date(iv.interview_date).getTime() +
+                  (iv.duration_minutes || 45) * 60000
+              ).toISOString(),
+              reminderMinutes: iv.reminder_minutes || 30,
+              location: iv.location,
+              linkedJob: iv.linked_job_id
+                ? String(iv.linked_job_id)
+                : undefined,
+              notes: iv.notes,
+              status: iv.status || "scheduled",
+              outcome: iv.outcome,
+            })
+          );
           setInterviews(dbInterviews);
         }
       } catch {
@@ -192,14 +206,14 @@ export default function InterviewScheduling() {
     }
 
     loadInterviews();
-  }, [user?.id]);
+  }, [userId]);
 
   // Notify calendar when interviews change (no longer persisting to localStorage)
   useEffect(() => {
-    if (!user?.id || !storageLoaded) return;
+    if (!userId || !storageLoaded) return;
     // Dispatch event so CalendarWidget can refresh
     window.dispatchEvent(new CustomEvent("interviews-updated"));
-  }, [interviews, user?.id, storageLoaded]);
+  }, [interviews, userId, storageLoaded]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -371,7 +385,6 @@ export default function InterviewScheduling() {
                 "Interview"
               );
               if (!res.error) {
-                window.dispatchEvent(new CustomEvent("jobs-updated"));
                 try {
                   refreshJobs();
                 } catch {}
@@ -513,8 +526,6 @@ export default function InterviewScheduling() {
                   "Interview"
                 );
                 if (!res.error) {
-                  // notify pipeline components to refresh
-                  window.dispatchEvent(new CustomEvent("jobs-updated"));
                   try {
                     refreshJobs();
                   } catch {}

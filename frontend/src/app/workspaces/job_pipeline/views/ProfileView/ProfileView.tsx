@@ -19,7 +19,7 @@
  * - Job readiness indicators
  */
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -41,7 +41,6 @@ import {
   Tooltip,
 } from "@mui/material";
 import {
-  Person as PersonIcon,
   Work as WorkIcon,
   School as SchoolIcon,
   Star as SkillIcon,
@@ -51,55 +50,37 @@ import {
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon,
 } from "@mui/icons-material";
-import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { supabase } from "@shared/services/supabaseClient";
-import { withUser } from "@shared/services/crud";
 import { useNavigate } from "react-router-dom";
+import { useUnifiedProfile, type UnifiedProfileData } from "@profile/cache";
 
-// Types
-interface ProfileData {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  professional_title?: string;
-  summary?: string;
-  experience_level?: string;
-  industry?: string;
-  city?: string;
-  state?: string;
-}
+import type { EmploymentRow } from "@profile/types/employment";
+import type { SkillItem } from "@profile/types/skill";
+import type { EducationEntry } from "@profile/types/education";
+import type { Project } from "@profile/types/project";
+import type { ProfileData } from "@profile/types/profile";
 
-interface EmploymentRow {
-  id: string;
-  job_title: string;
-  company_name: string;
-  start_date: string;
-  end_date: string | null;
-  current_position: boolean;
-}
+const EMPTY_EMPLOYMENT: EmploymentRow[] = [];
+const EMPTY_SKILLS: SkillItem[] = [];
+const EMPTY_EDUCATION: EducationEntry[] = [];
+const EMPTY_PROJECTS: Project[] = [];
 
-interface SkillRow {
-  id: string;
-  skill_name: string;
-  proficiency_level: string;
-  skill_category: string;
-}
+function getSkillLevelNumber(skillLevel: SkillItem["level"]) {
+  if (typeof skillLevel === "number") return skillLevel;
 
-interface EducationRow {
-  id: string;
-  institution_name: string;
-  degree_type: string;
-  field_of_study: string;
-  graduation_date: string | null;
-}
+  const normalized = String(skillLevel).trim().toLowerCase();
+  if (normalized === "expert") return 4;
+  if (normalized === "advanced") return 3;
+  if (normalized === "intermediate") return 2;
+  if (normalized === "beginner") return 1;
 
-interface ProjectRow {
-  id: string;
-  proj_name: string;
-  start_date: string;
-  end_date: string | null;
+  // Some UI flows store labels like "Expert"; fall back to substring checks.
+  if (normalized.includes("expert")) return 4;
+  if (normalized.includes("advanced")) return 3;
+  if (normalized.includes("intermediate")) return 2;
+  if (normalized.includes("beginner")) return 1;
+
+  return 0;
 }
 
 // Profile completion requirements
@@ -111,63 +92,23 @@ const REQUIRED_COUNTS = {
 };
 
 export default function ProfileView() {
-  const { user } = useAuth();
   const { handleError } = useErrorHandler();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [employment, setEmployment] = useState<EmploymentRow[]>([]);
-  const [skills, setSkills] = useState<SkillRow[]>([]);
-  const [education, setEducation] = useState<EducationRow[]>([]);
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const unifiedProfileQuery = useUnifiedProfile();
 
-  // Load all profile data
+  const unifiedData: UnifiedProfileData | undefined = unifiedProfileQuery.data;
+  const profile: ProfileData | null = unifiedData?.profile ?? null;
+  const employment: EmploymentRow[] =
+    unifiedData?.employment ?? EMPTY_EMPLOYMENT;
+  const skills: SkillItem[] = unifiedData?.skills ?? EMPTY_SKILLS;
+  const education: EducationEntry[] = unifiedData?.education ?? EMPTY_EDUCATION;
+  const projects: Project[] = unifiedData?.projects ?? EMPTY_PROJECTS;
+
   useEffect(() => {
-    if (!user?.id) return;
-    setLoading(true);
-    (async () => {
-      try {
-        const userCrud = withUser(user.id);
-
-        // Load profile
-        const profileRes = await userCrud.getRow("profiles", "*", user.id);
-        if (profileRes.error) throw new Error(profileRes.error.message);
-        setProfile(profileRes.data as ProfileData);
-
-        // Load employment
-        const empRes = await userCrud.listRows("employment", "*", {
-          order: { column: "start_date", ascending: false },
-        });
-        if (empRes.error) throw new Error(empRes.error.message);
-        setEmployment((empRes.data || []) as EmploymentRow[]);
-
-        // Load skills
-        const skillsRes = await userCrud.listRows("skills", "*");
-        if (skillsRes.error) throw new Error(skillsRes.error.message);
-        setSkills((skillsRes.data || []) as SkillRow[]);
-
-        // Load education
-        const eduRes = await userCrud.listRows("education", "*", {
-          order: { column: "graduation_date", ascending: false },
-        });
-        if (eduRes.error) throw new Error(eduRes.error.message);
-        setEducation((eduRes.data || []) as EducationRow[]);
-
-        // Load projects
-        const projRes = await userCrud.listRows("projects", "*", {
-          order: { column: "start_date", ascending: false },
-        });
-        if (projRes.error) throw new Error(projRes.error.message);
-        setProjects((projRes.data || []) as ProjectRow[]);
-      } catch (err) {
-        console.error(err);
-        handleError(err, "Failed to load profile data");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [user?.id, handleError]);
+    if (!unifiedProfileQuery.isError) return;
+    handleError(unifiedProfileQuery.error, "Failed to load profile data");
+  }, [unifiedProfileQuery.isError, unifiedProfileQuery.error, handleError]);
 
   // Calculate completion percentage
   const completion = useMemo(() => {
@@ -234,38 +175,26 @@ export default function ProfileView() {
   // Get highest education level
   const highestEducation = useMemo(() => {
     if (education.length === 0) return "None";
-    const degrees = education.map((e) => e.degree_type || "");
+    const degrees = education.map((e) => e.degree || "");
     if (degrees.includes("PhD")) return "PhD";
     if (degrees.includes("Master's")) return "Master's";
     if (degrees.includes("Bachelor's")) return "Bachelor's";
     if (degrees.includes("Associate")) return "Associate";
-    return education[0].degree_type || "Other";
+    return education[0].degree || "Other";
   }, [education]);
 
   // Top skills by proficiency
   const topSkills = useMemo(() => {
-    const proficiencyOrder = {
-      expert: 4,
-      advanced: 3,
-      intermediate: 2,
-      beginner: 1,
-    };
     return [...skills]
       .sort((a, b) => {
-        const aLevel =
-          proficiencyOrder[
-            a.proficiency_level as keyof typeof proficiencyOrder
-          ] || 0;
-        const bLevel =
-          proficiencyOrder[
-            b.proficiency_level as keyof typeof proficiencyOrder
-          ] || 0;
+        const aLevel = getSkillLevelNumber(a.level);
+        const bLevel = getSkillLevelNumber(b.level);
         return bLevel - aLevel;
       })
       .slice(0, 10);
   }, [skills]);
 
-  if (loading) {
+  if (unifiedProfileQuery.isLoading) {
     return (
       <Box
         sx={{
@@ -291,10 +220,10 @@ export default function ProfileView() {
         >
           <Box>
             <Typography variant="h4" gutterBottom>
-              {profile?.first_name} {profile?.last_name}
+              {profile?.fullName || "Your Profile"}
             </Typography>
             <Typography variant="h6" color="text.secondary">
-              {profile?.professional_title || "Professional"}
+              {profile?.headline || "Professional"}
             </Typography>
             {profile?.city && profile?.state && (
               <Typography variant="body2" color="text.secondary">
@@ -503,7 +432,7 @@ export default function ProfileView() {
                 </Typography>
               ) : (
                 <List>
-                  {employment.slice(0, 3).map((job, idx) => (
+                  {employment.slice(0, 3).map((job) => (
                     <ListItem key={job.id} sx={{ px: 0 }}>
                       <ListItemIcon>
                         <WorkIcon color="primary" />
@@ -567,13 +496,13 @@ export default function ProfileView() {
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                   {topSkills.map((skill) => (
                     <Chip
-                      key={skill.id}
-                      label={skill.skill_name}
+                      key={skill.id ?? skill.name}
+                      label={skill.name}
                       size="small"
                       color={
-                        skill.proficiency_level === "expert"
+                        getSkillLevelNumber(skill.level) >= 4
                           ? "success"
-                          : skill.proficiency_level === "advanced"
+                          : getSkillLevelNumber(skill.level) >= 3
                           ? "primary"
                           : "default"
                       }
@@ -628,16 +557,15 @@ export default function ProfileView() {
                         <SchoolIcon color="warning" />
                       </ListItemIcon>
                       <ListItemText
-                        primary={edu.degree_type || "Degree"}
+                        primary={edu.degree || "Degree"}
                         secondary={
                           <>
-                            {edu.field_of_study && `${edu.field_of_study} • `}
-                            {edu.institution_name}
-                            {edu.graduation_date && (
+                            {edu.fieldOfStudy && `${edu.fieldOfStudy} • `}
+                            {edu.institution}
+                            {edu.endDate && (
                               <>
                                 <br />
-                                Graduated:{" "}
-                                {new Date(edu.graduation_date).getFullYear()}
+                                Graduated: {new Date(edu.endDate).getFullYear()}
                               </>
                             )}
                           </>
@@ -691,10 +619,10 @@ export default function ProfileView() {
                         <ProjectIcon color="info" />
                       </ListItemIcon>
                       <ListItemText
-                        primary={proj.proj_name}
-                        secondary={`${new Date(proj.start_date).getFullYear()}${
-                          proj.end_date
-                            ? ` - ${new Date(proj.end_date).getFullYear()}`
+                        primary={proj.projectName}
+                        secondary={`${new Date(proj.startDate).getFullYear()}${
+                          proj.endDate
+                            ? ` - ${new Date(proj.endDate).getFullYear()}`
                             : " - Ongoing"
                         }`}
                       />

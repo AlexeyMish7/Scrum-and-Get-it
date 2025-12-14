@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  
 } from "@mui/material";
 import AddContactButton from "../AddContact/AddContactButton";
 import AddContactForm from "../AddContact/AddContactForm";
@@ -18,58 +17,82 @@ import ContactsListItem from "../ContactsList/ContactsListItem";
 import AddReminders from "../RelationshipMaintenance/Reminders/AddReminders";
 import { useAuth } from "@shared/context/AuthContext";
 import * as db from "@shared/services/dbMappers";
-import type { Result } from "@shared/services/types";
+import {
+  useCoreContacts,
+  useNetworkingEventContacts,
+} from "@shared/cache/coreHooks";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { getAppQueryClient } from "@shared/cache";
 
-export default function EventContacts({ eventId, eventName }: { eventId?: string | null; eventName?: string | null }) {
+type ContactRow = {
+  id: string | number;
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+} & Record<string, unknown>;
+
+type NetworkingEventContactLinkRow = {
+  id: string | number;
+  event_id: string | number;
+  contact_id: string | number;
+  follow_up_required?: boolean | null;
+  follow_up_notes?: string | null;
+} & Record<string, unknown>;
+
+type EventContactRow = {
+  link: NetworkingEventContactLinkRow;
+  contact: ContactRow | null;
+};
+
+export default function EventContacts({
+  eventId,
+  eventName,
+}: {
+  eventId?: string | null;
+  eventName?: string | null;
+}) {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<Array<{ link: any; contact: any | null }>>([]);
+
+  const linksQuery = useNetworkingEventContacts<NetworkingEventContactLinkRow>(
+    user?.id,
+    eventId ? String(eventId) : null,
+    { staleTimeMs: 30 * 1000 }
+  );
+  const contactsQuery = useCoreContacts<ContactRow>(user?.id, {
+    staleTimeMs: 30 * 1000,
+  });
+
+  const contactsById = useMemo(() => {
+    const map = new Map<string, ContactRow>();
+    for (const c of contactsQuery.data ?? []) {
+      map.set(String(c.id), c);
+    }
+    return map;
+  }, [contactsQuery.data]);
+
+  const rows: EventContactRow[] = useMemo(() => {
+    const links = linksQuery.data ?? [];
+    return links.map((link) => {
+      const contact = contactsById.get(String(link.contact_id)) ?? null;
+      return { link, contact };
+    });
+  }, [linksQuery.data, contactsById]);
 
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
+  const [editing, setEditing] = useState<ContactRow | null>(null);
 
   const [pendingContactId, setPendingContactId] = useState<string | null>(null);
   const [openReminders, setOpenReminders] = useState(false);
 
-  async function load() {
-    if (!user || !eventId) return setRows([]);
-    setLoading(true);
-    try {
-      const res: Result<unknown[]> = await db.listNetworkingEventContacts(user.id, { eq: { event_id: eventId } });
-      const links = !res.error && res.data ? (Array.isArray(res.data) ? res.data : [res.data]) : [];
-
-      const pairs = await Promise.all(
-        links.map(async (l: any) => {
-          try {
-            const cRes = await db.getContact(user.id, String(l.contact_id));
-            return { link: l, contact: !cRes.error ? cRes.data : null };
-          } catch {
-            return { link: l, contact: null };
-          }
-        })
-      );
-
-      setRows(pairs as any[]);
-    } catch (err) {
-      console.error("Failed to load event contacts", err);
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, eventId]);
+  const loading = linksQuery.isLoading || contactsQuery.isLoading;
 
   // When AddContactForm calls onCreate, we first create the contact then prompt to link to event
   const handleCreateContact = async (payload: Record<string, unknown>) => {
     if (!user || !eventId) throw new Error("Not signed in or missing event");
     const res = await db.createContact(user.id, payload);
     if (res.error) throw new Error(res.error.message || "Create failed");
-    const created = res.data as any;
+    const created = res.data as { id?: string | number };
     // hold pending id and immediately create link; if payload requested follow-up, open reminders
     setPendingContactId(String(created.id));
     const linkPayload: Record<string, unknown> = {
@@ -85,38 +108,71 @@ export default function EventContacts({ eventId, eventName }: { eventId?: string
     if (payload?.follow_up_required) {
       setOpenReminders(true);
     }
-    await load();
+
+    const queryClient = getAppQueryClient();
+    await queryClient.invalidateQueries({
+      queryKey: coreKeys.contacts(user.id),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: coreKeys.networkingEventContacts(user.id, String(eventId)),
+    });
+    await Promise.all([contactsQuery.refetch(), linksQuery.refetch()]);
   };
-
-
 
   const handleDeleteLinkByContact = async (contactId?: string) => {
     if (!user || !contactId) return;
     // find link
-    const found = rows.find((r) => String(r.link.contact_id) === String(contactId));
+    const found = rows.find(
+      (r) => String(r.link.contact_id) === String(contactId)
+    );
     if (!found) return;
     try {
       await db.deleteNetworkingEventContact(user.id, String(found.link.id));
     } catch (err) {
       console.error("Failed to delete link", err);
     }
-    await load();
+
+    if (eventId) {
+      const queryClient = getAppQueryClient();
+      await queryClient.invalidateQueries({
+        queryKey: coreKeys.networkingEventContacts(user.id, String(eventId)),
+      });
+    }
+    await linksQuery.refetch();
   };
 
-  const handleUpdateContact = async (id: string, payload: Record<string, unknown>) => {
+  const handleUpdateContact = async (
+    id: string,
+    payload: Record<string, unknown>
+  ) => {
     if (!user) throw new Error("Not signed in");
     const res = await db.updateContact(user.id, id, payload);
     if (res.error) throw new Error(res.error.message || "Update failed");
     setOpenEdit(false);
     setEditing(null);
-    await load();
+
+    const queryClient = getAppQueryClient();
+    await queryClient.invalidateQueries({
+      queryKey: coreKeys.contacts(user.id),
+    });
+    await contactsQuery.refetch();
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
         <Typography variant="h6">Connections</Typography>
-        <AddContactButton onClick={() => { setOpenAdd(true); setEditing(null); }} />
+        <AddContactButton
+          onClick={() => {
+            setOpenAdd(true);
+            setEditing(null);
+          }}
+        />
       </Box>
 
       <Paper sx={{ p: 2, minHeight: 400 }}>
@@ -125,13 +181,18 @@ export default function EventContacts({ eventId, eventName }: { eventId?: string
             <CircularProgress />
           </Stack>
         ) : rows.length === 0 ? (
-          <Typography color="text.secondary">No connections yet. Add one with the button above.</Typography>
+          <Typography color="text.secondary">
+            No connections yet. Add one with the button above.
+          </Typography>
         ) : (
           rows.map((r) => (
             <ContactsListItem
               key={String(r.contact?.id ?? r.link.id)}
               contact={r.contact ?? { id: r.link.contact_id }}
-              onEdit={(c) => { setEditing(c); setOpenEdit(true); }}
+              onEdit={(c) => {
+                setEditing(c as ContactRow);
+                setOpenEdit(true);
+              }}
               onDelete={(id) => handleDeleteLinkByContact(id)}
             />
           ))
@@ -160,7 +221,10 @@ export default function EventContacts({ eventId, eventName }: { eventId?: string
         <AddContactForm
           open={openEdit}
           initialData={editing}
-          onClose={() => { setOpenEdit(false); setEditing(null); }}
+          onClose={() => {
+            setOpenEdit(false);
+            setEditing(null);
+          }}
           onUpdate={async (payload) => {
             if (!editing?.id) return;
             await handleUpdateContact(String(editing.id), payload);
@@ -171,23 +235,45 @@ export default function EventContacts({ eventId, eventName }: { eventId?: string
       {/* follow-up is collected in the add-contact form now; linking and reminders handled immediately after create */}
 
       {/* Reminders panel (shown after linking & user chose follow-up) */}
-      <Dialog open={openReminders} onClose={() => { setOpenReminders(false); setPendingContactId(null); }} maxWidth="md" fullWidth>
+      <Dialog
+        open={openReminders}
+        onClose={() => {
+          setOpenReminders(false);
+          setPendingContactId(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Follow-up reminders</DialogTitle>
         <DialogContent>
-            <AddReminders contactId={pendingContactId ?? undefined} onSaved={() => { setOpenReminders(false); setPendingContactId(null); }} initialType={eventName ? `Follow Up from ${eventName}` : undefined} />
+          <AddReminders
+            contactId={pendingContactId ?? undefined}
+            onSaved={() => {
+              setOpenReminders(false);
+              setPendingContactId(null);
+            }}
+            initialType={eventName ? `Follow Up from ${eventName}` : undefined}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setOpenReminders(false); setPendingContactId(null); }}>Close</Button>
+          <Button
+            onClick={() => {
+              setOpenReminders(false);
+              setPendingContactId(null);
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 }
-//This tab will list every contact that was made at this networking event 
+//This tab will list every contact that was made at this networking event
 //It will have an add contact button at the top that opens a dialog to add a new contact
 //This will update both the contacts table and the networking_event_contacts table in the database
-//On this popup there will also be an option for follow up needed 
+//On this popup there will also be an option for follow up needed
 //If the option is checked then also open up an add reminder and fill the type  with "Follow up from event: [event name]"
 //Use the ContactsListItem component to display each contact in the list
 //Use the addcontactform component for the add contact dialog
-//use the AddReminder component for the follow up reminder but fill the 
+//use the AddReminder component for the follow up reminder but fill the

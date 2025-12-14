@@ -16,6 +16,9 @@
  */
 
 import { supabase } from "@shared/services/supabaseClient";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 import {
   withUser,
   insertRow,
@@ -1048,6 +1051,8 @@ export async function getTeamInsights(
     }>;
   }>
 > {
+  type TeamAnalyticsJobRow = { user_id?: string; job_status?: string };
+
   // Get team members
   const membersResult = await getTeamMembers(userId, teamId);
   if (membersResult.error) {
@@ -1061,13 +1066,19 @@ export async function getTeamInsights(
   const members = membersResult.data || [];
   const memberIds = members.map((m) => m.user_id);
 
-  // Get current user's jobs (RLS allows this)
-  const { data: currentUserJobs, error: jobError } = await supabase
-    .from("jobs")
-    .select("user_id, job_status")
-    .eq("user_id", userId);
-
-  const userJobs = jobError ? [] : currentUserJobs || [];
+  // Get current user's jobs (cached via core keys)
+  let userJobs: TeamAnalyticsJobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const jobs = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<TeamAnalyticsJobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    userJobs = Array.isArray(jobs) ? jobs : [];
+  } catch {
+    userJobs = [];
+  }
 
   // Try to get progress snapshots for team members (shared progress data)
   // This table has team-based RLS so we can see team member snapshots

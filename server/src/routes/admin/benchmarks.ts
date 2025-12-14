@@ -1,24 +1,40 @@
 /**
  * Peer Benchmark Computation Endpoint
- * 
+ *
  * Purpose: Trigger computation of anonymized peer benchmarks from real user data
- * 
+ *
  * Endpoints:
  * - POST /api/admin/compute-benchmarks - Compute all peer benchmarks (admin only)
  * - GET /api/admin/benchmark-status - Check peer benchmark coverage
- * 
+ *
  * Privacy: Only creates benchmarks when segment has 5+ users
  */
 
 import type { IncomingMessage, ServerResponse } from "http";
-import { sendJson } from "../../utils/http.js";
-import { requireAuth } from "../middleware/auth.js";
-import { getCorsHeaders } from "../middleware/cors.js";
-import supabaseAdmin from "../services/supabaseAdmin.js";
+import { sendJson } from "../../../utils/http.js";
+import { requireAuth } from "../../middleware/auth.js";
+import supabaseAdmin from "../../services/supabaseAdmin.js";
+
+type PeerBenchmarkRow = {
+  industry: string;
+  experience_level: string;
+  sample_size: number | null;
+  data_quality_score: number | null;
+  last_computed_at: string | null;
+  avg_applications_per_month: number | null;
+  avg_response_rate: number | null;
+  avg_interview_rate: number | null;
+  avg_offer_rate: number | null;
+};
+
+type SegmentRow = {
+  industry: string;
+  experience_level: string;
+};
 
 /**
  * POST /api/admin/compute-benchmarks
- * 
+ *
  * Trigger computation of all peer benchmarks
  * Aggregates anonymized metrics from all users
  */
@@ -28,12 +44,22 @@ export async function handleComputeBenchmarks(
 ) {
   try {
     // Authentication (in production, add admin role check)
-    const userId = await requireAuth(req);
+    await requireAuth(req);
+
+    if (!supabaseAdmin) {
+      return sendJson(res, 500, {
+        success: false,
+        error:
+          "Supabase admin client is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+      });
+    }
 
     console.log("[computeBenchmarks] Starting peer benchmark computation...");
 
     // Call database function to compute all benchmarks
-    const { data, error } = await supabaseAdmin.rpc("compute_all_peer_benchmarks");
+    const { data, error } = await supabaseAdmin.rpc(
+      "compute_all_peer_benchmarks"
+    );
 
     if (error) {
       console.error("[computeBenchmarks] Error:", error);
@@ -41,7 +67,7 @@ export async function handleComputeBenchmarks(
         success: false,
         error: "Failed to compute peer benchmarks",
         details: error.message,
-      }, getCorsHeaders());
+      });
     }
 
     // Get updated benchmark count
@@ -50,7 +76,10 @@ export async function handleComputeBenchmarks(
       .select("industry, experience_level, sample_size, last_computed_at");
 
     if (countError) {
-      console.warn("[computeBenchmarks] Could not fetch benchmark count:", countError);
+      console.warn(
+        "[computeBenchmarks] Could not fetch benchmark count:",
+        countError
+      );
     }
 
     return sendJson(res, 200, {
@@ -58,19 +87,20 @@ export async function handleComputeBenchmarks(
       message: "Peer benchmarks computed successfully",
       benchmarks: benchmarks || [],
       totalSegments: benchmarks?.length || 0,
-    }, getCorsHeaders());
+    });
   } catch (error: unknown) {
     console.error("[handleComputeBenchmarks] Error:", error);
     return sendJson(res, 500, {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to compute benchmarks",
-    }, getCorsHeaders());
+      error:
+        error instanceof Error ? error.message : "Failed to compute benchmarks",
+    });
   }
 }
 
 /**
  * GET /api/admin/benchmark-status
- * 
+ *
  * Get status of peer benchmarks (coverage, sample sizes, freshness)
  */
 export async function handleBenchmarkStatus(
@@ -79,7 +109,15 @@ export async function handleBenchmarkStatus(
 ) {
   try {
     // Authentication
-    const userId = await requireAuth(req);
+    await requireAuth(req);
+
+    if (!supabaseAdmin) {
+      return sendJson(res, 500, {
+        success: false,
+        error:
+          "Supabase admin client is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+      });
+    }
 
     // Get all peer benchmarks
     const { data: benchmarks, error } = await supabaseAdmin
@@ -91,14 +129,16 @@ export async function handleBenchmarkStatus(
       return sendJson(res, 500, {
         success: false,
         error: "Failed to fetch benchmark status",
-      }, getCorsHeaders());
+      });
     }
 
     // Get total users with jobs
     const { count: totalUsers, error: userCountError } = await supabaseAdmin
       .from("profiles")
       .select("id", { count: "exact", head: true })
-      .not("id", "in", 
+      .not(
+        "id",
+        "in",
         `(SELECT DISTINCT user_id FROM jobs WHERE user_id IS NOT NULL)`
       );
 
@@ -109,40 +149,60 @@ export async function handleBenchmarkStatus(
       .not("industry", "is", null)
       .not("experience_level", "is", null);
 
+    if (segmentError) {
+      console.warn(
+        "[computeBenchmarks] Could not fetch segments:",
+        segmentError
+      );
+    }
+
+    const benchmarkRows = (
+      Array.isArray(benchmarks) ? benchmarks : []
+    ) as PeerBenchmarkRow[];
+    const segmentRows = (
+      Array.isArray(segments) ? segments : []
+    ) as SegmentRow[];
+
     const uniqueSegments = new Set(
-      segments?.map(s => `${s.industry}-${s.experience_level}`) || []
+      segmentRows.map((s) => `${s.industry}-${s.experience_level}`)
     );
 
     const coveredSegments = new Set(
-      benchmarks?.map(b => `${b.industry}-${b.experience_level}`) || []
+      benchmarkRows.map((b) => `${b.industry}-${b.experience_level}`)
     );
 
     const uncoveredSegments = Array.from(uniqueSegments)
-      .filter(s => !coveredSegments.has(s))
-      .map(s => {
+      .filter((s) => !coveredSegments.has(s))
+      .map((s) => {
         const [industry, level] = s.split("-");
         return { industry, experience_level: level };
       });
 
     // Calculate statistics
-    const totalSampleSize = benchmarks?.reduce((sum, b) => sum + (b.sample_size || 0), 0) || 0;
-    const avgSampleSize = benchmarks?.length ? totalSampleSize / benchmarks.length : 0;
-    const highQualityCount = benchmarks?.filter(b => b.data_quality_score >= 0.8).length || 0;
+    const totalSampleSize =
+      benchmarkRows.reduce((sum, b) => sum + (b.sample_size ?? 0), 0) || 0;
+    const avgSampleSize = benchmarkRows.length
+      ? totalSampleSize / benchmarkRows.length
+      : 0;
+    const highQualityCount =
+      benchmarkRows.filter((b) => (b.data_quality_score ?? 0) >= 0.8).length ||
+      0;
 
     return sendJson(res, 200, {
       success: true,
       status: {
-        totalBenchmarks: benchmarks?.length || 0,
+        totalBenchmarks: benchmarkRows.length,
         totalSegments: uniqueSegments.size,
-        coveragePercentage: uniqueSegments.size > 0 
-          ? (coveredSegments.size / uniqueSegments.size) * 100 
-          : 0,
+        coveragePercentage:
+          uniqueSegments.size > 0
+            ? (coveredSegments.size / uniqueSegments.size) * 100
+            : 0,
         totalSampleSize,
         avgSampleSize: Math.round(avgSampleSize),
         highQualityBenchmarks: highQualityCount,
         uncoveredSegments,
       },
-      benchmarks: benchmarks?.map(b => ({
+      benchmarks: benchmarkRows.map((b) => ({
         industry: b.industry,
         experienceLevel: b.experience_level,
         sampleSize: b.sample_size,
@@ -154,13 +214,16 @@ export async function handleBenchmarkStatus(
           interviewRate: b.avg_interview_rate,
           offerRate: b.avg_offer_rate,
         },
-      })) || [],
-    }, getCorsHeaders());
+      })),
+    });
   } catch (error: unknown) {
     console.error("[handleBenchmarkStatus] Error:", error);
     return sendJson(res, 500, {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to get benchmark status",
-    }, getCorsHeaders());
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get benchmark status",
+    });
   }
 }

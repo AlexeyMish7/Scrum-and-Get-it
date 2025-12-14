@@ -1,17 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
-import { supabase } from "@shared/services/supabaseClient";
+import { useAuth } from "@shared/context/AuthContext";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
+import {
+  fetchJobLocations,
+  fetchUserLocation,
+} from "@shared/cache/coreFetchers";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Use Vite-friendly URLs for Leaflet's default marker images
-const iconRetinaUrl = new URL("../../../../../../node_modules/leaflet/dist/images/marker-icon-2x.png", import.meta.url).href;
-const iconUrl = new URL("../../../../../../node_modules/leaflet/dist/images/marker-icon.png", import.meta.url).href;
-const shadowUrl = new URL("../../../../../../node_modules/leaflet/dist/images/marker-shadow.png", import.meta.url).href;
+const iconRetinaUrl = new URL(
+  "../../../../../../node_modules/leaflet/dist/images/marker-icon-2x.png",
+  import.meta.url
+).href;
+const iconUrl = new URL(
+  "../../../../../../node_modules/leaflet/dist/images/marker-icon.png",
+  import.meta.url
+).href;
+const shadowUrl = new URL(
+  "../../../../../../node_modules/leaflet/dist/images/marker-shadow.png",
+  import.meta.url
+).href;
 
 (L.Icon.Default as any).mergeOptions({
-	iconRetinaUrl,
-	iconUrl,
-	shadowUrl,
+  iconRetinaUrl,
+  iconUrl,
+  shadowUrl,
 });
 
 // Create a simple SVG pindrop icon as a data URL for a clean pin look
@@ -23,274 +39,337 @@ const pinSvg = encodeURIComponent(`
 const pinDataUrl = `data:image/svg+xml;utf8,${pinSvg}`;
 
 const pinIcon = new L.Icon({
-	iconUrl: pinDataUrl,
-	iconSize: [32, 48],
-	iconAnchor: [16, 48],
-	popupAnchor: [0, -46],
-	shadowUrl: shadowUrl,
-	shadowSize: [41, 41],
-	shadowAnchor: [13, 41],
+  iconUrl: pinDataUrl,
+  iconSize: [32, 48],
+  iconAnchor: [16, 48],
+  popupAnchor: [0, -46],
+  shadowUrl: shadowUrl,
+  shadowSize: [41, 41],
+  shadowAnchor: [13, 41],
 });
 
 type JobLocation = {
-	id: string;
-	full_address: string | null;
-	latitude: number | null;
-	longitude: number | null;
-	job_id: number | null;
+  id: string;
+  full_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  job_id: number | null;
 };
 
 type JobRowMini = {
-	id: number;
-	job_title?: string | null;
-	company_name?: string | null;
-	location_type?: string | null;
+  id: number;
+  job_title?: string | null;
+  company_name?: string | null;
+  location_type?: string | null;
 };
 
 type LocationWithJob = JobLocation & { job?: JobRowMini | null };
 
 type JobMapProps = {
-	onOpenJob?: (jobId: number) => void;
+  onOpenJob?: (jobId: number) => void;
 };
 
 export const JobMap: React.FC<JobMapProps> = ({ onOpenJob }) => {
-	const mapRef = useRef<L.Map | null>(null);
-	const mapContainerRef = useRef<HTMLDivElement | null>(null);
-	const markersRef = useRef<L.LayerGroup | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const markersRef = useRef<L.LayerGroup | null>(null);
 
-	const [locations, setLocations] = useState<JobLocation[]>([]);
-	const [locationsWithJob, setLocationsWithJob] = useState<LocationWithJob[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [filter, setFilter] = useState<string>("all");
-	const [homeLocation, setHomeLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const { user } = useAuth();
 
-	useEffect(() => {
-		// initialize map once
-		if (!mapContainerRef.current) return;
+  const [locations, setLocations] = useState<JobLocation[]>([]);
+  const [locationsWithJob, setLocationsWithJob] = useState<LocationWithJob[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("all");
+  const [homeLocation, setHomeLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
-		if (!mapRef.current) {
-			mapRef.current = L.map(mapContainerRef.current).setView([39.5, -98.35], 4); // continental US
+  useEffect(() => {
+    // initialize map once
+    if (!mapContainerRef.current) return;
 
-			L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-			}).addTo(mapRef.current);
+    if (!mapRef.current) {
+      mapRef.current = L.map(mapContainerRef.current).setView(
+        [39.5, -98.35],
+        4
+      ); // continental US
 
-			markersRef.current = L.layerGroup().addTo(mapRef.current);
-		}
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapRef.current);
 
-		return () => {
-			// don't remove map on component unmount in case of remount; but clean markers
-			if (markersRef.current) {
-				markersRef.current.clearLayers();
-			}
-		};
-	}, []);
+      markersRef.current = L.layerGroup().addTo(mapRef.current);
+    }
 
-	useEffect(() => {
-		// fetch job_locations from Supabase
-		let cancelled = false;
+    return () => {
+      // don't remove map on component unmount in case of remount; but clean markers
+      if (markersRef.current) {
+        markersRef.current.clearLayers();
+      }
+    };
+  }, []);
 
-		async function loadLocations() {
-			setLoading(true);
-			setError(null);
-			try {
-				const { data, error: sbError } = await supabase
-					.from("job_locations")
-					.select("id,full_address,latitude,longitude,job_id");
+  useEffect(() => {
+    // fetch job_locations from Supabase
+    let cancelled = false;
 
-				if (sbError) {
-					throw sbError;
-				}
+    async function loadLocations() {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!user?.id) {
+          setLocations([]);
+          setLocationsWithJob([]);
+          setLoading(false);
+          return;
+        }
 
-				if (!cancelled) {
-					const rows = (data || []) as unknown as JobLocation[];
-					const filtered = rows.filter((r) => r.latitude !== null && r.longitude !== null);
+        const qc = getAppQueryClient();
+        const rows = await qc.ensureQueryData({
+          queryKey: coreKeys.jobLocations(user.id),
+          queryFn: () => fetchJobLocations<JobLocation>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
 
-					// Fetch job rows for these locations to get title/company/location_type
-					const jobIds = Array.from(new Set(filtered.map((r) => Number(r.job_id)).filter(Boolean)));
-					let jobsMap: Record<number, JobRowMini> = {};
-						if (jobIds.length > 0) {
-							const { data: jobsData, error: jobsError } = await supabase
-								.from("jobs")
-								.select("id,job_title,company_name,location_type")
-								.in("id", jobIds);
-						if (!jobsError && jobsData) {
-							jobsMap = (jobsData as JobRowMini[]).reduce((acc, j) => {
-								if (j && j.id != null) acc[Number(j.id)] = j;
-								return acc;
-							}, {} as Record<number, JobRowMini>);
-						}
-					}
+        if (!cancelled) {
+          const filtered = (rows || []).filter(
+            (r) => r.latitude !== null && r.longitude !== null
+          );
 
-					const withJob = filtered.map((loc) => ({ ...loc, job: loc.job_id ? jobsMap[Number(loc.job_id)] ?? null : null }));
-					setLocations(filtered);
-					setLocationsWithJob(withJob);
-					setLoading(false);
+          // Fetch job rows for these locations to get title/company/location_type
+          const jobIds = Array.from(
+            new Set(filtered.map((r) => Number(r.job_id)).filter(Boolean))
+          );
+          let jobsMap: Record<number, JobRowMini> = {};
+          if (jobIds.length > 0) {
+            try {
+              const allJobs = await qc.ensureQueryData({
+                queryKey: coreKeys.jobs(user.id),
+                queryFn: () => fetchCoreJobs<JobRowMini>(user.id),
+                staleTime: 60 * 60 * 1000,
+              });
+              jobsMap = (allJobs || [])
+                .filter((j) => j && jobIds.includes(Number(j.id)))
+                .reduce((acc, j) => {
+                  acc[Number(j.id)] = j;
+                  return acc;
+                }, {} as Record<number, JobRowMini>);
+            } catch (_e) {
+              // If cache load fails, we still render locations without job titles.
+            }
+          }
 
-					// fetch user's saved home location from user_locations table
-					try {
-						let userId: string | null = null;
-						if ((supabase.auth as any)?.getUser) {
-							const resp = await (supabase.auth as any).getUser();
-							if (resp && resp.data && resp.data.user) userId = resp.data.user.id as string;
-						}
-						if (!userId && (supabase.auth as any).user) {
-							try {
-								const u = (supabase.auth as any).user();
-								if (u && u.id) userId = u.id;
-							} catch (_e) {
-								// ignore
-							}
-						}
+          const withJob = filtered.map((loc) => ({
+            ...loc,
+            job: loc.job_id ? jobsMap[Number(loc.job_id)] ?? null : null,
+          }));
+          setLocations(filtered);
+          setLocationsWithJob(withJob);
+          setLoading(false);
 
-						if (userId) {
-							const { data: ulData, error: ulError } = await supabase
-								.from("user_locations")
-								.select("latitude,longitude")
-								.eq("user_id", userId)
-								.limit(1);
-							if (!ulError && ulData && Array.isArray(ulData) && ulData.length > 0) {
-								const first = ulData[0] as any;
-								if (typeof first.latitude === "number" && typeof first.longitude === "number") {
-									setHomeLocation({ latitude: first.latitude, longitude: first.longitude });
-								}
-							}
-						}
-					} catch (_e) {
-						// ignore
-					}
+          // fetch user's saved home location from user_locations table (cached)
+          try {
+            const loc = await qc.ensureQueryData({
+              queryKey: coreKeys.userLocation(user.id),
+              queryFn: () =>
+                fetchUserLocation<{ latitude: number; longitude: number }>(
+                  user.id
+                ),
+              staleTime: 60 * 60 * 1000,
+            });
+            if (
+              loc &&
+              typeof (loc as any).latitude === "number" &&
+              typeof (loc as any).longitude === "number"
+            ) {
+              setHomeLocation({
+                latitude: (loc as any).latitude,
+                longitude: (loc as any).longitude,
+              });
+            }
+          } catch (_e) {
+            // ignore
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || String(err));
+          setLoading(false);
+        }
+      }
+    }
 
+    loadLocations();
 
-				}
-			} catch (err: any) {
-				if (!cancelled) {
-					setError(err.message || String(err));
-					setLoading(false);
-				}
-			}
-		}
+    // optionally subscribe to changes if real-time desired (not added here)
 
-		loadLocations();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
-		// optionally subscribe to changes if real-time desired (not added here)
+  useEffect(() => {
+    // update markers when locations change
+    if (!mapRef.current || !markersRef.current) return;
 
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+    markersRef.current.clearLayers();
 
-	useEffect(() => {
-		// update markers when locations change
-		if (!mapRef.current || !markersRef.current) return;
+    if (locationsWithJob.length === 0) return;
 
-		markersRef.current.clearLayers();
+    const latLngTuples: L.LatLngTuple[] = [];
 
-		if (locationsWithJob.length === 0) return;
+    locationsWithJob.forEach((loc) => {
+      if (loc.latitude == null || loc.longitude == null) return;
+      // Apply filter: if filter != 'all' then require job.location_type === filter
+      if (filter !== "all") {
+        const jt = loc.job?.location_type
+          ? String(loc.job.location_type).toLowerCase()
+          : null;
+        if (jt !== filter) return;
+      }
 
-		const latLngTuples: L.LatLngTuple[] = [];
+      const marker = L.marker([loc.latitude, loc.longitude], { icon: pinIcon });
 
-		locationsWithJob.forEach((loc) => {
-			if (loc.latitude == null || loc.longitude == null) return;
-			// Apply filter: if filter != 'all' then require job.location_type === filter
-			if (filter !== "all") {
-				const jt = loc.job?.location_type ? String(loc.job.location_type).toLowerCase() : null;
-				if (jt !== filter) return;
-			}
+      const titleHtml = loc.job?.job_title
+        ? `<div><strong>${loc.job!.job_title}</strong></div>`
+        : "";
+      const companyHtml = loc.job?.company_name
+        ? `<div>${loc.job!.company_name}</div>`
+        : "";
+      const addressHtml = loc.full_address
+        ? `<div>${loc.full_address}</div>`
+        : "";
+      const linkHtml = loc.job_id
+        ? `<div><button id="open-job-${loc.job_id}" style="background:none;border:none;color:var(--link);text-decoration:underline;cursor:pointer;padding:0">Open job</button></div>`
+        : "";
 
-			const marker = L.marker([loc.latitude, loc.longitude], { icon: pinIcon });
+      // compute commute info
+      let commuteHtml = "";
+      const jtLower = loc.job?.location_type
+        ? String(loc.job.location_type).toLowerCase()
+        : null;
+      if (jtLower === "remote") {
+        commuteHtml = `<div><em>Remote role — no commute</em></div>`;
+      } else if (
+        homeLocation &&
+        typeof homeLocation.latitude === "number" &&
+        typeof homeLocation.longitude === "number"
+      ) {
+        // haversine distance
+        function haversineKm(
+          lat1: number,
+          lon1: number,
+          lat2: number,
+          lon2: number
+        ) {
+          const toRad = (v: number) => (v * Math.PI) / 180;
+          const R = 6371; // km
+          const dLat = toRad(lat2 - lat1);
+          const dLon = toRad(lon2 - lon1);
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) *
+              Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) *
+              Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * c;
+        }
 
-			const titleHtml = loc.job?.job_title ? `<div><strong>${loc.job!.job_title}</strong></div>` : "";
-			const companyHtml = loc.job?.company_name ? `<div>${loc.job!.company_name}</div>` : "";
-			const addressHtml = loc.full_address ? `<div>${loc.full_address}</div>` : "";
-			const linkHtml = loc.job_id
-				? `<div><button id="open-job-${loc.job_id}" style="background:none;border:none;color:var(--link);text-decoration:underline;cursor:pointer;padding:0">Open job</button></div>`
-				: "";
+        const distKm = haversineKm(
+          homeLocation.latitude,
+          homeLocation.longitude,
+          loc.latitude as number,
+          loc.longitude as number
+        );
+        const toKm = (km: number) => `${km.toFixed(1)} km`;
+        // estimate travel time assuming average driving speed 60 km/h
+        const avgSpeedKph = 60;
+        const minutes = Math.round((distKm / avgSpeedKph) * 60);
+        commuteHtml = `<div>Commute: ${toKm(
+          distKm
+        )} (~${minutes} min drive)</div>`;
+      } else {
+        commuteHtml = `<div><em>Commute: home location not set</em></div>`;
+      }
 
-			// compute commute info
-			let commuteHtml = "";
-			const jtLower = loc.job?.location_type ? String(loc.job.location_type).toLowerCase() : null;
-			if (jtLower === "remote") {
-				commuteHtml = `<div><em>Remote role — no commute</em></div>`;
-			} else if (homeLocation && typeof homeLocation.latitude === "number" && typeof homeLocation.longitude === "number") {
-				// haversine distance
-				function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-					const toRad = (v: number) => (v * Math.PI) / 180;
-					const R = 6371; // km
-					const dLat = toRad(lat2 - lat1);
-					const dLon = toRad(lon2 - lon1);
-					const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-					const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-					return R * c;
-				}
+      marker.bindPopup(
+        `${titleHtml}${companyHtml}${addressHtml}${commuteHtml}${linkHtml}`
+      );
+      marker.addTo(markersRef.current as L.LayerGroup);
 
-				const distKm = haversineKm(homeLocation.latitude, homeLocation.longitude, loc.latitude as number, loc.longitude as number);
-				const toKm = (km: number) => `${km.toFixed(1)} km`;
-				// estimate travel time assuming average driving speed 60 km/h
-				const avgSpeedKph = 60;
-				const minutes = Math.round((distKm / avgSpeedKph) * 60);
-				commuteHtml = `<div>Commute: ${toKm(distKm)} (~${minutes} min drive)</div>`;
-			} else {
-				commuteHtml = `<div><em>Commute: home location not set</em></div>`;
-			}
+      // wire the Open job button inside the popup to the provided handler
+      if (loc.job_id && onOpenJob) {
+        const btnId = `open-job-${loc.job_id}`;
+        marker.on("popupopen", () => {
+          const el = document.getElementById(btnId);
+          if (el) {
+            // set onclick directly; safe because closure has onOpenJob
+            (el as HTMLElement).onclick = () => onOpenJob(Number(loc.job_id));
+          }
+        });
+      }
 
-			marker.bindPopup(`${titleHtml}${companyHtml}${addressHtml}${commuteHtml}${linkHtml}`);
-			marker.addTo(markersRef.current as L.LayerGroup);
+      // cast to tuple since we've checked for null above
+      latLngTuples.push([loc.latitude as number, loc.longitude as number]);
+    });
 
-			// wire the Open job button inside the popup to the provided handler
-			if (loc.job_id && onOpenJob) {
-				const btnId = `open-job-${loc.job_id}`;
-				marker.on("popupopen", () => {
-					const el = document.getElementById(btnId);
-					if (el) {
-						// set onclick directly; safe because closure has onOpenJob
-						(el as HTMLElement).onclick = () => onOpenJob(Number(loc.job_id));
-					}
-				});
-			}
+    try {
+      if (latLngTuples.length === 1) {
+        mapRef.current.setView(latLngTuples[0], 12);
+      } else if (latLngTuples.length > 1) {
+        mapRef.current.fitBounds(L.latLngBounds(latLngTuples));
+      }
+    } catch (e) {
+      // ignore fitBounds errors
+    }
+  }, [locationsWithJob, filter, homeLocation]);
 
-			// cast to tuple since we've checked for null above
-			latLngTuples.push([loc.latitude as number, loc.longitude as number]);
-		});
-
-		try {
-					if (latLngTuples.length === 1) {
-						mapRef.current.setView(latLngTuples[0], 12);
-					} else if (latLngTuples.length > 1) {
-						mapRef.current.fitBounds(L.latLngBounds(latLngTuples));
-					}
-		} catch (e) {
-			// ignore fitBounds errors
-		}
-	}, [locationsWithJob, filter, homeLocation]);
-
-	return (
-		<div>
-			{error && <div style={{ color: "var(--error)" }}>Error: {error}</div>}
-			{loading && <div>Loading job locations…</div>}
-			<div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center" }}>
-				<label htmlFor="location-filter" style={{ fontSize: 13 }}>Filter:</label>
-				<select
-					id="location-filter"
-					value={filter}
-					onChange={(e) => setFilter(e.target.value)}
-					style={{ padding: "6px 8px", borderRadius: 6 }}
-				>
-					<option value="all">All</option>
-					<option value="remote">Remote</option>
-					<option value="hybrid">Hybrid</option>
-					<option value="in person">In person</option>
-				</select>
-			</div>
-			<div
-				ref={mapContainerRef}
-				style={{ height: "420px", width: "100%", borderRadius: 8, overflow: "hidden" }}
-				role="region"
-				aria-label="Job locations map"
-			/>
-		</div>
-	);
+  return (
+    <div>
+      {error && <div style={{ color: "var(--error)" }}>Error: {error}</div>}
+      {loading && <div>Loading job locations…</div>}
+      <div
+        style={{
+          marginBottom: 8,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        <label htmlFor="location-filter" style={{ fontSize: 13 }}>
+          Filter:
+        </label>
+        <select
+          id="location-filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          style={{ padding: "6px 8px", borderRadius: 6 }}
+        >
+          <option value="all">All</option>
+          <option value="remote">Remote</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="in person">In person</option>
+        </select>
+      </div>
+      <div
+        ref={mapContainerRef}
+        style={{
+          height: "420px",
+          width: "100%",
+          borderRadius: 8,
+          overflow: "hidden",
+        }}
+        role="region"
+        aria-label="Job locations map"
+      />
+    </div>
+  );
 };
 
 export default JobMap;
-

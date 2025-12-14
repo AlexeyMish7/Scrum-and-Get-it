@@ -11,7 +11,7 @@
  * 4. Handle save and export actions
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
@@ -40,6 +40,9 @@ import { getAllTemplates } from "../services/templateService";
 import { getAllThemes } from "../services/themeService";
 import { withUser } from "@shared/services/crud";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { aiKeys } from "@shared/cache/aiQueryKeys";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import type {
   Document,
   DocumentType,
@@ -276,155 +279,152 @@ export const DocumentEditorPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [document, setDocument] = useState<Document | null>(null);
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [theme, setTheme] = useState<Theme | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [versionManagerOpen, setVersionManagerOpen] = useState(false);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Load document data from database
-   */
-  useEffect(() => {
-    const loadDocument = async () => {
+  const templatesQuery = useQuery({
+    queryKey: aiKeys.templates(user?.id ?? "anon"),
+    enabled: Boolean(user?.id),
+    staleTime: 24 * 60 * 60 * 1000,
+    queryFn: () => getAllTemplates(user?.id),
+  });
+
+  const themesQuery = useQuery({
+    queryKey: aiKeys.themes(user?.id ?? "anon"),
+    enabled: Boolean(user?.id),
+    staleTime: 24 * 60 * 60 * 1000,
+    queryFn: () => getAllThemes(user?.id),
+  });
+
+  const editorQuery = useQuery({
+    queryKey: aiKeys.document(user?.id ?? "anon", documentId ?? "none"),
+    enabled: Boolean(user?.id) && Boolean(documentId),
+    staleTime: 2 * 60 * 1000,
+    // Avoid clobbering in-progress local edits.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async (): Promise<{
+      document: Document;
+      currentVersionId: string;
+    }> => {
       if (!documentId || !user?.id) {
-        setError("Missing document ID or user not authenticated");
-        setLoading(false);
-        return;
+        throw new Error("Missing document ID or user not authenticated");
       }
 
-      setLoading(true);
-      setError(null);
+      const userCrud = withUser(user.id);
 
-      try {
-        const userCrud = withUser(user.id);
+      // Fetch document
+      const docResult = await userCrud.listRows<{
+        id: string;
+        type: string;
+        name: string;
+        user_id: string;
+        template_id: string;
+        theme_id: string;
+        current_version_id: string;
+        job_id: number | null;
+        created_at: string;
+        last_edited_at: string;
+        is_pinned: boolean;
+        is_archived: boolean;
+        total_versions: number;
+        total_edits: number;
+      }>("documents", "*", { eq: { id: documentId }, limit: 1 });
 
-        // Fetch document
-        const docResult = await userCrud.listRows<{
-          id: string;
-          type: string;
-          name: string;
-          user_id: string;
-          template_id: string;
-          theme_id: string;
-          current_version_id: string;
-          job_id: number | null;
-          created_at: string;
-          last_edited_at: string;
-          is_pinned: boolean;
-          is_archived: boolean;
-          total_versions: number;
-          total_edits: number;
-        }>("documents", "*", { eq: { id: documentId } });
-
-        if (docResult.error || !docResult.data || docResult.data.length === 0) {
-          setError("Document not found");
-          setLoading(false);
-          return;
-        }
-
-        const docRow = docResult.data[0];
-
-        // Fetch current version to get content
-        const versionResult = await userCrud.listRows<{
-          id: string;
-          content: ResumeContent | CoverLetterContent;
-          template_id: string;
-          theme_id: string;
-        }>("document_versions", "id,content,template_id,theme_id", {
-          eq: { id: docRow.current_version_id },
-        });
-
-        if (
-          versionResult.error ||
-          !versionResult.data ||
-          versionResult.data.length === 0
-        ) {
-          setError("Document version not found");
-          setLoading(false);
-          return;
-        }
-
-        const versionRow = versionResult.data[0];
-
-        // Fetch template and theme
-        const [templateResult, themeResult] = await Promise.all([
-          getAllTemplates(),
-          getAllThemes(),
-        ]);
-
-        const foundTemplate = templateResult.find(
-          (t) => t.id === versionRow.template_id
-        );
-        const foundTheme = themeResult.find(
-          (t) => t.id === versionRow.theme_id
-        );
-
-        if (!foundTemplate || !foundTheme) {
-          setError("Template or theme not found");
-          setLoading(false);
-          return;
-        }
-
-        // Build Document object matching the Document type
-        const loadedDocument: Document = {
-          id: docRow.id,
-          userId: docRow.user_id,
-          type: docRow.type as DocumentType,
-          status: "draft" as DocumentStatus,
-          config: {
-            name: docRow.name,
-            description: undefined,
-            templateId: versionRow.template_id,
-            themeId: versionRow.theme_id,
-          },
-          content: versionRow.content,
-          currentVersionId: docRow.current_version_id,
-          context: {
-            jobId: docRow.job_id || undefined,
-            targetRole: undefined,
-            targetCompany: undefined,
-          },
-          metadata: {
-            tags: [],
-            folder: undefined,
-            color: undefined,
-          },
-          stats: {
-            totalVersions: docRow.total_versions,
-            totalEdits: docRow.total_edits,
-            timesExported: 0,
-            timesUsed: 0,
-            wordCount: 0,
-          },
-          createdAt: docRow.created_at,
-          lastEditedAt: docRow.last_edited_at,
-          isDefault: false,
-          isPinned: docRow.is_pinned,
-          isArchived: docRow.is_archived,
-        };
-
-        setDocument(loadedDocument);
-        setTemplate(foundTemplate);
-        setTheme(foundTheme);
-        setCurrentVersionId(versionRow.id);
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to load document:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load document"
-        );
-        setLoading(false);
+      if (docResult.error || !docResult.data || docResult.data.length === 0) {
+        throw new Error("Document not found");
       }
-    };
 
-    loadDocument();
-  }, [documentId, user?.id]);
+      const docRow = docResult.data[0];
+
+      // Fetch current version to get content
+      const versionResult = await userCrud.listRows<{
+        id: string;
+        content: ResumeContent | CoverLetterContent;
+        template_id: string;
+        theme_id: string;
+      }>("document_versions", "id,content,template_id,theme_id", {
+        eq: { id: docRow.current_version_id },
+        limit: 1,
+      });
+
+      if (
+        versionResult.error ||
+        !versionResult.data ||
+        versionResult.data.length === 0
+      ) {
+        throw new Error("Document version not found");
+      }
+
+      const versionRow = versionResult.data[0];
+
+      // Build Document object matching the Document type
+      const loadedDocument: Document = {
+        id: docRow.id,
+        userId: docRow.user_id,
+        type: docRow.type as DocumentType,
+        status: "draft" as DocumentStatus,
+        config: {
+          name: docRow.name,
+          description: undefined,
+          templateId: versionRow.template_id,
+          themeId: versionRow.theme_id,
+        },
+        content: versionRow.content,
+        currentVersionId: docRow.current_version_id,
+        context: {
+          jobId: docRow.job_id || undefined,
+          targetRole: undefined,
+          targetCompany: undefined,
+        },
+        metadata: {
+          tags: [],
+          folder: undefined,
+          color: undefined,
+        },
+        stats: {
+          totalVersions: docRow.total_versions,
+          totalEdits: docRow.total_edits,
+          timesExported: 0,
+          timesUsed: 0,
+          wordCount: 0,
+        },
+        createdAt: docRow.created_at,
+        lastEditedAt: docRow.last_edited_at,
+        isDefault: false,
+        isPinned: docRow.is_pinned,
+        isArchived: docRow.is_archived,
+      };
+
+      return { document: loadedDocument, currentVersionId: versionRow.id };
+    },
+  });
+
+  // Initialize local editable state from the cached query data.
+  useEffect(() => {
+    if (!editorQuery.data) return;
+    if (!document || document.id !== editorQuery.data.document.id) {
+      setDocument(editorQuery.data.document);
+      setCurrentVersionId(editorQuery.data.currentVersionId);
+    }
+  }, [editorQuery.data, document]);
+
+  const template = useMemo(() => {
+    if (!document) return null;
+    const templates = templatesQuery.data ?? [];
+    return templates.find((t) => t.id === document.config.templateId) ?? null;
+  }, [templatesQuery.data, document]);
+
+  const theme = useMemo(() => {
+    if (!document) return null;
+    const themes = themesQuery.data ?? [];
+    return themes.find((t) => t.id === document.config.themeId) ?? null;
+  }, [themesQuery.data, document]);
 
   /**
    * Handle document save
@@ -496,14 +496,35 @@ export const DocumentEditorPage: React.FC = () => {
         { eq: { id: updatedDocument.id } }
       );
 
-      // Update local state with incremented version count
-      setDocument({
+      const nextDocument: Document = {
         ...updatedDocument,
+        currentVersionId: newVersion.id,
+        lastEditedAt: new Date().toISOString(),
         stats: {
           ...updatedDocument.stats,
           totalVersions: updatedDocument.stats.totalVersions + 1,
         },
+      };
+
+      setDocument(nextDocument);
+      setCurrentVersionId(newVersion.id);
+
+      // Keep caches consistent for the library + version history.
+      queryClient.setQueryData(
+        aiKeys.document(user.id, updatedDocument.id),
+        (prev: { document: Document; currentVersionId: string } | undefined) =>
+          prev
+            ? {
+                ...prev,
+                document: nextDocument,
+                currentVersionId: newVersion.id,
+              }
+            : { document: nextDocument, currentVersionId: newVersion.id }
+      );
+      queryClient.invalidateQueries({
+        queryKey: aiKeys.documentVersions(user.id, updatedDocument.id),
       });
+      queryClient.invalidateQueries({ queryKey: coreKeys.documents(user.id) });
     } catch (err) {
       console.error("Failed to save document:", err);
       throw err;
@@ -535,19 +556,6 @@ export const DocumentEditorPage: React.FC = () => {
 
       setDocument(versionDocument);
       setCurrentVersionId(version.id);
-
-      // Reload template and theme if they changed
-      if (version.template_id !== template?.id) {
-        const templates = await getAllTemplates();
-        const newTemplate = templates.find((t) => t.id === version.template_id);
-        if (newTemplate) setTemplate(newTemplate);
-      }
-
-      if (version.theme_id !== theme?.id) {
-        const themes = await getAllThemes();
-        const newTheme = themes.find((t) => t.id === version.theme_id);
-        if (newTheme) setTheme(newTheme);
-      }
     } catch (err) {
       console.error("Failed to load version:", err);
     }
@@ -577,21 +585,51 @@ export const DocumentEditorPage: React.FC = () => {
       const newVersionNumber = maxVersionNumber + 1;
 
       // Create new version from the restored content
-      await userCrud.insertRow("document_versions", {
-        document_id: documentId,
-        user_id: user.id,
-        version_number: newVersionNumber,
-        content: version.content,
-        template_id: version.template_id,
-        theme_id: version.theme_id,
-        name: `Restored from Version ${version.version_number}`,
-        change_type: "restore",
-        change_summary: `Restored from version ${version.version_number}`,
-        parent_version_id: version.id,
+      const inserted = await userCrud.insertRow<{ id: string }>(
+        "document_versions",
+        {
+          document_id: documentId,
+          user_id: user.id,
+          version_number: newVersionNumber,
+          content: version.content,
+          template_id: version.template_id,
+          theme_id: version.theme_id,
+          name: `Restored from Version ${version.version_number}`,
+          change_type: "restore",
+          change_summary: `Restored from version ${version.version_number}`,
+          parent_version_id: version.id,
+        },
+        "id"
+      );
+
+      if (inserted.error || !inserted.data?.id) {
+        throw new Error("Failed to create restored version");
+      }
+
+      // Update the document to point at the newly created version.
+      await userCrud.updateRow(
+        "documents",
+        {
+          current_version_id: inserted.data.id,
+          last_edited_at: new Date().toISOString(),
+        },
+        { eq: { id: documentId } }
+      );
+
+      // Load restored content into the editor (same content as the source version).
+      await handleVersionSelect({
+        ...version,
+        id: inserted.data.id,
       });
 
-      // Load the restored version
-      await handleVersionSelect(version);
+      // Keep caches consistent for library + version history.
+      queryClient.invalidateQueries({
+        queryKey: aiKeys.documentVersions(user.id, documentId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: aiKeys.document(user.id, documentId),
+      });
+      queryClient.invalidateQueries({ queryKey: coreKeys.documents(user.id) });
 
       alert(`Version ${version.version_number} restored successfully!`);
     } catch (err) {
@@ -613,6 +651,14 @@ export const DocumentEditorPage: React.FC = () => {
   const handleExportComplete = (filename: string, format: string) => {
     // Export completed successfully
   };
+
+  const loading =
+    editorQuery.isLoading || templatesQuery.isLoading || themesQuery.isLoading;
+  const error =
+    (editorQuery.error as Error | null)?.message ??
+    (templatesQuery.error as Error | null)?.message ??
+    (themesQuery.error as Error | null)?.message ??
+    null;
 
   if (loading) {
     return (

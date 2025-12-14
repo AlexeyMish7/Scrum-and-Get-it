@@ -19,7 +19,7 @@
  *   <TeamActivityFeed teamId={teamId} limit={20} />
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Stack,
@@ -56,6 +56,8 @@ import {
 } from "@mui/icons-material";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import * as teamService from "../services/teamService";
 import type { AchievementCelebration } from "../services/progressSharingService";
 import * as progressSharingService from "../services/progressSharingService";
@@ -187,15 +189,46 @@ export function TeamActivityFeed({
   showSharedJobsOnly = false,
 }: TeamActivityFeedProps) {
   const { user } = useAuth();
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [sharedJobs, setSharedJobs] = useState<SharedJobData[]>([]);
-  const [milestones, setMilestones] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [filterTab, setFilterTab] = useState<"all" | "jobs" | "milestones">(
     showSharedJobsOnly ? "jobs" : "all"
   );
   const [celebrateLoading, setCelebrateLoading] = useState(false);
+
+  const activityQuery = useQuery({
+    queryKey: coreKeys.teamActivityLog(user?.id ?? "anon", teamId, limit),
+    enabled: Boolean(user?.id) && Boolean(teamId),
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const res = await teamService.getTeamActivity(user!.id, teamId, limit);
+      if (res.error) {
+        throw new Error(res.error.message || "Failed to load team activity");
+      }
+      return res.data ?? [];
+    },
+  });
+
+  const achievementsQuery = useQuery({
+    queryKey: coreKeys.teamAchievements(user?.id ?? "anon", teamId, limit),
+    enabled: Boolean(user?.id) && Boolean(teamId),
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const res = await progressSharingService.getTeamAchievements(
+        teamId,
+        limit
+      );
+      if (res.error) {
+        throw new Error(
+          res.error.message || "Failed to load team achievements"
+        );
+      }
+      return res.data ?? [];
+    },
+  });
+
+  const refetchAll = async () => {
+    await Promise.all([activityQuery.refetch(), achievementsQuery.refetch()]);
+  };
 
   // Create a test celebration for demo purposes
   const handleCreateCelebration = async () => {
@@ -213,8 +246,13 @@ export function TeamActivityFeed({
       });
 
       if (result.data) {
-        // Reload activity to show the new celebration
-        await loadActivity();
+        // Refresh cached feed datasets
+        queryClient.invalidateQueries({
+          queryKey: coreKeys.teamAchievements(user.id, teamId, limit),
+        });
+        queryClient.invalidateQueries({
+          queryKey: coreKeys.teamActivityLog(user.id, teamId, limit),
+        });
       }
     } catch (err) {
       console.error("Failed to create celebration:", err);
@@ -223,112 +261,72 @@ export function TeamActivityFeed({
     }
   };
 
-  const loadActivity = useCallback(async () => {
-    if (!user?.id || !teamId) return;
+  const baseActivityItems = useMemo<ActivityItem[]>(() => {
+    return (activityQuery.data ?? []).map((log) => ({
+      id: log.id,
+      type: log.activity_type as ActivityItem["type"],
+      actor_name: "Team Member",
+      description: log.description,
+      metadata: log.metadata as Record<string, unknown>,
+      created_at: log.created_at,
+    }));
+  }, [activityQuery.data]);
 
-    setLoading(true);
-    setError(null);
+  const milestoneActivities = useMemo<ActivityItem[]>(() => {
+    return (achievementsQuery.data ?? []).map(celebrationToActivity);
+  }, [achievementsQuery.data]);
 
-    try {
-      // Fetch team activity log
-      const activityResult = await teamService.getTeamActivity(
-        user.id,
-        teamId,
-        limit
-      );
+  const activities = useMemo<ActivityItem[]>(() => {
+    const merged = [...baseActivityItems, ...milestoneActivities];
+    merged.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return merged.slice(0, limit);
+  }, [baseActivityItems, milestoneActivities, limit]);
 
-      if (activityResult.error) {
-        setError(activityResult.error.message);
-        setActivities([]);
-        return;
+  const sharedJobs = useMemo<SharedJobData[]>(() => {
+    const extractedJobs: SharedJobData[] = [];
+    for (const item of baseActivityItems) {
+      const metadata = item.metadata || {};
+      if (metadata.type === "job_shared" && metadata.job) {
+        const jobData = metadata.job as {
+          id?: number;
+          title?: string;
+          company?: string;
+          status?: string;
+          location?: string | null;
+          url?: string | null;
+        };
+
+        extractedJobs.push({
+          id: item.id,
+          title: jobData.title || "Unknown Job",
+          company: jobData.company || "Unknown Company",
+          status: jobData.status,
+          location: jobData.location,
+          url: jobData.url,
+          shareType:
+            (metadata.share_type as SharedJobData["shareType"]) || "fyi",
+          comment: metadata.comment as string | null,
+          sharedAt: item.created_at,
+          sharedBy: {
+            id: "",
+            name: item.actor_name,
+          },
+        });
       }
-
-      // Transform activity log to display format
-      const activityItems: ActivityItem[] = (activityResult.data || []).map(
-        (log) => ({
-          id: log.id,
-          type: log.activity_type as ActivityItem["type"],
-          actor_name: "Team Member",
-          description: log.description,
-          metadata: log.metadata as Record<string, unknown>,
-          created_at: log.created_at,
-        })
-      );
-
-      // Extract shared jobs from activity items for the jobs tab
-      const extractedJobs: SharedJobData[] = [];
-      for (const item of activityItems) {
-        // Check if this is a job share activity (stored as settings_updated with metadata.type = "job_shared")
-        const metadata = item.metadata || {};
-        if (metadata.type === "job_shared" && metadata.job) {
-          const jobData = metadata.job as {
-            id?: number;
-            title?: string;
-            company?: string;
-            status?: string;
-            location?: string | null;
-            url?: string | null;
-          };
-
-          extractedJobs.push({
-            id: item.id,
-            title: jobData.title || "Unknown Job",
-            company: jobData.company || "Unknown Company",
-            status: jobData.status,
-            location: jobData.location,
-            url: jobData.url,
-            shareType:
-              (metadata.share_type as SharedJobData["shareType"]) || "fyi",
-            comment: metadata.comment as string | null,
-            sharedAt: item.created_at,
-            sharedBy: {
-              id: "", // Actor ID not available in current log format
-              name: item.actor_name,
-            },
-          });
-        }
-      }
-      setSharedJobs(extractedJobs);
-
-      // Fetch team achievements for celebration activities
-      try {
-        const achievementsResult =
-          await progressSharingService.getTeamAchievements(teamId, limit);
-
-        // Add achievements as celebration activities
-        if (achievementsResult.data) {
-          const achievementActivities: ActivityItem[] =
-            achievementsResult.data.map(celebrationToActivity);
-
-          // Store milestones separately for the milestones tab
-          setMilestones(achievementActivities);
-
-          // Merge and sort by date
-          activityItems.push(...achievementActivities);
-          activityItems.sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-          );
-        }
-      } catch {
-        // Silently ignore achievement fetch errors - show activity log only
-        setMilestones([]);
-      }
-
-      setActivities(activityItems.slice(0, limit));
-    } catch (err) {
-      setError("Failed to load activity");
-      console.error("Activity feed error:", err);
-    } finally {
-      setLoading(false);
     }
-  }, [user?.id, teamId, limit]);
+    return extractedJobs;
+  }, [baseActivityItems]);
 
-  // Load activity on mount and when dependencies change
-  useEffect(() => {
-    loadActivity();
-  }, [loadActivity]);
+  const milestones = milestoneActivities;
+
+  const loading = activityQuery.isLoading || achievementsQuery.isLoading;
+  const error =
+    (activityQuery.error as Error | null)?.message ??
+    (achievementsQuery.error as Error | null)?.message ??
+    null;
 
   // Render loading state
   if (loading) {
@@ -344,7 +342,7 @@ export function TeamActivityFeed({
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
         {error}
-        <Button size="small" onClick={loadActivity} sx={{ ml: 2 }}>
+        <Button size="small" onClick={refetchAll} sx={{ ml: 2 }}>
           Retry
         </Button>
       </Alert>
@@ -386,7 +384,7 @@ export function TeamActivityFeed({
               </IconButton>
             </Tooltip>
             <Tooltip title="Refresh">
-              <IconButton size="small" onClick={loadActivity}>
+              <IconButton size="small" onClick={refetchAll}>
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
@@ -526,7 +524,7 @@ export function TeamActivityFeed({
                 <SharedJobCard
                   key={job.id}
                   job={job}
-                  onCommentAdded={loadActivity}
+                  onCommentAdded={refetchAll}
                   compact={compact}
                 />
               ))}
@@ -611,7 +609,7 @@ export function TeamActivityFeed({
 
       {filterTab === "all" && activities.length >= limit && (
         <Box textAlign="center" mt={2}>
-          <Button size="small" onClick={loadActivity}>
+          <Button size="small" onClick={refetchAll}>
             Load More
           </Button>
         </Box>

@@ -1,10 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Box, TextField, List, ListItemButton, ListItemText, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  List,
+  ListItemButton,
+  ListItemText,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreContacts } from "@shared/cache/coreFetchers";
 import { useAuth } from "@shared/context/AuthContext";
-import * as db from "@shared/services/dbMappers";
-import type { Result } from "@shared/services/types";
 
-type ContactRow = Record<string, any>;
+type ContactRow = {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  industry?: string | null;
+  company?: string | null;
+  role?: string | null;
+  email?: string | null;
+  [key: string]: unknown;
+};
 
 export default function InformationInterviewContactPicker({
   onSelect,
@@ -32,18 +50,36 @@ export default function InformationInterviewContactPicker({
         }
         setLoadingData(true);
         try {
-          const opts: any = {};
-          // free text search (name only)
-          if (q) opts.ilike = { first_name: `%${q}%` };
-          // simple equality filters (industry / company / role)
-          if (industry || role || company) opts.eq = {};
-          if (industry) (opts.eq = opts.eq ?? {}).industry = industry;
-          if (company) (opts.eq = opts.eq ?? {}).company = company;
-          if (role) (opts.eq = opts.eq ?? {}).role = role;
+          const qc = getAppQueryClient();
+          const contacts = await qc.ensureQueryData({
+            queryKey: coreKeys.contacts(user.id),
+            queryFn: () => fetchCoreContacts<ContactRow>(user.id),
+            staleTime: 60 * 60 * 1000,
+          });
 
-          const res: Result<unknown[]> = await db.listContacts(user.id, opts);
-          if (!res.error && res.data) setResults(Array.isArray(res.data) ? res.data as ContactRow[] : [res.data as ContactRow]);
-          else setResults([]);
+          const all = Array.isArray(contacts) ? (contacts as ContactRow[]) : [];
+          const qLower = q ? q.toLowerCase() : "";
+
+          const filtered = all.filter((c) => {
+            try {
+              if (industry && String(c.industry ?? "") !== String(industry))
+                return false;
+              if (company && String(c.company ?? "") !== String(company))
+                return false;
+              if (role && String(c.role ?? "") !== String(role)) return false;
+
+              if (qLower) {
+                // Preserve old behavior: search was `ilike` on first_name.
+                const first = String(c.first_name ?? "").toLowerCase();
+                return first.includes(qLower);
+              }
+              return true;
+            } catch {
+              return false;
+            }
+          });
+
+          setResults(filtered);
         } catch (err) {
           console.error("Contact search failed", err);
           setResults([]);
@@ -83,7 +119,12 @@ export default function InformationInterviewContactPicker({
             value={company ?? ""}
             onChange={(e) => setCompany(e.target.value || null)}
           />
-          <TextField size="small" placeholder="Role" value={role ?? ""} onChange={(e) => setRole(e.target.value || null)} />
+          <TextField
+            size="small"
+            placeholder="Role"
+            value={role ?? ""}
+            onChange={(e) => setRole(e.target.value || null)}
+          />
         </Stack>
       </Box>
 
@@ -91,17 +132,21 @@ export default function InformationInterviewContactPicker({
         <List dense>
           {results.length === 0 ? (
             <ListItemButton disabled>
-              <ListItemText primary={loadingData ? "Searching..." : "No contacts found"} />
+              <ListItemText
+                primary={loadingData ? "Searching..." : "No contacts found"}
+              />
             </ListItemButton>
           ) : (
             results.map((r) => (
-              <ListItemButton
-                key={String(r.id)}
-                onClick={() => onSelect(r)}
-              >
+              <ListItemButton key={String(r.id)} onClick={() => onSelect(r)}>
                 <ListItemText
-                  primary={`${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || (r.full_name ?? "Unnamed")}
-                  secondary={`${r.role ?? ""}${r.company ? ` — ${r.company}` : ""}`}
+                  primary={
+                    `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
+                    (r.full_name ?? "Unnamed")
+                  }
+                  secondary={`${r.role ?? ""}${
+                    r.company ? ` — ${r.company}` : ""
+                  }`}
                 />
               </ListItemButton>
             ))

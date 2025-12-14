@@ -17,7 +17,7 @@
  * - Error modes: uses internal error state for data loading failures
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -43,7 +43,7 @@ import NextDeadlinesWidget from "@job_pipeline/components/calendar/NextDeadlines
 import DeadlineCalendar from "@job_pipeline/components/calendar/DeadlineCalendar/DeadlineCalendar";
 import FollowupCard from "@job_pipeline/components/cards/FollowupCard/FollowupCard";
 import { useAuth } from "@shared/context/AuthContext";
-import crud from "@shared/services/crud";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 import BenchmarkCard from "../../pages/AnalyticsPage/BenchmarkCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
 import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgressionCard/SalaryProgressionCard";
@@ -68,14 +68,23 @@ interface AnalyticsPanelProps {
   selectedJobId?: number; // If provided, show job-specific analytics
 }
 
+const EMPTY_JOBS: JobRecord[] = [];
+
 export default function AnalyticsPanel({
   expanded,
   onToggle,
 }: AnalyticsPanelProps) {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
+
+  const jobsQuery = useCoreJobs<JobRecord>(user?.id);
+  const jobs = jobsQuery.data ?? EMPTY_JOBS;
+  const loading = jobsQuery.isFetching;
+  const error = user?.id
+    ? jobsQuery.isError
+      ? jobsQuery.error?.message ?? "Failed to load jobs"
+      : null
+    : null;
+
   const [weeklyGoal, setWeeklyGoal] = useState<number>(() => {
     try {
       const raw = localStorage.getItem("jobs:weeklyGoal");
@@ -85,36 +94,6 @@ export default function AnalyticsPanel({
     }
   });
   const [showFullDashboard, setShowFullDashboard] = useState(false);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let mounted = true;
-    setLoading(true);
-    const userCrud = crud.withUser(user.id);
-    userCrud
-      .listRows<JobRecord>(
-        "jobs",
-        "id, job_title, company_name, industry, job_type, created_at, job_status, status_changed_at, application_deadline"
-      )
-      .then((res) => {
-        if (!mounted) return;
-        if (res.error) {
-          setError(res.error.message ?? "Failed to load jobs");
-          setJobs([]);
-        } else {
-          setJobs((res.data ?? []) as JobRecord[]);
-        }
-      })
-      .catch((e) => {
-        if (!mounted) return;
-        setError(String(e));
-      })
-      .finally(() => mounted && setLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
 
   // Funnel
   const funnel = useMemo(() => {

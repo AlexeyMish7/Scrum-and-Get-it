@@ -11,7 +11,8 @@
  * - Anonymous insights from peers
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -51,6 +52,7 @@ import {
   ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import {
   getGroupPosts,
   createPost,
@@ -77,9 +79,13 @@ interface GroupDiscussionProps {
 
 interface PostCardProps {
   post: PeerPostWithAuthor;
-  onLike: (postId: string, isLiked: boolean) => void;
-  onReply: (postId: string, content: string, isAnonymous: boolean) => void;
-  onDelete: (postId: string) => void;
+  onLike: (postId: string, isLiked: boolean) => Promise<void>;
+  onReply: (
+    postId: string,
+    content: string,
+    isAnonymous: boolean
+  ) => Promise<void>;
+  onDelete: (postId: string) => Promise<void>;
   isDeleting: boolean;
   currentUserId: string;
 }
@@ -96,9 +102,8 @@ function PostCard({
   isDeleting,
   currentUserId,
 }: PostCardProps) {
+  const queryClient = useQueryClient();
   const [showReplies, setShowReplies] = useState(false);
-  const [replies, setReplies] = useState<PeerPostWithAuthor[]>([]);
-  const [loadingReplies, setLoadingReplies] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isAnonymousReply, setIsAnonymousReply] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -112,24 +117,19 @@ function PostCard({
   const isOwnPost = post.author_id === currentUserId;
   const timeAgo = getTimeAgo(post.created_at);
 
-  // Load replies when expanding
-  async function loadReplies() {
-    if (replies.length > 0) return; // Already loaded
-
-    setLoadingReplies(true);
-    const result = await getPostReplies(currentUserId, post.id);
-    if (result.data) {
-      setReplies(result.data);
-    }
-    setLoadingReplies(false);
-  }
-
   function toggleReplies() {
-    if (!showReplies && replies.length === 0) {
-      loadReplies();
-    }
-    setShowReplies(!showReplies);
+    setShowReplies((prev) => !prev);
   }
+
+  const repliesQuery = useQuery({
+    queryKey: networkKeys.peerPostReplies(currentUserId, post.id),
+    enabled: showReplies,
+    queryFn: async () => {
+      const result = await getPostReplies(currentUserId, post.id);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
   async function handleSubmitReply() {
     if (!replyText.trim()) return;
@@ -139,11 +139,10 @@ function PostCard({
     setReplyText("");
     setIsAnonymousReply(false);
 
-    // Reload replies to show the new one
-    const result = await getPostReplies(currentUserId, post.id);
-    if (result.data) {
-      setReplies(result.data);
-    }
+    // Refresh replies (and reply counts if parent invalidates posts)
+    await queryClient.invalidateQueries({
+      queryKey: networkKeys.peerPostReplies(currentUserId, post.id),
+    });
     setSubmittingReply(false);
   }
 
@@ -237,7 +236,7 @@ function PostCard({
         <Collapse in={showReplies}>
           <Divider sx={{ my: 2 }} />
 
-          {loadingReplies ? (
+          {repliesQuery.isLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
               <CircularProgress size={24} />
             </Box>
@@ -283,7 +282,7 @@ function PostCard({
 
               {/* Replies list */}
               <Stack spacing={1}>
-                {replies.map((reply) => (
+                {(repliesQuery.data ?? []).map((reply) => (
                   <Paper
                     key={reply.id}
                     variant="outlined"
@@ -372,8 +371,7 @@ export default function GroupDiscussion({
   canPost = true,
 }: GroupDiscussionProps) {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<PeerPostWithAuthor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   // New post form
@@ -392,27 +390,26 @@ export default function GroupDiscussion({
 
   const userId = user?.id;
 
-  // Fetch posts
-  const fetchPosts = useCallback(async () => {
-    if (!userId) return;
+  const postsQuery = useQuery({
+    queryKey: networkKeys.peerGroupPosts(userId ?? "", groupId),
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      if (!userId) return [];
+      const result = await getGroupPosts(userId, groupId);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
-    setLoading(true);
-    setError(null);
+  const allPosts = postsQuery.data ?? [];
+  const visiblePosts = filterType
+    ? allPosts.filter((post) => post.post_type === filterType)
+    : allPosts;
 
-    const filters = filterType ? { post_type: filterType } : undefined;
-    const result = await getGroupPosts(userId, groupId, filters);
-
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      setPosts(result.data || []);
-    }
-    setLoading(false);
-  }, [userId, groupId, filterType]);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const posts = visiblePosts;
+  const loading = postsQuery.isLoading;
+  const displayedError =
+    error ?? (postsQuery.error as { message?: string } | null)?.message ?? null;
 
   // Handle creating a new post
   async function handleCreatePost() {
@@ -438,7 +435,9 @@ export default function GroupDiscussion({
       setNewPostType("discussion");
       setIsAnonymous(false);
       setShowNewPost(false);
-      fetchPosts();
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupPosts(userId, groupId),
+      });
     }
     setSubmitting(false);
   }
@@ -453,17 +452,19 @@ export default function GroupDiscussion({
       await likePost(userId, postId);
     }
 
-    // Update local state
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              is_liked_by_user: !isLiked,
-              like_count: (p.like_count || 0) + (isLiked ? -1 : 1),
-            }
-          : p
-      )
+    // Update cached posts so the UI reflects immediately without refetching
+    queryClient.setQueryData<PeerPostWithAuthor[]>(
+      networkKeys.peerGroupPosts(userId, groupId),
+      (prev) =>
+        (prev ?? []).map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                is_liked_by_user: !isLiked,
+                like_count: (p.like_count || 0) + (isLiked ? -1 : 1),
+              }
+            : p
+        )
     );
   }
 
@@ -474,10 +475,6 @@ export default function GroupDiscussion({
     isAnonymousReply: boolean
   ) {
     if (!userId) return;
-
-    // Get parent post to find group_id
-    const parentPost = posts.find((p) => p.id === parentPostId);
-    if (!parentPost) return;
 
     const replyData: CreatePostData = {
       group_id: groupId,
@@ -490,14 +487,20 @@ export default function GroupDiscussion({
     const result = await createPost(userId, replyData);
 
     if (result.data) {
-      // Update reply count in local state
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === parentPostId
-            ? { ...p, reply_count: (p.reply_count || 0) + 1 }
-            : p
-        )
+      // Update reply count in cached posts and refresh the replies list
+      queryClient.setQueryData<PeerPostWithAuthor[]>(
+        networkKeys.peerGroupPosts(userId, groupId),
+        (prev) =>
+          (prev ?? []).map((p) =>
+            p.id === parentPostId
+              ? { ...p, reply_count: (p.reply_count || 0) + 1 }
+              : p
+          )
       );
+
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerPostReplies(userId, parentPostId),
+      });
     }
   }
 
@@ -509,7 +512,10 @@ export default function GroupDiscussion({
     const result = await deletePost(userId, postId);
 
     if (result.data) {
-      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      queryClient.setQueryData<PeerPostWithAuthor[]>(
+        networkKeys.peerGroupPosts(userId, groupId),
+        (prev) => (prev ?? []).filter((p) => p.id !== postId)
+      );
     }
     setDeletingPostId(null);
   }
@@ -563,9 +569,16 @@ export default function GroupDiscussion({
       </Box>
 
       {/* Error alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {displayedError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => {
+            setError(null);
+            postsQuery.refetch();
+          }}
+        >
+          {displayedError}
         </Alert>
       )}
 

@@ -11,7 +11,8 @@
  * - Celebrate completions with badges
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -48,6 +49,7 @@ import {
   Leaderboard as LeaderboardIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import {
   getGroupChallenges,
   joinChallenge,
@@ -353,25 +355,16 @@ function LeaderboardDialog({
   challengeId,
   challengeTitle,
 }: LeaderboardDialogProps) {
-  const [leaderboard, setLeaderboard] = useState<ChallengeLeaderboardEntry[]>(
-    []
-  );
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || !challengeId) return;
-
-    async function fetchLeaderboard() {
-      setLoading(true);
-      const result = await getChallengeLeaderboard(challengeId!, 10);
-      if (result.data) {
-        setLeaderboard(result.data);
-      }
-      setLoading(false);
-    }
-
-    fetchLeaderboard();
-  }, [open, challengeId]);
+  const leaderboardQuery = useQuery({
+    queryKey: networkKeys.peerChallengeLeaderboard(challengeId ?? "", 10),
+    enabled: open && Boolean(challengeId),
+    queryFn: async () => {
+      if (!challengeId) return [];
+      const result = await getChallengeLeaderboard(challengeId, 10);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
   const getMedalEmoji = (rank: number) => {
     switch (rank) {
@@ -395,11 +388,11 @@ function LeaderboardDialog({
         </Box>
       </DialogTitle>
       <DialogContent>
-        {loading ? (
+        {leaderboardQuery.isLoading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
-        ) : leaderboard.length === 0 ? (
+        ) : (leaderboardQuery.data ?? []).length === 0 ? (
           <Typography
             variant="body2"
             color="text.secondary"
@@ -409,7 +402,7 @@ function LeaderboardDialog({
           </Typography>
         ) : (
           <List>
-            {leaderboard.map((entry) => (
+            {(leaderboardQuery.data ?? []).map((entry) => (
               <ListItem
                 key={entry.user_id}
                 sx={{
@@ -537,10 +530,7 @@ function ProgressDialog({
 
 export default function GroupChallenges({ groupId }: GroupChallengesProps) {
   const { user } = useAuth();
-  const [challenges, setChallenges] = useState<ChallengeWithParticipation[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [joiningChallengeId, setJoiningChallengeId] = useState<string | null>(
@@ -563,26 +553,23 @@ export default function GroupChallenges({ groupId }: GroupChallengesProps) {
 
   const userId = user?.id;
 
-  // Fetch challenges
-  const fetchChallenges = useCallback(async () => {
-    if (!userId) return;
+  const challengesQuery = useQuery({
+    queryKey: networkKeys.peerGroupChallenges(userId ?? "", groupId),
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      if (!userId) return [];
+      const result = await getGroupChallenges(userId, groupId);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
-    setLoading(true);
-    setError(null);
-
-    const result = await getGroupChallenges(userId, groupId);
-
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      setChallenges(result.data || []);
-    }
-    setLoading(false);
-  }, [userId, groupId]);
-
-  useEffect(() => {
-    fetchChallenges();
-  }, [fetchChallenges]);
+  const challenges = challengesQuery.data ?? [];
+  const loading = challengesQuery.isLoading;
+  const displayedError =
+    error ??
+    (challengesQuery.error as { message?: string } | null)?.message ??
+    null;
 
   // Filter challenges by status
   const activeChallenges = challenges.filter((c) => c.status === "active");
@@ -602,8 +589,9 @@ export default function GroupChallenges({ groupId }: GroupChallengesProps) {
     if (result.error) {
       setError(result.error.message);
     } else {
-      // Refresh to update participation status
-      fetchChallenges();
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupChallenges(userId, groupId),
+      });
     }
     setJoiningChallengeId(null);
   }
@@ -625,8 +613,13 @@ export default function GroupChallenges({ groupId }: GroupChallengesProps) {
     if (result.error) {
       setError(result.error.message);
     } else {
-      // Refresh to update progress
-      fetchChallenges();
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupChallenges(userId, groupId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerChallengeLeaderboard(challengeId, 10),
+      });
     }
   }
 
@@ -682,9 +675,16 @@ export default function GroupChallenges({ groupId }: GroupChallengesProps) {
   return (
     <Box>
       {/* Error alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {displayedError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => {
+            setError(null);
+            challengesQuery.refetch();
+          }}
+        >
+          {displayedError}
         </Alert>
       )}
 

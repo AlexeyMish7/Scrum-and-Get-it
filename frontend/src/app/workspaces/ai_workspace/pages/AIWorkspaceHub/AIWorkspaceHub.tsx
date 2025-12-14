@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { JobRecord } from "../../../job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import { Container, Stack, Typography, Box, Button } from "@mui/material";
 import {
@@ -13,13 +14,21 @@ import {
   RecentDocuments,
   GenerationStats,
 } from "../../components/hub";
+import { AIPredictionsPanel } from "../../components/shared";
 import ReportGeneratorDialog from "../../components/hub/ReportGeneratorDialog";
 import { useAuth } from "@shared/context/AuthContext";
-import { withUser } from "@shared/services/crud";
 import type { RecentDocument } from "../../types";
-import type { DocumentRow } from "@shared/types/database";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { useJobPredictions } from "../../hooks/useJobPredictions";
+import { useAIGlossyStyles } from "@shared/theme";
+import * as crud from "@shared/services/crud";
+import { aiKeys } from "@shared/cache/aiQueryKeys";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoreDocuments,
+  fetchCoreJobs,
+  fetchDocumentVersionAtsScores,
+} from "@shared/cache/coreFetchers";
 
 interface DocumentStats {
   totalDocuments: number;
@@ -45,127 +54,42 @@ interface Prediction {
  */
 export default function AIWorkspaceHub() {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
-  const [stats, setStats] = useState<DocumentStats>({
+  const aiStyles = useAIGlossyStyles();
+  const [reportOpen, setReportOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const defaultStats: DocumentStats = {
     totalDocuments: 0,
     totalVersions: 0,
     weeklyDocuments: 0,
     averageAtsScore: 0,
     jobsApplied: 0,
+  };
+
+  const overviewQuery = useQuery({
+    queryKey: user?.id
+      ? aiKeys.hubOverview(user.id)
+      : aiKeys.hubOverview("anon"),
+    enabled: Boolean(user?.id),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const userId = user?.id;
+      if (!userId) throw new Error("Not authenticated");
+      return await fetchAIHubOverview(userId, queryClient);
+    },
   });
-  const [loading, setLoading] = useState(true);
-  const [reportOpen, setReportOpen] = useState(false);
+
+  const userName = overviewQuery.data?.userName ?? null;
+  const jobs = overviewQuery.data?.jobs ?? [];
+  const recentDocuments = overviewQuery.data?.recentDocuments ?? [];
+  const stats = overviewQuery.data?.stats ?? defaultStats;
+  const loading = overviewQuery.isLoading;
+
   const { predictions, isLoading, error, runPredictions } =
     useJobPredictions(jobs);
 
   // Track if predictions have already been fetched to prevent infinite loop
   const hasFetchedPredictions = useRef(false);
-
-  // Fetch real data from database
-  useEffect(() => {
-    async function fetchData() {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const userCrud = withUser(user.id);
-
-        // Fetch recent documents (last 5, ordered by last_edited_at)
-        const docsResult = await userCrud.listRows<DocumentRow>(
-          "documents",
-          "*",
-          {
-            order: { column: "last_edited_at", ascending: false },
-            limit: 5,
-          }
-        );
-
-        if (docsResult.data) {
-          const recentDocs: RecentDocument[] = docsResult.data.map((doc) => ({
-            id: doc.id,
-            name: doc.name,
-            type: doc.type as "resume" | "cover-letter",
-            lastEditedAt: doc.last_edited_at,
-            versionNumber: doc.total_versions || 1,
-            status: doc.status as "draft" | "final" | "archived",
-          }));
-          setRecentDocuments(recentDocs);
-        }
-
-        // Fetch all documents for statistics
-        const allDocsResult = await userCrud.listRows<DocumentRow>(
-          "documents",
-          "id,created_at,total_versions,total_edits,times_exported,times_used,word_count",
-          {}
-        );
-
-        // Fetch document versions for ATS score (only non-null scores)
-        const versionsResult = await userCrud.listRows<{
-          ats_score: number | null;
-        }>("document_versions", "ats_score", {});
-
-        // Fetch jobs applied count
-        const jobsResult = await userCrud.listRows<{ id: number }>(
-          "jobs",
-          "id",
-          {
-            eq: { job_status: "Applied" },
-          }
-        );
-
-        // Fetch full job records to power predictions
-        const jobsAllResult = await userCrud.listRows<JobRecord>(
-          "jobs",
-          "id,job_title,company_name,industry,created_at,status_changed_at,job_status",
-          {}
-        );
-        if (jobsAllResult.data) setJobs(jobsAllResult.data);
-
-        // Calculate statistics
-        const allDocs = allDocsResult.data || [];
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        const weeklyDocs = allDocs.filter(
-          (doc) => new Date(doc.created_at) >= oneWeekAgo
-        ).length;
-
-        const totalVersions = allDocs.reduce(
-          (sum, doc) => sum + (doc.total_versions || 0),
-          0
-        );
-
-        // Calculate average ATS score
-        const atsScores = (versionsResult.data || [])
-          .map((v) => v.ats_score)
-          .filter((score): score is number => score !== null);
-        const avgAtsScore =
-          atsScores.length > 0
-            ? Math.round(
-                atsScores.reduce((sum, score) => sum + score, 0) /
-                  atsScores.length
-              )
-            : 0;
-
-        setStats({
-          totalDocuments: allDocs.length,
-          totalVersions,
-          weeklyDocuments: weeklyDocs,
-          averageAtsScore: avgAtsScore,
-          jobsApplied: jobsResult.data?.length || 0,
-        });
-      } catch (err) {
-        console.error("[AIWorkspaceHub] Error fetching data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [user?.id]);
 
   // Trigger predictions once when we first have jobs loaded
   // Use a ref to prevent infinite loop from runPredictions changing
@@ -184,27 +108,57 @@ export default function AIWorkspaceHub() {
   // }, [jobs]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4, pt: 2 }}>
+    <Container maxWidth="xl" sx={{ py: 5 }}>
       <AutoBreadcrumbs />
-      <Stack spacing={4}>
-        {/* Header */}
-        <Box>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+      <Stack spacing={6}>
+        {/* Header - Purpose-driven with generous spacing */}
+        <Box
+          sx={{
+            pt: 4,
+            pb: 5,
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 800,
+              mb: 2,
+              letterSpacing: "-0.02em",
+              color: "text.primary",
+            }}
+          >
             AI Document Studio
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Welcome back{user?.email ? `, ${user.email.split("@")[0]}` : ""}!
-            Create, manage, and optimize your application materials.
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              fontSize: "1.125rem",
+              mb: 4,
+              maxWidth: 600,
+            }}
+          >
+            {userName ? `Welcome back, ${userName}! ` : ""}
+            Build resumes and letters that pass ATS and impress humans.
           </Typography>
-          <Box sx={{ mt: 2, display: "flex", gap: 2, alignItems: "center" }}>
-            <Button variant="contained" onClick={() => setReportOpen(true)}>
-              Generate Custom Report
-            </Button>
-            <ReportGeneratorDialog
-              open={reportOpen}
-              onClose={() => setReportOpen(false)}
-            />
-          </Box>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => setReportOpen(true)}
+            sx={{
+              fontWeight: 600,
+              px: 3,
+              py: 1.25,
+            }}
+          >
+            Generate Custom Report
+          </Button>
+          <ReportGeneratorDialog
+            open={reportOpen}
+            onClose={() => setReportOpen(false)}
+          />
         </Box>
 
         {/* Quick Actions */}
@@ -224,104 +178,136 @@ export default function AIWorkspaceHub() {
           jobsApplied={stats.jobsApplied}
         />
 
-        {/* Predictions & Recommendations */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            AI Predictions & Recommendations
+        {/* AI Predictions - Glossy AI-powered section with preset-specific styling */}
+        <Box
+          sx={{
+            ...aiStyles.section,
+            mt: 2,
+          }}
+        >
+          {/* AI Badge - Uses glossy badge style */}
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ mb: 2 }}
+          >
+            <Box sx={aiStyles.badge}>
+              <Typography variant="caption" className="badge-text">
+                ⚡ AI-Powered
+              </Typography>
+            </Box>
+          </Stack>
+
+          {/* Section Header - Uses glossy text style */}
+          <Typography
+            variant="h4"
+            sx={{
+              ...aiStyles.text,
+              fontWeight: 800,
+              mb: 3,
+            }}
+          >
+            Predictions & Recommendations
           </Typography>
 
-          {isLoading && <Typography>Loading predictions...</Typography>}
-          {/* {error && <Typography color="error">Error: {error}</Typography>} */}
-
-          {!isLoading && predictions.length === 0 && (
-            <Typography>No predictions available yet.</Typography>
-          )}
-
-          {!isLoading &&
-            predictions.map((p) => (
-              <Box
-                key={p.id ?? p.kind}
-                sx={{
-                  mb: 2,
-                  p: 2,
-                  border: "1px solid #ddd",
-                  borderRadius: 2,
-                  backgroundColor: "#fafafa",
-                }}
-              >
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {p.kind.replace(/_/g, " ").toUpperCase()}
-                </Typography>
-
-                {/* Predicted Value */}
-                <Typography>
-                  Predicted Value:{" "}
-                  {typeof p.score === "number"
-                    ? `${p.score}${p.kind.includes("probability") ? "%" : ""}`
-                    : JSON.stringify(p.score)}
-                </Typography>
-
-                {/* Confidence */}
-                {p.confidence !== undefined && (
-                  <Typography>
-                    Confidence: {(p.confidence * 100).toFixed(1)}%
-                    {/* {p.confidenceInterval &&
-                      ` (CI: ${(p.confidenceInterval[0] * 100).toFixed(
-                        1
-                      )}% - ${(p.confidenceInterval[1] * 100).toFixed(1)}%)`} */}
-                  </Typography>
-                )}
-
-                {/* Recommendations */}
-                {p.recommendations && p.recommendations.length > 0 && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="subtitle2">
-                      Recommendations:
-                    </Typography>
-                    <ul>
-                      {p.recommendations.map((r, i) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </Box>
-                )}
-
-                {/* Scenario Analysis */}
-                {p.scenarioAnalysis && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="subtitle2">
-                      Scenario Planning:
-                    </Typography>
-                    <ul>
-                      {Object.entries(p.scenarioAnalysis).map(
-                        ([scenario, outcome]) => (
-                          <li key={scenario}>
-                            {scenario}:{" "}
-                            {typeof outcome === "number"
-                              ? (outcome * 100).toFixed(1) + "%"
-                              : outcome}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </Box>
-                )}
-
-                {/* Details */}
-                {/* {p.details && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="subtitle2">Details:</Typography>
-                    <pre style={{ whiteSpace: "pre-wrap" }}>
-                      {typeof p.details === "string"
-                        ? p.details
-                        : JSON.stringify(p.details, null, 2)}
-                    </pre>
-                  </Box>
-                )} */}
-              </Box>
-            ))}
+          {/* Render predictions using the shared component */}
+          <AIPredictionsPanel
+            predictions={predictions}
+            isLoading={isLoading}
+            error={error}
+          />
         </Box>
       </Stack>
     </Container>
   );
+}
+
+async function fetchAIHubOverview(
+  userId: string,
+  queryClient: ReturnType<typeof useQueryClient>
+): Promise<{
+  userName: string | null;
+  jobs: JobRecord[];
+  recentDocuments: RecentDocument[];
+  stats: DocumentStats;
+}> {
+  const [profile, documents, jobs, versions] = await Promise.all([
+    crud.getUserProfile(userId),
+    queryClient.ensureQueryData({
+      queryKey: coreKeys.documents(userId),
+      queryFn: () => fetchCoreDocuments(userId),
+      staleTime: 60 * 60 * 1000,
+    }),
+    queryClient.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<JobRecord>(userId),
+      staleTime: 60 * 60 * 1000,
+    }),
+    queryClient.ensureQueryData({
+      queryKey: coreKeys.documentVersionAtsScores(userId),
+      queryFn: () => fetchDocumentVersionAtsScores(userId),
+      staleTime: 30 * 60 * 1000,
+    }),
+  ]);
+
+  const userName = profile
+    ? profile.first_name || profile.last_name
+      ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
+      : null
+    : null;
+
+  const recentDocsSorted = [...documents].sort((a, b) => {
+    const ad = a.last_edited_at ? new Date(a.last_edited_at).getTime() : 0;
+    const bd = b.last_edited_at ? new Date(b.last_edited_at).getTime() : 0;
+    return bd - ad;
+  });
+
+  const recentDocuments: RecentDocument[] = recentDocsSorted
+    .slice(0, 5)
+    .map((doc) => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type as "resume" | "cover-letter",
+      lastEditedAt: doc.last_edited_at,
+      versionNumber: doc.total_versions || 1,
+      status: doc.status as "draft" | "final" | "archived",
+    }));
+
+  const allDocs = documents;
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const weeklyDocuments = allDocs.filter(
+    (doc) => new Date(doc.created_at) >= oneWeekAgo
+  ).length;
+
+  const totalVersions = allDocs.reduce((sum, doc) => {
+    return sum + (doc.total_versions || 0);
+  }, 0);
+
+  const atsScores = (versions || [])
+    .map((v) => v.ats_score)
+    .filter((score): score is number => score !== null);
+  const averageAtsScore =
+    atsScores.length > 0
+      ? Math.round(
+          atsScores.reduce((sum, score) => sum + score, 0) / atsScores.length
+        )
+      : 0;
+
+  const stats: DocumentStats = {
+    totalDocuments: allDocs.length,
+    totalVersions,
+    weeklyDocuments,
+    averageAtsScore,
+    jobsApplied: jobs.filter((j) => j.job_status === "Applied").length,
+  };
+
+  return {
+    userName,
+    jobs: jobs || [],
+    recentDocuments,
+    stats,
+  };
 }

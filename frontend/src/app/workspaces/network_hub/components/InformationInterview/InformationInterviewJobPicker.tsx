@@ -1,10 +1,26 @@
 import { useEffect, useState } from "react";
-import { Box, TextField, List, ListItemButton, ListItemText, Stack, Typography, Select, MenuItem } from "@mui/material";
+import {
+  Box,
+  TextField,
+  List,
+  ListItemButton,
+  ListItemText,
+  Stack,
+  Select,
+  MenuItem,
+} from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
-import * as db from "@shared/services/dbMappers";
-import type { Result } from "@shared/services/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 
-type JobRow = Record<string, any>;
+type JobRow = {
+  id: string | number;
+  job_title?: string | null;
+  title?: string | null;
+  company_name?: string | null;
+  [key: string]: unknown;
+};
 
 export default function InformationInterviewJobPicker({
   onSelectJob,
@@ -35,13 +51,35 @@ export default function InformationInterviewJobPicker({
         }
         setLoadingData(true);
         try {
-          const opts: any = {};
-          if (q) opts.ilike = { job_title: `%${q}%` };
-          if (company) opts.eq = { company_name: company };
+          // Use cached core jobs list and filter client-side.
+          // This prevents rerunning a Supabase query on every keystroke.
+          const qc = getAppQueryClient();
+          const jobs = await qc.ensureQueryData({
+            queryKey: coreKeys.jobs(user.id),
+            queryFn: () => fetchCoreJobs<JobRow>(user.id),
+            staleTime: 60 * 60 * 1000,
+          });
 
-          const res: Result<unknown[]> = await db.listJobs(user.id, opts as any);
-          if (!res.error && res.data) setResults(Array.isArray(res.data) ? (res.data as JobRow[]) : [res.data as JobRow]);
-          else setResults([]);
+          const all = Array.isArray(jobs) ? jobs : [];
+          const qLower = q ? q.toLowerCase() : "";
+
+          const filtered = all.filter((j) => {
+            try {
+              if (company && String(j.company_name ?? "") !== String(company))
+                return false;
+              if (qLower) {
+                const title = String(
+                  j.job_title ?? j.title ?? ""
+                ).toLowerCase();
+                return title.includes(qLower);
+              }
+              return true;
+            } catch {
+              return false;
+            }
+          });
+
+          setResults(filtered);
         } catch (err) {
           console.error("Job search failed", err);
           setResults([]);
@@ -56,15 +94,26 @@ export default function InformationInterviewJobPicker({
 
   useEffect(() => {
     onChangeTopic(topic);
-  }, [topic]);
+  }, [topic, onChangeTopic]);
 
   return (
     <Stack spacing={1}>
-      <TextField fullWidth placeholder="Search job title" size="small" value={q} onChange={(e) => setQ(e.target.value)} />
+      <TextField
+        fullWidth
+        placeholder="Search job title"
+        size="small"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
 
       <Box>
         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-          <TextField size="small" placeholder="Company" value={company ?? ""} onChange={(e) => setCompany(e.target.value || null)} />
+          <TextField
+            size="small"
+            placeholder="Company"
+            value={company ?? ""}
+            onChange={(e) => setCompany(e.target.value || null)}
+          />
           <Select
             size="small"
             displayEmpty
@@ -89,7 +138,9 @@ export default function InformationInterviewJobPicker({
         <List dense>
           {results.length === 0 ? (
             <ListItemButton disabled>
-              <ListItemText primary={loadingData ? "Searching..." : "No jobs found"} />
+              <ListItemText
+                primary={loadingData ? "Searching..." : "No jobs found"}
+              />
             </ListItemButton>
           ) : (
             results.map((r) => (
@@ -101,7 +152,10 @@ export default function InformationInterviewJobPicker({
                   onSelectJob(r);
                 }}
               >
-                <ListItemText primary={String(r.job_title ?? r.title ?? "Untitled")} secondary={String(r.company_name ?? "")} />
+                <ListItemText
+                  primary={String(r.job_title ?? r.title ?? "Untitled")}
+                  secondary={String(r.company_name ?? "")}
+                />
               </ListItemButton>
             ))
           )}

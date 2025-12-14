@@ -5,7 +5,7 @@
  * Uses environment variables with sensible defaults.
  *
  * Environment Variables:
- * - VITE_CACHE_STALE_TIME_MINUTES: How long data is considered "fresh" (default: 5)
+ * - VITE_CACHE_STALE_TIME_MINUTES: How long data is considered "fresh" (default: 15)
  * - VITE_CACHE_GC_TIME_MINUTES: How long unused data stays in cache (default: 30)
  *
  * Usage:
@@ -15,7 +15,7 @@
 
 // Parse env vars with defaults (Vite exposes env vars via import.meta.env)
 const staleTimeMinutes =
-  Number(import.meta.env.VITE_CACHE_STALE_TIME_MINUTES) || 5;
+  Number(import.meta.env.VITE_CACHE_STALE_TIME_MINUTES) || 15;
 const gcTimeMinutes = Number(import.meta.env.VITE_CACHE_GC_TIME_MINUTES) || 30;
 
 /**

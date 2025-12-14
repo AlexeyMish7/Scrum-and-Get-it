@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Box, Typography, CircularProgress } from "@mui/material";
 import {
   ResponsiveContainer,
@@ -9,9 +9,9 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import * as crud from "@shared/services/crud";
 import { useAuth } from "@shared/context/AuthContext";
 import { computeSuccessRates } from "@job_pipeline/pages/AnalyticsPage/analyticsHelpers";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 type JobRow = {
   id?: string | number;
@@ -30,60 +30,27 @@ type SuccessRate = {
 
 export default function ApproachSuccessChart() {
   const { user } = useAuth();
-  const [data, setData] = useState<Array<{ method: string; rate: number }>>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchJobs() {
-      if (!user?.id) {
-        if (mounted) setLoading(false);
-        return;
-      }
-      try {
-        const userCrud = crud.withUser(user.id);
-        const res = await userCrud.listRows<JobRow>(
-          "jobs",
-          "id, application_method, job_type, industry, job_status",
-          { order: { column: "application_deadline", ascending: true } }
-        );
-        const rows: JobRow[] = Array.isArray(res?.data)
-          ? (res.data as JobRow[])
-          : [];
-        const success = computeSuccessRates(rows, "job_type") as SuccessRate[];
-        const formatted = success.map((s: SuccessRate) => ({
-          method: s.key,
-          rate: Number((s.rate * 100).toFixed(1)),
-        }));
-        if (mounted)
-          setData(
-            formatted.length
-              ? formatted
-              : [
-                  { method: "Referral", rate: 80 },
-                  { method: "Company Site", rate: 45 },
-                  { method: "LinkedIn", rate: 35 },
-                  { method: "Job Board", rate: 25 },
-                ]
-          );
-      } catch (err) {
-        console.error(err);
-        if (mounted)
-          setData([
-            { method: "Referral", rate: 80 },
-            { method: "Company Site", rate: 45 },
-            { method: "LinkedIn", rate: 35 },
-            { method: "Job Board", rate: 25 },
-          ]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    fetchJobs();
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
+  const jobsQuery = useCoreJobs<JobRow>(user?.id);
+  const loading = jobsQuery.isFetching;
+
+  const data = useMemo(() => {
+    const rows: JobRow[] = jobsQuery.data ?? [];
+    const success = computeSuccessRates(rows, "job_type") as SuccessRate[];
+    const formatted = success.map((s: SuccessRate) => ({
+      method: s.key,
+      rate: Number((s.rate * 100).toFixed(1)),
+    }));
+
+    return formatted.length
+      ? formatted
+      : [
+          { method: "Referral", rate: 80 },
+          { method: "Company Site", rate: 45 },
+          { method: "LinkedIn", rate: 35 },
+          { method: "Job Board", rate: 25 },
+        ];
+  }, [jobsQuery.data]);
 
   return (
     <Box sx={{ mt: 4 }}>

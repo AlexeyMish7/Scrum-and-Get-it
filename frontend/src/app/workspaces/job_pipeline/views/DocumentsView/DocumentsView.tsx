@@ -61,10 +61,16 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
-import { withUser } from "@shared/services/crud";
 import { useTeam } from "@shared/context/useTeam";
 import { ShareDocumentDialog } from "@workspaces/ai_workspace/components/reviews";
 import type { JobRow } from "@job_pipeline/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoverLetterDrafts,
+  fetchResumeDrafts,
+} from "@shared/cache/coreFetchers";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 // Types for documents
 interface DraftDocument {
@@ -98,7 +104,6 @@ export default function DocumentsView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const [jobs, setJobs] = useState<JobRow[]>([]);
   const [resumes, setResumes] = useState<DraftDocument[]>([]);
   const [covers, setCovers] = useState<DraftDocument[]>([]);
   const [otherDocs, setOtherDocs] = useState<DraftDocument[]>([]);
@@ -111,28 +116,14 @@ export default function DocumentsView() {
     null
   );
 
+  const jobsQuery = useCoreJobs<JobRow>(user?.id);
+  const jobs = jobsQuery.data ?? [];
+
   // Open share dialog for a document
   function handleShareDocument(doc: DraftDocument) {
     setDocumentToShare(doc);
     setShareDialogOpen(true);
   }
-
-  // Load jobs for association display
-  useEffect(() => {
-    if (!user?.id) return;
-    (async () => {
-      try {
-        const userCrud = withUser(user.id);
-        const res = await userCrud.listRows("jobs", "*", {
-          order: { column: "created_at", ascending: false },
-        });
-        if (res.error) throw new Error(res.error.message);
-        setJobs((res.data || []) as JobRow[]);
-      } catch (err) {
-        console.error("Failed to load jobs:", err);
-      }
-    })();
-  }, [user?.id]);
 
   // Load all documents
   useEffect(() => {
@@ -140,27 +131,24 @@ export default function DocumentsView() {
     setLoading(true);
     (async () => {
       try {
-        // 1) Resume drafts
-        const { data: resumeRows, error: resumeErr } = await supabase
-          .from("resume_drafts")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (resumeErr) throw resumeErr;
+        const qc = getAppQueryClient();
+
+        const resumeRows = await qc.ensureQueryData({
+          queryKey: coreKeys.resumeDrafts(user.id),
+          queryFn: () => fetchResumeDrafts<DraftDocument>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
         const resumesWithKind = (resumeRows || []).map((r: DraftDocument) => ({
           ...r,
           kind: "resume" as const,
         }));
 
-        // 2) Cover letters from database
-        const { data: dbCovers, error: coverErr } = await supabase
-          .from("cover_letter_drafts")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (coverErr) throw coverErr;
-
-        const coversWithKind = (dbCovers || []).map((c: DraftDocument) => ({
+        const coverRows = await qc.ensureQueryData({
+          queryKey: coreKeys.coverLetterDrafts(user.id),
+          queryFn: () => fetchCoverLetterDrafts<DraftDocument>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+        const coversWithKind = (coverRows || []).map((c: DraftDocument) => ({
           ...c,
           kind: "cover_letter" as const,
         }));
@@ -304,6 +292,32 @@ export default function DocumentsView() {
           .in("id", coverIds)
           .eq("user_id", user.id);
         if (coverErr) throw coverErr;
+      }
+
+      // Keep app-wide caches consistent.
+      try {
+        const qc = getAppQueryClient();
+
+        if (resumeIds.length > 0) {
+          qc.setQueryData(coreKeys.resumeDrafts(user.id), (old: unknown) => {
+            const arr = Array.isArray(old) ? (old as DraftDocument[]) : [];
+            const remove = new Set(resumeIds);
+            return arr.filter((d) => !remove.has(String(d.id)));
+          });
+        }
+
+        if (coverIds.length > 0) {
+          qc.setQueryData(
+            coreKeys.coverLetterDrafts(user.id),
+            (old: unknown) => {
+              const arr = Array.isArray(old) ? (old as DraftDocument[]) : [];
+              const remove = new Set(coverIds);
+              return arr.filter((d) => !remove.has(String(d.id)));
+            }
+          );
+        }
+      } catch {
+        // ignore
       }
 
       // Refresh data

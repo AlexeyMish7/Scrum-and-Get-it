@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Paper,
   Typography,
@@ -21,8 +21,8 @@ import {
   Download as DownloadIcon,
   Lightbulb as LightbulbIcon,
 } from "@mui/icons-material";
-import crud from "@shared/services/crud";
 import { useAuth } from "@shared/context/AuthContext";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 // Industry benchmark data (in days) based on typical hiring timelines
 const INDUSTRY_BENCHMARKS = {
@@ -54,40 +54,19 @@ interface StageMetrics {
   count: number;
 }
 
+const EMPTY_JOBS: JobRecord[] = [];
+
 export default function TimeToHireCard() {
   const { session } = useAuth();
 
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch all jobs with date tracking
-  useEffect(() => {
-    async function fetchJobs() {
-      if (!session?.user?.id) {
-        setError("Not authenticated");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const userCrud = crud.withUser(session.user.id);
-        const { data, error: fetchError } = await userCrud.listRows<JobRecord>(
-          "jobs",
-          "*"
-        );
-
-        if (fetchError) throw fetchError;
-        setJobs(data ?? []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load jobs");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchJobs();
-  }, [session?.user?.id]);
+  const jobsQuery = useCoreJobs<JobRecord>(session?.user?.id);
+  const jobs = jobsQuery.data ?? EMPTY_JOBS;
+  const loading = jobsQuery.isFetching;
+  const error = session?.user?.id
+    ? jobsQuery.isError
+      ? jobsQuery.error?.message ?? "Failed to load jobs"
+      : null
+    : "Not authenticated";
 
   // Calculate time-to-hire metrics for each stage
   const metrics = useMemo<StageMetrics[]>(() => {

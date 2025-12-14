@@ -178,6 +178,12 @@
 
 ## Common Patterns
 
+### Caching (React Query)
+
+- Components should fetch via TanStack React Query v5 (`useQuery`) and use canonical query keys.
+- For peer group features, use `networkKeys` from `frontend/src/app/shared/cache/networkQueryKeys.ts`.
+- The `network` root is intentionally non-persisted (high-cardinality data like posts/replies should remain in-memory).
+
 ### Filter Objects
 
 ```typescript

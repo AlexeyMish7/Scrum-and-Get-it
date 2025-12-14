@@ -63,6 +63,14 @@ interface JobFormDialogProps {
   editJob?: JobRow | null;
 }
 
+type JobRowWithLocationType = JobRow & {
+  location_type?: string | null;
+};
+
+type JobFormDataWithLocationType = JobFormData & {
+  location_type?: string;
+};
+
 export default function JobFormDialog({
   open,
   onClose,
@@ -77,6 +85,7 @@ export default function JobFormDialog({
   // Initialize form state from editJob if editing, otherwise empty
   const [form, setForm] = useState(() => {
     if (editJob) {
+      const editJobWithLocation = editJob as JobRowWithLocationType;
       return {
         job_title: editJob.job_title || "",
         company_name: editJob.company_name || "",
@@ -93,7 +102,7 @@ export default function JobFormDialog({
         job_description: editJob.job_description || "",
         industry: editJob.industry || "",
         job_type: editJob.job_type || "",
-        location_type: (editJob as any).location_type || "",
+        location_type: editJobWithLocation.location_type || "",
       };
     }
     return {
@@ -156,16 +165,24 @@ export default function JobFormDialog({
         job_description: form.job_description || undefined,
         industry: form.industry || undefined,
         job_type: form.job_type || undefined,
-        location_type: (form as any).location_type || undefined,
+      };
+
+      const payloadWithLocation: JobFormDataWithLocationType = {
+        ...payload,
+        location_type: form.location_type || undefined,
       };
 
       let res;
       if (editJob?.id) {
         // Update existing job
-        res = await jobsService.updateJob(user.id, editJob.id, payload);
+        res = await jobsService.updateJob(
+          user.id,
+          editJob.id,
+          payloadWithLocation
+        );
       } else {
         // Create new job
-        res = await jobsService.createJob(user.id, payload);
+        res = await jobsService.createJob(user.id, payloadWithLocation);
       }
 
       if (res.error) {
@@ -174,9 +191,6 @@ export default function JobFormDialog({
         showSuccess(
           editJob ? "Job updated successfully!" : "Job saved successfully!"
         );
-
-        // Notify other components that jobs changed
-        window.dispatchEvent(new CustomEvent("jobs-updated"));
 
         if (onSuccess && res.data) {
           onSuccess(res.data);
@@ -452,7 +466,7 @@ export default function JobFormDialog({
                 select
                 label="Location"
                 name="location_type"
-                value={(form as any).location_type}
+                value={form.location_type}
                 onChange={handleChange}
                 sx={{ flex: 1 }}
               >

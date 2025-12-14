@@ -26,6 +26,12 @@ import InterviewScheduling from "./InterviewScheduling";
 import { useAuth } from "@shared/context/AuthContext";
 import { supabase } from "@shared/services/supabaseClient";
 import JSZip from "jszip";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoverLetterDrafts,
+  fetchResumeDrafts,
+} from "@shared/cache/coreFetchers";
 
 export default function AutomationsPage() {
   const { user } = useAuth() as any;
@@ -57,16 +63,19 @@ export default function AutomationsPage() {
     if (!user?.id) return;
     (async () => {
       try {
-        // Fetch persisted drafts from the database
-        const { data: resumes } = await supabase
-          .from("resume_drafts")
-          .select("*")
-          .eq("user_id", user.id);
+        const qc = getAppQueryClient();
 
-        const { data: covers } = await supabase
-          .from("cover_letter_drafts")
-          .select("*")
-          .eq("user_id", user.id);
+        const resumes = await qc.ensureQueryData({
+          queryKey: coreKeys.resumeDrafts(user.id),
+          queryFn: () => fetchResumeDrafts<any>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        const covers = await qc.ensureQueryData({
+          queryKey: coreKeys.coverLetterDrafts(user.id),
+          queryFn: () => fetchCoverLetterDrafts<any>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
 
         setResumeList(resumes || []);
         setCoverList(covers || []);

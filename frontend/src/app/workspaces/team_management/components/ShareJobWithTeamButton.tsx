@@ -41,6 +41,8 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
 import { supabase } from "@shared/services/supabaseClient";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import type { JobRow } from "@shared/types/database";
 
 interface ShareJobWithTeamButtonProps {
@@ -131,15 +133,13 @@ export function ShareJobWithTeamButton({
     setError(null);
 
     try {
-      // Get user profile for the activity description
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, first_name")
-        .eq("id", user.id)
-        .single();
-
-      const userName =
-        profile?.full_name || profile?.first_name || "A team member";
+      // Avoid an extra profiles lookup; best-effort name from auth metadata.
+      const meta = user.user_metadata as unknown as Record<string, unknown>;
+      const candidateName =
+        (typeof meta?.full_name === "string" && meta.full_name.trim()) ||
+        (typeof meta?.first_name === "string" && meta.first_name.trim()) ||
+        null;
+      const userName = candidateName || "A team member";
 
       // Create activity log entry for the shared job
       // Using 'settings_updated' as a generic activity type since 'job_shared' isn't in enum
@@ -190,6 +190,10 @@ export function ShareJobWithTeamButton({
           company_name: job.company_name,
           share_type: shareType,
         },
+      });
+
+      getAppQueryClient().invalidateQueries({
+        queryKey: coreKeys.teamMessages(user.id, selectedTeamId),
       });
 
       setSuccess(true);

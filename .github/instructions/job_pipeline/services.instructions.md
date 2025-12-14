@@ -54,8 +54,13 @@ interface JobFilters {
 
 ### Caching
 
-- 5-minute cache TTL for job lists
-- Cache invalidation on create/update/delete
+- Primary cache: app-wide React Query core cache (`coreKeys.jobs(userId)`) with long stale times (prefetched on login via `AppBootstrapPrefetch`)
+- `jobsService.listJobs()` reads from the core cache via `queryClient.ensureQueryData()` and applies filters/sort/pagination client-side
+- Job materials drafts are also cached app-wide:
+  - `coreKeys.resumeDrafts(userId)` (table: `resume_drafts`)
+  - `coreKeys.coverLetterDrafts(userId)` (table: `cover_letter_drafts`)
+- Legacy: still maintains a 5-minute in-memory TTL cache for older call sites
+- Cache stays consistent on create/update/delete via `setQueryData()` + invalidation
 - Request deduplication for parallel fetches
 
 ---

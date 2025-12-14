@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { unifiedProfileKeys } from "@profile/cache";
+import { useUnifiedCacheUtils } from "@profile/cache";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Box,
@@ -67,6 +67,7 @@ const ProjectPortfolio: React.FC = () => {
   >();
 
   const queryClient = useQueryClient();
+  const { invalidateAll } = useUnifiedCacheUtils();
   const { user, loading: authLoading } = useAuth();
   const { markProfileChanged } = useProfileChange();
   const { notification, closeNotification, showSuccess, handleError } =
@@ -160,16 +161,13 @@ const ProjectPortfolio: React.FC = () => {
       }
       showSuccess("Project deleted");
       markProfileChanged(); // Invalidate analytics cache
-      // Invalidate unified cache so data is refetched
-      queryClient.invalidateQueries({
-        queryKey: unifiedProfileKeys.user(user.id),
-      });
+      // Keep profile pages in sync (both unified + legacy queries)
+      invalidateAll();
       window.dispatchEvent(
         new CustomEvent("projects:notification", {
           detail: { message: "Project deleted", severity: "success" },
         })
       );
-      window.dispatchEvent(new Event("projects:changed"));
       setSelectedProject(null);
     } catch (err) {
       handleError(err as Error);

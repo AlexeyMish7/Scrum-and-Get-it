@@ -11,7 +11,8 @@
  * - Highlight helpful factors (peer support, referrals, etc.)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -46,6 +47,7 @@ import {
   Person as PersonIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import {
   getSuccessStories,
   createSuccessStory,
@@ -574,33 +576,29 @@ function CreateStoryDialog({
 
 export default function SuccessStories({ groupId }: SuccessStoriesProps) {
   const { user } = useAuth();
-  const [stories, setStories] = useState<SuccessStoryWithAuthor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const userId = user?.id;
 
-  // Fetch stories
-  const fetchStories = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const storiesQuery = useQuery({
+    queryKey: networkKeys.peerSuccessStories(groupId),
+    queryFn: async () => {
+      const filters = groupId ? { group_id: groupId } : undefined;
+      const result = await getSuccessStories(filters);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
-    const filters = groupId ? { group_id: groupId } : undefined;
-    const result = await getSuccessStories(filters);
-
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      setStories(result.data || []);
-    }
-    setLoading(false);
-  }, [groupId]);
-
-  useEffect(() => {
-    fetchStories();
-  }, [fetchStories]);
+  const stories = storiesQuery.data ?? [];
+  const loading = storiesQuery.isLoading;
+  const displayedError =
+    error ??
+    (storiesQuery.error as { message?: string } | null)?.message ??
+    null;
 
   // Handle creating a story
   async function handleCreateStory(data: CreateSuccessStoryData) {
@@ -613,7 +611,9 @@ export default function SuccessStories({ groupId }: SuccessStoriesProps) {
       setError(result.error.message);
     } else {
       setCreateDialogOpen(false);
-      fetchStories();
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerSuccessStories(groupId),
+      });
     }
     setSubmitting(false);
   }
@@ -657,9 +657,16 @@ export default function SuccessStories({ groupId }: SuccessStoriesProps) {
       </Box>
 
       {/* Error alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {displayedError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => {
+            setError(null);
+            storiesQuery.refetch();
+          }}
+        >
+          {displayedError}
         </Alert>
       )}
 

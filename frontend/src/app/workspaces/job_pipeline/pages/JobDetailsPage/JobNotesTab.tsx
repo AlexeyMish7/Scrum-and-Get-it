@@ -3,7 +3,7 @@
  * Personal notes, contacts, and interview feedback for this job.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -19,11 +19,10 @@ import { Save, Person, Phone, Email, AttachMoney } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { LoadingSpinner } from "@shared/components/feedback";
-import {
-  listJobNotes,
-  createJobNote,
-  updateJobNote,
-} from "@shared/services/dbMappers";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { useJobNotesByJobId } from "@shared/cache/coreHooks";
+import { createJobNote, updateJobNote } from "@shared/services/dbMappers";
 
 interface JobNotesTabProps {
   jobId: number;
@@ -32,8 +31,21 @@ interface JobNotesTabProps {
 export default function JobNotesTab({ jobId }: JobNotesTabProps) {
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const notesQuery = useJobNotesByJobId<Record<string, unknown>>(
+    user?.id,
+    jobId
+  );
+
+  const existingNote = useMemo(() => {
+    const data = notesQuery.data;
+    return (
+      (Array.isArray(data)
+        ? (data[0] as Record<string, unknown> | undefined)
+        : undefined) ?? null
+    );
+  }, [notesQuery.data]);
 
   const [notes, setNotes] = useState({
     personal_notes: "",
@@ -61,65 +73,62 @@ export default function JobNotesTab({ jobId }: JobNotesTabProps) {
   });
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!existingNote) return;
+    const note = existingNote as Record<string, unknown>;
 
-    const loadNotes = async () => {
-      setLoading(true);
-      const result = await listJobNotes(user.id, { eq: { job_id: jobId } });
+    const breakdown =
+      (note["total_compensation_breakdown"] as Record<
+        string,
+        unknown
+      > | null) ?? {};
 
-      if (result.error) {
-        handleError(result.error);
-        setLoading(false);
-        return;
-      }
+    setNotes({
+      personal_notes: String(note["personal_notes"] ?? ""),
+      recruiter_name: String(note["recruiter_name"] ?? ""),
+      recruiter_email: String(note["recruiter_email"] ?? ""),
+      recruiter_phone: String(note["recruiter_phone"] ?? ""),
+      hiring_manager_name: String(note["hiring_manager_name"] ?? ""),
+      hiring_manager_email: String(note["hiring_manager_email"] ?? ""),
+      hiring_manager_phone: String(note["hiring_manager_phone"] ?? ""),
+      interview_notes: String(note["interview_notes"] ?? ""),
+      salary_negotiation_notes: String(note["salary_negotiation_notes"] ?? ""),
+      offered_salary:
+        note["offered_salary"] != null ? String(note["offered_salary"]) : "",
+      negotiated_salary:
+        note["negotiated_salary"] != null
+          ? String(note["negotiated_salary"])
+          : "",
+      offer_received_date: String(note["offer_received_date"] ?? ""),
+      negotiation_outcome: String(note["negotiation_outcome"] ?? ""),
+      total_compensation_breakdown: {
+        base_salary:
+          breakdown["base_salary"] != null
+            ? String(breakdown["base_salary"])
+            : "",
+        signing_bonus:
+          breakdown["signing_bonus"] != null
+            ? String(breakdown["signing_bonus"])
+            : "",
+        annual_bonus:
+          breakdown["annual_bonus"] != null
+            ? String(breakdown["annual_bonus"])
+            : "",
+        equity_value:
+          breakdown["equity_value"] != null
+            ? String(breakdown["equity_value"])
+            : "",
+        benefits_value:
+          breakdown["benefits_value"] != null
+            ? String(breakdown["benefits_value"])
+            : "",
+        notes: String(breakdown["notes"] ?? ""),
+      },
+    });
+  }, [existingNote]);
 
-      if (result.data && result.data.length > 0) {
-        const note = result.data[0] as {
-          personal_notes?: string | null;
-          recruiter_name?: string | null;
-          recruiter_email?: string | null;
-          recruiter_phone?: string | null;
-          hiring_manager_name?: string | null;
-          hiring_manager_email?: string | null;
-          hiring_manager_phone?: string | null;
-          interview_notes?: string | null;
-          salary_negotiation_notes?: string | null;
-          offered_salary?: number | null;
-          negotiated_salary?: number | null;
-          offer_received_date?: string | null;
-          negotiation_outcome?: string | null;
-          total_compensation_breakdown?: any;
-        };
-        const breakdown = note.total_compensation_breakdown || {};
-        setNotes({
-          personal_notes: note.personal_notes || "",
-          recruiter_name: note.recruiter_name || "",
-          recruiter_email: note.recruiter_email || "",
-          recruiter_phone: note.recruiter_phone || "",
-          hiring_manager_name: note.hiring_manager_name || "",
-          hiring_manager_email: note.hiring_manager_email || "",
-          hiring_manager_phone: note.hiring_manager_phone || "",
-          interview_notes: note.interview_notes || "",
-          salary_negotiation_notes: note.salary_negotiation_notes || "",
-          offered_salary: note.offered_salary?.toString() || "",
-          negotiated_salary: note.negotiated_salary?.toString() || "",
-          offer_received_date: note.offer_received_date || "",
-          negotiation_outcome: note.negotiation_outcome || "",
-          total_compensation_breakdown: {
-            base_salary: breakdown.base_salary?.toString() || "",
-            signing_bonus: breakdown.signing_bonus?.toString() || "",
-            annual_bonus: breakdown.annual_bonus?.toString() || "",
-            equity_value: breakdown.equity_value?.toString() || "",
-            benefits_value: breakdown.benefits_value?.toString() || "",
-            notes: breakdown.notes || "",
-          },
-        });
-      }
-      setLoading(false);
-    };
-
-    loadNotes();
-  }, [user?.id, jobId, handleError]);
+  useEffect(() => {
+    if (notesQuery.error) handleError(notesQuery.error);
+  }, [notesQuery.error, handleError]);
 
   const handleSave = async () => {
     if (!user?.id) return;
@@ -127,43 +136,57 @@ export default function JobNotesTab({ jobId }: JobNotesTabProps) {
     setSaving(true);
 
     // Prepare payload with proper type conversions
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       ...notes,
-      offered_salary: notes.offered_salary ? Number(notes.offered_salary) : null,
-      negotiated_salary: notes.negotiated_salary ? Number(notes.negotiated_salary) : null,
+      offered_salary: notes.offered_salary
+        ? Number(notes.offered_salary)
+        : null,
+      negotiated_salary: notes.negotiated_salary
+        ? Number(notes.negotiated_salary)
+        : null,
       offer_received_date: notes.offer_received_date || null,
       negotiation_outcome: notes.negotiation_outcome || null,
       total_compensation_breakdown: {
-        base_salary: notes.total_compensation_breakdown.base_salary ? Number(notes.total_compensation_breakdown.base_salary) : null,
-        signing_bonus: notes.total_compensation_breakdown.signing_bonus ? Number(notes.total_compensation_breakdown.signing_bonus) : null,
-        annual_bonus: notes.total_compensation_breakdown.annual_bonus ? Number(notes.total_compensation_breakdown.annual_bonus) : null,
-        equity_value: notes.total_compensation_breakdown.equity_value ? Number(notes.total_compensation_breakdown.equity_value) : null,
-        benefits_value: notes.total_compensation_breakdown.benefits_value ? Number(notes.total_compensation_breakdown.benefits_value) : null,
+        base_salary: notes.total_compensation_breakdown.base_salary
+          ? Number(notes.total_compensation_breakdown.base_salary)
+          : null,
+        signing_bonus: notes.total_compensation_breakdown.signing_bonus
+          ? Number(notes.total_compensation_breakdown.signing_bonus)
+          : null,
+        annual_bonus: notes.total_compensation_breakdown.annual_bonus
+          ? Number(notes.total_compensation_breakdown.annual_bonus)
+          : null,
+        equity_value: notes.total_compensation_breakdown.equity_value
+          ? Number(notes.total_compensation_breakdown.equity_value)
+          : null,
+        benefits_value: notes.total_compensation_breakdown.benefits_value
+          ? Number(notes.total_compensation_breakdown.benefits_value)
+          : null,
         notes: notes.total_compensation_breakdown.notes || null,
-        total: 
-          (notes.total_compensation_breakdown.base_salary ? Number(notes.total_compensation_breakdown.base_salary) : 0) +
-          (notes.total_compensation_breakdown.signing_bonus ? Number(notes.total_compensation_breakdown.signing_bonus) : 0) +
-          (notes.total_compensation_breakdown.annual_bonus ? Number(notes.total_compensation_breakdown.annual_bonus) : 0) +
-          (notes.total_compensation_breakdown.equity_value ? Number(notes.total_compensation_breakdown.equity_value) : 0) +
-          (notes.total_compensation_breakdown.benefits_value ? Number(notes.total_compensation_breakdown.benefits_value) : 0),
+        total:
+          (notes.total_compensation_breakdown.base_salary
+            ? Number(notes.total_compensation_breakdown.base_salary)
+            : 0) +
+          (notes.total_compensation_breakdown.signing_bonus
+            ? Number(notes.total_compensation_breakdown.signing_bonus)
+            : 0) +
+          (notes.total_compensation_breakdown.annual_bonus
+            ? Number(notes.total_compensation_breakdown.annual_bonus)
+            : 0) +
+          (notes.total_compensation_breakdown.equity_value
+            ? Number(notes.total_compensation_breakdown.equity_value)
+            : 0) +
+          (notes.total_compensation_breakdown.benefits_value
+            ? Number(notes.total_compensation_breakdown.benefits_value)
+            : 0),
       },
     };
 
-    // Check if notes exist
-    const existingResult = await listJobNotes(user.id, {
-      eq: { job_id: jobId },
-    });
+    const noteId = (existingNote?.["id"] as string | undefined) ?? undefined;
 
-    let result;
-    if (existingResult.data && existingResult.data.length > 0) {
-      // Update existing
-      const noteId = (existingResult.data[0] as { id?: string }).id;
-      if (!noteId) return;
-      result = await updateJobNote(user.id, noteId, payload);
-    } else {
-      // Create new
-      result = await createJobNote(user.id, { job_id: jobId, ...payload });
-    }
+    const result = noteId
+      ? await updateJobNote(user.id, noteId, payload)
+      : await createJobNote(user.id, { job_id: jobId, ...payload });
 
     setSaving(false);
 
@@ -172,10 +195,19 @@ export default function JobNotesTab({ jobId }: JobNotesTabProps) {
       return;
     }
 
+    try {
+      const qc = getAppQueryClient();
+      await qc.invalidateQueries({
+        queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+      });
+    } catch {
+      // ignore
+    }
+
     showSuccess("Notes saved");
   };
 
-  if (loading) {
+  if (notesQuery.isLoading) {
     return <LoadingSpinner message="Loading notes..." />;
   }
 
@@ -365,12 +397,7 @@ export default function JobNotesTab({ jobId }: JobNotesTabProps) {
 
       {/* Offer Details & Tracking */}
       <Paper sx={{ p: 3 }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{ mb: 2 }}
-        >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
           <AttachMoney color="action" />
           <Typography variant="h6">Offer Details & Tracking</Typography>
         </Stack>

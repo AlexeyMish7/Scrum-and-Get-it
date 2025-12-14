@@ -14,6 +14,43 @@
 
 import { supabase } from "@shared/services/supabaseClient";
 import type { Result } from "@shared/services/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchAccountabilityPartnershipsWithProfiles,
+  fetchCoreJobs,
+  fetchProgressMessagesSince,
+} from "@shared/cache/coreFetchers";
+
+function toErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
+type DbJobRow = {
+  id: number;
+  job_status: string;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+type DbPartnershipRow = {
+  id: string;
+  user_id: string;
+  partner_id: string;
+  team_id: string;
+  status: string;
+  created_at: string;
+  partner?: { full_name?: string | null } | null;
+};
+
+type DbProgressMessageRow = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  message_type: string | null;
+  created_at: string;
+};
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -151,17 +188,30 @@ export async function getAccountabilityImpact(
       startDate = new Date(0); // All time
   }
 
-  // Get partnerships data
-  const { data: partnerships, error: partnershipsError } = await supabase
-    .from("accountability_partnerships")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("team_id", teamId);
-
-  if (partnershipsError) {
+  // Load partnerships via shared cache so multiple team dashboards/services reuse the same data.
+  let partnerships: DbPartnershipRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const all = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<DbPartnershipRow>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
+    // Keep original semantics: this metric is for the candidate user.
+    partnerships = (Array.isArray(all) ? all : []).filter(
+      (p) => p.user_id === userId
+    );
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: partnershipsError.message, status: null },
+      error: {
+        message: toErrorMessage(e) || "Failed to load partnerships",
+        status: null,
+      },
       status: null,
     };
   }
@@ -175,32 +225,49 @@ export async function getAccountabilityImpact(
       )
     : null;
 
-  // Get jobs data for the period
-  const { data: jobs, error: jobsError } = await supabase
-    .from("jobs")
-    .select("id, job_status, created_at, updated_at")
-    .eq("user_id", userId)
-    .gte("created_at", startDate.toISOString());
-
-  if (jobsError) {
+  // Use cached core jobs list and filter client-side.
+  let jobs: DbJobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const all = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<DbJobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    const startMs = startDate.getTime();
+    jobs = (Array.isArray(all) ? all : []).filter((j) => {
+      const t = new Date(j.created_at).getTime();
+      return t >= startMs;
+    });
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: jobsError.message, status: null },
+      error: {
+        message: toErrorMessage(e) || "Failed to load jobs",
+        status: null,
+      },
       status: null,
     };
   }
 
-  // Get messaging data
-  const { data: messages, error: messagesError } = await supabase
-    .from("progress_messages")
-    .select("*")
-    .eq("team_id", teamId)
-    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-    .gte("created_at", startDate.toISOString());
-
-  if (messagesError) {
+  // Cache period-scoped messages so repeated dashboard navigations don't requery.
+  let messages: DbProgressMessageRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    messages = (await qc.ensureQueryData({
+      queryKey: coreKeys.progressMessagesPeriod(userId, teamId, period),
+      queryFn: () =>
+        fetchProgressMessagesSince<DbProgressMessageRow>(
+          userId,
+          teamId,
+          startDate.toISOString()
+        ),
+      staleTime: 5 * 60 * 1000,
+    })) as DbProgressMessageRow[];
+  } catch (e: unknown) {
     // Messaging might not exist yet, continue with empty
-    console.warn("Could not fetch messages:", messagesError.message);
+    console.warn("Could not fetch messages:", toErrorMessage(e));
+    messages = [];
   }
 
   // Calculate metrics
@@ -332,41 +399,63 @@ export async function getPartnerEffectiveness(
   userId: string,
   teamId: string
 ): Promise<Result<PartnerEffectiveness[]>> {
-  // Get active partnerships with partner info
-  const { data: partnerships, error } = await supabase
-    .from("accountability_partnerships")
-    .select(
-      `
-      *,
-      partner:profiles!partner_id(full_name, email)
-    `
-    )
-    .eq("user_id", userId)
-    .eq("team_id", teamId)
-    .in("status", ["active", "accepted"]);
-
-  if (error) {
+  // Load once from cache to avoid duplicating queries across the dashboard.
+  let partnerships: DbPartnershipRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const all = await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<DbPartnershipRow>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    });
+    partnerships = (Array.isArray(all) ? all : []).filter(
+      (p) => p.user_id === userId && ["active", "accepted"].includes(p.status)
+    );
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: error.message, status: null },
+      error: {
+        message: toErrorMessage(e) || "Failed to load partnerships",
+        status: null,
+      },
       status: null,
     };
+  }
+
+  // Fetch messages once for the team/user and compute per-partner stats in memory.
+  let allMessages: DbProgressMessageRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    allMessages = (await qc.ensureQueryData({
+      queryKey: coreKeys.progressMessagesPeriod(userId, teamId, "all"),
+      queryFn: () =>
+        fetchProgressMessagesSince<DbProgressMessageRow>(
+          userId,
+          teamId,
+          new Date(0).toISOString()
+        ),
+      staleTime: 5 * 60 * 1000,
+    })) as DbProgressMessageRow[];
+  } catch {
+    allMessages = [];
   }
 
   const effectiveness: PartnerEffectiveness[] = [];
 
   for (const partnership of partnerships || []) {
     const partnerId = partnership.partner_id;
-    const partnerData = partnership.partner as { full_name: string } | null;
+    const partnerData = partnership.partner ?? null;
 
-    // Get messages with this partner
-    const { data: messages } = await supabase
-      .from("progress_messages")
-      .select("*")
-      .eq("team_id", teamId)
-      .or(
-        `and(sender_id.eq.${userId},recipient_id.eq.${partnerId}),and(sender_id.eq.${partnerId},recipient_id.eq.${userId})`
+    const messages = (allMessages || []).filter((m) => {
+      return (
+        (m.sender_id === userId && m.recipient_id === partnerId) ||
+        (m.sender_id === partnerId && m.recipient_id === userId)
       );
+    });
 
     const messageCount = messages?.length || 0;
     const encouragementCount = (messages || []).filter(
@@ -436,35 +525,87 @@ export async function getWeeklyTrends(
   const trends: WeeklyTrend[] = [];
   const now = new Date();
 
+  // Load jobs once (cached) and slice per-week.
+  let allJobs: DbJobRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const jobs = await qc.ensureQueryData({
+      queryKey: coreKeys.jobs(userId),
+      queryFn: () => fetchCoreJobs<DbJobRow>(userId),
+      staleTime: 60 * 60 * 1000,
+    });
+    allJobs = Array.isArray(jobs) ? jobs : [];
+  } catch {
+    allJobs = [];
+  }
+
+  // Load once to avoid N-per-week Supabase calls.
+  const rangeStart = new Date(now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000);
+
+  let messagesSinceRangeStart: DbProgressMessageRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    const msgs = await qc.ensureQueryData({
+      queryKey: coreKeys.progressMessagesSince(
+        userId,
+        teamId,
+        rangeStart.toISOString()
+      ),
+      queryFn: () =>
+        fetchProgressMessagesSince<DbProgressMessageRow>(
+          userId,
+          teamId,
+          rangeStart.toISOString()
+        ),
+      staleTime: 5 * 60 * 1000,
+    });
+    messagesSinceRangeStart = Array.isArray(msgs) ? msgs : [];
+  } catch {
+    messagesSinceRangeStart = [];
+  }
+
+  let partnerships: DbPartnershipRow[] = [];
+  try {
+    const qc = getAppQueryClient();
+    partnerships = (await qc.ensureQueryData({
+      queryKey: coreKeys.accountabilityPartnerships(userId, teamId),
+      queryFn: () =>
+        fetchAccountabilityPartnershipsWithProfiles<DbPartnershipRow>(
+          userId,
+          teamId
+        ),
+      staleTime: 60 * 60 * 1000,
+    })) as DbPartnershipRow[];
+  } catch {
+    partnerships = [];
+  }
+
   for (let i = weeks - 1; i >= 0; i--) {
     const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
     const weekStart = new Date(weekEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get jobs for this week
-    const { data: jobs } = await supabase
-      .from("jobs")
-      .select("id, job_status")
-      .eq("user_id", userId)
-      .gte("created_at", weekStart.toISOString())
-      .lt("created_at", weekEnd.toISOString());
+    // Get jobs for this week (from cached list)
+    const startMs = weekStart.getTime();
+    const endMs = weekEnd.getTime();
+    const jobs = allJobs.filter((j) => {
+      const t = new Date(j.created_at).getTime();
+      return t >= startMs && t < endMs;
+    });
 
-    // Get messages for this week
-    const { data: messages } = await supabase
-      .from("progress_messages")
-      .select("id")
-      .eq("team_id", teamId)
-      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-      .gte("created_at", weekStart.toISOString())
-      .lt("created_at", weekEnd.toISOString());
+    const weekStartIso = weekStart.toISOString();
+    const weekEndIso = weekEnd.toISOString();
+    const messages = (messagesSinceRangeStart || []).filter((m) => {
+      return m.created_at >= weekStartIso && m.created_at < weekEndIso;
+    });
 
-    // Get active partnerships count
-    const { data: partnerships } = await supabase
-      .from("accountability_partnerships")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("team_id", teamId)
-      .eq("status", "active")
-      .lte("created_at", weekEnd.toISOString());
+    const partnershipsActive = (partnerships || []).filter((p) => {
+      return (
+        p.user_id === userId &&
+        p.status === "active" &&
+        typeof p.created_at === "string" &&
+        p.created_at <= weekEndIso
+      );
+    });
 
     const applications = jobs?.length || 0;
     const interviews =
@@ -484,7 +625,7 @@ export async function getWeeklyTrends(
       interviews,
       offers,
       activeDays: Math.min(7, applications),
-      partnersActive: partnerships?.length || 0,
+      partnersActive: partnershipsActive.length,
       messagesExchanged: messages?.length || 0,
     });
   }

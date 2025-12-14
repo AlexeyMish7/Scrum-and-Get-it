@@ -55,6 +55,8 @@ import {
   Favorite as SupportIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import * as progressService from "../services/progressSharingService";
 import type { AchievementCelebration as CelebrationData } from "../services/progressSharingService";
 
@@ -619,35 +621,26 @@ export function AchievementList({
   showOwnOnly = false,
 }: AchievementListProps) {
   const { user } = useAuth();
-  const [celebrations, setCelebrations] = useState<CelebrationData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadCelebrations() {
-      if (!teamId) return;
-
-      setLoading(true);
-      setError(null);
-
-      // Use getTeamAchievements from progressService (correct function name)
+  const celebrationsQuery = useQuery({
+    queryKey: coreKeys.teamAchievements(user?.id ?? "anon", teamId, limit),
+    enabled: Boolean(teamId),
+    staleTime: 30 * 1000,
+    queryFn: async () => {
       const result = await progressService.getTeamAchievements(teamId, limit);
-
       if (result.error) {
-        setError(result.error.message);
-      } else if (result.data) {
-        // Filter to own only if requested (use userId, not user_id)
-        const filtered = showOwnOnly
-          ? result.data.filter((c: CelebrationData) => c.userId === user?.id)
-          : result.data;
-        setCelebrations(filtered);
+        throw new Error(result.error.message || "Failed to load celebrations");
       }
+      return result.data ?? [];
+    },
+    select: (data: CelebrationData[]) =>
+      showOwnOnly ? data.filter((c) => c.userId === user?.id) : data,
+  });
 
-      setLoading(false);
-    }
-
-    loadCelebrations();
-  }, [teamId, limit, showOwnOnly, user?.id]);
+  const celebrations = celebrationsQuery.data ?? [];
+  const loading = celebrationsQuery.isLoading;
+  const error = celebrationsQuery.error
+    ? (celebrationsQuery.error as Error).message
+    : null;
 
   if (loading) {
     return (

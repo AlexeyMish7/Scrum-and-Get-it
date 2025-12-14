@@ -1,14 +1,14 @@
 /**
  * AIWorkspaceLayout - Centralized Layout
  *
- * New centralized layout for AI workspace without sidebar.
- * Uses horizontal navigation tabs and AppShell for consistent structure.
+ * Centralized layout for AI workspace with sidebar navigation.
+ * Uses AnimatedSidebar for consistent structure with Profile workspace.
  */
 
 import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
 import AppShell from "@shared/layouts/AppShell";
-import AINavBar from "../navigation/AINavBar";
+import AIWorkspaceSidebar from "@shared/components/sidebars/AIWorkspaceSidebar";
 import { Box, Snackbar, Alert } from "@mui/material";
 import { GenerationProvider } from "../context/GenerationContext";
 
@@ -39,9 +39,8 @@ async function checkServerConnection(): Promise<boolean> {
  *
  * Renders the AI workspace with:
  * - Global top bar (from AppShell)
- * - Horizontal navigation tabs
+ * - Sidebar navigation (similar to Profile workspace)
  * - Main content area (Outlet)
- * - No sidebar (unlike old design)
  * - Server connection status indicator
  */
 export default function AIWorkspaceLayout() {
@@ -74,49 +73,27 @@ export default function AIWorkspaceLayout() {
 
   return (
     <GenerationProvider>
-      <AppShell sidebar={null}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            overflow: "hidden",
-          }}
-        >
-          {/* Horizontal navigation */}
-          <AINavBar />
+      <AppShell sidebar={<AIWorkspaceSidebar />}>
+        <Outlet />
 
-          {/* Main content area */}
-          <Box
-            component="main"
+        {/* Server connection status */}
+        <Snackbar
+          open={showAlert && !serverConnected}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          sx={{ bottom: 24 }}
+        >
+          <Alert
+            severity="error"
+            variant="filled"
             sx={{
-              flexGrow: 1,
-              overflow: "auto",
-              backgroundColor: "background.default",
+              width: "100%",
+              boxShadow: 3,
             }}
           >
-            <Outlet />
-          </Box>
-
-          {/* Server connection status */}
-          <Snackbar
-            open={showAlert && !serverConnected}
-            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-            sx={{ bottom: 24 }}
-          >
-            <Alert
-              severity="error"
-              variant="filled"
-              sx={{
-                width: "100%",
-                boxShadow: 3,
-              }}
-            >
-              Server connection lost. AI features will not work until the
-              backend server is running on {AI_BASE_URL}
-            </Alert>
-          </Snackbar>
-        </Box>
+            Server connection lost. AI features will not work until the backend
+            server is running on {AI_BASE_URL}
+          </Alert>
+        </Snackbar>
       </AppShell>
     </GenerationProvider>
   );

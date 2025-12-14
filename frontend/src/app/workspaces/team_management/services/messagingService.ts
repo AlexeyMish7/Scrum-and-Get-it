@@ -14,6 +14,9 @@
 
 import { supabase } from "@shared/services/supabaseClient";
 import type { Result } from "@shared/services/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchRecentProgressMessagesWithProfiles } from "@shared/cache/coreFetchers";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -143,6 +146,23 @@ export async function sendMessage(
     };
   }
 
+  // Keep message-derived widgets and inbox views consistent without forcing an immediate refetch.
+  // We invalidate by prefix so any team/user scoped message queries (recent/period/since) refresh next time.
+  const qc = getAppQueryClient();
+  qc.invalidateQueries({
+    queryKey: ["core", "progress_messages", senderId, data.teamId] as const,
+    exact: false,
+  });
+  qc.invalidateQueries({
+    queryKey: [
+      "core",
+      "progress_messages",
+      data.recipientId,
+      data.teamId,
+    ] as const,
+    exact: false,
+  });
+
   return {
     data: mapMessageFromDb(message),
     error: null,
@@ -257,34 +277,37 @@ export async function getRecentMessages(
   teamId: string,
   limit: number = 20
 ): Promise<Result<ProgressMessage[]>> {
-  const { data, error } = await supabase
-    .from("progress_messages")
-    .select(
-      `
-      *,
-      sender:profiles!sender_id(full_name, email, professional_title),
-      recipient:profiles!recipient_id(full_name, email, professional_title)
-    `
-    )
-    .eq("team_id", teamId)
-    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    const qc = getAppQueryClient();
+    const rows = await qc.ensureQueryData({
+      queryKey: coreKeys.recentProgressMessages(userId, teamId, limit),
+      queryFn: () =>
+        fetchRecentProgressMessagesWithProfiles<Record<string, unknown>>(
+          userId,
+          teamId,
+          limit
+        ),
+      staleTime: 30 * 1000,
+    });
 
-  if (error) {
+    return {
+      data: (Array.isArray(rows) ? rows : []).map(mapMessageFromDb),
+      error: null,
+      status: 200,
+    };
+  } catch (e: unknown) {
     return {
       data: null,
-      error: { message: error.message, status: null },
+      error: {
+        message:
+          e instanceof Error
+            ? e.message
+            : String(e) || "Failed to load messages",
+        status: null,
+      },
       status: null,
     };
   }
-
-  return {
-    data: (data || []).map(mapMessageFromDb),
-    error: null,
-    status: 200,
-  };
 }
 
 // ============================================================================
@@ -312,6 +335,12 @@ export async function markMessageAsRead(
       status: null,
     };
   }
+
+  // The message could belong to multiple cached lists; simplest is to invalidate message queries globally.
+  getAppQueryClient().invalidateQueries({
+    queryKey: ["core", "progress_messages"] as const,
+    exact: false,
+  });
 
   return { data: true, error: null, status: 200 };
 }
@@ -343,6 +372,17 @@ export async function markConversationAsRead(
       status: null,
     };
   }
+
+  // Invalidate both sides' cached message views for this team.
+  const qc = getAppQueryClient();
+  qc.invalidateQueries({
+    queryKey: ["core", "progress_messages", userId, teamId] as const,
+    exact: false,
+  });
+  qc.invalidateQueries({
+    queryKey: ["core", "progress_messages", senderId, teamId] as const,
+    exact: false,
+  });
 
   return {
     data: data?.length || 0,
@@ -400,6 +440,11 @@ export async function deleteMessage(
       status: null,
     };
   }
+
+  getAppQueryClient().invalidateQueries({
+    queryKey: ["core", "progress_messages"] as const,
+    exact: false,
+  });
 
   return { data: true, error: null, status: 200 };
 }
