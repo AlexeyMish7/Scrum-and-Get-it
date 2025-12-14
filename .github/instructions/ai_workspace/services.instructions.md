@@ -18,6 +18,27 @@
 
 ---
 
+## React Query Caching (AI)
+
+For AI endpoints that are expensive or rate-limited (predictions, research, generation previews), use the shared React Query cache so results are deduped across components and sessions.
+
+- Use `aiKeys` from `frontend/src/app/shared/cache/aiQueryKeys.ts` for consistent query keys.
+- Prefer caching by `(userId + stable fingerprint)` (e.g., job set fingerprint) so results only recompute when relevant inputs change.
+- Trigger AI calls explicitly (e.g., via `queryClient.fetchQuery()` or `useMutation()` that writes to the cache) to avoid accidental repeated calls on rerenders.
+
+---
+
+## React Query Caching (App-Wide Core Data)
+
+For shared, user-scoped Supabase tables that multiple workspaces depend on (e.g., jobs, documents, contacts), prefer the app-wide core caches so navigation doesn’t re-trigger duplicate reads.
+
+- Use `coreKeys` from `frontend/src/app/shared/cache/coreQueryKeys.ts` for consistent query keys.
+- Use fetchers from `frontend/src/app/shared/cache/coreFetchers.ts` (they wrap the shared CRUD/dbMappers layer).
+- Prefer `queryClient.ensureQueryData({ queryKey, queryFn })` inside composite “overview” queries so it reuses prefetched/cached core data when available.
+- Core data is prefetched on login via `AppBootstrapPrefetch` (mounted in `frontend/src/main.tsx`).
+
+---
+
 ## AI Generation Service (`aiGenerationService.ts`)
 
 Wraps AI backend for document generation.

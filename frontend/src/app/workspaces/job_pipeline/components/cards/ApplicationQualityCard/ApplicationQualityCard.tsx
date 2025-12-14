@@ -13,7 +13,7 @@
  * - Export: JSON/CSV download of quality analysis
  */
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Box,
   Typography,
@@ -40,7 +40,10 @@ import {
   Star as MatchIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
-import crud from "@shared/services/crud";
+import {
+  useAnalyticsCacheDocumentMatchScores,
+  useCoreJobs,
+} from "@shared/cache/coreHooks";
 
 interface QualityMetrics {
   avgMatchScore: number;
@@ -71,66 +74,27 @@ interface AnalyticsCache {
   created_at: string;
 }
 
+const EMPTY_JOBS: JobRecord[] = [];
+const EMPTY_CACHE: AnalyticsCache[] = [];
+
 export default function ApplicationQualityCard() {
   const { user } = useAuth();
 
-  // State
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [analyticsCache, setAnalyticsCache] = useState<AnalyticsCache[]>([]);
+  const jobsQuery = useCoreJobs<JobRecord>(user?.id);
+  const analyticsQuery = useAnalyticsCacheDocumentMatchScores<AnalyticsCache>(
+    user?.id
+  );
 
-  // Load data
-  useEffect(() => {
-    if (!user?.id) return;
+  const jobs = jobsQuery.data ?? EMPTY_JOBS;
+  const analyticsCache = analyticsQuery.data ?? EMPTY_CACHE;
 
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const userCrud = crud.withUser(user.id);
-
-        // Load jobs
-        const jobsResult = await userCrud.listRows<JobRecord>(
-          "jobs",
-          "id, job_title, company_name, job_status, created_at"
-        );
-
-        if (jobsResult.error) {
-          throw new Error(jobsResult.error.message);
-        }
-
-        setJobs(jobsResult.data || []);
-
-        // Load analytics cache for match scores
-        const cacheResult = await userCrud.listRows<AnalyticsCache>(
-          "analytics_cache",
-          "job_id, analytics_type, data, match_score, created_at",
-          {
-            eq: { analytics_type: "document-match-score" },
-          }
-        );
-
-        if (cacheResult.error) {
-          console.warn("Could not load analytics cache:", cacheResult.error);
-          setAnalyticsCache([]);
-        } else {
-          setAnalyticsCache(cacheResult.data || []);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load application quality data"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [user?.id]);
+  const loading = jobsQuery.isFetching || analyticsQuery.isFetching;
+  // We require jobs; analytics cache is a "nice to have" for this card.
+  const error = user?.id
+    ? jobsQuery.isError
+      ? jobsQuery.error?.message ?? "Failed to load jobs"
+      : null
+    : null;
 
   // Calculate quality metrics
   const metrics: QualityMetrics = useMemo(() => {

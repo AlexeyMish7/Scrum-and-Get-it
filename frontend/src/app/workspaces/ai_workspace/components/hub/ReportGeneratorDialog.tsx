@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -14,9 +14,10 @@ import {
 import Autocomplete from "@mui/material/Autocomplete";
 import Chip from "@mui/material/Chip";
 import jsPDF from "jspdf";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@shared/context/AuthContext";
-import { withUser } from "@shared/services/crud";
-import * as db from "@shared/services/dbMappers";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreContacts, fetchCoreJobs } from "@shared/cache/coreFetchers";
 import {
   type JobRecord,
   computeSuccessRates,
@@ -37,8 +38,12 @@ interface Props {
 
 export default function ReportGeneratorDialog({ open, onClose }: Props) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [applicationMetricsChecked, setApplicationMetricsChecked] = useState(false);
+  const lastLoadedUserIdRef = useRef<string | null>(null);
+
+  const [applicationMetricsChecked, setApplicationMetricsChecked] =
+    useState(false);
   const [interviewMetricsChecked, setInterviewMetricsChecked] = useState(false);
   const [offerMetricsChecked, setOfferMetricsChecked] = useState(false);
 
@@ -57,27 +62,27 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
 
   // Load jobs and populate filter options
   useEffect(() => {
+    if (!open) return;
+    if (!user?.id) return;
+
+    // Avoid preloading heavy report data during page navigation.
+    // Only load once per user session unless the user changes.
+    if (lastLoadedUserIdRef.current === user.id) return;
+
     async function loadJobOptions() {
-      if (!user?.id) return;
       try {
-        const userCrud = withUser(user.id);
-
-        // Full jobs for analytics
-        const fullRes = await userCrud.listRows<JobRecord>("jobs", "*", {});
-        setJobs(fullRes.data || []);
-
-        // Minimal data for filter dropdowns
-        const res = await userCrud.listRows<{ company_name?: string; job_title?: string; industry?: string }>(
-          "jobs",
-          "company_name,job_title,industry",
-          {}
-        );
+        const fullJobs = await queryClient.ensureQueryData({
+          queryKey: coreKeys.jobs(user.id),
+          queryFn: () => fetchCoreJobs<JobRecord>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+        setJobs(fullJobs);
 
         const companiesSet = new Set<string>();
         const rolesSet = new Set<string>();
         const industriesSet = new Set<string>();
 
-        (res.data || []).forEach((r) => {
+        fullJobs.forEach((r) => {
           const c = r.company_name?.trim();
           const t = r.job_title?.trim();
           const i = r.industry?.trim();
@@ -95,17 +100,24 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     }
 
     loadJobOptions();
+
     // load contacts for sharing
     async function loadContacts() {
-      if (!user?.id) return;
       setLoadingContacts(true);
       try {
-        const res = await db.listContacts(user.id);
-        if (!res.error && Array.isArray(res.data)) {
+        const contacts = await queryClient.ensureQueryData({
+          queryKey: coreKeys.contacts(user.id),
+          queryFn: () => fetchCoreContacts<any>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        if (Array.isArray(contacts)) {
           setContactsOptions(
-            (res.data as any[]).map((c) => ({
+            (contacts as any[]).map((c) => ({
               id: c.id,
-              label: `${(c.first_name || "").trim()} ${(c.last_name || "").trim()}${c.email ? ` <${c.email}>` : ""}`.trim(),
+              label: `${(c.first_name || "").trim()} ${(
+                c.last_name || ""
+              ).trim()}${c.email ? ` <${c.email}>` : ""}`.trim(),
               raw: c,
             }))
           );
@@ -120,14 +132,20 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     }
 
     loadContacts();
-  }, [user?.id]);
+    lastLoadedUserIdRef.current = user.id;
+  }, [open, user?.id]);
 
   // --- Generate PDF ---
   const handleGenerate = () => {
     const filteredJobs = jobs.filter((job) => {
-      const companyOk = companies.length === 0 || (job.company_name && companies.includes(job.company_name));
-      const roleOk = roles.length === 0 || (job.job_title && roles.includes(job.job_title));
-      const industryOk = industries.length === 0 || (job.industry && industries.includes(job.industry));
+      const companyOk =
+        companies.length === 0 ||
+        (job.company_name && companies.includes(job.company_name));
+      const roleOk =
+        roles.length === 0 || (job.job_title && roles.includes(job.job_title));
+      const industryOk =
+        industries.length === 0 ||
+        (job.industry && industries.includes(job.industry));
       return companyOk && roleOk && industryOk;
     });
 
@@ -159,34 +177,77 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     y += 30;
 
     doc.setFontSize(12);
-    doc.text(`Filtered Companies: ${companies.join(", ") || "All"}`, margin, y); y += 14;
-    doc.text(`Filtered Roles: ${roles.join(", ") || "All"}`, margin, y); y += 14;
-    doc.text(`Filtered Industries: ${industries.join(", ") || "All"}`, margin, y); y += 30;
+    doc.text(`Filtered Companies: ${companies.join(", ") || "All"}`, margin, y);
+    y += 14;
+    doc.text(`Filtered Roles: ${roles.join(", ") || "All"}`, margin, y);
+    y += 14;
+    doc.text(
+      `Filtered Industries: ${industries.join(", ") || "All"}`,
+      margin,
+      y
+    );
+    y += 30;
 
     // --- Application Metrics ---
     if (applicationMetricsChecked) {
       doc.setFontSize(16);
-      doc.text("Application Metrics", margin, y); y += 20;
+      doc.text("Application Metrics", margin, y);
+      y += 20;
       doc.setFontSize(11);
-      doc.text(`- Total applications: ${filteredJobs.length}`, margin, y); y += 12;
-      doc.text(`- Monthly applications: ${monthlyApplications.map(m => `${m.month}: ${m.count}`).join(", ")}`, margin, y); y += 12;
-      doc.text(`- Response rate: ${(responseRate * 100).toFixed(1)}%`, margin, y); y += 12;
-      doc.text(`- Deadline adherence: ${(deadlineAdherence.adherence * 100).toFixed(1)}% (Met: ${deadlineAdherence.met}, Missed: ${deadlineAdherence.missed})`, margin, y); y += 12;
-      doc.text(`- Average time to offer: ${timeToOffer.toFixed(1)} days`, margin, y); y += 12;
+      doc.text(`- Total applications: ${filteredJobs.length}`, margin, y);
+      y += 12;
+      doc.text(
+        `- Monthly applications: ${monthlyApplications
+          .map((m) => `${m.month}: ${m.count}`)
+          .join(", ")}`,
+        margin,
+        y
+      );
+      y += 12;
+      doc.text(
+        `- Response rate: ${(responseRate * 100).toFixed(1)}%`,
+        margin,
+        y
+      );
+      y += 12;
+      doc.text(
+        `- Deadline adherence: ${(deadlineAdherence.adherence * 100).toFixed(
+          1
+        )}% (Met: ${deadlineAdherence.met}, Missed: ${
+          deadlineAdherence.missed
+        })`,
+        margin,
+        y
+      );
+      y += 12;
+      doc.text(
+        `- Average time to offer: ${timeToOffer.toFixed(1)} days`,
+        margin,
+        y
+      );
+      y += 12;
       y += 10;
     }
 
     // --- Interview Metrics ---
     if (interviewMetricsChecked) {
       doc.setFontSize(16);
-      doc.text("Interview Metrics", margin, y); y += 20;
+      doc.text("Interview Metrics", margin, y);
+      y += 20;
       doc.setFontSize(11);
-      avgResponseDays.forEach(item => {
-        doc.text(`- Avg response days (${item.key}): ${item.avgDays.toFixed(1)} days`, margin, y); y += 12;
+      avgResponseDays.forEach((item) => {
+        doc.text(
+          `- Avg response days (${item.key}): ${item.avgDays.toFixed(1)} days`,
+          margin,
+          y
+        );
+        y += 12;
       });
-      doc.text("- Avg stage durations:", margin, y); y += 12;
+      doc.text("- Avg stage durations:", margin, y);
+      y += 12;
       Object.entries(stageDurations).forEach(([stage, dur]) => {
-        doc.text(`  • ${stage}: ${dur.toFixed(1)} days`, margin, y); y += 12;
+        doc.text(`  • ${stage}: ${dur.toFixed(1)} days`, margin, y);
+        y += 12;
       });
       y += 10;
     }
@@ -194,10 +255,20 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     // --- Offer Metrics ---
     if (offerMetricsChecked) {
       doc.setFontSize(16);
-      doc.text("Offer Metrics", margin, y); y += 20;
+      doc.text("Offer Metrics", margin, y);
+      y += 20;
       doc.setFontSize(11);
-      offerRates.forEach(o => {
-        doc.text(`- ${o.key}: Offer rate ${(o.userRate*100).toFixed(1)}%, Benchmark ${(o.benchmarkRate*100).toFixed(1)}%, Delta ${(o.delta*100).toFixed(1)}%`, margin, y); y += 12;
+      offerRates.forEach((o) => {
+        doc.text(
+          `- ${o.key}: Offer rate ${(o.userRate * 100).toFixed(
+            1
+          )}%, Benchmark ${(o.benchmarkRate * 100).toFixed(1)}%, Delta ${(
+            o.delta * 100
+          ).toFixed(1)}%`,
+          margin,
+          y
+        );
+        y += 12;
       });
       y += 10;
     }
@@ -209,7 +280,9 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
     //aiInsights.forEach(i => { doc.text(`- ${i}`, margin, y); y += 12; });
 
     // Output PDF as blob so we can record metadata and optionally share
-    const fileName = `custom_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    const fileName = `custom_report_${new Date()
+      .toISOString()
+      .slice(0, 10)}.pdf`;
     const blob = doc.output("blob");
 
     // Trigger browser download
@@ -261,7 +334,9 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
         }
 
         if (selectedContacts.length > 0) {
-          alert(`Report generated and shared with ${selectedContacts.length} contact(s).`);
+          alert(
+            `Report generated and shared with ${selectedContacts.length} contact(s).`
+          );
         } else {
           alert("Report generated.");
         }
@@ -280,15 +355,34 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
           <Typography variant="subtitle1">Select Metrics</Typography>
           <Stack direction="row" spacing={2}>
             <FormControlLabel
-              control={<Checkbox checked={applicationMetricsChecked} onChange={() => setApplicationMetricsChecked(!applicationMetricsChecked)} />}
+              control={
+                <Checkbox
+                  checked={applicationMetricsChecked}
+                  onChange={() =>
+                    setApplicationMetricsChecked(!applicationMetricsChecked)
+                  }
+                />
+              }
               label="Application Metrics"
             />
             <FormControlLabel
-              control={<Checkbox checked={interviewMetricsChecked} onChange={() => setInterviewMetricsChecked(!interviewMetricsChecked)} />}
+              control={
+                <Checkbox
+                  checked={interviewMetricsChecked}
+                  onChange={() =>
+                    setInterviewMetricsChecked(!interviewMetricsChecked)
+                  }
+                />
+              }
               label="Interview Metrics"
             />
             <FormControlLabel
-              control={<Checkbox checked={offerMetricsChecked} onChange={() => setOfferMetricsChecked(!offerMetricsChecked)} />}
+              control={
+                <Checkbox
+                  checked={offerMetricsChecked}
+                  onChange={() => setOfferMetricsChecked(!offerMetricsChecked)}
+                />
+              }
               label="Offer Metrics"
             />
           </Stack>
@@ -300,8 +394,19 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={companiesOptions}
             value={companies}
             onChange={(_, v) => setCompanies(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
-            renderInput={(params) => <TextField {...params} label="Companies" placeholder="Add companies" fullWidth />}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Companies"
+                placeholder="Add companies"
+                fullWidth
+              />
+            )}
           />
           <Autocomplete
             multiple
@@ -309,8 +414,19 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={rolesOptions}
             value={roles}
             onChange={(_, v) => setRoles(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
-            renderInput={(params) => <TextField {...params} label="Roles" placeholder="Add roles" fullWidth />}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Roles"
+                placeholder="Add roles"
+                fullWidth
+              />
+            )}
           />
           <Autocomplete
             multiple
@@ -318,8 +434,19 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             options={industriesOptions}
             value={industries}
             onChange={(_, v) => setIndustries(v as string[])}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option} {...getTagProps({ index })} />)}
-            renderInput={(params) => <TextField {...params} label="Industries" placeholder="Add industries" fullWidth />}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Industries"
+                placeholder="Add industries"
+                fullWidth
+              />
+            )}
           />
 
           <Typography variant="subtitle1">Share</Typography>
@@ -330,14 +457,27 @@ export default function ReportGeneratorDialog({ open, onClose }: Props) {
             value={selectedContacts}
             onChange={(_, v) => setSelectedContacts(v as any[])}
             loading={loadingContacts}
-            renderTags={(value, getTagProps) => value.map((option, index) => <Chip label={option.label} {...getTagProps({ index })} />)}
-            renderInput={(params) => <TextField {...params} label="Share with contacts" placeholder="Select contacts to share with" fullWidth />}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option.label} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Share with contacts"
+                placeholder="Select contacts to share with"
+                fullWidth
+              />
+            )}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleGenerate}>Generate PDF</Button>
+        <Button variant="contained" onClick={handleGenerate}>
+          Generate PDF
+        </Button>
       </DialogActions>
     </Dialog>
   );

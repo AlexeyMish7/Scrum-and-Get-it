@@ -169,9 +169,6 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
 
       // Invalidate unified cache so all components get fresh data
       await invalidateAll();
-
-      // Notify other components of the change (for non-React Query listeners)
-      window.dispatchEvent(new Event("employment:changed"));
       markProfileChanged();
 
       showSuccess(
@@ -226,9 +223,6 @@ export const AddEmploymentDialog: React.FC<AddEmploymentDialogProps> = ({
 
       // Invalidate unified cache so all components get fresh data
       await invalidateAll();
-
-      // Notify other components of the change (for non-React Query listeners)
-      window.dispatchEvent(new Event("employment:changed"));
       markProfileChanged();
 
       showSuccess("Employment deleted successfully");

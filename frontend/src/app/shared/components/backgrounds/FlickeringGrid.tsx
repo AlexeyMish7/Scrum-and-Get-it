@@ -20,11 +20,11 @@ import React, {
 import { useTheme } from "@mui/material/styles";
 
 interface FlickeringGridProps {
-  /** Size of each square in pixels */
+  /** Size of each square in pixels (default: 12) */
   squareSize?: number;
-  /** Gap between squares in pixels */
+  /** Gap between squares in pixels (default: 8) */
   gridGap?: number;
-  /** Probability of a square changing opacity per second (0-1) */
+  /** Probability of a square changing opacity per second (default: 0.015, whisper-subtle for production) */
   flickerChance?: number;
   /** Override color (defaults to theme-based) */
   color?: string;
@@ -34,7 +34,7 @@ interface FlickeringGridProps {
   height?: number;
   /** Additional CSS class */
   className?: string;
-  /** Maximum opacity for squares (0-1) */
+  /** Maximum opacity for squares (0-1, default: 0.015 for barely-there visual texture) */
   maxOpacity?: number;
 }
 
@@ -43,14 +43,14 @@ interface FlickeringGridProps {
  * that flickers squares randomly for a subtle animated effect.
  */
 const FlickeringGrid: React.FC<FlickeringGridProps> = ({
-  squareSize = 4,
-  gridGap = 6,
-  flickerChance = 0.3,
+  squareSize = 12,
+  gridGap = 8,
+  flickerChance = 0.015,
   color,
   width,
   height,
   className,
-  maxOpacity = 0.3,
+  maxOpacity = 0.015,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,12 +115,24 @@ const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   );
 
   // Update square opacities based on flicker chance
+  // Uses gradual transitions instead of instant changes for smoother effect
   const updateSquares = useCallback(
     (squares: Float32Array, deltaTime: number) => {
+      const transitionSpeed = 0.8; // How fast squares transition to new opacity
+
       for (let i = 0; i < squares.length; i++) {
+        // Randomly decide if this square should start transitioning to a new target
         if (Math.random() < flickerChance * deltaTime) {
-          squares[i] = Math.random() * maxOpacity;
+          // Set a new random target opacity
+          const targetOpacity = Math.random() * maxOpacity;
+
+          // Smoothly transition toward target (not instant)
+          const currentOpacity = squares[i];
+          const diff = targetOpacity - currentOpacity;
+          squares[i] = currentOpacity + diff * transitionSpeed * deltaTime;
         }
+        // No else clause - squares that aren't transitioning stay at their current opacity
+        // This maintains variety instead of all converging to the same value
       }
     },
     [flickerChance, maxOpacity]

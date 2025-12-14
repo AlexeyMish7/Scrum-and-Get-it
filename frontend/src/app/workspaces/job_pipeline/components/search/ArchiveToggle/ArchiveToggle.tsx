@@ -3,7 +3,9 @@ import { Button } from "@mui/material";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { listJobNotes } from "@shared/services/dbMappers";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchJobNotesByJobId } from "@shared/cache/coreFetchers";
 import { jobsService } from "@job_pipeline/services";
 
 type Props = {
@@ -31,7 +33,6 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
   async function doArchive() {
     if (!user) return handleError("Not signed in");
     setLoading(true);
-    let succeeded = false;
     try {
       const res = await jobsService.updateJob(user.id, Number(jobId), {
         job_status: "archive",
@@ -39,31 +40,29 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       if (res.error) throw res.error;
       showSuccess("Job archived");
       if (onDone) await onDone();
-      succeeded = true;
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
-      // If archive succeeded, reload the page so the archived job is removed from current view
-      if (succeeded) {
-        // full reload to ensure lists/pipeline reflect the archive
-        window.location.reload();
-      }
     }
   }
 
   async function doUnarchive() {
     if (!user) return handleError("Not signed in");
     setLoading(true);
-    let succeeded = false;
     try {
       // fetch notes/history and pick the most-recent previous non-archive status
-      const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
-      if (notesRes.error) throw notesRes.error;
-      const notes = (notesRes.data ?? []) as Array<{
-        application_history?: unknown[];
-      }>;
-      const first = notes[0] ?? null;
+      const qc = getAppQueryClient();
+      const notes = await qc.ensureQueryData({
+        queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+        queryFn: () =>
+          fetchJobNotesByJobId<{ application_history?: unknown[] }>(
+            user.id,
+            jobId
+          ),
+        staleTime: 60 * 60 * 1000,
+      });
+      const first = (Array.isArray(notes) ? notes[0] : null) ?? null;
       let target = "Interested";
       const hist = first?.application_history;
 
@@ -97,15 +96,10 @@ export default function ArchiveToggle({ jobId, currentStatus, onDone }: Props) {
       if (res.error) throw res.error;
       showSuccess(`Restored job to ${target}`);
       if (onDone) await onDone();
-      succeeded = true;
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
-      // Reload the page so the job lists / pipeline reflect the unarchive change immediately.
-      if (succeeded) {
-        window.location.reload();
-      }
     }
   }
 

@@ -4,11 +4,8 @@
  * - Calls AI via aiClient.generate
  * - Falls back to a lightweight simulation when AI is unavailable
  */
-import { generate } from "./aiClient.js";
-import {
-  legacyLogInfo as logInfo,
-  legacyLogError as logError,
-} from "../utils/logger.js";
+import aiClient from "./aiClient.js";
+import { logError, logInfo } from "../../utils/logger.js";
 
 type InputJob = {
   id?: number | string;
@@ -20,10 +17,227 @@ type InputJob = {
   job_status?: string | null;
 };
 
+type PredictionResult =
+  | { error: string }
+  | {
+      success: true;
+      predictions: Prediction[];
+      simulated?: boolean;
+      note?: string;
+      debug?: any;
+    };
+
+type PredictionKind =
+  | "interview_probability"
+  | "offer_probability"
+  | "timeline_weeks"
+  | "recommendations";
+
+type Prediction = {
+  kind: PredictionKind | string;
+  score: number;
+  confidence?: number;
+  recommendations?: string[];
+  details?: Record<string, unknown>;
+};
+
+type ValidationOk = { ok: true; value: { predictions: Prediction[] } };
+type ValidationErr = { ok: false; errors: string[] };
+
+function clampNumber(n: unknown, min: number, max: number, fallback: number) {
+  const num = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+
+function coerceStringArray(
+  input: unknown,
+  maxItems = 8,
+  maxLen = 200
+): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((v) => {
+      try {
+        return String(v ?? "").trim();
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .slice(0, maxItems)
+    .map((s) => (s.length > maxLen ? s.slice(0, maxLen) : s));
+}
+
+function parseJsonFromAi(aiResult: any): unknown {
+  if (aiResult?.json) return aiResult.json;
+  const text = aiResult?.text;
+  if (typeof text !== "string") return null;
+
+  const cleaned = text
+    .replace(/```(?:json)?\n?/g, "")
+    .replace(/```/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+function validateAndSanitizePredictions(
+  parsed: unknown
+): ValidationOk | ValidationErr {
+  if (!parsed || typeof parsed !== "object") {
+    return { ok: false, errors: ["response is not an object"] };
+  }
+
+  const predictionsRaw = (parsed as any).predictions;
+  if (!Array.isArray(predictionsRaw)) {
+    return { ok: false, errors: ["missing or invalid predictions[]"] };
+  }
+
+  const sanitized: Prediction[] = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < predictionsRaw.length; i++) {
+    const p = predictionsRaw[i];
+    if (!p || typeof p !== "object") {
+      errors.push(`predictions[${i}] is not an object`);
+      continue;
+    }
+
+    const kind =
+      typeof (p as any).kind === "string" ? (p as any).kind.trim() : "";
+    if (!kind) {
+      errors.push(`predictions[${i}].kind missing`);
+      continue;
+    }
+
+    // Normalize and clamp score based on known kinds.
+    // Frontend expects probability scores in 0..1 (it multiplies by 100 for display).
+    let scoreRaw: unknown = (p as any).score;
+    let score = clampNumber(scoreRaw, 0, 1, 0);
+    if (kind === "interview_probability" || kind === "offer_probability") {
+      // Accept either 0..1 OR 0..100 from the model; normalize to 0..1.
+      const n = typeof scoreRaw === "number" ? scoreRaw : Number(scoreRaw);
+      if (Number.isFinite(n) && n > 1 && n <= 100) {
+        score = clampNumber(n / 100, 0, 1, 0);
+      } else {
+        score = clampNumber(n, 0, 1, 0);
+      }
+    } else if (kind === "timeline_weeks") {
+      // Timeline is an integer number of weeks.
+      score = Math.round(clampNumber(scoreRaw, 1, 52, 12));
+    } else {
+      // Unknown kinds: keep conservative 0..100 scale but avoid absurd values.
+      const n = typeof scoreRaw === "number" ? scoreRaw : Number(scoreRaw);
+      score = clampNumber(n, 0, 100, 0);
+    }
+
+    const confidence =
+      (p as any).confidence === undefined
+        ? undefined
+        : clampNumber((p as any).confidence, 0, 1, 0.5);
+
+    const recommendations = coerceStringArray(
+      (p as any).recommendations,
+      10,
+      220
+    );
+
+    const details =
+      (p as any).details &&
+      typeof (p as any).details === "object" &&
+      !Array.isArray((p as any).details)
+        ? ((p as any).details as Record<string, unknown>)
+        : undefined;
+
+    sanitized.push({ kind, score, confidence, recommendations, details });
+  }
+
+  if (sanitized.length === 0) {
+    return {
+      ok: false,
+      errors: errors.length ? errors : ["no valid predictions"],
+    };
+  }
+
+  // For a stable UX, keep only one item per key kind when duplicates appear.
+  const preferKinds: Array<string> = [
+    "interview_probability",
+    "offer_probability",
+    "timeline_weeks",
+  ];
+  const byKind = new Map<string, Prediction>();
+  for (const p of sanitized) {
+    if (!byKind.has(p.kind)) byKind.set(p.kind, p);
+  }
+  const ordered: Prediction[] = [];
+  for (const k of preferKinds) {
+    const v = byKind.get(k);
+    if (v) ordered.push(v);
+  }
+  // Append any extra kinds after the known ones.
+  for (const p of sanitized) {
+    if (
+      !preferKinds.includes(p.kind) &&
+      !ordered.some((x) => x.kind === p.kind)
+    ) {
+      ordered.push(p);
+    }
+  }
+
+  return { ok: true, value: { predictions: ordered } };
+}
+
+function buildPredictionPrompt(sample: Array<Record<string, unknown>>): string {
+  // Keep the schema rules explicit and short; accuracy comes from clean inputs + constraints.
+  return [
+    "You analyze a user's job search pipeline and return structured predictions.",
+    "Return ONLY valid JSON (no markdown, no prose).",
+    "Schema:",
+    '{ "predictions": [ { "kind": string, "score": number, "confidence": number, "recommendations": string[]?, "details": object? } ] }',
+    "Kinds expected:",
+    "- interview_probability (score is a probability 0..1, NOT a percent)",
+    "- offer_probability (score is a probability 0..1, NOT a percent)",
+    "- timeline_weeks (score is an integer 1..52)",
+    "Rules:",
+    "- confidence must be 0..1",
+    "- include 1-3 concise recommendations per prediction (strings)",
+    "- base predictions on the statuses and volume",
+    "- return EXACTLY 3 predictions (one for each kind above); no extra items",
+    "Example:",
+    '{"predictions":[{"kind":"interview_probability","score":0.32,"confidence":0.62,"recommendations":["Follow up on recent applications","Tailor resume for top roles"]},{"kind":"offer_probability","score":0.08,"confidence":0.55,"recommendations":["Increase application volume","Network for referrals"]},{"kind":"timeline_weeks","score":8,"confidence":0.5,"recommendations":["Schedule weekly follow-ups"]}]}',
+    "Input jobs (max 30):",
+    JSON.stringify(sample),
+  ].join("\n");
+}
+
+function buildRepairPrompt(params: {
+  originalPrompt: string;
+  validationErrors: string[];
+  previousResponsePreview: string;
+}): string {
+  return [
+    "The previous response failed validation.",
+    "Fix the JSON to match the required schema exactly.",
+    "Return ONLY valid JSON (no markdown, no prose).",
+    "Validation errors:",
+    ...params.validationErrors.map((e) => `- ${e}`),
+    "Previous response preview:",
+    params.previousResponsePreview,
+    "Original instructions:",
+    params.originalPrompt,
+  ].join("\n");
+}
+
 export async function predictJobSearch(params: {
   jobs: InputJob[];
   userId: string;
-}) {
+}): Promise<PredictionResult> {
   const { jobs, userId } = params;
 
   // Validate inputs defensively
@@ -52,7 +266,7 @@ export async function predictJobSearch(params: {
   }
 
   // Local simulation fallback - robust against bad data
-  function simulate() {
+  function simulate(): PredictionResult {
     const total = jobs.length;
 
     // Safely count offers and interviews
@@ -110,6 +324,8 @@ export async function predictJobSearch(params: {
   }
 
   try {
+    logInfo("predict.start", { userId, jobsCount: jobs.length });
+
     // Sanitize jobs before sending to AI - only include safe fields
     const sample = jobs.slice(0, 30).map((j) => ({
       id: j.id ?? null,
@@ -119,88 +335,75 @@ export async function predictJobSearch(params: {
       status: String(j.job_status ?? "").slice(0, 50),
     }));
 
-    const systemPrompt = `You are an assistant that analyzes a user's recent job applications and returns structured predictions about interview probability, offer probability, expected timeline (weeks), and concise recommendations. Return a single JSON object with top-level key \"predictions\" which is an array of objects with keys: kind (string), score (number), confidence (0-1), recommendations (array of strings, optional), details (optional object). Return ONLY JSON.`;
+    const prompt = buildPredictionPrompt(sample);
+    logInfo("predict.calling_ai", { userId, promptLength: prompt.length });
 
-    const userMessage = `Analyze the following jobs (up to 30): ${JSON.stringify(
-      sample
-    )}\n\nReturn format: { "predictions": [ { "kind": "interview_probability", "score": 42, "confidence": 0.6, "recommendations": ["..."] } ] }`;
-
-    const prompt = `${systemPrompt}\n\n${userMessage}`;
-
-    const aiResult = await generate("job-prediction", prompt, {
-      model: "gpt-4o-mini",
+    // Attempt 1: normal generation
+    const gen1 = await aiClient.generate("job-prediction", prompt, {
+      model: process.env.AI_MODEL ?? "gpt-4o-mini",
       temperature: 0.2,
-      maxTokens: 800,
+      maxTokens: 700,
+      timeoutMs: 30_000,
+      maxRetries: 2,
     });
 
-    // Handle null/undefined aiResult defensively
-    if (!aiResult) {
-      logError("predict.null_result", { userId });
-      return simulate();
+    const parsed1 = parseJsonFromAi(gen1);
+    const validated1 = validateAndSanitizePredictions(parsed1);
+    if (validated1.ok) {
+      return {
+        success: true,
+        predictions: validated1.value.predictions,
+        debug: { meta: gen1?.meta ?? null },
+      };
     }
 
-    const parsed =
-      aiResult.json ??
-      (typeof aiResult.text === "string" ? tryParseJson(aiResult.text) : null);
+    // Attempt 2: bounded repair/regenerate (more deterministic)
+    const preview = (() => {
+      try {
+        const rawText =
+          typeof gen1?.text === "string"
+            ? gen1.text
+            : JSON.stringify(gen1?.raw ?? {});
+        return String(rawText ?? "").slice(0, 600);
+      } catch {
+        return "";
+      }
+    })();
+    logError("predict.validation_failed", undefined, {
+      userId,
+      errors: validated1.errors,
+    });
 
-    // Validate parsed result structure
-    if (!parsed || typeof parsed !== "object") {
-      logError("predict.parse_failed", {
-        userId,
-        raw: JSON.stringify(aiResult.raw ?? {}).slice(0, 200),
-      });
-      return simulate();
+    const repairPrompt = buildRepairPrompt({
+      originalPrompt: prompt,
+      validationErrors: validated1.errors,
+      previousResponsePreview: preview,
+    });
+
+    const gen2 = await aiClient.generate("job-prediction", repairPrompt, {
+      model: process.env.AI_MODEL ?? "gpt-4o-mini",
+      temperature: 0,
+      maxTokens: 700,
+      timeoutMs: 30_000,
+      maxRetries: 1,
+    });
+    const parsed2 = parseJsonFromAi(gen2);
+    const validated2 = validateAndSanitizePredictions(parsed2);
+    if (validated2.ok) {
+      return {
+        success: true,
+        predictions: validated2.value.predictions,
+        debug: { meta: gen2?.meta ?? null, repaired: true },
+      };
     }
 
-    const predictions = (parsed as any).predictions;
-    if (!Array.isArray(predictions) || predictions.length === 0) {
-      logError("predict.no_predictions", {
-        userId,
-        parsedKeys: Object.keys(parsed),
-      });
-      return simulate();
-    }
-
-    // Validate each prediction has required fields
-    const validPredictions = predictions.filter(
-      (p: any) =>
-        p &&
-        typeof p === "object" &&
-        typeof p.kind === "string" &&
-        typeof p.score === "number"
-    );
-
-    if (validPredictions.length === 0) {
-      logError("predict.invalid_predictions", {
-        userId,
-        count: predictions.length,
-      });
-      return simulate();
-    }
-
-    return {
-      success: true,
-      predictions: validPredictions,
-      debug: { meta: aiResult.meta },
-    };
-  } catch (e: any) {
-    logError("predict.failed", { userId, error: e?.message ?? String(e) });
+    logError("predict.repair_failed", undefined, {
+      userId,
+      errors: validated2.errors,
+    });
     return simulate();
-  }
-}
-
-function tryParseJson(text: any) {
-  try {
-    // strip code fences
-    if (typeof text === "string") {
-      const cleaned = text
-        .replace(/```(?:json)?\n?/g, "")
-        .replace(/```/g, "")
-        .trim();
-      return JSON.parse(cleaned);
-    }
-    return null;
-  } catch {
-    return null;
+  } catch (e: any) {
+    logError("predict.failed", e, { userId });
+    return simulate();
   }
 }

@@ -194,7 +194,6 @@ const Certifications: React.FC = () => {
         file: null,
       });
       setAddShowErrors(false);
-      window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
       const typedRes = res as {
         data: CertificationRow | null;
@@ -340,7 +339,6 @@ const Certifications: React.FC = () => {
       // Close dialog and notify other parts of the app if needed
       setEditShowErrors(false);
       closeEdit();
-      window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification updated");
 
@@ -388,7 +386,6 @@ const Certifications: React.FC = () => {
       await invalidateAll();
 
       closeEdit();
-      window.dispatchEvent(new Event("certifications:changed"));
       markProfileChanged(); // Invalidate analytics cache
       showSuccess("Certification deleted");
     } catch (err) {
@@ -422,8 +419,6 @@ const Certifications: React.FC = () => {
 
       // Invalidate unified cache so all components get fresh data
       await invalidateAll();
-
-      window.dispatchEvent(new Event("certifications:changed"));
       showSuccess("Certification marked verified");
     } catch (err) {
       handleError(err, "Failed to verify certification");

@@ -22,7 +22,8 @@
  *   Requires: User must have/create a team
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Container,
   Stack,
@@ -67,6 +68,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useTeam } from "@shared/context/useTeam";
 import { useAuth } from "@shared/context/AuthContext";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
 import {
   CreateTeamDialog,
   InviteMemberDialog,
@@ -80,6 +82,7 @@ import type { TeamMemberWithProfile } from "../types";
 export function TeamDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const userId = user?.id;
   const {
     currentTeam,
     userTeams,
@@ -89,47 +92,31 @@ export function TeamDashboard() {
     loading,
     error,
     switchTeam,
+    retryInitialize,
   } = useTeam();
 
   const [switching, setSwitching] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showShareJobDialog, setShowShareJobDialog] = useState(false);
-  const [insights, setInsights] = useState<{
-    totalMembers: number;
-    totalApplications: number;
-    totalInterviews: number;
-    totalOffers: number;
-    memberActivity: Array<{
-      userId: string;
-      name: string;
-      applications: number;
-      interviews: number;
-      offers: number;
-    }>;
-  } | null>(null);
-  const [loadingInsights, setLoadingInsights] = useState(false);
 
-  /**
-   * Load team insights when team changes
-   */
-  useEffect(() => {
-    async function loadInsights() {
-      if (!user || !currentTeam) {
-        setInsights(null);
-        return;
+  const { data: insights, isLoading: loadingInsights } = useQuery({
+    queryKey:
+      userId && currentTeam
+        ? coreKeys.teamInsights(userId, currentTeam.id)
+        : ["core", "team_insights", "disabled"],
+    enabled: Boolean(userId && currentTeam),
+    queryFn: async () => {
+      if (!userId || !currentTeam) return null;
+
+      const result = await teamService.getTeamInsights(userId, currentTeam.id);
+      if (result.error) {
+        throw new Error(result.error.message);
       }
-
-      setLoadingInsights(true);
-      const result = await teamService.getTeamInsights(user.id, currentTeam.id);
-      if (result.data) {
-        setInsights(result.data);
-      }
-      setLoadingInsights(false);
-    }
-
-    loadInsights();
-  }, [user, currentTeam]);
+      return result.data;
+    },
+    staleTime: 60 * 1000,
+  });
 
   /**
    * Handle team switcher dropdown change
@@ -163,7 +150,16 @@ export function TeamDashboard() {
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+        <Button
+          onClick={async () => {
+            setSwitching(true);
+            await retryInitialize();
+            setSwitching(false);
+          }}
+          disabled={switching}
+        >
+          Retry
+        </Button>
       </Container>
     );
   }
@@ -368,7 +364,7 @@ export function TeamDashboard() {
               Invite Member
             </Button>
           )}
-          
+
           {/* Share Job - Available to all team members */}
           <Button
             variant="contained"
@@ -378,7 +374,7 @@ export function TeamDashboard() {
           >
             Share a Job
           </Button>
-          
+
           {isAdmin && (
             <Button
               variant="outlined"

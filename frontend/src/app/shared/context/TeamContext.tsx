@@ -80,6 +80,7 @@ type TeamContextValue = {
     data: CreateTeamData
   ) => Promise<{ ok: boolean; error?: string }>;
   switchTeam: (teamId: string) => Promise<void>;
+  retryInitialize: () => Promise<void>;
   refreshTeam: () => Promise<void>;
   refreshTeams: () => Promise<void>;
 
@@ -106,6 +107,7 @@ const STORAGE_KEY = "flowats_current_team_id";
 
 export function TeamProvider({ children }: TeamProviderProps) {
   const { user } = useAuth();
+  const userId = user?.id;
 
   // State
   const [currentTeam, setCurrentTeam] = useState<TeamWithMembers | null>(null);
@@ -320,7 +322,7 @@ export function TeamProvider({ children }: TeamProviderProps) {
     let mounted = true;
 
     const initialize = async () => {
-      if (!user) {
+      if (!userId) {
         // User logged out - clear state
         setCurrentTeam(null);
         setUserTeams([]);
@@ -331,7 +333,7 @@ export function TeamProvider({ children }: TeamProviderProps) {
       setLoading(true);
 
       // Load all user's teams
-      const teamsResult = await teamService.getUserTeams(user.id);
+      const teamsResult = await teamService.getUserTeams(userId);
 
       if (!mounted) return;
 
@@ -365,7 +367,7 @@ export function TeamProvider({ children }: TeamProviderProps) {
       }
 
       // Load the selected team with full details
-      const teamResult = await teamService.getTeam(user.id, teamIdToLoad);
+      const teamResult = await teamService.getTeam(userId, teamIdToLoad);
 
       if (!mounted) return;
 
@@ -386,8 +388,61 @@ export function TeamProvider({ children }: TeamProviderProps) {
     return () => {
       mounted = false;
     };
-    // Use user?.id instead of user object to prevent re-runs when user reference changes
-  }, [user?.id]);
+  }, [userId]);
+
+  /**
+   * Retry the initial team-load flow without reloading the app.
+   * This mirrors the initialization logic in the effect above, but can be
+   * called from error UIs.
+   */
+  const retryInitialize = useCallback(async () => {
+    if (!userId) {
+      setCurrentTeam(null);
+      setUserTeams([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const teamsResult = await teamService.getUserTeams(userId);
+    if (teamsResult.error) {
+      setError(teamsResult.error.message);
+      setUserTeams([]);
+      setCurrentTeam(null);
+      setLoading(false);
+      return;
+    }
+
+    const teams = teamsResult.data || [];
+    setUserTeams(teams);
+
+    if (teams.length === 0) {
+      setCurrentTeam(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    const savedTeamId = localStorage.getItem(STORAGE_KEY);
+    const teamIdToLoad =
+      savedTeamId && teams.some((t) => t.team_id === savedTeamId)
+        ? savedTeamId
+        : teams[0].team_id;
+
+    const teamResult = await teamService.getTeam(userId, teamIdToLoad);
+    if (teamResult.error) {
+      setError(teamResult.error.message);
+      setCurrentTeam(null);
+    } else {
+      setCurrentTeam(teamResult.data);
+      setError(null);
+      localStorage.setItem(STORAGE_KEY, teamIdToLoad);
+    }
+
+    setLoading(false);
+  }, [userId]);
 
   // Context value
   const value: TeamContextValue = {
@@ -411,6 +466,7 @@ export function TeamProvider({ children }: TeamProviderProps) {
     // Operations
     createTeam,
     switchTeam,
+    retryInitialize,
     refreshTeam,
     refreshTeams,
     inviteMember,

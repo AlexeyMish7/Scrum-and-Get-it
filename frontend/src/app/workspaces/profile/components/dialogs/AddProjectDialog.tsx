@@ -186,7 +186,6 @@ export const AddProjectDialog = ({
         // Invalidate unified cache so all components get fresh data
         await invalidateAll();
 
-        window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();
         handleClose();
@@ -228,7 +227,6 @@ export const AddProjectDialog = ({
         // Invalidate unified cache so all components get fresh data
         await invalidateAll();
 
-        window.dispatchEvent(new Event("projects:changed"));
         markProfileChanged();
         onSuccess?.();
         onClose();

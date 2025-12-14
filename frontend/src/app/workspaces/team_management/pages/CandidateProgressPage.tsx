@@ -57,9 +57,11 @@ import {
   Flag as FlagIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@shared/services/supabaseClient";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 import * as progressService from "../services/progressSharingService";
 import type {
   ProgressSnapshot,
@@ -172,24 +174,30 @@ export function CandidateProgressPage() {
   const loadQuickStats = useCallback(async () => {
     if (!user?.id) return;
 
-    const { data: jobs } = await supabase
-      .from("jobs")
-      .select("job_status")
-      .eq("user_id", user.id);
+    try {
+      const qc = getAppQueryClient();
+      const jobs = await qc.ensureQueryData({
+        queryKey: coreKeys.jobs(user.id),
+        queryFn: () => fetchCoreJobs<{ job_status?: string }>(user.id),
+        staleTime: 60 * 60 * 1000,
+      });
 
-    if (jobs) {
+      const rows = Array.isArray(jobs) ? jobs : [];
       const byStatus: Record<string, number> = {};
-      jobs.forEach((job) => {
-        byStatus[job.job_status] = (byStatus[job.job_status] || 0) + 1;
+      rows.forEach((job) => {
+        const status = String(job.job_status || "Unknown");
+        byStatus[status] = (byStatus[status] || 0) + 1;
       });
 
       setQuickStats({
-        totalApplications: jobs.length,
+        totalApplications: rows.length,
         interviews:
           (byStatus["Interview"] || 0) + (byStatus["Phone Screen"] || 0),
         offers: (byStatus["Offer"] || 0) + (byStatus["Accepted"] || 0),
         byStatus,
       });
+    } catch (err) {
+      console.error("Failed to load jobs for quick stats:", err);
     }
   }, [user?.id]);
 

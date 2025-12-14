@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import aiClient from "@shared/services/ai/client";
 import { useAuth } from "@shared/context/AuthContext";
-import jobsService from "@job_pipeline/services/jobsService";
+import { useCoreJobs } from "@shared/cache";
 import { createPreparationActivity } from "@shared/services/dbMappers";
 
 interface QA {
@@ -26,16 +26,35 @@ interface QA {
   answer?: string;
 }
 
+type JobOption = {
+  id: string | number;
+  job_title?: string | null;
+  title?: string | null;
+  industry?: string | null;
+  company_name?: string | null;
+};
+
+type InterviewQuestion = { id?: string; text: string };
+type InterviewQuestionsResponse = { questions: InterviewQuestion[] };
+
+type MockInterviewSummary = {
+  overall_score?: number;
+  score?: number;
+  improvement_areas?: string[] | string;
+  response_quality_analysis?: string;
+  analysis?: string;
+  confidence_tips?: string[] | string;
+};
+
 export default function MockInterview() {
   const [open, setOpen] = useState(false);
-  const [jobTitle, setJobTitle] = useState("Software Engineer");
-  const [industry, setIndustry] = useState("Technology");
-  const [difficulty, setDifficulty] = useState<"entry" | "mid" | "senior">(
-    "mid"
-  );
+  const [jobTitle] = useState("Software Engineer");
+  const [industry] = useState("Technology");
+  const [difficulty] = useState<"entry" | "mid" | "senior">("mid");
   const { user, loading: authLoading } = useAuth();
-  const [jobs, setJobs] = useState<any[] | null>(null);
-  const [jobsLoading, setJobsLoading] = useState(false);
+  const jobsQuery = useCoreJobs<JobOption>(user?.id, { enabled: !authLoading });
+  const jobs = jobsQuery.data ?? [];
+  const jobsLoading = jobsQuery.isLoading || jobsQuery.isFetching;
   const [selectedJobId, setSelectedJobId] = useState<number | string | null>(
     null
   );
@@ -43,7 +62,7 @@ export default function MockInterview() {
   const [index, setIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState<any | null>(null);
+  const [summary, setSummary] = useState<MockInterviewSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Track mock interview start time to calculate practice minutes
@@ -58,9 +77,13 @@ export default function MockInterview() {
       const selectedJob = jobs?.find(
         (j) => String(j.id) === String(selectedJobId)
       );
-      const payloadBody: any = {
-        difficulty,
-      };
+      const payloadBody: {
+        difficulty: "entry" | "mid" | "senior";
+        jobId?: string | number;
+        jobTitle?: string;
+        industry?: string;
+        company_name?: string | null;
+      } = { difficulty };
       if (selectedJob) {
         payloadBody.jobId = selectedJob.id;
         payloadBody.jobTitle =
@@ -73,24 +96,22 @@ export default function MockInterview() {
       }
 
       // Try once, then retry once on network failure
-      let res: any = null;
+      let res: InterviewQuestionsResponse | null = null;
       try {
-        res = await aiClient.postJson<{ questions: QA[] }>(
+        res = await aiClient.postJson<InterviewQuestionsResponse>(
           "/api/generate/interview-questions",
-          payloadBody as any
+          payloadBody
         );
       } catch {
         // Small backoff before retry
         await new Promise((r) => setTimeout(r, 700));
-        res = await aiClient.postJson<{ questions: QA[] }>(
+        res = await aiClient.postJson<InterviewQuestionsResponse>(
           "/api/generate/interview-questions",
-          payloadBody as any
+          payloadBody
         );
       }
-      const qs = (res as any)?.questions ?? [];
-      setQuestions(
-        qs.map((q: any, i: number) => ({ id: q.id ?? `q_${i}`, text: q.text }))
-      );
+      const qs = res?.questions ?? [];
+      setQuestions(qs.map((q, i) => ({ id: q.id ?? `q_${i}`, text: q.text })));
       setIndex(0);
       setCurrentAnswer("");
       // Track when the mock interview session starts
@@ -103,32 +124,6 @@ export default function MockInterview() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    // Load scheduled jobs for the user so they can select one for the mock
-    let mounted = true;
-    async function loadJobs() {
-      if (!user) return;
-      setJobsLoading(true);
-      try {
-        const res = await jobsService.listJobs(user.id);
-        if (!res.error && res.data) {
-          if (mounted) setJobs(Array.isArray(res.data) ? res.data : [res.data]);
-        } else {
-          if (mounted) setJobs([]);
-        }
-      } catch {
-        if (mounted) setJobs([]);
-      } finally {
-        if (mounted) setJobsLoading(false);
-      }
-    }
-
-    if (!authLoading) loadJobs();
-    return () => {
-      mounted = false;
-    };
-  }, [user, authLoading]);
 
   /**
    * Save mock interview practice time to database for InterviewSuccess tracking
@@ -221,21 +216,21 @@ export default function MockInterview() {
         qa: clone.map((q) => ({ question: q.text, answer: q.answer ?? "" })),
       };
       // Retry once on transient network failures
-      let resp: any = null;
+      let resp: MockInterviewSummary | null = null;
       try {
-        resp = await aiClient.postJson(
+        resp = await aiClient.postJson<MockInterviewSummary>(
           "/api/generate/mock-interview-summary",
-          payload as any
+          payload
         );
       } catch {
         // Small backoff before retry
         await new Promise((r) => setTimeout(r, 700));
-        resp = await aiClient.postJson(
+        resp = await aiClient.postJson<MockInterviewSummary>(
           "/api/generate/mock-interview-summary",
-          payload as any
+          payload
         );
       }
-      setSummary(resp);
+      setSummary(resp ?? null);
 
       // Save practice time to database so InterviewSuccess can track it
       const score = resp?.overall_score ?? resp?.score ?? null;
@@ -264,16 +259,17 @@ export default function MockInterview() {
               labelId="mock-job-select-label"
               label="Select scheduled job"
               value={selectedJobId ?? ""}
-              onChange={(e) => setSelectedJobId(e.target.value as any)}
+              onChange={(e) =>
+                setSelectedJobId(e.target.value as unknown as string | number)
+              }
               disabled={jobsLoading}
             >
               <MenuItem value="">(No job selected)</MenuItem>
-              {jobs &&
-                jobs.map((j) => (
-                  <MenuItem key={j.id} value={j.id}>{`${
-                    j.job_title || j.title
-                  } — ${j.company_name ?? ""}`}</MenuItem>
-                ))}
+              {jobs.map((j) => (
+                <MenuItem key={j.id} value={j.id}>{`${
+                  j.job_title || j.title
+                } — ${j.company_name ?? ""}`}</MenuItem>
+              ))}
             </Select>
           </FormControl>
 
@@ -333,7 +329,7 @@ export default function MockInterview() {
                     Improvement Areas
                   </Typography>
                   {Array.isArray(summary.improvement_areas) ? (
-                    summary.improvement_areas.map((s: any, i: number) => (
+                    summary.improvement_areas.map((s: string, i: number) => (
                       <Typography key={i}>- {s}</Typography>
                     ))
                   ) : (
@@ -355,7 +351,7 @@ export default function MockInterview() {
                     Confidence Tips
                   </Typography>
                   {Array.isArray(summary.confidence_tips) ? (
-                    summary.confidence_tips.map((t: any, i: number) => (
+                    summary.confidence_tips.map((t: string, i: number) => (
                       <Typography key={i}>- {t}</Typography>
                     ))
                   ) : (

@@ -28,8 +28,11 @@ import { EmptyState } from "@shared/components/feedback";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
-import { jobsService, pipelineService } from "@job_pipeline/services";
+import { pipelineService } from "@job_pipeline/services";
 import type { JobRow } from "@shared/types/database";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 import JobDetails from "../../components/JobDetails/JobDetails";
 import JobSearchFilters, {
   type JobFilters,
@@ -170,12 +173,28 @@ export default function PipelinePage() {
     if (!user) return;
     (async () => {
       try {
-        const res = await jobsService.listJobs(user.id, {
-          sortBy: "created_at",
-          sortOrder: "desc",
+        const qc = getAppQueryClient();
+        const cachedRows = await qc.ensureQueryData({
+          queryKey: coreKeys.jobs(user.id),
+          queryFn: () => fetchCoreJobs<JobRow>(user.id),
+          staleTime: 60 * 60 * 1000,
         });
-        if (res.error) return handleError(res.error);
-        const rows = (res.data ?? []) as JobRow[];
+
+        const rows = Array.isArray(cachedRows)
+          ? (cachedRows as JobRow[])
+          : ([] as JobRow[]);
+
+        // Keep existing UX: newest jobs first.
+        rows.sort((a, b) => {
+          const at = a.created_at
+            ? new Date(String(a.created_at)).getTime()
+            : 0;
+          const bt = b.created_at
+            ? new Date(String(b.created_at)).getTime()
+            : 0;
+          return bt - at;
+        });
+
         if (!mounted) return;
         setAllJobs(rows);
         // apply any active filters or default grouping
@@ -411,11 +430,20 @@ export default function PipelinePage() {
       handleError(err);
       // simple rollback by refetching
       if (user) {
-        const res = await jobsService.listJobs(user.id);
-        if (!res.error) {
-          const rows = (res.data ?? []) as JobRow[];
+        try {
+          const qc = getAppQueryClient();
+          const cachedRows = await qc.ensureQueryData({
+            queryKey: coreKeys.jobs(user.id),
+            queryFn: () => fetchCoreJobs<JobRow>(user.id),
+            staleTime: 60 * 60 * 1000,
+          });
+          const rows = Array.isArray(cachedRows)
+            ? (cachedRows as JobRow[])
+            : ([] as JobRow[]);
           setAllJobs(rows);
           applyFilters(rows, activeFilters ?? undefined);
+        } catch (loadErr) {
+          handleError(loadErr);
         }
       }
     }

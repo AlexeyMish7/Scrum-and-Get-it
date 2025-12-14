@@ -12,9 +12,14 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoreJobs,
+  fetchJobNotesByJobId,
+} from "@shared/cache/coreFetchers";
 import { jobsService } from "@job_pipeline/services";
 import {
-  listJobNotes,
   createJobNote,
   updateJobNote,
   deleteJobNote,
@@ -22,6 +27,7 @@ import {
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
 import ArchiveToggle from "@job_pipeline/components/search/ArchiveToggle/ArchiveToggle";
 import ApplicationTimeline from "@job_pipeline/components/timeline/ApplicationTimeline/ApplicationTimeline";
+import type { JobRow } from "@shared/types/database";
 
 type Props = {
   jobId: string | number | null;
@@ -56,11 +62,21 @@ export default function JobDetails({ jobId }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const res = await jobsService.getJob(user.id, Number(jobId));
-        if (res.error) return handleError(res.error);
+        const qc = getAppQueryClient();
+
+        // Load the full jobs list once via the shared cache, then find the job.
+        const allJobs = await qc.ensureQueryData({
+          queryKey: coreKeys.jobs(user.id),
+          queryFn: () => fetchCoreJobs<JobRow>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+        const jobRow =
+          (Array.isArray(allJobs)
+            ? (allJobs as JobRow[]).find((j) => String(j.id) === String(jobId))
+            : undefined) ?? null;
         if (!mounted) return;
-        if (res.data) {
-          const d = res.data as unknown as Record<string, unknown>;
+        if (jobRow) {
+          const d = jobRow as unknown as Record<string, unknown>;
           setJob(d);
           setForm({ ...d });
         } else {
@@ -68,11 +84,14 @@ export default function JobDetails({ jobId }: Props) {
           setForm({});
         }
 
-        // load job notes (first one)
-        const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
-        if (notesRes.error) return handleError(notesRes.error);
-        const notes = (notesRes.data ?? []) as Record<string, unknown>[];
-        const first = notes[0] ?? null;
+        // Load job notes (first one) via a per-job cache key.
+        const notes = await qc.ensureQueryData({
+          queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+          queryFn: () =>
+            fetchJobNotesByJobId<Record<string, unknown>>(user.id, jobId),
+          staleTime: 60 * 60 * 1000,
+        });
+        const first = (Array.isArray(notes) ? notes[0] : null) ?? null;
         setNote(first);
         setNoteForm({ ...(first ?? {}) });
       } catch (err) {
@@ -118,7 +137,9 @@ export default function JobDetails({ jobId }: Props) {
       if (editMode) {
         try {
           e.preventDefault();
-        } catch {}
+        } catch {
+          // ignore
+        }
         // Instead of opening a separate confirm dialog, use the confirm hook
         (async () => {
           const shouldDiscard = await confirm({
@@ -147,7 +168,7 @@ export default function JobDetails({ jobId }: Props) {
         handleBeforeClose as EventListener
       );
     };
-  }, [editMode]);
+  }, [editMode, confirm, job, note]);
 
   if (!jobId) return <Typography>Select a job to view details.</Typography>;
 
@@ -240,23 +261,47 @@ export default function JobDetails({ jobId }: Props) {
             throw res2.error;
           }
         }
+
+        // Notes are not updated via the jobsService cache helpers, so explicitly
+        // invalidate the per-job notes key after mutations.
+        try {
+          const qc = getAppQueryClient();
+          await qc.invalidateQueries({
+            queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+          });
+        } catch {
+          // ignore
+        }
       }
 
       showSuccess("Saved");
       setEditMode(false);
 
-      // Notify other components that jobs changed
-      window.dispatchEvent(new CustomEvent("jobs-updated"));
-
       // refresh
-      const fresh = await jobsService.getJob(user.id, Number(jobId));
-      if (!fresh.error)
-        setJob(fresh.data as unknown as Record<string, unknown>);
-      const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
-      if (!notesRes.error) {
-        const notes = (notesRes.data ?? []) as Record<string, unknown>[];
-        setNote(notes[0] ?? null);
-        setNoteForm({ ...(notes[0] ?? {}) });
+      try {
+        const qc = getAppQueryClient();
+        const allJobs = await qc.ensureQueryData({
+          queryKey: coreKeys.jobs(user.id),
+          queryFn: () => fetchCoreJobs<JobRow>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+        const jobRow =
+          (Array.isArray(allJobs)
+            ? (allJobs as JobRow[]).find((j) => String(j.id) === String(jobId))
+            : undefined) ?? null;
+        if (jobRow) setJob(jobRow as unknown as Record<string, unknown>);
+
+        const notes = await qc.ensureQueryData({
+          queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+          queryFn: () =>
+            fetchJobNotesByJobId<Record<string, unknown>>(user.id, jobId),
+          staleTime: 60 * 60 * 1000,
+        });
+        const first = (Array.isArray(notes) ? notes[0] : null) ?? null;
+        setNote(first);
+        setNoteForm({ ...(first ?? {}) });
+      } catch {
+        // ignore; UI already updated
       }
     } catch (err) {
       handleError(err);
@@ -275,11 +320,15 @@ export default function JobDetails({ jobId }: Props) {
     setLoading(true);
     try {
       // delete associated notes first
-      const notesRes = await listJobNotes(user.id, { eq: { job_id: jobId } });
-      if (notesRes.error) throw notesRes.error;
-      const notes = (notesRes.data ?? []) as Record<string, unknown>[];
+      const qc = getAppQueryClient();
+      const notes = await qc.ensureQueryData({
+        queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+        queryFn: () =>
+          fetchJobNotesByJobId<Record<string, unknown>>(user.id, jobId),
+        staleTime: 60 * 60 * 1000,
+      });
       await Promise.all(
-        notes.map(async (n) => {
+        (Array.isArray(notes) ? notes : []).map(async (n) => {
           if (n && n.id) {
             const del = await deleteJobNote(user.id, String(n.id));
             if (del.error) throw del.error;
@@ -287,17 +336,27 @@ export default function JobDetails({ jobId }: Props) {
         })
       );
 
+      // Invalidate notes cache after deletes.
+      try {
+        await qc.invalidateQueries({
+          queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+        });
+      } catch {
+        // ignore
+      }
+
       // delete the job row
       const delJob = await jobsService.deleteJob(user.id, Number(jobId));
       if (delJob.error) throw delJob.error;
 
       showSuccess("Job deleted");
-      // refresh the page to update lists and close drawer
-      try {
-        window.location.reload();
-      } catch {
-        // no-op
-      }
+
+      // Clear local state. Any lists/pipeline views should update via the shared jobs cache.
+      setJob(null);
+      setNote(null);
+      setForm({});
+      setNoteForm({});
+      setEditMode(false);
     } catch (err) {
       handleError(err);
     } finally {
@@ -840,7 +899,14 @@ export default function JobDetails({ jobId }: Props) {
                   Application history
                 </Typography>
                 <ApplicationTimeline
-                  history={note?.application_history as any[] | null}
+                  history={
+                    note?.application_history as Array<{
+                      to?: string | null;
+                      changed_at?: string | number | null;
+                      timestamp?: string | number | null;
+                      [k: string]: unknown;
+                    }> | null
+                  }
                   createdAt={job?.created_at as string | null}
                 />
               </>
@@ -858,20 +924,33 @@ export default function JobDetails({ jobId }: Props) {
               // refresh job & notes after archive/unarchive
               if (!user || !jobId) return;
               try {
-                const fresh = await jobsService.getJob(user.id, Number(jobId));
-                if (!fresh.error)
-                  setJob(fresh.data as unknown as Record<string, unknown>);
-                const notesRes = await listJobNotes(user.id, {
-                  eq: { job_id: jobId },
+                const qc = getAppQueryClient();
+                const allJobs = await qc.ensureQueryData({
+                  queryKey: coreKeys.jobs(user.id),
+                  queryFn: () => fetchCoreJobs<JobRow>(user.id),
+                  staleTime: 60 * 60 * 1000,
                 });
-                if (!notesRes.error) {
-                  const notes = (notesRes.data ?? []) as Record<
-                    string,
-                    unknown
-                  >[];
-                  setNote(notes[0] ?? null);
-                  setNoteForm({ ...(notes[0] ?? {}) });
-                }
+                const jobRow =
+                  (Array.isArray(allJobs)
+                    ? (allJobs as JobRow[]).find(
+                        (j) => String(j.id) === String(jobId)
+                      )
+                    : undefined) ?? null;
+                if (jobRow)
+                  setJob(jobRow as unknown as Record<string, unknown>);
+
+                const notes = await qc.ensureQueryData({
+                  queryKey: coreKeys.jobNotesByJobId(user.id, jobId),
+                  queryFn: () =>
+                    fetchJobNotesByJobId<Record<string, unknown>>(
+                      user.id,
+                      jobId
+                    ),
+                  staleTime: 60 * 60 * 1000,
+                });
+                const first = (Array.isArray(notes) ? notes[0] : null) ?? null;
+                setNote(first);
+                setNoteForm({ ...(first ?? {}) });
               } catch (err) {
                 handleError(err);
               }

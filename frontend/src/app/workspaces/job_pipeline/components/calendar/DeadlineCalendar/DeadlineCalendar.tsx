@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Box, Typography, Chip, IconButton, Stack } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useAuth } from "@shared/context/AuthContext";
-import { withUser } from "@shared/services/crud";
+import { useCoreJobs } from "@shared/cache";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../JobDetails/JobDetails";
 
@@ -44,40 +44,28 @@ function deadlineColor(days: number | null) {
 
 export default function DeadlineCalendar() {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<JobRow[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [open, setOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
     null
   );
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      if (!user?.id) return;
-      try {
-        const userCrud = withUser(user.id);
-        const res = await userCrud.listRows<JobRow>(
-          "jobs",
-          "id, job_title, application_deadline, job_status"
-        );
-        if (!mounted) return;
-        // Only care about deadlines for jobs we're still "Interested" in (not applied/archived)
-        const rows = (res.data ?? []).filter(
-          (r) =>
-            r.application_deadline &&
-            String(r.job_status ?? "").toLowerCase() === "interested"
-        );
-        setJobs(rows);
-      } catch (_e) {
-        setJobs([]);
-      }
-    }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
+  const coreJobsQuery = useCoreJobs<JobRow>(user?.id, {
+    enabled: !!user?.id,
+    // Deadlines should feel responsive; reuse cache but refresh periodically.
+    staleTimeMs: 5 * 60 * 1000,
+  });
+
+  const jobs = useMemo(() => {
+    const rows = coreJobsQuery.data ?? [];
+
+    // Only care about deadlines for jobs we're still "Interested" in (not applied/archived)
+    return rows.filter(
+      (r) =>
+        r.application_deadline &&
+        String(r.job_status ?? "").toLowerCase() === "interested"
+    );
+  }, [coreJobsQuery.data]);
 
   const now = new Date();
   const display = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
@@ -87,15 +75,18 @@ export default function DeadlineCalendar() {
   const firstDayWeekday = new Date(year, month, 1).getDay(); // 0 (Sun) - 6 (Sat)
 
   // Group jobs by date string YYYY-MM-DD
-  const jobsByDate = new Map<string, JobRow[]>();
-  for (const j of jobs) {
-    if (!j.application_deadline) continue;
-    const d = new Date(String(j.application_deadline));
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const arr = jobsByDate.get(key) ?? [];
-    arr.push(j);
-    jobsByDate.set(key, arr);
-  }
+  const jobsByDate = useMemo(() => {
+    const map = new Map<string, JobRow[]>();
+    for (const j of jobs) {
+      if (!j.application_deadline) continue;
+      const d = new Date(String(j.application_deadline));
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const arr = map.get(key) ?? [];
+      arr.push(j);
+      map.set(key, arr);
+    }
+    return map;
+  }, [jobs]);
 
   function dayKey(dayNum: number) {
     return `${year}-${month}-${dayNum}`;

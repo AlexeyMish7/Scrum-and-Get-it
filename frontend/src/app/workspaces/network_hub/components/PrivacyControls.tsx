@@ -36,6 +36,7 @@ import {
   Info,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getUserPeerSettings,
   updateUserPeerSettings,
@@ -68,9 +69,9 @@ const PRIVACY_LEVEL_INFO: Record<
 export const PrivacyControls: React.FC = () => {
   const { user } = useAuth();
   const userId = user?.id;
+  const queryClient = useQueryClient();
 
   const [settings, setSettings] = useState<UserPeerSettingsRow | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -95,40 +96,31 @@ export const PrivacyControls: React.FC = () => {
     setError(null);
 
     try {
-      const result = await getUserPeerSettings(userId);
-      if (result.data) {
-        setSettings(result.data);
-        // Populate form with loaded settings
-        setDefaultPrivacyLevel(result.data.default_privacy_level);
-        setShowGroupMemberships(result.data.show_group_memberships);
-        setShowChallengeProgress(result.data.show_challenge_progress);
-        setShowSuccessStories(result.data.show_success_stories);
-        setEmailNotifications(result.data.email_notifications);
-        setPushNotifications(result.data.push_notifications);
-        setAllowGroupInvites(result.data.allow_group_invites);
-        setDiscoverableInGroups(result.data.discoverable_in_groups);
-      } else if (result.error) {
-        setError(result.error.message);
-      }
-    } catch (err) {
-      console.error("Error loading peer settings:", err);
-      setError("Failed to load privacy settings");
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const settingsQuery = useQuery({
+    queryKey: networkKeys.peerSettings(userId ?? "anon"),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const result = await getUserPeerSettings(userId as string);
+      if (result.error) throw new Error(result.error.message);
+      return result.data as UserPeerSettingsRow;
+    },
+  });
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  const settings = settingsQuery.data ?? null;
 
-  // Track changes
+  // Populate form when settings load/change
   useEffect(() => {
-    if (settings) {
-      const changed =
-        defaultPrivacyLevel !== settings.default_privacy_level ||
-        showGroupMemberships !== settings.show_group_memberships ||
-        showChallengeProgress !== settings.show_challenge_progress ||
+    if (!settings) return;
+    setDefaultPrivacyLevel(settings.default_privacy_level);
+    setShowGroupMemberships(settings.show_group_memberships);
+    setShowChallengeProgress(settings.show_challenge_progress);
+    setShowSuccessStories(settings.show_success_stories);
+    setEmailNotifications(settings.email_notifications);
+    setPushNotifications(settings.push_notifications);
+    setAllowGroupInvites(settings.allow_group_invites);
+    setDiscoverableInGroups(settings.discoverable_in_groups);
+  }, [settings]);
         showSuccessStories !== settings.show_success_stories ||
         emailNotifications !== settings.email_notifications ||
         pushNotifications !== settings.push_notifications ||
@@ -165,7 +157,7 @@ export const PrivacyControls: React.FC = () => {
         email_notifications: emailNotifications,
         push_notifications: pushNotifications,
         allow_group_invites: allowGroupInvites,
-        discoverable_in_groups: discoverableInGroups,
+      const result = await updateUserPeerSettings(userId, {
       });
 
       if (result.data) {
@@ -177,7 +169,7 @@ export const PrivacyControls: React.FC = () => {
       } else if (result.error) {
         setError(result.error.message);
       }
-    } catch (err) {
+        queryClient.setQueryData(networkKeys.peerSettings(userId), result.data);
       console.error("Error saving peer settings:", err);
       setError("Failed to save privacy settings");
     } finally {
@@ -207,7 +199,7 @@ export const PrivacyControls: React.FC = () => {
         alignItems="center"
         minHeight={300}
       >
-        <CircularProgress />
+  if (settingsQuery.isLoading) {
       </Box>
     );
   }
@@ -220,6 +212,8 @@ export const PrivacyControls: React.FC = () => {
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
         Control how you appear in peer groups and manage your notification
+  const queryError = (settingsQuery.error as Error | null)?.message ?? null;
+  const displayedError = error ?? queryError;
         preferences.
       </Typography>
 
@@ -232,9 +226,9 @@ export const PrivacyControls: React.FC = () => {
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
           Settings saved successfully!
-        </Alert>
+      {displayedError && (
       )}
-
+          {displayedError}
       {/* Default Privacy Level */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <FormControl component="fieldset">

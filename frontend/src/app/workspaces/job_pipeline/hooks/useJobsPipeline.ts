@@ -19,7 +19,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { jobsService, pipelineService } from "@job_pipeline/services";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
+import { pipelineService } from "@job_pipeline/services";
 import type { JobRow } from "@shared/types/database";
 import type { PipelineStage } from "@job_pipeline/types";
 
@@ -95,6 +98,12 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
   // Ref for optimistic update rollback
   const preDragRef = useRef<Record<Stage, JobRow[]> | undefined>(undefined);
+
+  const filterOutArchived = useCallback((jobs: JobRow[]): JobRow[] => {
+    return jobs.filter(
+      (j) => String(j.job_status ?? "").toLowerCase() !== "archive"
+    );
+  }, []);
 
   /**
    * GROUP JOBS BY CURRENT STAGE
@@ -175,25 +184,64 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
     setLoading(true);
     try {
-      const res = await jobsService.listJobs(user.id, {
-        sortBy: "created_at",
-        sortOrder: "desc",
+      const qc = getAppQueryClient();
+      const cachedRows = await qc.ensureQueryData({
+        queryKey: coreKeys.jobs(user.id),
+        queryFn: () => fetchCoreJobs<JobRow>(user.id),
+        staleTime: 60 * 60 * 1000,
       });
 
-      if (res.error) {
-        handleError(res.error);
-        return;
-      }
+      const jobs = Array.isArray(cachedRows)
+        ? (cachedRows as JobRow[])
+        : ([] as JobRow[]);
 
-      const jobs = (res.data ?? []) as JobRow[];
-      setAllJobs(jobs);
-      setJobsByStage(groupJobsByStage(jobs));
+      // Keep existing UX: newest jobs first.
+      jobs.sort((a, b) => {
+        const at = a.created_at ? new Date(String(a.created_at)).getTime() : 0;
+        const bt = b.created_at ? new Date(String(b.created_at)).getTime() : 0;
+        return bt - at;
+      });
+
+      const activeJobs = filterOutArchived(jobs);
+      setAllJobs(activeJobs);
+      setJobsByStage(groupJobsByStage(activeJobs));
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
     }
-  }, [user, handleError, groupJobsByStage]);
+  }, [user, handleError, groupJobsByStage, filterOutArchived]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const qc = getAppQueryClient();
+    const queryKey = coreKeys.jobs(user.id);
+
+    const updateFromCache = () => {
+      const cached = qc.getQueryData(queryKey);
+      if (!Array.isArray(cached)) return;
+      const active = filterOutArchived(cached as JobRow[]);
+      setAllJobs(active);
+      setJobsByStage(groupJobsByStage(active));
+    };
+
+    // Seed local state from cache if available.
+    updateFromCache();
+
+    const unsubscribe = qc.getQueryCache().subscribe((event) => {
+      const eventQueryKey = event?.query?.queryKey;
+      if (!eventQueryKey || eventQueryKey.length !== queryKey.length) return;
+
+      for (let i = 0; i < queryKey.length; i++) {
+        if (eventQueryKey[i] !== queryKey[i]) return;
+      }
+
+      updateFromCache();
+    });
+
+    return unsubscribe;
+  }, [user, groupJobsByStage, filterOutArchived]);
 
   /**
    * MOVE JOB TO NEW STAGE
@@ -258,9 +306,6 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
         showSuccess(`Moved to ${newStage}`);
         preDragRef.current = undefined;
-
-        // Notify other components that jobs changed
-        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
 
@@ -309,9 +354,6 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
 
         // Update jobsByStage immediately for instant UI feedback
         setJobsByStage(groupJobsByStage(updatedJobs));
-
-        // Notify other components (like CalendarWidget) that jobs changed
-        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
         // Refresh on error to revert optimistic update
@@ -350,9 +392,6 @@ export function useJobsPipeline(): UseJobsPipelineReturn {
           });
           return updated;
         });
-
-        // Notify other components that jobs changed
-        window.dispatchEvent(new CustomEvent("jobs-updated"));
       } catch (err) {
         handleError(err);
       }

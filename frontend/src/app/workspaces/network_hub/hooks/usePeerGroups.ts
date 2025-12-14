@@ -4,12 +4,17 @@
  * UC-112: Peer Networking and Support Groups
  *
  * Custom hook for managing peer groups state and operations.
- * Provides centralized state management with caching for peer group data,
- * reducing redundant API calls and improving performance.
+ * Provides centralized state management backed by TanStack React Query.
+ *
+ * NOTE: We intentionally use the "network" query key root (not "core") so
+ * these datasets are not persisted to disk. Some peer group data (posts,
+ * replies, etc.) can be high-cardinality and should remain in-memory only.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import * as peerGroupsService from "../services/peerGroupsService";
 import type {
   PeerGroupWithMembership,
@@ -29,20 +34,7 @@ import type {
   SuccessStoryFilters,
 } from "../types/peerGroups.types";
 
-// Cache configuration
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-// Cache entry interface
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-// Check if cache entry is still valid
-function isCacheValid<T>(entry: CacheEntry<T> | null): entry is CacheEntry<T> {
-  if (!entry) return false;
-  return Date.now() - entry.timestamp < CACHE_TTL;
-}
+const DEFAULT_STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
 
 // Hook return type
 interface UsePeerGroupsReturn {
@@ -115,13 +107,16 @@ interface UsePeerGroupsReturn {
 export function usePeerGroups(): UsePeerGroupsReturn {
   const { user } = useAuth();
   const userId = user?.id;
+  const queryClient = useQueryClient();
 
   // State
   const [groups, setGroups] = useState<PeerGroupWithMembership[]>([]);
   const [userGroups, setUserGroups] = useState<PeerGroupWithMembership[]>([]);
   const [currentGroup, setCurrentGroup] =
     useState<PeerGroupWithMembership | null>(null);
-  const [groupMembers] = useState<PeerGroupMemberWithProfile[]>([]);
+  const [groupMembers, setGroupMembers] = useState<
+    PeerGroupMemberWithProfile[]
+  >([]);
   const [posts, setPosts] = useState<PeerPostWithAuthor[]>([]);
   const [challenges, setChallenges] = useState<ChallengeWithParticipation[]>(
     []
@@ -144,19 +139,13 @@ export function usePeerGroups(): UsePeerGroupsReturn {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
-  // Cache refs (survive re-renders)
-  const groupsCache = useRef<CacheEntry<PeerGroupWithMembership[]> | null>(
+  // Track which group the current posts/challenges/referrals are for so
+  // mutations can update the correct cached list.
+  const [postsGroupId, setPostsGroupId] = useState<string | null>(null);
+  const [challengesGroupId, setChallengesGroupId] = useState<string | null>(
     null
   );
-  const userGroupsCache = useRef<CacheEntry<PeerGroupWithMembership[]> | null>(
-    null
-  );
-  const groupCache = useRef<Map<string, CacheEntry<PeerGroupWithMembership>>>(
-    new Map()
-  );
-  const postsCache = useRef<Map<string, CacheEntry<PeerPostWithAuthor[]>>>(
-    new Map()
-  );
+  const [referralsGroupId, setReferralsGroupId] = useState<string | null>(null);
 
   // Clear error
   const clearError = useCallback(() => {
@@ -168,26 +157,25 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     async (filters?: GroupFilters) => {
       if (!userId) return;
 
-      // Check cache if no filters
-      if (!filters && isCacheValid(groupsCache.current)) {
-        setGroups(groupsCache.current.data);
-        return;
-      }
-
       setLoadingGroups(true);
       setError(null);
 
       try {
-        const result = await peerGroupsService.listGroups(userId, filters);
-        if (result.data) {
-          setGroups(result.data);
-          // Cache only unfiltered results
-          if (!filters) {
-            groupsCache.current = { data: result.data, timestamp: Date.now() };
-          }
-        } else if (result.error) {
-          setError(result.error.message);
-        }
+        const data = await queryClient.fetchQuery({
+          queryKey: [
+            ...networkKeys.peerGroupsList(userId),
+            "filters",
+            (filters ?? null) as GroupFilters | null,
+          ],
+          staleTime: DEFAULT_STALE_TIME_MS,
+          queryFn: async () => {
+            const result = await peerGroupsService.listGroups(userId, filters);
+            if (result.error) throw new Error(result.error.message);
+            return result.data ?? [];
+          },
+        });
+
+        setGroups(data);
       } catch (err) {
         console.error("Error loading groups:", err);
         setError("Failed to load groups");
@@ -195,64 +183,78 @@ export function usePeerGroups(): UsePeerGroupsReturn {
         setLoadingGroups(false);
       }
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Load user's groups
   const loadUserGroups = useCallback(async () => {
     if (!userId) return;
 
-    // Check cache
-    if (isCacheValid(userGroupsCache.current)) {
-      setUserGroups(userGroupsCache.current.data);
-      return;
-    }
-
     setLoadingGroups(true);
     setError(null);
 
     try {
-      const result = await peerGroupsService.getUserGroups(userId);
-      if (result.data) {
-        setUserGroups(result.data);
-        userGroupsCache.current = { data: result.data, timestamp: Date.now() };
-      } else if (result.error) {
-        setError(result.error.message);
-      }
+      const data = await queryClient.fetchQuery({
+        queryKey: networkKeys.peerGroupsUser(userId),
+        staleTime: DEFAULT_STALE_TIME_MS,
+        queryFn: async () => {
+          const result = await peerGroupsService.getUserGroups(userId);
+          if (result.error) throw new Error(result.error.message);
+          return result.data ?? [];
+        },
+      });
+
+      setUserGroups(data);
     } catch (err) {
       console.error("Error loading user groups:", err);
       setError("Failed to load your groups");
     } finally {
       setLoadingGroups(false);
     }
-  }, [userId]);
+  }, [queryClient, userId]);
 
   // Load a specific group
   const loadGroup = useCallback(
     async (groupId: string) => {
       if (!userId) return;
 
-      // Check cache
-      const cached = groupCache.current.get(groupId);
-      if (cached && isCacheValid(cached)) {
-        setCurrentGroup(cached.data);
-        return;
-      }
-
       setLoading(true);
       setError(null);
-
+      g.id === groupId
+        ? {
+            ...g,
+            is_member: false,
+            membership: null,
+            member_count: Math.max(0, (g.member_count ?? 0) - 1),
+          }
+        : g;
       try {
-        const result = await peerGroupsService.getGroup(groupId, userId);
-        if (result.data) {
-          setCurrentGroup(result.data);
-          groupCache.current.set(groupId, {
-            data: result.data,
-            timestamp: Date.now(),
-          });
-        } else if (result.error) {
-          setError(result.error.message);
-        }
+        const [group, members] = await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: networkKeys.peerGroupById(userId, groupId),
+            staleTime: DEFAULT_STALE_TIME_MS,
+            queryFn: async () => {
+              const result = await peerGroupsService.getGroup(userId, groupId);
+              if (result.error) throw new Error(result.error.message);
+              return result.data;
+            },
+          }),
+          queryClient.fetchQuery({
+            queryKey: networkKeys.peerGroupMembers(userId, groupId),
+            staleTime: DEFAULT_STALE_TIME_MS,
+            queryFn: async () => {
+              const result = await peerGroupsService.getGroupMembers(
+                userId,
+                groupId
+              );
+              if (result.error) throw new Error(result.error.message);
+              return result.data ?? [];
+            },
+          }),
+        ]);
+
+        setCurrentGroup(group ?? null);
+        setGroupMembers(members);
       } catch (err) {
         console.error("Error loading group:", err);
         setError("Failed to load group");
@@ -260,7 +262,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
         setLoading(false);
       }
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Create a new group
@@ -276,9 +278,6 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       try {
         const result = await peerGroupsService.createGroup(userId, data);
         if (result.data) {
-          // Invalidate caches
-          groupsCache.current = null;
-          userGroupsCache.current = null;
           // Convert PeerGroupRow to PeerGroupWithMembership
           const groupWithMembership: PeerGroupWithMembership = {
             ...result.data,
@@ -286,9 +285,20 @@ export function usePeerGroups(): UsePeerGroupsReturn {
             membership: null, // Will be loaded on next fetch
             member_count: 1, // Creator is the first member
           };
-          // Add to current groups list
+
+          // Update local state + query cache for list views.
           setGroups((prev) => [groupWithMembership, ...prev]);
           setUserGroups((prev) => [groupWithMembership, ...prev]);
+
+          queryClient.setQueryData<PeerGroupWithMembership[]>(
+            networkKeys.peerGroupsList(userId),
+            (prev) => [groupWithMembership, ...(prev ?? [])]
+          );
+          queryClient.setQueryData<PeerGroupWithMembership[]>(
+            networkKeys.peerGroupsUser(userId),
+            (prev) => [groupWithMembership, ...(prev ?? [])]
+          );
+
           return groupWithMembership;
         } else if (result.error) {
           setError(result.error.message);
@@ -301,7 +311,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return null;
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Join a group
@@ -317,16 +327,41 @@ export function usePeerGroups(): UsePeerGroupsReturn {
           group_id: groupId,
         });
         if (result.data) {
-          // Invalidate caches
-          groupsCache.current = null;
-          userGroupsCache.current = null;
-          groupCache.current.delete(groupId);
-          // Update UI optimistically
           setGroups((prev) =>
             prev.map((g) =>
-              g.id === groupId ? { ...g, user_membership: result.data } : g
+              g.id === groupId
+                ? {
+                    ...g,
+                    is_member: true,
+                    membership: result.data,
+                    member_count: (g.member_count ?? 0) + 1,
+                  }
+                : g
             )
           );
+
+          queryClient.setQueryData<PeerGroupWithMembership[]>(
+            networkKeys.peerGroupsList(userId),
+            (prev) =>
+              (prev ?? []).map((g) =>
+                g.id === groupId
+                  ? {
+                      ...g,
+                      is_member: true,
+                      membership: result.data,
+                      member_count: (g.member_count ?? 0) + 1,
+                    }
+                  : g
+              )
+          );
+
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupsUser(userId),
+          });
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupById(userId, groupId),
+          });
+
           return true;
         } else if (result.error) {
           setError(result.error.message);
@@ -339,7 +374,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Leave a group
@@ -351,12 +386,8 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       setError(null);
 
       try {
-        const result = await peerGroupsService.leaveGroup(groupId, userId);
+        const result = await peerGroupsService.leaveGroup(userId, groupId);
         if (!result.error) {
-          // Invalidate caches
-          groupsCache.current = null;
-          userGroupsCache.current = null;
-          groupCache.current.delete(groupId);
           // Update UI
           setGroups((prev) =>
             prev.map((g) =>
@@ -364,6 +395,29 @@ export function usePeerGroups(): UsePeerGroupsReturn {
             )
           );
           setUserGroups((prev) => prev.filter((g) => g.id !== groupId));
+
+          queryClient.setQueryData<PeerGroupWithMembership[]>(
+            networkKeys.peerGroupsList(userId),
+            (prev) =>
+              (prev ?? []).map((g) =>
+                g.id === groupId
+                  ? {
+                      ...g,
+                      is_member: false,
+                      membership: null,
+                      member_count: Math.max(0, (g.member_count ?? 0) - 1),
+                    }
+                  : g
+              )
+          );
+          queryClient.setQueryData<PeerGroupWithMembership[]>(
+            networkKeys.peerGroupsUser(userId),
+            (prev) => (prev ?? []).filter((g) => g.id !== groupId)
+          );
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupById(userId, groupId),
+          });
+
           return true;
         } else {
           setError(result.error.message);
@@ -376,7 +430,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Load posts for a group
@@ -384,27 +438,26 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     async (groupId: string) => {
       if (!userId) return;
 
-      // Check cache
-      const cached = postsCache.current.get(groupId);
-      if (cached && isCacheValid(cached)) {
-        setPosts(cached.data);
-        return;
-      }
+      setPostsGroupId(groupId);
 
       setLoadingPosts(true);
       setError(null);
 
       try {
-        const result = await peerGroupsService.getGroupPosts(groupId, userId);
-        if (result.data) {
-          setPosts(result.data);
-          postsCache.current.set(groupId, {
-            data: result.data,
-            timestamp: Date.now(),
-          });
-        } else if (result.error) {
-          setError(result.error.message);
-        }
+        const data = await queryClient.fetchQuery({
+          queryKey: networkKeys.peerGroupPosts(userId, groupId),
+          staleTime: DEFAULT_STALE_TIME_MS,
+          queryFn: async () => {
+            const result = await peerGroupsService.getGroupPosts(
+              userId,
+              groupId
+            );
+            if (result.error) throw new Error(result.error.message);
+            return result.data ?? [];
+          },
+        });
+
+        setPosts(data);
       } catch (err) {
         console.error("Error loading posts:", err);
         setError("Failed to load posts");
@@ -412,7 +465,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
         setLoadingPosts(false);
       }
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Create a post
@@ -426,9 +479,9 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       try {
         const result = await peerGroupsService.createPost(userId, data);
         if (result.data) {
-          // Invalidate posts cache for this group
-          postsCache.current.delete(data.group_id);
-          // Reload posts
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupPosts(userId, data.group_id),
+          });
           await loadPosts(data.group_id);
           return true;
         } else if (result.error) {
@@ -442,7 +495,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId, loadPosts]
+    [queryClient, userId, loadPosts]
   );
 
   // Like a post
@@ -451,16 +504,28 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       if (!userId) return false;
 
       try {
-        const result = await peerGroupsService.likePost(postId, userId);
+        const result = await peerGroupsService.likePost(userId, postId);
         if (result.data) {
           // Update UI optimistically
-          setPosts((prev) =>
+          const applyUpdate = (prev: PeerPostWithAuthor[]) =>
             prev.map((p) =>
               p.id === postId
-                ? { ...p, like_count: p.like_count + 1, user_liked: true }
+                ? {
+                    ...p,
+                    like_count: (p.like_count ?? 0) + 1,
+                    is_liked_by_user: true,
+                  }
                 : p
-            )
-          );
+            );
+
+          setPosts(applyUpdate);
+          if (postsGroupId) {
+            queryClient.setQueryData<PeerPostWithAuthor[]>(
+              networkKeys.peerGroupPosts(userId, postsGroupId),
+              (prev) => applyUpdate(prev ?? [])
+            );
+          }
+
           return true;
         } else if (result.error) {
           setError(result.error.message);
@@ -471,7 +536,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [postsGroupId, queryClient, userId]
   );
 
   // Unlike a post
@@ -480,20 +545,28 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       if (!userId) return false;
 
       try {
-        const result = await peerGroupsService.unlikePost(postId, userId);
+        const result = await peerGroupsService.unlikePost(userId, postId);
         if (!result.error) {
           // Update UI optimistically
-          setPosts((prev) =>
+          const applyUpdate = (prev: PeerPostWithAuthor[]) =>
             prev.map((p) =>
               p.id === postId
                 ? {
                     ...p,
-                    like_count: Math.max(0, p.like_count - 1),
-                    user_liked: false,
+                    like_count: Math.max(0, (p.like_count ?? 0) - 1),
+                    is_liked_by_user: false,
                   }
                 : p
-            )
-          );
+            );
+
+          setPosts(applyUpdate);
+          if (postsGroupId) {
+            queryClient.setQueryData<PeerPostWithAuthor[]>(
+              networkKeys.peerGroupPosts(userId, postsGroupId),
+              (prev) => applyUpdate(prev ?? [])
+            );
+          }
+
           return true;
         } else {
           setError(result.error.message);
@@ -504,7 +577,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [postsGroupId, queryClient, userId]
   );
 
   // Delete a post
@@ -513,10 +586,16 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       if (!userId) return false;
 
       try {
-        const result = await peerGroupsService.deletePost(postId, userId);
+        const result = await peerGroupsService.deletePost(userId, postId);
         if (!result.error) {
           // Update UI
           setPosts((prev) => prev.filter((p) => p.id !== postId));
+          if (postsGroupId) {
+            queryClient.setQueryData<PeerPostWithAuthor[]>(
+              networkKeys.peerGroupPosts(userId, postsGroupId),
+              (prev) => (prev ?? []).filter((p) => p.id !== postId)
+            );
+          }
           return true;
         } else {
           setError(result.error.message);
@@ -527,7 +606,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [postsGroupId, queryClient, userId]
   );
 
   // Load challenges for a group
@@ -535,19 +614,26 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     async (groupId: string) => {
       if (!userId) return;
 
+      setChallengesGroupId(groupId);
+
       setLoadingChallenges(true);
       setError(null);
 
       try {
-        const result = await peerGroupsService.getGroupChallenges(
-          groupId,
-          userId
-        );
-        if (result.data) {
-          setChallenges(result.data);
-        } else if (result.error) {
-          setError(result.error.message);
-        }
+        const data = await queryClient.fetchQuery({
+          queryKey: networkKeys.peerGroupChallenges(userId, groupId),
+          staleTime: DEFAULT_STALE_TIME_MS,
+          queryFn: async () => {
+            const result = await peerGroupsService.getGroupChallenges(
+              userId,
+              groupId
+            );
+            if (result.error) throw new Error(result.error.message);
+            return result.data ?? [];
+          },
+        });
+
+        setChallenges(data);
       } catch (err) {
         console.error("Error loading challenges:", err);
         setError("Failed to load challenges");
@@ -555,7 +641,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
         setLoadingChallenges(false);
       }
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Create a challenge
@@ -569,6 +655,9 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       try {
         const result = await peerGroupsService.createChallenge(userId, data);
         if (result.data) {
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupChallenges(userId, data.group_id),
+          });
           // Reload challenges
           await loadChallenges(data.group_id);
           return true;
@@ -583,7 +672,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId, loadChallenges]
+    [queryClient, userId, loadChallenges]
   );
 
   // Join a challenge
@@ -593,8 +682,8 @@ export function usePeerGroups(): UsePeerGroupsReturn {
 
       try {
         const result = await peerGroupsService.joinChallenge(
-          challengeId,
-          userId
+          userId,
+          challengeId
         );
         if (result.data) {
           // Update UI
@@ -603,12 +692,31 @@ export function usePeerGroups(): UsePeerGroupsReturn {
               c.id === challengeId
                 ? {
                     ...c,
-                    user_participation: result.data,
-                    participant_count: c.participant_count + 1,
+                    participation: result.data,
+                    is_participating: true,
+                    participant_count: (c.participant_count ?? 0) + 1,
                   }
                 : c
             )
           );
+
+          if (challengesGroupId) {
+            queryClient.setQueryData<ChallengeWithParticipation[]>(
+              networkKeys.peerGroupChallenges(userId, challengesGroupId),
+              (prev) =>
+                (prev ?? []).map((c) =>
+                  c.id === challengeId
+                    ? {
+                        ...c,
+                        participation: result.data,
+                        is_participating: true,
+                        participant_count: (c.participant_count ?? 0) + 1,
+                      }
+                    : c
+                )
+            );
+          }
+
           return true;
         } else if (result.error) {
           setError(result.error.message);
@@ -619,7 +727,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [challengesGroupId, queryClient, userId]
   );
 
   // Update challenge progress
@@ -645,13 +753,35 @@ export function usePeerGroups(): UsePeerGroupsReturn {
                 ? {
                     ...c,
                     participation: {
-                      ...c.participation!,
-                      current_value: value,
+                      ...(c.participation ?? {}),
+                      // Service treats `value` as an increment.
+                      current_value:
+                        (c.participation?.current_value ?? 0) + value,
                     },
                   }
                 : c
             )
           );
+
+          if (challengesGroupId) {
+            queryClient.setQueryData<ChallengeWithParticipation[]>(
+              networkKeys.peerGroupChallenges(userId, challengesGroupId),
+              (prev) =>
+                (prev ?? []).map((c) =>
+                  c.id === challengeId
+                    ? {
+                        ...c,
+                        participation: {
+                          ...(c.participation ?? {}),
+                          current_value:
+                            (c.participation?.current_value ?? 0) + value,
+                        },
+                      }
+                    : c
+                )
+            );
+          }
+
           return true;
         } else if (result.error) {
           setError(result.error.message);
@@ -662,36 +792,31 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [challengesGroupId, queryClient, userId]
   );
 
   // Load success stories
-  const loadSuccessStories = useCallback(
-    async (groupId?: string) => {
-      if (!userId) return;
+  const loadSuccessStories = useCallback(async (groupId?: string) => {
+    setLoading(true);
+    setError(null);
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        const filters: SuccessStoryFilters | undefined = groupId
-          ? { group_id: groupId }
-          : undefined;
-        const result = await peerGroupsService.getSuccessStories(filters);
-        if (result.data) {
-          setSuccessStories(result.data);
-        } else if (result.error) {
-          setError(result.error.message);
-        }
-      } catch (err) {
-        console.error("Error loading success stories:", err);
-        setError("Failed to load success stories");
-      } finally {
-        setLoading(false);
+    try {
+      const filters: SuccessStoryFilters | undefined = groupId
+        ? { group_id: groupId }
+        : undefined;
+      const result = await peerGroupsService.getSuccessStories(filters);
+      if (result.data) {
+        setSuccessStories(result.data);
+      } else if (result.error) {
+        setError(result.error.message);
       }
-    },
-    [userId]
-  );
+    } catch (err) {
+      console.error("Error loading success stories:", err);
+      setError("Failed to load success stories");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Create a success story
   const createSuccessStory = useCallback(
@@ -726,19 +851,26 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     async (groupId: string) => {
       if (!userId) return;
 
+      setReferralsGroupId(groupId);
+
       setLoading(true);
       setError(null);
 
       try {
-        const result = await peerGroupsService.getGroupReferrals(
-          groupId,
-          userId
-        );
-        if (result.data) {
-          setReferrals(result.data);
-        } else if (result.error) {
-          setError(result.error.message);
-        }
+        const data = await queryClient.fetchQuery({
+          queryKey: networkKeys.peerGroupReferrals(userId, groupId),
+          staleTime: DEFAULT_STALE_TIME_MS,
+          queryFn: async () => {
+            const result = await peerGroupsService.getGroupReferrals(
+              userId,
+              groupId
+            );
+            if (result.error) throw new Error(result.error.message);
+            return result.data ?? [];
+          },
+        });
+
+        setReferrals(data);
       } catch (err) {
         console.error("Error loading referrals:", err);
         setError("Failed to load referrals");
@@ -746,7 +878,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
         setLoading(false);
       }
     },
-    [userId]
+    [queryClient, userId]
   );
 
   // Create a referral
@@ -760,6 +892,9 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       try {
         const result = await peerGroupsService.createReferral(userId, data);
         if (result.data) {
+          queryClient.invalidateQueries({
+            queryKey: networkKeys.peerGroupReferrals(userId, data.group_id),
+          });
           // Reload referrals
           await loadReferrals(data.group_id);
           return true;
@@ -774,12 +909,12 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId, loadReferrals]
+    [queryClient, userId, loadReferrals]
   );
 
   // Express interest in a referral
   const expressInterest = useCallback(
-    async (referralId: string): Promise<boolean> => {
+    async (referralId: string, _message?: string): Promise<boolean> => {
       if (!userId) return false;
 
       try {
@@ -794,12 +929,29 @@ export function usePeerGroups(): UsePeerGroupsReturn {
               r.id === referralId
                 ? {
                     ...r,
-                    interested_count: r.interested_count + 1,
+                    interested_count: (r.interested_count ?? 0) + 1,
                     user_interest: result.data,
                   }
                 : r
             )
           );
+
+          if (referralsGroupId) {
+            queryClient.setQueryData<PeerReferralWithSharer[]>(
+              networkKeys.peerGroupReferrals(userId, referralsGroupId),
+              (prev) =>
+                (prev ?? []).map((r) =>
+                  r.id === referralId
+                    ? {
+                        ...r,
+                        interested_count: (r.interested_count ?? 0) + 1,
+                        user_interest: result.data,
+                      }
+                    : r
+                )
+            );
+          }
+
           return true;
         } else if (result.error) {
           setError(result.error.message);
@@ -810,7 +962,7 @@ export function usePeerGroups(): UsePeerGroupsReturn {
       }
       return false;
     },
-    [userId]
+    [queryClient, referralsGroupId, userId]
   );
 
   // Load impact summary
@@ -821,19 +973,24 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     setError(null);
 
     try {
-      const result = await peerGroupsService.getNetworkingImpact(userId);
-      if (result.data) {
-        setImpactSummary(result.data);
-      } else if (result.error) {
-        setError(result.error.message);
-      }
+      const data = await queryClient.fetchQuery({
+        queryKey: networkKeys.peerNetworkingImpact(userId),
+        staleTime: DEFAULT_STALE_TIME_MS,
+        queryFn: async () => {
+          const result = await peerGroupsService.getNetworkingImpact(userId);
+          if (result.error) throw new Error(result.error.message);
+          return result.data;
+        },
+      });
+
+      setImpactSummary(data ?? null);
     } catch (err) {
       console.error("Error loading impact summary:", err);
       setError("Failed to load impact summary");
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [queryClient, userId]);
 
   // Load settings
   const loadSettings = useCallback(async () => {
@@ -843,36 +1000,45 @@ export function usePeerGroups(): UsePeerGroupsReturn {
     setError(null);
 
     try {
-      const result = await peerGroupsService.getUserPeerSettings(userId);
-      if (result.data) {
-        setSettings(result.data);
-      } else if (result.error) {
-        setError(result.error.message);
-      }
+      const data = await queryClient.fetchQuery({
+        queryKey: networkKeys.peerSettings(userId),
+        staleTime: DEFAULT_STALE_TIME_MS,
+        queryFn: async () => {
+          const result = await peerGroupsService.getUserPeerSettings(userId);
+          if (result.error) throw new Error(result.error.message);
+          return result.data;
+        },
+      });
+
+      setSettings(data ?? null);
     } catch (err) {
       console.error("Error loading settings:", err);
       setError("Failed to load settings");
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [queryClient, userId]);
 
   // Refresh all data
   const refreshAll = useCallback(async () => {
-    // Clear caches
-    groupsCache.current = null;
-    userGroupsCache.current = null;
-    groupCache.current.clear();
-    postsCache.current.clear();
+    if (!userId) return;
 
-    // Reload
+    await queryClient.invalidateQueries({ queryKey: networkKeys.peerGroups() });
+
     await Promise.all([
       loadGroups(),
       loadUserGroups(),
       loadImpactSummary(),
       loadSettings(),
     ]);
-  }, [loadGroups, loadUserGroups, loadImpactSummary, loadSettings]);
+  }, [
+    queryClient,
+    loadGroups,
+    loadUserGroups,
+    loadImpactSummary,
+    loadSettings,
+    userId,
+  ]);
 
   // Load initial data when user is available
   useEffect(() => {

@@ -54,7 +54,10 @@ import type {
   ProgressSnapshot,
   AchievementCelebration,
 } from "../services/progressSharingService";
-import { supabase } from "@shared/services/supabaseClient";
+import { useAuth } from "@shared/context/AuthContext";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchTeamMembersWithProfiles } from "@shared/cache/coreFetchers";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -64,6 +67,16 @@ interface TeamProgressOverviewProps {
   teamId: string;
   onMemberClick?: (userId: string) => void;
 }
+
+type TeamMemberRowWithProfile = {
+  user_id: string;
+  profiles: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
 
 interface MemberProgress {
   userId: string;
@@ -270,6 +283,8 @@ export function TeamProgressOverview({
   teamId,
   onMemberClick,
 }: TeamProgressOverviewProps) {
+  const { user } = useAuth();
+
   // State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -291,38 +306,28 @@ export function TeamProgressOverview({
     setError(null);
 
     try {
-      // First, get all team members
-      const { data: members, error: membersError } = await supabase
-        .from("team_members")
-        .select(
-          `
-          user_id,
-          profiles!team_members_user_id_fkey (
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `
-        )
-        .eq("team_id", teamId)
-        .neq("status", "removed");
-
-      if (membersError) {
-        setError("Failed to load team members");
+      if (!user?.id) {
+        setError("You must be signed in to view team progress");
         setLoading(false);
         return;
       }
 
+      // Load team members via shared cache so team dashboards don't requery on every navigation.
+      const qc = getAppQueryClient();
+      const members = await qc.ensureQueryData({
+        queryKey: coreKeys.teamMembers(user.id, teamId),
+        queryFn: () =>
+          fetchTeamMembersWithProfiles<TeamMemberRowWithProfile>(
+            user.id,
+            teamId
+          ),
+        staleTime: 60 * 60 * 1000,
+      });
+
       // Load progress for each member
       const memberProgressData: MemberProgress[] = await Promise.all(
         (members || []).map(async (member) => {
-          const profile = member.profiles as unknown as {
-            id: string;
-            first_name: string;
-            last_name: string;
-            avatar_url: string | null;
-          };
+          const profile = member.profiles;
 
           // Get latest snapshot
           const snapshotsResult =
@@ -343,7 +348,7 @@ export function TeamProgressOverview({
           return {
             userId: member.user_id,
             userName: profile
-              ? `${profile.first_name} ${profile.last_name}`.trim()
+              ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
               : "Unknown User",
             userAvatar: profile?.avatar_url || undefined,
             latestSnapshot: snapshotsResult.data?.[0],
@@ -373,7 +378,16 @@ export function TeamProgressOverview({
     } finally {
       setLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, user?.id]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user?.id) return;
+    const qc = getAppQueryClient();
+    await qc.invalidateQueries({
+      queryKey: coreKeys.teamMembers(user.id, teamId),
+    });
+    await loadTeamProgress();
+  }, [loadTeamProgress, teamId, user?.id]);
 
   /**
    * Calculate aggregate team statistics
@@ -460,7 +474,7 @@ export function TeamProgressOverview({
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="h6">Team Progress Overview</Typography>
         <Tooltip title="Refresh data">
-          <IconButton onClick={loadTeamProgress} disabled={loading}>
+          <IconButton onClick={handleRefresh} disabled={loading}>
             <RefreshIcon />
           </IconButton>
         </Tooltip>

@@ -41,8 +41,14 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { supabase } from "@shared/services/supabaseClient";
-import { withUser } from "@shared/services/crud";
 import type { JobRow } from "@job_pipeline/types";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import {
+  fetchCoverLetterDrafts,
+  fetchResumeDrafts,
+} from "@shared/cache/coreFetchers";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 // Types for resume/cover drafts (minimal interface)
 interface DraftDocument {
@@ -75,7 +81,8 @@ export default function DocumentsDrawer({
   const { user } = useAuth();
   const { handleError, showSuccess } = useErrorHandler();
 
-  const [jobs, setJobs] = useState<JobRow[]>([]);
+  const jobsQuery = useCoreJobs<JobRow>(user?.id);
+  const jobs = jobsQuery.data ?? [];
   const [selectedJobId, setSelectedJobId] = useState<number | "">(
     initialJobId || ""
   );
@@ -83,7 +90,7 @@ export default function DocumentsDrawer({
   const [resumes, setResumes] = useState<DraftDocument[]>([]);
   const [covers, setCovers] = useState<DraftDocument[]>([]);
 
-  const [loadingJobs, setLoadingJobs] = useState(false);
+  const loadingJobs = jobsQuery.isLoading;
   const [loadingMaterials, setLoadingMaterials] = useState(false);
 
   // Update selected job if prop changes
@@ -93,40 +100,19 @@ export default function DocumentsDrawer({
     }
   }, [initialJobId]);
 
-  // Load jobs for this user
-  useEffect(() => {
-    if (!user?.id) return;
-    setLoadingJobs(true);
-    (async () => {
-      try {
-        const userCrud = withUser(user.id);
-        const res = await userCrud.listRows("jobs", "*", {
-          order: { column: "created_at", ascending: false },
-        });
-        if (res.error) throw new Error(res.error.message);
-        setJobs((res.data || []) as JobRow[]);
-      } catch (err) {
-        handleError(err, "Failed to load jobs");
-        setJobs([]);
-      } finally {
-        setLoadingJobs(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
   // Load materials whenever a job is selected
   useEffect(() => {
     if (!user?.id || selectedJobId === "") return;
     setLoadingMaterials(true);
     (async () => {
       try {
-        // 1) Resume drafts: fetch all resumes for user and filter by metadata keys
-        const { data: resumeRows, error: resumeErr } = await supabase
-          .from("resume_drafts")
-          .select("*")
-          .eq("user_id", user.id);
-        if (resumeErr) throw resumeErr;
+        const qc = getAppQueryClient();
+
+        const resumeRows = await qc.ensureQueryData({
+          queryKey: coreKeys.resumeDrafts(user.id),
+          queryFn: () => fetchResumeDrafts<DraftDocument>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
 
         const resumeCandidates = (resumeRows || []).filter(
           (r: DraftDocument) => {
@@ -137,16 +123,20 @@ export default function DocumentsDrawer({
           }
         );
 
-        // 2) Cover letters from database for this job
-        const { data: dbCovers, error: coverErr } = await supabase
-          .from("cover_letter_drafts")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("job_id", selectedJobId as number);
-        if (coverErr) throw coverErr;
+        const coverRows = await qc.ensureQueryData({
+          queryKey: coreKeys.coverLetterDrafts(user.id),
+          queryFn: () => fetchCoverLetterDrafts<DraftDocument>(user.id),
+          staleTime: 60 * 60 * 1000,
+        });
+
+        const coversForJob = (coverRows || []).filter((c: DraftDocument) => {
+          const jobId =
+            (c as any).job_id ?? (c as any).jobId ?? c.metadata?.jobId;
+          return String(jobId) === String(selectedJobId);
+        });
 
         setResumes(resumeCandidates || []);
-        setCovers(dbCovers || []);
+        setCovers(coversForJob || []);
       } catch (err) {
         console.error(err);
         handleError(err, "Failed to load materials for job");

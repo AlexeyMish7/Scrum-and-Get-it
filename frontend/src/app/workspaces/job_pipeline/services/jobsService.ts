@@ -33,9 +33,153 @@ import { dataCache, getCacheKey } from "@shared/services/cache";
 import { deduplicateRequest } from "@shared/utils";
 import { supabase } from "@shared/services/supabaseClient";
 import { checkAndCreateAchievement } from "../../team_management/services/progressSharingService";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 
 // Cache TTL for job data (5 minutes)
 const JOBS_CACHE_TTL = 5 * 60 * 1000;
+
+function normalizeString(v: unknown): string {
+  return String(v ?? "").toLowerCase();
+}
+
+function getJobUnknownField(job: JobRow, field: string): unknown {
+  return (job as unknown as Record<string, unknown>)[field];
+}
+
+function applyClientSideFilters(all: JobRow[], filters?: JobFilters): JobRow[] {
+  if (!filters) return all;
+
+  let out = all;
+
+  // Stage filter
+  if (filters.stage && filters.stage !== "All") {
+    out = out.filter(
+      (j) => String(j.job_status ?? "") === String(filters.stage)
+    );
+  }
+
+  // Industry filter
+  if (filters.industry) {
+    const want = normalizeString(filters.industry);
+    out = out.filter((j) => normalizeString(j.industry).includes(want));
+  }
+
+  // Job type filter
+  if (filters.jobType) {
+    const want = String(filters.jobType);
+    out = out.filter(
+      (j) => String(getJobUnknownField(j, "job_type") ?? "") === want
+    );
+  }
+
+  // Search across title/company/description
+  if (filters.search) {
+    const q = normalizeString(filters.search);
+    out = out.filter((j) => {
+      const hay =
+        normalizeString(j.job_title) +
+        " " +
+        normalizeString(j.company_name) +
+        " " +
+        normalizeString(getJobUnknownField(j, "job_description"));
+      return hay.includes(q);
+    });
+  }
+
+  // Salary range (best-effort)
+  if (typeof filters.minSalary === "number") {
+    out = out.filter((j) => {
+      const val = Number(getJobUnknownField(j, "start_salary_range") ?? 0);
+      return Number.isFinite(val) && val >= filters.minSalary!;
+    });
+  }
+  if (typeof filters.maxSalary === "number") {
+    out = out.filter((j) => {
+      const val = Number(
+        getJobUnknownField(j, "end_salary_range") ??
+          getJobUnknownField(j, "start_salary_range") ??
+          0
+      );
+      return Number.isFinite(val) && val <= filters.maxSalary!;
+    });
+  }
+
+  // Date filters (best-effort ISO comparisons)
+  const toTime = (d?: string | null) => {
+    if (!d) return null;
+    const t = new Date(String(d)).getTime();
+    return Number.isFinite(t) ? t : null;
+  };
+
+  if (filters.deadlineAfter || filters.deadlineBefore) {
+    const after = toTime(filters.deadlineAfter) ?? null;
+    const before = toTime(filters.deadlineBefore) ?? null;
+    out = out.filter((j) => {
+      const t = toTime(getJobUnknownField(j, "application_deadline") ?? null);
+      if (t == null) return true;
+      if (after != null && t < after) return false;
+      if (before != null && t > before) return false;
+      return true;
+    });
+  }
+
+  if (filters.createdAfter || filters.createdBefore) {
+    const after = toTime(filters.createdAfter) ?? null;
+    const before = toTime(filters.createdBefore) ?? null;
+    out = out.filter((j) => {
+      const t = toTime(j.created_at ?? null);
+      if (t == null) return true;
+      if (after != null && t < after) return false;
+      if (before != null && t > before) return false;
+      return true;
+    });
+  }
+
+  return out;
+}
+
+function applyClientSideSort(rows: JobRow[], filters?: JobFilters): JobRow[] {
+  const sortBy = filters?.sortBy ?? "created_at";
+  const sortOrder = filters?.sortOrder ?? "desc";
+  const dir = sortOrder === "asc" ? 1 : -1;
+
+  const toTime = (d: unknown) => {
+    const t = new Date(String(d ?? "")).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+
+  const out = [...rows];
+  out.sort((a, b) => {
+    if (sortBy === "created_at")
+      return dir * (toTime(a.created_at) - toTime(b.created_at));
+    if (sortBy === "application_deadline")
+      return (
+        dir *
+        (toTime(getJobUnknownField(a, "application_deadline")) -
+          toTime(getJobUnknownField(b, "application_deadline")))
+      );
+    if (sortBy === "company_name")
+      return (
+        dir *
+        String(a.company_name ?? "").localeCompare(String(b.company_name ?? ""))
+      );
+    if (sortBy === "job_title")
+      return (
+        dir * String(a.job_title ?? "").localeCompare(String(b.job_title ?? ""))
+      );
+    return 0;
+  });
+  return out;
+}
+
+function applyPagination(rows: JobRow[], filters?: JobFilters): JobRow[] {
+  const offset = filters?.offset ?? 0;
+  const limit = filters?.limit;
+  if (!limit) return offset ? rows.slice(offset) : rows;
+  return rows.slice(offset, offset + limit);
+}
 
 /**
  * LIST JOBS: Retrieve jobs for a user with optional filters and pagination.
@@ -65,71 +209,37 @@ const listJobs = async (
 
   // Deduplicate the request to prevent parallel fetches of same data
   return deduplicateRequest(dedupKey, async () => {
-    // Check cache first (only for simple queries without complex filters)
-    const useCache = !filters?.search && !filters?.stage && !filters?.industry;
-    if (useCache) {
+    // Prefer the app-wide React Query cache so jobs are loaded once per session
+    // and reused across workspaces (AI hub, pipeline, analytics, etc.).
+    try {
+      const qc = getAppQueryClient();
+      const all = await qc.ensureQueryData({
+        queryKey: coreKeys.jobs(userId),
+        queryFn: () => fetchCoreJobs<JobRow>(userId),
+        staleTime: 60 * 60 * 1000,
+      });
+
+      const allJobs = Array.isArray(all) ? (all as JobRow[]) : [];
+      const filtered = applyClientSideFilters(allJobs, filters);
+      const sorted = applyClientSideSort(filtered, filters);
+      const paged = applyPagination(sorted, filters);
+
+      // Keep legacy 5-min in-memory cache populated for older call sites.
       const cacheKey = getCacheKey("jobs", userId, "list");
-      const cached = dataCache.get<JobRow[]>(cacheKey);
-      if (cached) {
-        return { data: cached, error: null, status: null };
-      }
-    }
+      dataCache.set(cacheKey, paged, JOBS_CACHE_TTL);
 
-    const userCrud = crud.withUser(userId);
-
-    // Build query options from filters
-    const options: Record<string, unknown> = {};
-
-    // Sorting
-    if (filters?.sortBy) {
-      options.order = {
-        column: filters.sortBy,
-        ascending: filters.sortOrder === "asc",
-      };
-    } else {
-      // Default sort: most recent first
-      options.order = { column: "created_at", ascending: false };
+      return { data: paged, error: null, status: null };
+    } catch {
+      // Fallback to direct Supabase read if cache/persistence is unavailable.
+      const userCrud = crud.withUser(userId);
+      const result = await userCrud.listRows<JobRow>("jobs", "*", {
+        order: {
+          column: filters?.sortBy ?? "created_at",
+          ascending: (filters?.sortOrder ?? "desc") === "asc",
+        },
+      });
+      return result;
     }
-
-    // Pagination
-    if (filters?.limit) {
-      options.limit = filters.limit;
-    }
-    if (filters?.offset) {
-      options.offset = filters.offset;
-    }
-
-    // Filtering (stage, industry, job_type)
-    // Note: Search filtering requires more complex query building (ILIKE)
-    // For now, we'll do basic equality filters and handle search client-side
-    // Future: Move to RPC function for full-text search
-    const eqFilters: Record<string, unknown> = {};
-    if (filters?.stage && filters.stage !== "All") {
-      eqFilters.job_status = filters.stage;
-    }
-    if (filters?.industry) {
-      eqFilters.industry = filters.industry;
-    }
-    if (filters?.jobType) {
-      eqFilters.job_type = filters.jobType;
-    }
-    if (Object.keys(eqFilters).length > 0) {
-      options.eq = eqFilters;
-    }
-
-    // Range filters for salary and dates
-    // Future enhancement: add gte/lte support to crud layer
-    // For now, we'll fetch all and filter client-side for complex queries
-
-    const result = await userCrud.listRows<JobRow>("jobs", "*", options);
-
-    // Cache successful results (only for simple queries)
-    if (useCache && result.data && !result.error) {
-      const cacheKey = getCacheKey("jobs", userId, "list");
-      dataCache.set(cacheKey, result.data, JOBS_CACHE_TTL);
-    }
-
-    return result;
   });
 };
 
@@ -154,6 +264,22 @@ const getJob = async (
   const dedupKey = `job-${jobId}-${userId}`;
 
   return deduplicateRequest(dedupKey, async () => {
+    // Prefer the shared core jobs cache to avoid redundant Supabase reads.
+    // If the job isn't present in cache (deleted/stale), fall back to a direct fetch.
+    try {
+      const qc = getAppQueryClient();
+      const all = await qc.ensureQueryData({
+        queryKey: coreKeys.jobs(userId),
+        queryFn: () => fetchCoreJobs<JobRow>(userId),
+        staleTime: 60 * 60 * 1000,
+      });
+      const allJobs = Array.isArray(all) ? (all as JobRow[]) : [];
+      const found = allJobs.find((j) => j.id === jobId) ?? null;
+      if (found) return { data: found, error: null, status: null };
+    } catch {
+      // ignore and fall back
+    }
+
     const userCrud = crud.withUser(userId);
     return await userCrud.getRow("jobs", "*", {
       eq: { id: jobId },
@@ -199,6 +325,7 @@ const createJob = async (
   const userCrud = crud.withUser(userId);
 
   // Build database payload
+  const formRecord = formData as unknown as Record<string, unknown>;
   const payload: Record<string, unknown> = {
     job_title: formData.job_title.trim(),
     company_name: formData.company_name.trim(),
@@ -213,7 +340,7 @@ const createJob = async (
     job_description: formData.job_description ?? null,
     industry: formData.industry ?? null,
     job_type: formData.job_type ?? null,
-    location_type: (formData as any).location_type ?? null,
+    location_type: formRecord["location_type"] ?? null,
     // Default to "Interested" if no status provided
     job_status: formData.job_status ?? "Interested",
     status_changed_at: new Date().toISOString(),
@@ -221,8 +348,20 @@ const createJob = async (
 
   const result = await userCrud.insertRow<JobRow>("jobs", payload, "*");
 
-  // Invalidate cache on successful insert
   if (result.data && !result.error) {
+    // Keep app-wide cache in sync so other workspaces see the new job immediately.
+    try {
+      const qc = getAppQueryClient();
+      qc.setQueryData(coreKeys.jobs(userId), (old: unknown) => {
+        const existing = Array.isArray(old) ? (old as JobRow[]) : [];
+        const inserted = result.data as JobRow;
+        return [inserted, ...existing.filter((j) => j.id !== inserted.id)];
+      });
+    } catch {
+      // ignore
+    }
+
+    // Legacy in-memory cache invalidation for older call sites.
     dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
 
     // Trigger achievement check for application milestone
@@ -255,18 +394,12 @@ const createJob = async (
 };
 
 /**
- * UPDATE JOB: Update an existing job entry (partial updates supported).
- *
- * Inputs:
- * - userId: User UUID (RLS scope)
- * - jobId: Job ID (bigint as number)
- * - updates: Partial job data to update
+ * UPDATE JOB: Update fields on a job entry.
  *
  * Outputs:
  * - Result<JobRow> with updated job data
  *
  * Error modes:
- * - Job not found
  * - Job belongs to different user (RLS blocks)
  * - Validation error (if updating required fields to invalid values)
  */
@@ -318,6 +451,17 @@ const updateJob = async (
 
   // Invalidate cache on successful update
   if (result.data && !result.error) {
+    try {
+      const qc = getAppQueryClient();
+      qc.setQueryData(coreKeys.jobs(userId), (old: unknown) => {
+        const existing = Array.isArray(old) ? (old as JobRow[]) : [];
+        const updated = result.data as JobRow;
+        return existing.map((j) => (j.id === updated.id ? updated : j));
+      });
+    } catch {
+      // ignore
+    }
+
     dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
   }
 
@@ -348,6 +492,16 @@ const deleteJob = async (
 
   // Invalidate cache on successful delete
   if (!result.error) {
+    try {
+      const qc = getAppQueryClient();
+      qc.setQueryData(coreKeys.jobs(userId), (old: unknown) => {
+        const existing = Array.isArray(old) ? (old as JobRow[]) : [];
+        return existing.filter((j) => j.id !== jobId);
+      });
+    } catch {
+      // ignore
+    }
+
     dataCache.invalidatePattern(new RegExp(`^jobs-${userId}`));
   }
 

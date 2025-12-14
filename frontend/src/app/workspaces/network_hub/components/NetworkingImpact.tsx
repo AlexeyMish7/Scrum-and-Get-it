@@ -8,7 +8,7 @@
  * job search success with detailed charts and statistics.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import {
   Box,
   Typography,
@@ -37,6 +37,8 @@ import {
   Handshake,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import { getNetworkingImpact } from "../services/peerGroupsService";
 import type { ImpactSummary } from "../types/peerGroups.types";
 
@@ -164,42 +166,26 @@ export const NetworkingImpact: React.FC = () => {
   const { user } = useAuth();
   const userId = user?.id;
 
-  const [impact, setImpact] = useState<ImpactSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const impactQuery = useQuery({
+    queryKey: networkKeys.peerNetworkingImpact(userId ?? "anon"),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const result = await getNetworkingImpact(userId as string);
+      if (result.error) throw new Error(result.error.message);
+      return (result.data ?? null) as ImpactSummary | null;
+    },
+  });
 
-  // Load networking impact data
-  const loadImpact = useCallback(async () => {
-    if (!userId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await getNetworkingImpact(userId);
-      if (result.data) {
-        setImpact(result.data);
-      } else if (result.error) {
-        setError(result.error.message);
-      }
-    } catch (err) {
-      console.error("Error loading networking impact:", err);
-      setError("Failed to load networking impact data");
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    loadImpact();
-  }, [loadImpact]);
+  const impact = impactQuery.data ?? null;
+  const error = (impactQuery.error as Error | null)?.message ?? null;
 
   // Derive impact level from score
   const impactLevel = impact
     ? getImpactLevel(impact.overall_impact_score)
     : "low";
 
-  if (loading) {
+  if (impactQuery.isLoading) {
     return (
       <Box
         display="flex"
@@ -253,7 +239,7 @@ export const NetworkingImpact: React.FC = () => {
           </Typography>
         </Box>
         <Tooltip title="Refresh data">
-          <IconButton onClick={loadImpact}>
+          <IconButton onClick={() => impactQuery.refetch()}>
             <Refresh />
           </IconButton>
         </Tooltip>

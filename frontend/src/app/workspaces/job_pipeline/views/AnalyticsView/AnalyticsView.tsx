@@ -11,7 +11,7 @@
  * - Features: Interview funnel, response rates, stage durations, goals, export
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Box,
   Typography,
@@ -26,7 +26,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  TextField,
   Button,
 } from "@mui/material";
 import {
@@ -36,7 +35,7 @@ import {
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
-import crud from "@shared/services/crud";
+import { useCoreJobs } from "@shared/cache";
 import BenchmarkCard from "@job_pipeline/pages/AnalyticsPage/BenchmarkCard";
 import SalaryProgressionCard from "@job_pipeline/components/cards/SalaryProgressionCard/SalaryProgressionCard";
 import SalaryResearchCard from "@job_pipeline/components/cards/SalaryResearchCard/SalaryResearchCard";
@@ -64,42 +63,22 @@ import {
 } from "@job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 import type { JobRecord } from "@job_pipeline/pages/AnalyticsPage/analyticsHelpers";
 
+const EMPTY_JOBS: JobRecord[] = [];
+
 export default function AnalyticsView() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [jobs, setJobs] = useState<JobRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const coreJobsQuery = useCoreJobs<JobRecord>(user?.id, {
+    enabled: !!user?.id,
+    staleTimeMs: 5 * 60 * 1000,
+  });
 
-  // Load jobs
-  useEffect(() => {
-    if (!user?.id) return;
-    let mounted = true;
-    setLoading(true);
-    const userCrud = crud.withUser(user.id);
-    userCrud
-      .listRows<JobRecord>(
-        "jobs",
-        "id, job_title, company_name, industry, job_type, created_at, job_status, status_changed_at, application_deadline"
-      )
-      .then((res) => {
-        if (!mounted) return;
-        if (res.error) {
-          setError(res.error.message ?? "Failed to load jobs");
-          setJobs([]);
-        } else {
-          setJobs((res.data ?? []) as JobRecord[]);
-        }
-      })
-      .catch((e) => {
-        if (!mounted) return;
-        setError(String(e));
-      })
-      .finally(() => mounted && setLoading(false));
-
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
+  const jobs = coreJobsQuery.data ?? EMPTY_JOBS;
+  const loading = coreJobsQuery.isFetching;
+  const error = coreJobsQuery.isError
+    ? coreJobsQuery.error instanceof Error
+      ? coreJobsQuery.error.message
+      : String(coreJobsQuery.error)
+    : null;
 
   // Funnel breakdown
   const funnel = useMemo(() => {
@@ -566,12 +545,18 @@ export default function AnalyticsView() {
               <Divider sx={{ my: 1 }} />
               <Box
                 sx={{
-                  position: 'relative',
+                  position: "relative",
                   height: 180,
-                  width: '100%',
+                  width: "100%",
                 }}
               >
-                <svg width="100%" height="180" viewBox="0 0 1000 180" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                <svg
+                  width="100%"
+                  height="180"
+                  viewBox="0 0 1000 180"
+                  preserveAspectRatio="none"
+                  style={{ overflow: "visible" }}
+                >
                   {/* Grid lines */}
                   {[0, 1, 2, 3, 4, 5].map((i) => (
                     <line
@@ -585,40 +570,50 @@ export default function AnalyticsView() {
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}
-                  
+
                   {/* Line chart */}
-                  {monthlyApps.length > 1 && (() => {
-                    const chartWidth = 930; // 980 - 50
-                    const startX = 50;
-                    const spacing = chartWidth / (monthlyApps.length - 1);
-                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
-                    
-                    return (
-                      <polyline
-                        points={monthlyApps.map((m, i) => {
-                          const x = startX + (i * spacing);
-                          const y = 160 - (m.count / maxCount) * 120;
-                          return `${x},${y}`;
-                        }).join(' ')}
-                        fill="none"
-                        stroke="#1976d2"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    );
-                  })()}
-                  
+                  {monthlyApps.length > 1 &&
+                    (() => {
+                      const chartWidth = 930; // 980 - 50
+                      const startX = 50;
+                      const spacing = chartWidth / (monthlyApps.length - 1);
+                      const maxCount = Math.max(
+                        ...monthlyApps.map((d) => d.count),
+                        1
+                      );
+
+                      return (
+                        <polyline
+                          points={monthlyApps
+                            .map((m, i) => {
+                              const x = startX + i * spacing;
+                              const y = 160 - (m.count / maxCount) * 120;
+                              return `${x},${y}`;
+                            })
+                            .join(" ")}
+                          fill="none"
+                          stroke="#1976d2"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      );
+                    })()}
+
                   {/* Data points */}
                   {(() => {
                     const chartWidth = 930;
                     const startX = 50;
-                    const spacing = chartWidth / Math.max(monthlyApps.length - 1, 1);
-                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
-                    
+                    const spacing =
+                      chartWidth / Math.max(monthlyApps.length - 1, 1);
+                    const maxCount = Math.max(
+                      ...monthlyApps.map((d) => d.count),
+                      1
+                    );
+
                     return monthlyApps.map((m, i) => {
-                      const x = startX + (i * spacing);
+                      const x = startX + i * spacing;
                       const y = 160 - (m.count / maxCount) * 120;
                       return (
                         <g key={i}>
@@ -644,12 +639,15 @@ export default function AnalyticsView() {
                       );
                     });
                   })()}
-                  
+
                   {/* Y-axis labels */}
                   {(() => {
-                    const maxCount = Math.max(...monthlyApps.map(d => d.count), 1);
+                    const maxCount = Math.max(
+                      ...monthlyApps.map((d) => d.count),
+                      1
+                    );
                     return [0, 1, 2, 3, 4, 5].map((i) => {
-                      const value = Math.round((5 - i) * maxCount / 5);
+                      const value = Math.round(((5 - i) * maxCount) / 5);
                       return (
                         <text
                           key={i}

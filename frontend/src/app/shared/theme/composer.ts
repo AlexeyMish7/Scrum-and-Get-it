@@ -103,7 +103,8 @@ function getContrastTextColor(backgroundColor: string): string {
 
 /**
  * Applies a color preset to base tokens.
- * Only modifies palette colors, leaving effects/motion untouched.
+ * SUBTLE MODE: Only modifies accent colors (primary/secondary), borders, and highlights.
+ * Background and surface colors remain controlled by light/dark mode for consistency.
  */
 function applyColorPreset(
   baseTokens: BaseTokens,
@@ -118,7 +119,7 @@ function applyColorPreset(
     palette: {
       ...baseTokens.palette,
 
-      // Apply core colors from the preset palette
+      // Apply core accent colors from the preset (PRIMARY/SECONDARY only)
       primary: palette.primary,
       onPrimary: palette.onPrimary,
       primaryLight: palette.primaryLight,
@@ -129,32 +130,37 @@ function applyColorPreset(
       secondaryLight: palette.secondaryLight,
       secondaryDark: palette.secondaryDark,
 
+      // Keep tertiary subtle or use base
       tertiary: palette.tertiary ?? baseTokens.palette.tertiary,
       onTertiary: palette.onTertiary ?? baseTokens.palette.onTertiary,
 
-      // Apply semantic colors from palette if defined
-      error: palette.error ?? baseTokens.palette.error,
-      warning: palette.warning ?? baseTokens.palette.warning,
-      success: palette.success ?? baseTokens.palette.success,
-      info: palette.info ?? baseTokens.palette.info,
+      // Semantic colors remain from base (consistent across presets)
+      error: baseTokens.palette.error,
+      warning: baseTokens.palette.warning,
+      success: baseTokens.palette.success,
+      info: baseTokens.palette.info,
 
-      // Apply mode-specific backgrounds and surfaces
-      background: modeColors.background,
-      onBackground: modeColors.onBackground,
-      backgroundAlt: modeColors.backgroundAlt,
-      surface: modeColors.surface,
-      surfaceAlt: modeColors.surfaceAlt,
-      onSurface: modeColors.onSurface,
+      // KEEP base mode backgrounds/surfaces (don't let presets change these!)
+      background: baseTokens.palette.background,
+      onBackground: baseTokens.palette.onBackground,
+      backgroundAlt: baseTokens.palette.backgroundAlt,
+      surface: baseTokens.palette.surface,
+      surfaceAlt: baseTokens.palette.surfaceAlt,
+      onSurface: baseTokens.palette.onSurface,
+
+      // Subtle preset influence on borders and dividers only
       divider: modeColors.divider,
       border: modeColors.border,
 
-      // Update text colors based on mode
+      // Text colors stay with base mode (not preset-dependent)
       text: {
-        primary: modeColors.textPrimary,
-        secondary: modeColors.textSecondary,
-        tertiary: modeColors.textTertiary,
-        disabled: modeColors.textDisabled,
+        primary: baseTokens.palette.text?.primary ?? modeColors.textPrimary,
+        secondary:
+          baseTokens.palette.text?.secondary ?? modeColors.textSecondary,
+        tertiary: baseTokens.palette.text?.tertiary ?? modeColors.textTertiary,
+        disabled: baseTokens.palette.text?.disabled ?? modeColors.textDisabled,
         inverse: baseTokens.palette.text?.inverse ?? "#ffffff",
+        // Links use preset primary for accent
         link: palette.primary,
         linkHover: palette.primaryDark,
       },

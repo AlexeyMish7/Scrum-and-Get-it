@@ -8,7 +8,7 @@ import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../../components/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { jobsService } from "@job_pipeline/services";
+import { useCoreJobs } from "@shared/cache/coreHooks";
 
 /**
  * ViewArchivedJobs
@@ -18,6 +18,7 @@ import { jobsService } from "@job_pipeline/services";
 export default function ViewArchivedJobs() {
   const { user } = useAuth();
   const { handleError } = useErrorHandler();
+  const jobsQuery = useCoreJobs<Record<string, unknown>>(user?.id);
 
   const [allJobs, setAllJobs] = useState<Record<string, unknown>[]>([]);
   const [visible, setVisible] = useState<Record<string, unknown>[]>([]);
@@ -29,27 +30,22 @@ export default function ViewArchivedJobs() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      if (!user) return;
-      try {
-        const res = await jobsService.listJobs(user.id);
-        if (res.error) return handleError(res.error);
-        const rows = (res.data ?? []) as Record<string, unknown>[];
-        if (!mounted) return;
-        // keep only archived jobs
-        const archived = rows.filter(
-          (r) => String(r.job_status ?? "").toLowerCase() === "archive"
-        );
-        setAllJobs(archived);
-        setVisible(archived);
-      } catch (err) {
-        handleError(err);
-      }
-    })();
+    if (!user?.id) return;
+
+    const rows = Array.isArray(jobsQuery.data) ? jobsQuery.data : [];
+    // keep only archived jobs
+    const archived = rows.filter(
+      (r) => String(r.job_status ?? "").toLowerCase() === "archive"
+    );
+
+    if (!mounted) return;
+    setAllJobs(archived);
+    setVisible(archived);
+
     return () => {
       mounted = false;
     };
-  }, [user, handleError]);
+  }, [user?.id, jobsQuery.data]);
 
   function applyFilters(filters: JobFilters) {
     const f = filters ?? ({} as JobFilters);

@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Box, Button, Container, Paper, Typography } from "@mui/material";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { getAppQueryClient } from "@shared/cache";
 
 /**
  * ERROR BOUNDARY COMPONENT
@@ -92,11 +93,19 @@ export class ErrorBoundary extends Component<
   };
 
   /**
-   * Reload the page as a last resort
-   * Use this when the error is critical and recovery is unlikely
+   * Reset React Query cache as a last resort
+   * This avoids a full page reload while still clearing potentially-corrupted app state.
    */
-  handleReload = (): void => {
-    window.location.reload();
+  handleReload = async (): Promise<void> => {
+    try {
+      const queryClient = getAppQueryClient();
+      await queryClient.cancelQueries();
+      queryClient.clear();
+    } catch {
+      // ignore
+    }
+
+    this.handleReset();
   };
 
   render(): ReactNode {
@@ -203,7 +212,7 @@ export class ErrorBoundary extends Component<
                 color="primary"
                 onClick={this.handleReload}
               >
-                Reload Page
+                Reset App
               </Button>
             </Box>
 

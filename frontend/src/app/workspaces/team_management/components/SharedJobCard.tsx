@@ -51,6 +51,9 @@ import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@shared/context/AuthContext";
 import { useTeam } from "@shared/context/useTeam";
 import { supabase } from "@shared/services/supabaseClient";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchTeamMessagesWithProfiles } from "@shared/cache/coreFetchers";
 
 // ============================================================================
 // TYPES
@@ -158,44 +161,36 @@ export function SharedJobCard({
     setError(null);
 
     try {
-      // Query team_messages that reference this shared job
-      // Use ->> operator to query JSONB field as text
-      const { data, error: fetchError } = await supabase
-        .from("team_messages")
-        .select(
-          `
-          id,
-          sender_id,
-          message_text,
-          created_at,
-          metadata,
-          sender:profiles!sender_id(full_name, first_name, last_name)
-        `
-        )
-        .eq("team_id", currentTeam.id)
-        .order("created_at", { ascending: true });
-
-      if (fetchError) {
-        console.error("Failed to load comments:", fetchError);
-        setError("Failed to load comments");
+      if (!user?.id) {
+        setError("You must be signed in to view comments");
         return;
       }
 
+      // Load team messages through cache so expanding multiple cards doesn't requery Supabase.
+      const qc = getAppQueryClient();
       type MessageRow = {
         id: string;
         sender_id: string;
         message_text: string;
         created_at: string;
-        metadata?: Record<string, unknown> | null;
+        metadata?:
+          | ({ parent_share_id?: string } & Record<string, unknown>)
+          | null;
         sender?: {
           full_name?: string | null;
           first_name?: string | null;
           last_name?: string | null;
         };
       };
+      const data = await qc.ensureQueryData({
+        queryKey: coreKeys.teamMessages(user.id, currentTeam.id),
+        queryFn: () =>
+          fetchTeamMessagesWithProfiles<MessageRow>(user.id, currentTeam.id),
+        staleTime: 60 * 60 * 1000,
+      });
 
       // Filter in JS for comments that reference this shared job
-      const filtered = ((data || []) as MessageRow[]).filter((msg) => {
+      const filtered = (Array.isArray(data) ? data : []).filter((msg) => {
         return msg.metadata?.parent_share_id === job.id;
       });
 
@@ -275,6 +270,11 @@ export function SharedJobCard({
           createdAt: new Date().toISOString(),
         },
       ]);
+
+      // Keep cached lists consistent for other views.
+      getAppQueryClient().invalidateQueries({
+        queryKey: coreKeys.teamMessages(user.id, currentTeam.id),
+      });
 
       setNewComment("");
       onCommentAdded?.();

@@ -3,7 +3,10 @@ import type { URL } from "node:url";
 import { ApiError } from "../../../utils/errors.js";
 import { readJson, sendJson } from "../../../utils/http.js";
 import { checkLimit } from "../../../utils/rateLimiter.js";
-import { legacyLogInfo as logInfo, legacyLogError as logError } from "../../../utils/logger.js";
+import {
+  legacyLogInfo as logInfo,
+  legacyLogError as logError,
+} from "../../../utils/logger.js";
 import { predictJobSearch } from "../../services/prediction.service.js";
 import type { GenerationCounters } from "../generate/types.js";
 
@@ -45,22 +48,53 @@ export async function post(
     const result = await predictJobSearch({ jobs, userId });
     const latencyMs = Date.now() - start;
 
-    if (result.error) {
+    // Check for error response
+    if ("error" in result) {
       logError("predict.failure", { userId, reqId, error: result.error });
+      counters.generate_fail++;
       throw new ApiError(502, result.error, "ai_error");
+    }
+
+    // Ensure predictions exist
+    if (!result.predictions || !Array.isArray(result.predictions)) {
+      logError("predict.no_predictions_returned", { userId, reqId, result });
+      counters.generate_fail++;
+      throw new ApiError(
+        502,
+        "No predictions returned from service",
+        "ai_error"
+      );
     }
 
     counters.generate_success++;
     sendJson(res, 200, {
       success: true,
       predictions: result.predictions,
-      simulated: Boolean((result as any).simulated),
-      debug: (result as any).debug ?? null,
+      simulated: Boolean(result.simulated),
+      debug: result.debug ?? null,
       meta: { latency_ms: latencyMs },
     });
   } catch (err: any) {
-    counters.generate_fail++;
-    logError("predict.error", { userId, reqId, error: err?.message ?? String(err) });
-    throw new ApiError(502, err?.message ?? "Failed to generate predictions", "ai_error");
+    // Only increment fail counter if not already incremented above
+    if (!err.code || err.code !== "ai_error") {
+      counters.generate_fail++;
+    }
+    logError("predict.error", {
+      userId,
+      reqId,
+      error: err?.message ?? String(err),
+      stack: err?.stack,
+    });
+
+    // Re-throw if it's already an ApiError
+    if (err.code) {
+      throw err;
+    }
+
+    throw new ApiError(
+      502,
+      err?.message ?? "Failed to generate predictions",
+      "ai_error"
+    );
   }
 }

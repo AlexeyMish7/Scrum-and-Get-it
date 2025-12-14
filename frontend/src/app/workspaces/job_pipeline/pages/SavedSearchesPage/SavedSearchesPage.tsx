@@ -7,12 +7,16 @@ import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../../components/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
-import { jobsService } from "@job_pipeline/services";
 import { useState, useEffect } from "react";
+import { useCoreJobs } from "@shared/cache/coreHooks";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 
 export default function SavedSearchesPage() {
   const { user } = useAuth();
   const { handleError } = useErrorHandler();
+  const jobsQuery = useCoreJobs<any>(user?.id);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [matchedJobs, setMatchedJobs] = useState<any[] | null>(null);
   const [allJobs, setAllJobs] = useState<any[] | null>(null);
@@ -24,31 +28,24 @@ export default function SavedSearchesPage() {
   // Load all non-archived jobs once when the page mounts so searches operate on local data
   useEffect(() => {
     let mounted = true;
-    async function fetchJobs() {
-      if (!user) return;
-      try {
-        const res = await jobsService.listJobs(user.id);
-        if (res.error) return handleError(res.error);
-        const rows = (res.data ?? []) as any[];
-        const filtered = rows.filter(
-          (r) =>
-            String(r.job_status ?? r.jobStatus ?? "").toLowerCase() !==
-            "archive"
-        );
-        if (!mounted) return;
-        setAllJobs(filtered);
-        // Show all non-archived jobs by default when the page loads
-        setMatchedJobs(filtered);
-        setPreviewCount(filtered.length);
-      } catch (err) {
-        handleError(err);
-      }
-    }
-    fetchJobs();
+    if (!user?.id) return;
+
+    const rows = Array.isArray(jobsQuery.data) ? jobsQuery.data : [];
+    const filtered = rows.filter(
+      (r) =>
+        String(r.job_status ?? r.jobStatus ?? "").toLowerCase() !== "archive"
+    );
+
+    if (!mounted) return;
+    setAllJobs(filtered);
+    // Show all non-archived jobs by default when the page loads
+    setMatchedJobs(filtered);
+    setPreviewCount(filtered.length);
+
     return () => {
       mounted = false;
     };
-  }, [user, handleError]);
+  }, [user?.id, jobsQuery.data]);
 
   async function handleApply(filters: JobFilters) {
     if (!user) return handleError("Not signed in");
@@ -56,9 +53,17 @@ export default function SavedSearchesPage() {
       // Prefer filtering from the cached allJobs; fallback to fetching if not loaded yet
       let rows = allJobs;
       if (!rows) {
-        const res = await jobsService.listJobs(user.id);
-        if (res.error) return handleError(res.error);
-        rows = (res.data ?? []) as any[];
+        if (Array.isArray(jobsQuery.data)) {
+          rows = jobsQuery.data;
+        } else {
+          const qc = getAppQueryClient();
+          const cachedRows = await qc.ensureQueryData({
+            queryKey: coreKeys.jobs(user.id),
+            queryFn: () => fetchCoreJobs(user.id),
+            staleTime: 60 * 60 * 1000,
+          });
+          rows = Array.isArray(cachedRows) ? (cachedRows as any[]) : [];
+        }
       }
       // ensure we only search non-archived rows
       rows = rows.filter(

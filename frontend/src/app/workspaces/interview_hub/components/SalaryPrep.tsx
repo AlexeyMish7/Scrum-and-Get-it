@@ -13,10 +13,11 @@ import {
   Slider,
 } from "@mui/material";
 import aiClient from "@shared/services/ai/client";
-import { useAuth } from "@shared/context/AuthContext";
-import profileService from "@profile/services/profileService";
-import employmentService from "@profile/services/employment";
-import educationService from "@profile/services/education";
+import {
+  useEducationData,
+  useEmploymentData,
+  useProfileData,
+} from "@profile/cache";
 
 type NegotiationRecord = {
   id: string;
@@ -30,6 +31,38 @@ type NegotiationRecord = {
 };
 
 const STORAGE_KEY = "sgt:salary_negotiations";
+
+type SalaryResearchResponse = {
+  range?: {
+    min?: unknown;
+    median?: unknown;
+    max?: unknown;
+  };
+};
+
+type SalaryTalkingPointsResponse = {
+  points?: unknown;
+};
+
+function parseEducationGpa(educationItem: unknown): {
+  degree: string;
+  institution: string;
+  gpa: string;
+} | null {
+  if (!educationItem || typeof educationItem !== "object") return null;
+  const row = educationItem as Record<string, unknown>;
+
+  const gpa = row.gpa;
+  const gpaPrivate = row.gpaPrivate;
+  const degree = row.degree;
+  const institution = row.institution;
+
+  if (!gpa || gpaPrivate) return null;
+  if (typeof degree !== "string" || typeof institution !== "string")
+    return null;
+
+  return { degree, institution, gpa: String(gpa) };
+}
 
 function uid(prefix = "sn") {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -46,7 +79,6 @@ export default function SalaryPrep() {
     max: number;
   } | null>(null);
   const [talkingPoints, setTalkingPoints] = useState<string[]>([]);
-  const [scripts, setScripts] = useState<Record<string, string>>({});
   const [outcomes, setOutcomes] = useState<NegotiationRecord[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -56,23 +88,31 @@ export default function SalaryPrep() {
     }
   });
 
-  const { user } = useAuth();
+  // Reuse the unified profile cache to avoid repeated Supabase reads.
+  const profileQuery = useProfileData();
+  const employmentQuery = useEmploymentData();
+  const educationQuery = useEducationData();
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(outcomes));
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, [outcomes]);
 
   async function generateMarket(roleIn: string, locIn: string) {
     setMarketData(null);
     try {
-      const payload = { role: roleIn, location: locIn } as any;
+      const payload = { role: roleIn, location: locIn };
       const res = await aiClient
-        .postJson("/api/generate/salary-research", payload)
+        .postJson<SalaryResearchResponse>(
+          "/api/generate/salary-research",
+          payload
+        )
         .catch(() => null);
-      if (res && (res as any).range) {
-        const r = (res as any).range;
+      if (res?.range) {
+        const r = res.range;
         setMarketData({
           min: Number(r.min) || 0,
           med: Number(r.median) || 0,
@@ -80,7 +120,7 @@ export default function SalaryPrep() {
         });
         return;
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
     // fallback: crude heuristic based on role keywords and location
@@ -112,34 +152,28 @@ export default function SalaryPrep() {
   async function generateTalkingPoints() {
     setTalkingPoints([]);
     try {
-      // If user is signed in, include profile + employment history to personalize talking points
-      let profile: any = null;
-      let employment: any[] = [];
-      try {
-        if (user && user.id) {
-          profile = await profileService.getProfile(user.id).catch(() => null);
-          employment =
-            (await employmentService
-              .listEmployment(user.id)
-              .catch(() => null)) || [];
-        }
-      } catch {}
+      const profile = profileQuery.data ?? null;
+      const employment = employmentQuery.data ?? [];
+      const education = educationQuery.data ?? [];
 
-      const payload: any = { role, location, offeredSalary, targetSalary };
+      const payload: Record<string, unknown> = {
+        role,
+        location,
+        offeredSalary,
+        targetSalary,
+      };
       if (profile) payload.profile = profile;
-      if (employment) payload.employment = employment;
-      try {
-        const edu =
-          (await educationService.listEducation(user.id).catch(() => null)) ||
-          null;
-        if (edu && (edu as any).data) payload.education = (edu as any).data;
-      } catch {}
+      if (employment.length) payload.employment = employment;
+      if (education.length) payload.education = education;
 
       const res = await aiClient
-        .postJson("/api/generate/salary_talking_points", payload)
+        .postJson<SalaryTalkingPointsResponse>(
+          "/api/generate/salary_talking_points",
+          payload
+        )
         .catch(() => null);
-      if (res && Array.isArray((res as any).points)) {
-        setTalkingPoints((res as any).points.map((p: any) => String(p)));
+      if (res && Array.isArray(res.points)) {
+        setTalkingPoints(res.points.map((p) => String(p)));
         return;
       }
     } catch {
@@ -149,14 +183,9 @@ export default function SalaryPrep() {
     // fallback suggestions that try to leverage profile/employment text
     const pts = [] as string[];
     try {
-      let profile: any = null;
-      let employment: any[] = [];
-      if (user && user.id) {
-        profile = await profileService.getProfile(user.id).catch(() => null);
-        employment =
-          (await employmentService.listEmployment(user.id).catch(() => [])) ||
-          [];
-      }
+      const profile = profileQuery.data ?? null;
+      const employment = employmentQuery.data ?? [];
+      const education = educationQuery.data ?? [];
 
       if (employment && employment.length) {
         // pull up to 3 strong achievements from job_description fields if present
@@ -177,25 +206,17 @@ export default function SalaryPrep() {
 
       // include GPA from education if available
       try {
-        if (!pts.length && user && user.id) {
-          const ed = await educationService
-            .listEducation(user.id)
-            .catch(() => null);
-          if (
-            ed &&
-            (ed as any).data &&
-            Array.isArray((ed as any).data) &&
-            (ed as any).data.length
-          ) {
-            const first = (ed as any).data[0];
-            if (first && first.gpa && !first.gpaPrivate) {
-              pts.unshift(
-                `Academic credentials: ${first.degree} from ${first.institution} with GPA ${first.gpa}`
-              );
-            }
+        if (!pts.length && education.length) {
+          const gpaInfo = parseEducationGpa(education[0]);
+          if (gpaInfo) {
+            pts.unshift(
+              `Academic credentials: ${gpaInfo.degree} from ${gpaInfo.institution} with GPA ${gpaInfo.gpa}`
+            );
           }
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       if (profile && profile.bio && pts.length < 4) {
         pts.push(
@@ -220,7 +241,7 @@ export default function SalaryPrep() {
       pts.push(
         `Frame the ask around total compensation and growth, and propose concrete alternatives (bonus, RSUs, signing bonus) if base can't move.`
       );
-    } catch (e) {
+    } catch {
       pts.push(
         `Highlight recent measurable impact and link to market data to justify your ask.`
       );
@@ -332,7 +353,7 @@ export default function SalaryPrep() {
           <TextField
             label="Offered salary (USD)"
             type="number"
-            value={offeredSalary as any}
+            value={offeredSalary as string | number}
             onChange={(e) =>
               setOfferedSalary(
                 e.target.value === "" ? "" : Number(e.target.value)
@@ -343,7 +364,7 @@ export default function SalaryPrep() {
           <TextField
             label="Target / Counter (USD)"
             type="number"
-            value={targetSalary as any}
+            value={targetSalary as string | number}
             onChange={(e) =>
               setTargetSalary(
                 e.target.value === "" ? "" : Number(e.target.value)

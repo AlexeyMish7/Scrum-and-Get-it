@@ -38,14 +38,14 @@ const lightPaletteTokens: BaseTokens = {
     onInfo: "#FFFFFF",
 
     // Backgrounds
-    background: "#fafbfc",
+    background: "#ffffff",
     onBackground: "#0f172a",
-    backgroundAlt: "#f1f5f9",
+    backgroundAlt: "#f8fafc",
 
     // Surfaces (cards, dialogs, etc.)
     surface: "rgba(255, 255, 255, 0.98)",
     onSurface: "#1e293b",
-    surfaceAlt: "#f8fafc",
+    surfaceAlt: "#f1f5f9",
 
     // Semantic colors
     error: "#dc2626",

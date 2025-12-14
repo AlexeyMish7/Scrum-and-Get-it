@@ -17,3 +17,6 @@ export {
   type ThemeShadows,
   type ThemeMotion,
 } from "./useThemeTokens";
+
+// AI Glossy Styles Hook
+export { useAIGlossyStyles } from "./useAIGlossyStyles";

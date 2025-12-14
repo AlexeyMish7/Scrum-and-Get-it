@@ -12,7 +12,7 @@
  * - Privacy settings management
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Container,
@@ -55,6 +55,8 @@ import {
   Add as AddIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import {
   listGroups,
   getUserGroups,
@@ -359,14 +361,10 @@ function ImpactWidget({ impact, loading }: ImpactWidgetProps) {
  */
 export default function PeerGroupsHub() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Groups data
-  const [allGroups, setAllGroups] = useState<PeerGroupWithMembership[]>([]);
-  const [myGroups, setMyGroups] = useState<PeerGroupWithMembership[]>([]);
-  const [impact, setImpact] = useState<ImpactSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -381,49 +379,48 @@ export default function PeerGroupsHub() {
   // Stable userId reference for effects
   const userId = user?.id;
 
-  // Fetch groups and impact on mount
-  useEffect(() => {
-    if (!userId) return;
+  const allGroupsQuery = useQuery({
+    queryKey: networkKeys.peerGroupsList(userId ?? "anon"),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const result = await listGroups(userId as string);
+      if (result.error) throw new Error(result.error.message);
+      return (result.data ?? []) as PeerGroupWithMembership[];
+    },
+  });
 
-    // Use captured userId which is guaranteed to be defined here
-    const currentUserId = userId;
+  const myGroupsQuery = useQuery({
+    queryKey: networkKeys.peerGroupsUser(userId ?? "anon"),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const result = await getUserGroups(userId as string);
+      if (result.error) throw new Error(result.error.message);
+      return (result.data ?? []) as PeerGroupWithMembership[];
+    },
+  });
 
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
+  const impactQuery = useQuery({
+    queryKey: networkKeys.peerNetworkingImpact(userId ?? "anon"),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const result = await getNetworkingImpact(userId as string);
+      if (result.error) throw new Error(result.error.message);
+      return (result.data ?? null) as ImpactSummary | null;
+    },
+  });
 
-      try {
-        // Fetch all groups and user's groups in parallel
-        const [allGroupsResult, myGroupsResult, impactResult] =
-          await Promise.all([
-            listGroups(currentUserId),
-            getUserGroups(currentUserId),
-            getNetworkingImpact(currentUserId),
-          ]);
+  const allGroups = allGroupsQuery.data ?? [];
+  const myGroups = myGroupsQuery.data ?? [];
+  const impact = impactQuery.data ?? null;
 
-        if (allGroupsResult.error) {
-          setError(allGroupsResult.error.message);
-        } else {
-          setAllGroups(allGroupsResult.data || []);
-        }
-
-        if (myGroupsResult.data) {
-          setMyGroups(myGroupsResult.data);
-        }
-
-        if (impactResult.data) {
-          setImpact(impactResult.data);
-        }
-      } catch (err) {
-        setError("Failed to load peer groups. Please try again.");
-        console.error("Error fetching peer groups:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [userId]);
+  const queryError =
+    (allGroupsQuery.error as Error | null) ||
+    (myGroupsQuery.error as Error | null) ||
+    (impactQuery.error as Error | null);
+  const displayedError = error ?? queryError?.message ?? null;
 
   // Filter groups based on search and category
   const filteredGroups = useMemo(() => {
@@ -465,25 +462,41 @@ export default function PeerGroupsHub() {
         return;
       }
 
-      // Update local state to reflect membership
-      setAllGroups((prev) =>
-        prev.map((g) =>
+      // Update caches so we avoid immediate refetches.
+      const listKey = networkKeys.peerGroupsList(user.id);
+      const mineKey = networkKeys.peerGroupsUser(user.id);
+      const impactKey = networkKeys.peerNetworkingImpact(user.id);
+
+      queryClient.setQueryData<PeerGroupWithMembership[]>(listKey, (prev) => {
+        const safePrev = prev ?? [];
+        return safePrev.map((g) =>
           g.id === groupId
-            ? { ...g, is_member: true, member_count: g.member_count + 1 }
+            ? {
+                ...g,
+                is_member: true,
+                member_count: (g.member_count ?? 0) + 1,
+              }
             : g
-        )
-      );
+        );
+      });
 
-      // Add to my groups
-      const joinedGroup = allGroups.find((g) => g.id === groupId);
-      if (joinedGroup) {
-        setMyGroups((prev) => [...prev, { ...joinedGroup, is_member: true }]);
-      }
+      queryClient.setQueryData<PeerGroupWithMembership[]>(mineKey, (prev) => {
+        const safePrev = prev ?? [];
+        const joinedGroup = allGroups.find((g) => g.id === groupId);
+        if (!joinedGroup) return safePrev;
+        const alreadyIncluded = safePrev.some((g) => g.id === groupId);
+        if (alreadyIncluded) return safePrev;
+        return [...safePrev, { ...joinedGroup, is_member: true }];
+      });
 
-      // Update impact stats
-      setImpact((prev) =>
-        prev ? { ...prev, total_groups: prev.total_groups + 1 } : prev
-      );
+      queryClient.setQueryData<ImpactSummary | null>(impactKey, (prev) => {
+        if (!prev) return prev;
+        return { ...prev, total_groups: (prev.total_groups ?? 0) + 1 };
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupById(user.id, groupId),
+      });
     } catch (err) {
       setError("Failed to join group. Please try again.");
       console.error("Error joining group:", err);
@@ -504,23 +517,39 @@ export default function PeerGroupsHub() {
         return;
       }
 
-      // Update local state
-      setAllGroups((prev) =>
-        prev.map((g) =>
+      const listKey = networkKeys.peerGroupsList(user.id);
+      const mineKey = networkKeys.peerGroupsUser(user.id);
+      const impactKey = networkKeys.peerNetworkingImpact(user.id);
+
+      queryClient.setQueryData<PeerGroupWithMembership[]>(listKey, (prev) => {
+        const safePrev = prev ?? [];
+        return safePrev.map((g) =>
           g.id === groupId
-            ? { ...g, is_member: false, member_count: g.member_count - 1 }
+            ? {
+                ...g,
+                is_member: false,
+                member_count: Math.max(0, (g.member_count ?? 0) - 1),
+              }
             : g
-        )
-      );
+        );
+      });
 
-      setMyGroups((prev) => prev.filter((g) => g.id !== groupId));
+      queryClient.setQueryData<PeerGroupWithMembership[]>(mineKey, (prev) => {
+        const safePrev = prev ?? [];
+        return safePrev.filter((g) => g.id !== groupId);
+      });
 
-      // Update impact stats
-      setImpact((prev) =>
-        prev
-          ? { ...prev, total_groups: Math.max(0, prev.total_groups - 1) }
-          : prev
-      );
+      queryClient.setQueryData<ImpactSummary | null>(impactKey, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          total_groups: Math.max(0, (prev.total_groups ?? 0) - 1),
+        };
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupById(user.id, groupId),
+      });
     } catch (err) {
       setError("Failed to leave group. Please try again.");
       console.error("Error leaving group:", err);
@@ -540,6 +569,11 @@ export default function PeerGroupsHub() {
     label: info.label,
     icon: info.icon,
   }));
+
+  const loading =
+    allGroupsQuery.isLoading ||
+    myGroupsQuery.isLoading ||
+    impactQuery.isLoading;
 
   if (loading) {
     return (
@@ -571,16 +605,16 @@ export default function PeerGroupsHub() {
       </Box>
 
       {/* Error alert */}
-      {error && (
+      {displayedError && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
+          {displayedError}
         </Alert>
       )}
 
       {/* Impact Widget and Quick Actions */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, md: 8 }}>
-          <ImpactWidget impact={impact} loading={false} />
+          <ImpactWidget impact={impact} loading={impactQuery.isFetching} />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Card sx={{ p: 2, height: "100%" }}>

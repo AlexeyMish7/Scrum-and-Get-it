@@ -17,13 +17,15 @@ frontend/src/app/workspaces/profile/
 ```
 profile/
 ├── ProfileLayout.tsx          # Main layout with ProfileSidebar
-├── cache/                     # React Query caching system
+├── cache/                     # React Query unified caching system
 │   ├── cacheConfig.ts         # ENV-based cache timing settings
 │   ├── index.ts               # Public exports
-│   ├── ProfileQueryProvider.tsx
+│   ├── ProfileQueryProvider.tsx  # Query client provider
 │   ├── queryKeys.ts           # Cache key definitions
-│   ├── useProfileQueries.ts   # Cached data hooks
-│   └── useRealtimeSync.ts     # Cache invalidation utilities
+│   ├── useProfileQueries.ts   # Individual data hooks (by type)
+│   ├── useUnifiedProfileCache.ts  # MAIN: Single query for all data
+│   ├── useRealtimeSync.ts     # Supabase real-time subscriptions
+│   └── (legacy files for migration)
 ├── components/
 │   ├── dialogs/               # Add dialogs for each section
 │   │   ├── AddEducationDialog.tsx
@@ -41,7 +43,7 @@ profile/
 │       ├── SkillsDistributionChart.tsx
 │       └── SummaryCards.tsx
 ├── hooks/
-│   └── useDashboardData.ts    # Dashboard data hook (wraps React Query)
+│   └── useDashboardData.ts    # Dashboard data hook (wraps unified cache)
 ├── pages/
 │   ├── auth/                  # Authentication pages
 │   ├── certifications/
@@ -51,7 +53,7 @@ profile/
 │   ├── employment/
 │   ├── home/
 │   ├── profile/
-│   │   └── ProfileDetails.tsx # Uses useFullProfile() cache
+│   │   └── ProfileDetails.tsx # Uses useUnifiedProfile() with select
 │   ├── projects/
 │   └── skills/
 ├── services/
@@ -68,7 +70,34 @@ profile/
 
 ## React Query Caching System
 
-The profile workspace uses React Query for efficient data caching. This eliminates duplicate API calls when navigating between pages.
+The profile workspace uses React Query with a **unified cache** architecture. One query fetches ALL profile data, and individual hooks extract what they need using selectors.
+
+### Architecture: Unified Cache
+
+```typescript
+// ONE query fetches everything
+useUnifiedProfile() → {
+  profile: ProfileData,
+  skills: SkillItem[],
+  employment: EmploymentRow[],
+  education: EducationEntry[],
+  projects: Project[],
+  certifications: Certification[]
+}
+
+// Individual hooks use "select" to extract data
+useProfileData()  → select: (data) => data.profile
+useSkills()       → select: (data) => data.skills
+useEmployment()   → select: (data) => data.employment
+// etc.
+```
+
+**Benefits:**
+
+- One network request fetches all data
+- Automatic cache sharing between dashboard and detail pages
+- Simple invalidation: `invalidateAll()` refreshes everything
+- Reduced Supabase calls (1 fetch vs 6+ individual fetches)
 
 ### Cache Configuration
 
@@ -89,16 +118,16 @@ Dashboard Load
       │
       ▼
 ┌─────────────────────────────────────────┐
-│  useDashboardQueries()                  │
-│  Fetches: header, employment, skills,   │
+│  useUnifiedProfile()                    │
+│  Fetches: profile, skills, employment,  │
 │  education, projects, certifications    │
-│  All stored in React Query cache        │
+│  Stored in ONE React Query cache entry  │
 └─────────────────────────────────────────┘
       │
       │  Navigate to Education page
       ▼
 ┌─────────────────────────────────────────┐
-│  useEducation() → Returns cached data   │
+│  useEducation() → select from cache     │
 │  NO new network request!                │
 └─────────────────────────────────────────┘
 ```
@@ -107,21 +136,28 @@ Dashboard Load
 
 ```typescript
 import {
-  useProfileHeader, // Name, email
-  useFullProfile, // All profile fields (for ProfileDetails)
-  useEmployment, // Employment list
-  useEducation, // Education list
-  useSkills, // Skills list
-  useProjects, // Projects list
-  useCertifications, // Certifications list
-  useDashboardQueries, // All data in parallel
-  useProfileCacheUtils, // Invalidation helpers
+  // Main unified query
+  useUnifiedProfile, // Returns ALL data
+
+  // Selector hooks (extract from unified cache)
+  useProfileData, // Profile info only
+  useSkills, // Skills array only
+  useEmployment, // Employment array only
+  useEducation, // Education array only
+  useProjects, // Projects array only
+  useCertifications, // Certifications array only
+
+  // Dashboard helpers
+  useDashboardQueries, // Parallel fetch helper (legacy)
+
+  // Cache utilities
+  useUnifiedCacheUtils, // Provides invalidateAll()
 } from "@profile/cache";
 ```
 
 ### Cache Invalidation (Unified Cache)
 
-After mutations (add/edit/delete), invalidate the unified cache so all profile slices refetch together:
+After mutations (add/edit/delete), invalidate the unified cache to refetch all data:
 
 ```typescript
 import { useUnifiedCacheUtils } from "@profile/cache";
@@ -130,14 +166,16 @@ const { invalidateAll } = useUnifiedCacheUtils();
 
 // After saving changes
 await saveEducation();
-await invalidateAll();
+await invalidateAll(); // Refetches entire unified profile
 ```
 
-Legacy window events (`education:changed`, `skills:changed`, etc.) remain for non-React Query listeners, but `invalidateAll()` is the source of truth for refreshing data.
+**All mutation points call `invalidateAll()`:**
+
+- `AddEducationDialog`, `AddEmploymentDialog`, `AddSkillDialog`, `AddProjectDialog`
+- `Certifications.tsx`, `ProfileDetails.tsx`, `ProjectPortfolio.tsx`
+- `SkillsOverview.tsx`, `EmploymentHistoryList.tsx`
 
 ### Components with Cache Invalidation
-
-All dialogs and pages that modify profile data now call `invalidateAll()` after successful mutations:
 
 | Component                   | Operations                     | Cache Action      |
 | --------------------------- | ------------------------------ | ----------------- |

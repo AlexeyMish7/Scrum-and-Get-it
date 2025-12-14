@@ -11,7 +11,8 @@
  * - Track referral status
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Card,
@@ -47,6 +48,7 @@ import {
   Person as PersonIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { networkKeys } from "@shared/cache/networkQueryKeys";
 import {
   getGroupReferrals,
   createReferral,
@@ -97,7 +99,10 @@ function daysUntilDeadline(dateString: string | null): number | null {
 
 interface ReferralCardProps {
   referral: PeerReferralWithSharer;
-  onInterest: (referralId: string, status: "interested" | "applied") => void;
+  onInterest: (
+    referralId: string,
+    status: "interested" | "applied"
+  ) => Promise<void>;
   isUpdating: boolean;
 }
 
@@ -504,8 +509,7 @@ function ShareReferralDialog({
 
 export default function PeerReferrals({ groupId }: PeerReferralsProps) {
   const { user } = useAuth();
-  const [referrals, setReferrals] = useState<PeerReferralWithSharer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -515,26 +519,23 @@ export default function PeerReferrals({ groupId }: PeerReferralsProps) {
 
   const userId = user?.id;
 
-  // Fetch referrals
-  const fetchReferrals = useCallback(async () => {
-    if (!userId) return;
+  const referralsQuery = useQuery({
+    queryKey: networkKeys.peerGroupReferrals(userId ?? "", groupId),
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      if (!userId) return [];
+      const result = await getGroupReferrals(userId, groupId);
+      if (result.error) throw result.error;
+      return result.data ?? [];
+    },
+  });
 
-    setLoading(true);
-    setError(null);
-
-    const result = await getGroupReferrals(userId, groupId);
-
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      setReferrals(result.data || []);
-    }
-    setLoading(false);
-  }, [userId, groupId]);
-
-  useEffect(() => {
-    fetchReferrals();
-  }, [fetchReferrals]);
+  const referrals = referralsQuery.data ?? [];
+  const loading = referralsQuery.isLoading;
+  const displayedError =
+    error ??
+    (referralsQuery.error as { message?: string } | null)?.message ??
+    null;
 
   // Handle sharing a referral
   async function handleShareReferral(data: CreateReferralData) {
@@ -547,7 +548,9 @@ export default function PeerReferrals({ groupId }: PeerReferralsProps) {
       setError(result.error.message);
     } else {
       setShareDialogOpen(false);
-      fetchReferrals();
+      await queryClient.invalidateQueries({
+        queryKey: networkKeys.peerGroupReferrals(userId, groupId),
+      });
     }
     setSubmitting(false);
   }
@@ -565,21 +568,23 @@ export default function PeerReferrals({ groupId }: PeerReferralsProps) {
     if (result.error) {
       setError(result.error.message);
     } else {
-      // Update local state
-      setReferrals((prev) =>
-        prev.map((r) =>
-          r.id === referralId
-            ? {
-                ...r,
-                user_interest: {
-                  ...r.user_interest,
-                  status,
-                } as typeof r.user_interest,
-                interested_count:
-                  (r.interested_count || 0) + (r.user_interest ? 0 : 1),
-              }
-            : r
-        )
+      // Update cached referrals so the UI reflects immediately without refetching
+      queryClient.setQueryData<PeerReferralWithSharer[]>(
+        networkKeys.peerGroupReferrals(userId, groupId),
+        (prev) =>
+          (prev ?? []).map((r) =>
+            r.id === referralId
+              ? {
+                  ...r,
+                  user_interest: {
+                    ...r.user_interest,
+                    status,
+                  } as typeof r.user_interest,
+                  interested_count:
+                    (r.interested_count || 0) + (r.user_interest ? 0 : 1),
+                }
+              : r
+          )
       );
     }
     setUpdatingReferralId(null);
@@ -626,9 +631,16 @@ export default function PeerReferrals({ groupId }: PeerReferralsProps) {
       </Box>
 
       {/* Error alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {displayedError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => {
+            setError(null);
+            referralsQuery.refetch();
+          }}
+        >
+          {displayedError}
         </Alert>
       )}
 

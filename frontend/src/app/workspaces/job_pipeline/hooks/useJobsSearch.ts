@@ -16,7 +16,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { jobsService } from "@job_pipeline/services";
+import { getAppQueryClient } from "@shared/cache";
+import { coreKeys } from "@shared/cache/coreQueryKeys";
+import { fetchCoreJobs } from "@shared/cache/coreFetchers";
 import type { JobRow } from "@shared/types/database";
 import type { JobFilters } from "@job_pipeline/types";
 
@@ -36,6 +38,161 @@ interface UseJobsSearchResult {
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const DEBOUNCE_DELAY_MS = 300; // 300ms
+
+function applyJobFilters(
+  rows: JobRow[],
+  searchQuery: string,
+  searchFilters?: JobFilters
+): JobRow[] {
+  let out = [...rows];
+
+  const query = String(searchQuery || searchFilters?.search || "")
+    .trim()
+    .toLowerCase();
+  if (query) {
+    out = out.filter((job) => {
+      const hay = (
+        String(job.job_title ?? job["title"] ?? "") +
+        " " +
+        String(job.company_name ?? job["company"] ?? "") +
+        " " +
+        String(job.job_description ?? "")
+      )
+        .toLowerCase()
+        .trim();
+      return hay.includes(query);
+    });
+  }
+
+  if (searchFilters?.stage && searchFilters.stage !== "All") {
+    out = out.filter(
+      (job) =>
+        String(job.job_status ?? "") === String(searchFilters.stage ?? "")
+    );
+  }
+
+  if (searchFilters?.industry) {
+    const industry = String(searchFilters.industry).toLowerCase();
+    out = out.filter((job) =>
+      String(job.industry ?? "")
+        .toLowerCase()
+        .includes(industry)
+    );
+  }
+
+  if (searchFilters?.jobType) {
+    const jobType = String(searchFilters.jobType).toLowerCase();
+    out = out.filter((job) =>
+      String((job as any).job_type ?? (job as any).jobType ?? "")
+        .toLowerCase()
+        .includes(jobType)
+    );
+  }
+
+  if (searchFilters?.minSalary != null) {
+    out = out.filter((job) => {
+      const val = Number(
+        (job as any).start_salary_range ?? (job as any).startSalary ?? 0
+      );
+      return Number.isFinite(val) && val >= Number(searchFilters.minSalary);
+    });
+  }
+
+  if (searchFilters?.maxSalary != null) {
+    out = out.filter((job) => {
+      const val = Number(
+        (job as any).start_salary_range ?? (job as any).startSalary ?? 0
+      );
+      return Number.isFinite(val) && val <= Number(searchFilters.maxSalary);
+    });
+  }
+
+  if (searchFilters?.deadlineAfter) {
+    const after = new Date(searchFilters.deadlineAfter).getTime();
+    out = out.filter((job) => {
+      const d =
+        (job as any).application_deadline ?? (job as any).applicationDeadline;
+      if (!d) return false;
+      return new Date(String(d)).getTime() >= after;
+    });
+  }
+
+  if (searchFilters?.deadlineBefore) {
+    const before = new Date(searchFilters.deadlineBefore).getTime();
+    out = out.filter((job) => {
+      const d =
+        (job as any).application_deadline ?? (job as any).applicationDeadline;
+      if (!d) return false;
+      return new Date(String(d)).getTime() <= before;
+    });
+  }
+
+  if (searchFilters?.createdAfter) {
+    const after = new Date(searchFilters.createdAfter).getTime();
+    out = out.filter((job) => {
+      const d = (job as any).created_at ?? (job as any).createdAt;
+      if (!d) return false;
+      return new Date(String(d)).getTime() >= after;
+    });
+  }
+
+  if (searchFilters?.createdBefore) {
+    const before = new Date(searchFilters.createdBefore).getTime();
+    out = out.filter((job) => {
+      const d = (job as any).created_at ?? (job as any).createdAt;
+      if (!d) return false;
+      return new Date(String(d)).getTime() <= before;
+    });
+  }
+
+  const sortBy = searchFilters?.sortBy;
+  const sortOrder = searchFilters?.sortOrder ?? "desc";
+  if (sortBy) {
+    const dir = sortOrder === "asc" ? 1 : -1;
+    out.sort((a, b) => {
+      switch (sortBy) {
+        case "application_deadline": {
+          const da = a.application_deadline
+            ? new Date(String(a.application_deadline)).getTime()
+            : 0;
+          const db = b.application_deadline
+            ? new Date(String(b.application_deadline)).getTime()
+            : 0;
+          return (da - db) * dir;
+        }
+        case "company_name":
+          return (
+            String(a.company_name ?? "").localeCompare(
+              String(b.company_name ?? "")
+            ) * dir
+          );
+        case "job_title":
+          return (
+            String(a.job_title ?? "").localeCompare(String(b.job_title ?? "")) *
+            dir
+          );
+        case "created_at":
+        default: {
+          const ta = a.created_at
+            ? new Date(String(a.created_at)).getTime()
+            : 0;
+          const tb = b.created_at
+            ? new Date(String(b.created_at)).getTime()
+            : 0;
+          return (ta - tb) * dir;
+        }
+      }
+    });
+  }
+
+  const offset = searchFilters?.offset ?? 0;
+  const limit = searchFilters?.limit;
+  if (offset || limit != null) {
+    out = out.slice(offset, limit != null ? offset + limit : undefined);
+  }
+
+  return out;
+}
 
 /**
  * JOBS SEARCH HOOK
@@ -137,20 +294,16 @@ export function useJobsSearch(
       setError(null);
 
       try {
-        const result = await jobsService.listJobs(userId, {
-          ...searchFilters,
-          search: searchQuery || undefined,
+        const qc = getAppQueryClient();
+        const cachedRows = await qc.ensureQueryData({
+          queryKey: coreKeys.jobs(userId),
+          queryFn: () => fetchCoreJobs<JobRow>(userId),
+          staleTime: 60 * 60 * 1000,
         });
 
-        if (result.error) {
-          setError(result.error.message ?? "Search failed");
-          return;
-        }
-
-        const data = Array.isArray(result.data) ? result.data : [];
+        const rows = Array.isArray(cachedRows) ? (cachedRows as JobRow[]) : [];
+        const data = applyJobFilters(rows, searchQuery, searchFilters);
         setResults(data);
-
-        // Cache results
         setCache(cacheKey, data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");

@@ -1,7 +1,15 @@
-import { useEffect, useState } from "react";
-import { Box, Typography, List, ListItem, ListItemText, Chip, Divider } from "@mui/material";
+import { useMemo, useState } from "react";
+import {
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  Divider,
+} from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
-import { withUser } from "@shared/services/crud";
+import { useCoreJobs } from "@shared/cache";
 import RightDrawer from "@shared/components/common/RightDrawer";
 import JobDetails from "../JobDetails/JobDetails";
 
@@ -32,57 +40,53 @@ function deadlineColor(days: number) {
 
 export default function NextDeadlinesWidget() {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | number | null>(
+    null
+  );
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      if (!user?.id) {
-        setJobs([]);
-        setLoading(false);
-        return;
-      }
-      try {
-        const userCrud = withUser(user.id);
-        const res = await userCrud.listRows<JobRow>(
-          "jobs",
-          "id, job_title, company_name, application_deadline, city_name, state_code, job_status",
-          { order: { column: "application_deadline", ascending: true } }
-        );
-        if (!mounted) return;
-        // Only include jobs that are still 'Interested' (we care about deadlines only before applying)
-        const rows = (res.data ?? [])
-          .filter((r) => r.application_deadline && String(r.job_status ?? "").toLowerCase() === "interested")
-          .map((r) => ({ ...r }))
-          .sort((a, b) => {
-            const da = a.application_deadline ? new Date(String(a.application_deadline)).getTime() : Infinity;
-            const db = b.application_deadline ? new Date(String(b.application_deadline)).getTime() : Infinity;
-            return da - db;
-          })
-          .slice(0, 5);
-        setJobs(rows);
-      } catch (e) {
-        setJobs([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
+  const coreJobsQuery = useCoreJobs<JobRow>(user?.id, {
+    enabled: !!user?.id,
+    staleTimeMs: 5 * 60 * 1000,
+  });
+
+  const jobs = useMemo(() => {
+    const rows = coreJobsQuery.data ?? [];
+
+    // Only include jobs that are still 'Interested' (we care about deadlines only before applying)
+    return rows
+      .filter(
+        (r) =>
+          r.application_deadline &&
+          String(r.job_status ?? "").toLowerCase() === "interested"
+      )
+      .slice()
+      .sort((a, b) => {
+        const da = a.application_deadline
+          ? new Date(String(a.application_deadline)).getTime()
+          : Infinity;
+        const db = b.application_deadline
+          ? new Date(String(b.application_deadline)).getTime()
+          : Infinity;
+        return da - db;
+      })
+      .slice(0, 5);
+  }, [coreJobsQuery.data]);
 
   return (
-    <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1 }}>
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        p: 1,
+      }}
+    >
       <Typography variant="h6" sx={{ mb: 1 }}>
         Next 5 Deadlines
       </Typography>
       <Divider sx={{ mb: 1 }} />
-      {loading ? (
+      {coreJobsQuery.isLoading ? (
         <Typography color="text.secondary">Loading…</Typography>
       ) : jobs.length === 0 ? (
         <Typography color="text.secondary">No upcoming deadlines</Typography>
@@ -91,12 +95,14 @@ export default function NextDeadlinesWidget() {
           {jobs.map((j) => {
             const title = String(j.job_title ?? "Untitled");
             const company = String(j.company_name ?? "Unknown");
-            const dl = j.application_deadline ? new Date(String(j.application_deadline)) : null;
+            const dl = j.application_deadline
+              ? new Date(String(j.application_deadline))
+              : null;
             const days = dl ? daysUntil(dl) : null;
             return (
               <ListItem
                 key={String(j.id)}
-                sx={{ py: 0.5, cursor: 'pointer' }}
+                sx={{ py: 0.5, cursor: "pointer" }}
                 onClick={() => {
                   setSelectedJobId(j.id);
                   setOpen(true);
@@ -104,12 +110,16 @@ export default function NextDeadlinesWidget() {
               >
                 <ListItemText
                   primary={title}
-                  secondary={`${company}${j.city_name ? ` · ${j.city_name}` : ""}`}
+                  secondary={`${company}${
+                    j.city_name ? ` · ${j.city_name}` : ""
+                  }`}
                 />
                 {days !== null && (
                   <Chip
                     label={days < 0 ? `Overdue ${Math.abs(days)}d` : `${days}d`}
-                    color={deadlineColor(days) as any}
+                    color={
+                      deadlineColor(days) as "success" | "warning" | "error"
+                    }
                     size="small"
                   />
                 )}

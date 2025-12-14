@@ -4,10 +4,8 @@
  * Displays all documents with filtering, search, and management.
  */
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-//import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
-import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,
   Typography,
@@ -36,10 +34,12 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
-import { withUser } from "@shared/services/crud";
 import { useTeam } from "@shared/context/useTeam";
 import { ShareDocumentDialog } from "../../../ai_workspace/components/reviews";
 import type { DocumentRow } from "@shared/types/database";
+import { useCoreDocuments } from "@shared/cache/coreHooks";
+
+const EMPTY_DOCUMENTS: DocumentRow[] = [];
 
 export default function DocumentLibrary() {
   const navigate = useNavigate();
@@ -47,12 +47,17 @@ export default function DocumentLibrary() {
   const { notification, closeNotification, handleError, showSuccess } =
     useErrorHandler();
   const { currentTeam } = useTeam();
-  const [documents, setDocuments] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<
     "all" | "resume" | "cover-letter"
   >("all");
+
+  const documentsQuery = useCoreDocuments(user?.id);
+  const documents = useMemo(
+    () => documentsQuery.data ?? EMPTY_DOCUMENTS,
+    [documentsQuery.data]
+  );
+  const loading = documentsQuery.isLoading;
 
   // Share dialog state
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -66,56 +71,33 @@ export default function DocumentLibrary() {
     setShareDialogOpen(true);
   }
 
-  // Fetch documents from database
+  // Surface query errors via the shared snackbar.
   useEffect(() => {
-    async function fetchDocuments() {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
+    if (documentsQuery.error) {
+      handleError(documentsQuery.error as Error);
+    }
+  }, [documentsQuery.error, handleError]);
 
-      setLoading(true);
-      try {
-        const userCrud = withUser(user.id);
-        const result = await userCrud.listRows<DocumentRow>("documents", "*", {
-          order: { column: "created_at", ascending: false },
-        });
+  const filteredDocuments = useMemo(() => {
+    let filtered = documents;
 
-        if (result.error) {
-          throw new Error(result.error.message || "Failed to fetch documents");
-        }
-
-        setDocuments(result.data || []);
-      } catch (err) {
-        handleError(err as Error);
-        setDocuments([]);
-      } finally {
-        setLoading(false);
-      }
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (doc) =>
+          doc.name.toLowerCase().includes(query) ||
+          doc.description?.toLowerCase().includes(query) ||
+          doc.target_company?.toLowerCase().includes(query) ||
+          doc.target_role?.toLowerCase().includes(query)
+      );
     }
 
-    fetchDocuments();
-  }, [user?.id, handleError]);
+    if (filterType !== "all") {
+      filtered = filtered.filter((doc) => doc.type === filterType);
+    }
 
-  // Apply filters
-  let filteredDocuments = documents;
-
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredDocuments = filteredDocuments.filter(
-      (doc) =>
-        doc.name.toLowerCase().includes(query) ||
-        doc.description?.toLowerCase().includes(query) ||
-        doc.target_company?.toLowerCase().includes(query) ||
-        doc.target_role?.toLowerCase().includes(query)
-    );
-  }
-
-  if (filterType !== "all") {
-    filteredDocuments = filteredDocuments.filter(
-      (doc) => doc.type === filterType
-    );
-  }
+    return filtered;
+  }, [documents, searchQuery, filterType]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4, pt: 10 }}>

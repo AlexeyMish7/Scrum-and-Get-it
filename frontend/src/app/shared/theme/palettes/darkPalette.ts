@@ -38,14 +38,14 @@ const darkPaletteTokens: BaseTokens = {
     onInfo: "#0f172a",
 
     // Backgrounds - deep slate
-    background: "#0c1222",
-    onBackground: "#f1f5f9",
-    backgroundAlt: "#111827",
+    background: "#0a0e1a",
+    onBackground: "#f8fafc",
+    backgroundAlt: "#0f1419",
 
     // Surfaces (cards, dialogs, etc.) - slightly elevated
-    surface: "rgba(17, 24, 39, 0.95)",
+    surface: "rgba(15, 20, 25, 0.98)",
     onSurface: "#e2e8f0",
-    surfaceAlt: "rgba(30, 41, 59, 0.85)",
+    surfaceAlt: "rgba(24, 30, 38, 0.90)",
 
     // Semantic colors
     error: "#f87171",

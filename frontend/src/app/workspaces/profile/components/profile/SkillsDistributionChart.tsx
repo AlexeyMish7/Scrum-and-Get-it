@@ -16,6 +16,7 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
+  Paper,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
@@ -124,9 +125,9 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
       ];
       return (
         <Box
+          component="div"
           sx={{
             backgroundColor: theme.palette.background.paper,
-            border: `1px solid ${theme.palette.divider}`,
             borderRadius: 1,
             p: 1.5,
             boxShadow: theme.shadows[2],
@@ -145,13 +146,12 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
   };
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
         p: 3,
         mt: 0,
-        backgroundColor: theme.palette.background.paper,
       }}
       role="region"
       aria-label="Skills distribution chart"
@@ -331,7 +331,7 @@ const SkillsDistributionChart: React.FC<SkillsDistributionChartProps> = ({
           )}
         </Box>
       )}
-    </Box>
+    </Paper>
   );
 };
 

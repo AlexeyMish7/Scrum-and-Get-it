@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from "react";
-import { Box, Typography, useTheme, Chip, alpha } from "@mui/material";
+import { Box, Typography, useTheme, Chip, alpha, Paper } from "@mui/material";
 import WorkIcon from "@mui/icons-material/Work";
 import BusinessIcon from "@mui/icons-material/Business";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -79,12 +79,11 @@ const CareerTimeline: React.FC<CareerTimelineProps> = ({ events }) => {
   );
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
         p: 3,
-        backgroundColor: theme.palette.background.paper,
       }}
       role="region"
       aria-label="Career timeline"
@@ -318,7 +317,7 @@ const CareerTimeline: React.FC<CareerTimelineProps> = ({ events }) => {
           })}
         </Box>
       )}
-    </Box>
+    </Paper>
   );
 };
 

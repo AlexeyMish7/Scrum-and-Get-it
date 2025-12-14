@@ -3,7 +3,7 @@
  * Timeline of status changes and activity for this job.
  */
 
-import { useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -19,7 +19,7 @@ import { FiberManualRecord, History } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { EmptyState, LoadingSpinner } from "@shared/components/feedback";
-import { listJobNotes } from "@shared/services/dbMappers";
+import { useJobNotesByJobId } from "@shared/cache/coreHooks";
 
 interface JobHistoryTabProps {
   jobId: number;
@@ -34,42 +34,36 @@ interface HistoryEntry {
 export default function JobHistoryTab({ jobId }: JobHistoryTabProps) {
   const { user } = useAuth();
   const { handleError } = useErrorHandler();
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const notesQuery = useJobNotesByJobId<Record<string, unknown>>(
+    user?.id,
+    jobId
+  );
+
+  const history = useMemo<HistoryEntry[]>(() => {
+    const notes = notesQuery.data;
+    const first = (Array.isArray(notes) ? notes[0] : null) as Record<
+      string,
+      unknown
+    > | null;
+    const raw = first?.["application_history"] ?? null;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((entry) => {
+        const e = entry as Record<string, unknown>;
+        const timestamp = String(e["timestamp"] ?? e["changed_at"] ?? "");
+        const status = String(e["status"] ?? e["to"] ?? "");
+        const action = String(e["action"] ?? e["note"] ?? e["reason"] ?? "");
+        if (!timestamp || !status) return null;
+        return { timestamp, status, action } as HistoryEntry;
+      })
+      .filter((x): x is HistoryEntry => Boolean(x));
+  }, [notesQuery.data]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (notesQuery.error) handleError(notesQuery.error);
+  }, [notesQuery.error, handleError]);
 
-    const loadHistory = async () => {
-      setLoading(true);
-      const result = await listJobNotes(user.id, { eq: { job_id: jobId } });
-
-      if (result.error) {
-        handleError(result.error);
-        setLoading(false);
-        return;
-      }
-
-      // Parse application_history from job_notes
-      if (result.data && result.data.length > 0) {
-        const note = result.data[0] as {
-          application_history?: HistoryEntry[];
-        };
-        if (
-          note.application_history &&
-          Array.isArray(note.application_history)
-        ) {
-          setHistory(note.application_history);
-        }
-      }
-
-      setLoading(false);
-    };
-
-    loadHistory();
-  }, [user?.id, jobId, handleError]);
-
-  if (loading) {
+  if (notesQuery.isLoading) {
     return <LoadingSpinner message="Loading activity history..." />;
   }
 

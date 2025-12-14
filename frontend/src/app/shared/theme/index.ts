@@ -40,6 +40,9 @@ export * from "./hooks";
 // Theme utilities - color manipulation, gradients
 export * from "./utils";
 
+// AI Glossy Styles - for AI-generated content
+export * from "./aiGlossy";
+
 // Theme preview components - for settings UI
 export * from "./components";
 

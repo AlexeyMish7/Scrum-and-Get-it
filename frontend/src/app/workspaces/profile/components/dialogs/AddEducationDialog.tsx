@@ -199,9 +199,6 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
 
       // Invalidate unified cache so all components get fresh data
       await invalidateAll();
-
-      // Notify other components of the change (for non-React Query listeners)
-      window.dispatchEvent(new Event("education:changed"));
       markProfileChanged();
 
       showSuccess(
@@ -256,9 +253,6 @@ export const AddEducationDialog: React.FC<AddEducationDialogProps> = ({
 
       // Invalidate unified cache so all components get fresh data
       await invalidateAll();
-
-      // Notify other components of the change (for non-React Query listeners)
-      window.dispatchEvent(new Event("education:changed"));
       markProfileChanged();
 
       showSuccess("Education deleted successfully");

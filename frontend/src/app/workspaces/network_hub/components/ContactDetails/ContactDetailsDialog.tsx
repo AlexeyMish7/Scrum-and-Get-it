@@ -1,5 +1,14 @@
-import { useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Tabs, Tab, Box, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Tabs,
+  Tab,
+  Box,
+} from "@mui/material";
 import ContactEditTab from "./ContactEditTab";
 import ContactInteractionsTab from "./ContactInteractions/ContactInteractionsTab";
 import ContactMutualsTab from "./ContactMutualsTab";
@@ -13,198 +22,264 @@ import InformationInterviewDialog from "../InformationInterview/InformationInter
 import ReferralRequest from "../Referral/ReferralRequest";
 
 type ContactRow = {
-    id?: string;
-    first_name?: string | null;
-    last_name?: string | null;
-    role?: string | null;
-    company?: string | null;
-    industry?: string | null;
-    relationship_strength?: number | null;
-    email?: string | null;
-    phone?: string | null;
-    personal_notes?: string | null;
-    professional_notes?: string | null;
-    is_professional_reference?: boolean | null;
+  id?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  role?: string | null;
+  company?: string | null;
+  industry?: string | null;
+  relationship_strength?: number | null;
+  email?: string | null;
+  phone?: string | null;
+  personal_notes?: string | null;
+  professional_notes?: string | null;
+  is_professional_reference?: boolean | null;
 };
 
 export default function ContactDetailsDialog({
-    open,
-    contact,
-    onClose,
-    onUpdate,
-    onDelete,
-    onRefresh,
-    initialSelectedJob,
-    initialTabKey,
+  open,
+  contact,
+  onClose,
+  onUpdate,
+  onDelete,
+  onRefresh,
+  initialSelectedJob,
+  initialTabKey,
 }: {
-    open: boolean;
-    contact?: ContactRow | null;
-    onClose?: () => void;
-    onUpdate?: (payload: Record<string, unknown>) => Promise<void> | void;
-    onDelete?: (id?: string) => Promise<void> | void;
-    onRefresh?: () => void;
-    initialSelectedJob?: Record<string, any> | null;
-    initialTabKey?: string | number | null;
+  open: boolean;
+  contact?: ContactRow | null;
+  onClose?: () => void;
+  onUpdate?: (payload: Record<string, unknown>) => Promise<void> | void;
+  onDelete?: (id?: string) => Promise<void> | void;
+  onRefresh?: () => void;
+  initialSelectedJob?: Record<string, unknown> | null;
+  initialTabKey?: string | number | null;
 }) {
-    const [tab, setTab] = useState(0);
-    const [contactData, setContactData] = useState<ContactRow | undefined>(contact ?? undefined);
-    const [selectedJob, setSelectedJob] = useState<Record<string, any> | null>(null);
-    const [addRefOpen, setAddRefOpen] = useState(false);
-    const [infoInterviewOpen, setInfoInterviewOpen] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [contactData, setContactData] = useState<ContactRow | undefined>(
+    contact ?? undefined
+  );
+  const [selectedJob, setSelectedJob] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [addRefOpen, setAddRefOpen] = useState(false);
+  const [infoInterviewOpen, setInfoInterviewOpen] = useState(false);
 
-    useEffect(() => {
-        if (!open) setTab(0);
-    }, [open]);
+  const isProfessionalReference = Boolean(
+    contactData?.is_professional_reference
+  );
+  const hasContact = Boolean(contactData);
 
-    const tabsDef = [
-        { key: "edit", label: "Edit" },
-        { key: "interactions", label: "Interactions" },
-        { key: "mutuals", label: "Mutuals" },
-        { key: "reminders", label: "Reminders" },
-        { key: "relationship", label: "Relationship Actions" },
+  useEffect(() => {
+    if (!open) setTab(0);
+  }, [open]);
+
+  const tabsDef = useMemo(() => {
+    const tabs = [
+      { key: "edit", label: "Edit" },
+      { key: "interactions", label: "Interactions" },
+      { key: "mutuals", label: "Mutuals" },
+      { key: "reminders", label: "Reminders" },
+      { key: "relationship", label: "Relationship Actions" },
     ];
+
     // Include 'request' tab if contact is a professional reference OR parent requested initialTabKey='request'
-    if (contactData?.is_professional_reference || initialTabKey === "request") {
-        tabsDef.push({ key: "request", label: "Reference Requests" });
+    if (isProfessionalReference || initialTabKey === "request") {
+      tabs.push({ key: "request", label: "Reference Requests" });
     }
 
     // Add a dedicated Referral Requests tab (visible when a contact exists or explicitly requested)
-    if (contactData || initialTabKey === "referral") {
-        tabsDef.push({ key: "referral", label: "Referral Requests" });
+    if (hasContact || initialTabKey === "referral") {
+      tabs.push({ key: "referral", label: "Referral Requests" });
     }
 
     // Add informational tab after conditional tabs so it appears later in order
-    tabsDef.push({ key: "informational", label: "Informational Interview" });
+    tabs.push({ key: "informational", label: "Informational Interview" });
 
-    // Ensure current tab index remains valid if tabs change (e.g. request tab appears/disappears)
-    useEffect(() => {
-        if (tab >= tabsDef.length) setTab(0);
-    }, [tab, tabsDef.length]);
+    return tabs;
+  }, [isProfessionalReference, initialTabKey, hasContact]);
 
-    useEffect(() => {
-        setContactData(contact ?? undefined);
-    }, [contact]);
+  // Ensure current tab index remains valid if tabs change (e.g. request tab appears/disappears)
+  useEffect(() => {
+    if (tab >= tabsDef.length) setTab(0);
+  }, [tab, tabsDef.length]);
 
-    // Apply initial selected job and initial tab when provided by parent
-    useEffect(() => {
-        if (initialSelectedJob) {
-            setSelectedJob(initialSelectedJob);
-        }
+  useEffect(() => {
+    setContactData(contact ?? undefined);
+  }, [contact]);
 
-        if (initialTabKey) {
-            const idx = tabsDef.findIndex((t) => t.key === String(initialTabKey));
-            if (idx >= 0) setTab(idx);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialSelectedJob, initialTabKey]);
+  // Apply initial selected job and initial tab when provided by parent
+  useEffect(() => {
+    if (initialSelectedJob) {
+      setSelectedJob(initialSelectedJob);
+    }
 
-    // Open/close the informational interview dialog when the informational tab is selected
-    useEffect(() => {
-        const key = tabsDef[tab]?.key;
-        if (key === "informational") setInfoInterviewOpen(true);
-        else setInfoInterviewOpen(false);
-    }, [tab, tabsDef.length, contactData, selectedJob]);
+    if (initialTabKey) {
+      const idx = tabsDef.findIndex((t) => t.key === String(initialTabKey));
+      if (idx >= 0) setTab(idx);
+    }
+  }, [initialSelectedJob, initialTabKey, tabsDef]);
 
-    // If parent provides an initial selected job or initial tab, apply them
-    useEffect(() => {
-        // no-op if not provided via props
-    }, []);
+  // Open/close the informational interview dialog when the informational tab is selected
+  useEffect(() => {
+    const key = tabsDef[tab]?.key;
+    if (key === "informational") setInfoInterviewOpen(true);
+    else setInfoInterviewOpen(false);
+  }, [tab, tabsDef]);
 
-    if (!contactData) return null;
+  // If parent provides an initial selected job or initial tab, apply them
+  useEffect(() => {
+    // no-op if not provided via props
+  }, []);
 
-    return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-            <DialogTitle>{`${contactData.first_name ?? ''} ${contactData.last_name ?? ''}`.trim() || 'Contact'}</DialogTitle>
-            <DialogContent dividers>
-                <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
-                    {tabsDef.map((t) => (
-                        <Tab key={t.key} label={t.label} />
-                    ))}
-                </Tabs>
+  if (!contactData) return null;
 
-                    <Box sx={{ mt: 2 }}>
-                        {tabsDef[tab]?.key === "edit" && (
-                            <ContactEditTab initialData={contactData} onSave={onUpdate} />
-                        )}
-                        {tabsDef[tab]?.key === "interactions" && (
-                            <ContactInteractionsTab contactId={contactData.id} onContactUpdated={(c: any) => { setContactData(c); onRefresh?.(); }} />
-                        )}
-                        {tabsDef[tab]?.key === "mutuals" && (
-                            <Box>
-                                <ContactMutualsTab contactId={contactData.id} onSave={async (payload: Record<string, unknown>) => {
-                                    // delegate to parent update handler
-                                    await onUpdate?.(payload);
-                                    // refresh details
-                                    onRefresh?.();
-                                }} onSaved={() => { onRefresh?.(); }} />
-                            </Box>
-                        )}
-                        {tabsDef[tab]?.key === "reminders" && (
-                            <AddReminders contactId={contactData.id} onSaved={() => { onRefresh?.(); }} />
-                        )}
-                        {tabsDef[tab]?.key === "relationship" && (
-                            <RelationshipActionsTab contact={contactData} onRefresh={() => { onRefresh?.(); }} />
-                        )}
-                        {tabsDef[tab]?.key === "informational" && (
-                            <Box>
-                                {/* Render the informational interview dialog and pass the selected contact/job */}
-                                <InformationInterviewDialog
-                                    open={infoInterviewOpen}
-                                    onClose={() => setInfoInterviewOpen(false)}
-                                    initialContact={contactData}
-                                    initialJob={initialSelectedJob ?? selectedJob}
-                                />
-                                {/* Provide a small hint while the dialog is visible as a modal */}
-                                {!infoInterviewOpen && (
-                                    <Box sx={{ p: 2 }}>
-                                        <Button variant="contained" onClick={() => setInfoInterviewOpen(true)}>Open Informational Interview</Button>
-                                    </Box>
-                                )}
-                            </Box>
-                        )}
-                        {tabsDef[tab]?.key === "request" && (
-                            <Box>
-                                <JobSearch onSelectJob={(job) => setSelectedJob(job)} selectedJob={selectedJob} />
-                                <GenerateReferenceGuide contact={contactData} job={selectedJob} />
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>
+        {`${contactData.first_name ?? ""} ${
+          contactData.last_name ?? ""
+        }`.trim() || "Contact"}
+      </DialogTitle>
+      <DialogContent dividers>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
+          {tabsDef.map((t) => (
+            <Tab key={t.key} label={t.label} />
+          ))}
+        </Tabs>
 
-                                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                                    <Button variant="contained" onClick={() => setAddRefOpen(true)} disabled={!selectedJob}>
-                                        Add Reference Request
-                                    </Button>
-                                </Box>
+        <Box sx={{ mt: 2 }}>
+          {tabsDef[tab]?.key === "edit" && (
+            <ContactEditTab initialData={contactData} onSave={onUpdate} />
+          )}
+          {tabsDef[tab]?.key === "interactions" && (
+            <ContactInteractionsTab
+              contactId={contactData.id}
+              onContactUpdated={(c) => {
+                setContactData(c);
+                onRefresh?.();
+              }}
+            />
+          )}
+          {tabsDef[tab]?.key === "mutuals" && (
+            <Box>
+              <ContactMutualsTab
+                contactId={contactData.id}
+                onSave={async (payload: Record<string, unknown>) => {
+                  // delegate to parent update handler
+                  await onUpdate?.(payload);
+                  // refresh details
+                  onRefresh?.();
+                }}
+                onSaved={() => {
+                  onRefresh?.();
+                }}
+              />
+            </Box>
+          )}
+          {tabsDef[tab]?.key === "reminders" && (
+            <AddReminders
+              contactId={contactData.id}
+              onSaved={() => {
+                onRefresh?.();
+              }}
+            />
+          )}
+          {tabsDef[tab]?.key === "relationship" && (
+            <RelationshipActionsTab
+              contact={contactData}
+              onRefresh={() => {
+                onRefresh?.();
+              }}
+            />
+          )}
+          {tabsDef[tab]?.key === "informational" && (
+            <Box>
+              {/* Render the informational interview dialog and pass the selected contact/job */}
+              <InformationInterviewDialog
+                open={infoInterviewOpen}
+                onClose={() => setInfoInterviewOpen(false)}
+                initialContact={contactData}
+                initialJob={initialSelectedJob ?? selectedJob}
+              />
+              {/* Provide a small hint while the dialog is visible as a modal */}
+              {!infoInterviewOpen && (
+                <Box sx={{ p: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={() => setInfoInterviewOpen(true)}
+                  >
+                    Open Informational Interview
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+          {tabsDef[tab]?.key === "request" && (
+            <Box>
+              <JobSearch
+                onSelectJob={(job) => setSelectedJob(job)}
+                selectedJob={selectedJob}
+              />
+              <GenerateReferenceGuide contact={contactData} job={selectedJob} />
 
-                                <Box sx={{ mt: 2 }}>
-                                    <ReferenceHistory contactId={contactData.id} />
-                                </Box>
+              <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={() => setAddRefOpen(true)}
+                  disabled={!selectedJob}
+                >
+                  Add Reference Request
+                </Button>
+              </Box>
 
-                                <AddReferenceHistory
-                                    open={addRefOpen}
-                                    contactId={contactData.id}
-                                    selectedJob={selectedJob}
-                                    onClose={() => setAddRefOpen(false)}
-                                    onSaved={() => {
-                                        setAddRefOpen(false);
-                                        onRefresh?.();
-                                    }}
-                                />
-                            </Box>
-                        )}
+              <Box sx={{ mt: 2 }}>
+                <ReferenceHistory contactId={contactData.id} />
+              </Box>
 
-                        {tabsDef[tab]?.key === "referral" && (
-                            <Box>
-                                {/* Referral tab renders the ReferralRequest component which includes job selection and listing */}
-                                <ReferralRequest contactId={contactData.id} initialSelectedJob={selectedJob ?? initialSelectedJob} />
-                            </Box>
-                        )}
-                    </Box>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Close</Button>
-                <Button color="error" onClick={async () => {
-                    // Parent (`ContactsList`) is responsible for confirmation; just call through
-                    await onDelete?.(contactData.id);
-                }}>Delete</Button>
-            </DialogActions>
-        </Dialog>
-    );
+              <AddReferenceHistory
+                open={addRefOpen}
+                contactId={contactData.id}
+                selectedJob={selectedJob}
+                onClose={() => setAddRefOpen(false)}
+                onSaved={() => {
+                  setAddRefOpen(false);
+                  onRefresh?.();
+                }}
+              />
+            </Box>
+          )}
+
+          {tabsDef[tab]?.key === "referral" && (
+            <Box>
+              {/* Referral tab renders the ReferralRequest component which includes job selection and listing */}
+              <ReferralRequest
+                contactId={contactData.id}
+                initialSelectedJob={selectedJob ?? initialSelectedJob}
+              />
+            </Box>
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+        <Button
+          color="error"
+          onClick={async () => {
+            // Parent (`ContactsList`) is responsible for confirmation; just call through
+            await onDelete?.(contactData.id);
+          }}
+        >
+          Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
