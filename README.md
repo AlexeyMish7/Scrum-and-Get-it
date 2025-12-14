@@ -133,16 +133,54 @@ npm install
 
 3. Set up environment variables:
 
-```bash
-# Frontend (.env)
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+This repo supports **separate environment configs** for development, staging, and production.
 
-# Backend (.env)
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OPENAI_API_KEY=your_openai_api_key
+**Frontend (Vite)**
+
+- Templates:
+  - `frontend/.env.example`
+  - `frontend/.env.development.example`
+  - `frontend/.env.staging.example`
+  - `frontend/.env.production.example`
+- Recommended local setup (development): copy a template to a local-only file:
+
+```bash
+cd frontend
+cp .env.development.example .env.development.local
 ```
+
+PowerShell:
+
+```powershell
+Set-Location frontend
+Copy-Item .env.development.example .env.development.local
+```
+
+**Backend (Node)**
+
+- Templates:
+  - `server/.env.example`
+  - `server/.env.development.example`
+  - `server/.env.staging.example`
+  - `server/.env.production.example`
+- Recommended local setup (development):
+
+```bash
+cd server
+cp .env.development.example .env.development.local
+```
+
+PowerShell:
+
+```powershell
+Set-Location server
+Copy-Item .env.development.example .env.development.local
+```
+
+Notes:
+
+- The server uses `AI_API_KEY` (and also supports `OPENAI_API_KEY` as a fallback).
+- Never commit real secrets. For deployments, use the hosting platform’s environment variable UI.
 
 4. Run database migrations:
 
@@ -168,6 +206,18 @@ npm run dev
 # Terminal 2: Backend
 cd server
 npm run dev
+```
+
+To run with environment-specific configs locally:
+
+```bash
+# Frontend
+cd frontend
+npm run dev:staging
+
+# Backend
+cd server
+npm run dev:staging
 ```
 
 ## Documentation

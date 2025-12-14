@@ -6,8 +6,36 @@
  */
 
 // Load environment variables FIRST (before any imports that depend on process.env)
+//
+// Why this exists (UC-131): we support separate dev/staging/production configs.
+// - In CI/production: deployment platforms set process.env directly (recommended).
+// - Locally: you can use Node's `--env-file` OR the dotenv files below.
+//
+// Behavior:
+// - Load `.env.<mode>` if it exists (mode = APP_ENV || NODE_ENV || "development")
+// - Then load `.env.<mode>.local` if it exists (overrides for per-dev secrets)
+// - Fallback to `.env` if no mode file exists
+import fs from "fs";
+import path from "path";
 import { config } from "dotenv";
-config(); // Loads .env from server/.env
+
+const envMode = (process.env.APP_ENV || process.env.NODE_ENV || "development")
+  .toLowerCase()
+  .trim();
+
+const envBasePath = path.resolve(process.cwd(), `.env.${envMode}`);
+const envLocalPath = path.resolve(process.cwd(), `.env.${envMode}.local`);
+const envFallbackPath = path.resolve(process.cwd(), ".env");
+
+if (fs.existsSync(envBasePath)) {
+  config({ path: envBasePath, override: false });
+  if (fs.existsSync(envLocalPath)) {
+    // Local overrides are intended for per-developer secrets.
+    config({ path: envLocalPath, override: true });
+  }
+} else {
+  config({ path: envFallbackPath, override: false });
+}
 
 import { createServer } from "./server.js";
 import { logSystemEvent, logError } from "../utils/logger.js";

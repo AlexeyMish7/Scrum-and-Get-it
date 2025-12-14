@@ -308,6 +308,24 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // AI GENERATION ENDPOINTS (protected)
     // ------------------------------------------------------------------
+    const aiRoutesEnabled =
+      (process.env.FEATURE_AI_ROUTES ?? "true").toLowerCase() !== "false";
+
+    // UC-131 (Feature flags): allow gradual rollout by disabling AI endpoints
+    // in staging/production without code changes.
+    if (
+      !aiRoutesEnabled &&
+      method === "POST" &&
+      pathname.startsWith("/api/generate/")
+    ) {
+      jsonReply(res, 503, {
+        error: "AI endpoints are disabled in this environment",
+        feature: "FEATURE_AI_ROUTES",
+      });
+      ctx.logComplete(method, pathname, 503);
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/generate/resume") {
       const userId = await requireAuth(req);
       await handleGenerateResume(req, res, url, ctx.reqId, userId, counters);
