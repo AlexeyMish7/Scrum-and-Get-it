@@ -43,6 +43,7 @@ import {
   Link as LinkIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 /**
  * Extracted job data structure (matches backend API)
@@ -168,8 +169,7 @@ export default function JobImportURL({ onImport }: Props) {
 
     try {
       // Call backend AI endpoint
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8787";
-      const response = await fetch(`${apiUrl}/api/generate/job-import`, {
+      const response = await fetch(toApiUrl("/api/generate/job-import"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

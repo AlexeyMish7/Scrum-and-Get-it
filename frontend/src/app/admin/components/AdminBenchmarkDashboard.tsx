@@ -1,6 +1,6 @@
 /**
  * Admin Benchmark Dashboard
- * 
+ *
  * Purpose: Allow admins to compute and monitor peer benchmarks
  * Displays benchmark coverage, sample sizes, and data quality
  * Provides button to trigger computation
@@ -27,6 +27,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 interface BenchmarkMetrics {
   applicationsPerMonth: number | null;
@@ -74,12 +75,13 @@ export function AdminBenchmarkDashboard() {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:8787/api/admin/benchmark-status", {
+      const response = await fetch(toApiUrl("/api/admin/benchmark-status"), {
         method: "GET",
-        credentials: "include",
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`,
-        } : {},
+        headers: session?.access_token
+          ? {
+              Authorization: `Bearer ${session.access_token}`,
+            }
+          : {},
       });
 
       if (!response.ok) {
@@ -105,12 +107,13 @@ export function AdminBenchmarkDashboard() {
     setSuccess(null);
 
     try {
-      const response = await fetch("http://localhost:8787/api/admin/compute-benchmarks", {
+      const response = await fetch(toApiUrl("/api/admin/compute-benchmarks"), {
         method: "POST",
-        credentials: "include",
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`,
-        } : {},
+        headers: session?.access_token
+          ? {
+              Authorization: `Bearer ${session.access_token}`,
+            }
+          : {},
       });
 
       if (!response.ok) {
@@ -118,7 +121,7 @@ export function AdminBenchmarkDashboard() {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         setSuccess(`Computed ${data.totalSegments} peer benchmark segments`);
         // Refresh status after computation
@@ -128,7 +131,9 @@ export function AdminBenchmarkDashboard() {
       }
     } catch (err) {
       console.error("Error computing benchmarks:", err);
-      setError(err instanceof Error ? err.message : "Failed to compute benchmarks");
+      setError(
+        err instanceof Error ? err.message : "Failed to compute benchmarks"
+      );
     } finally {
       setComputing(false);
     }
@@ -152,7 +157,9 @@ export function AdminBenchmarkDashboard() {
       <Box sx={{ mb: 3, display: "flex", gap: 2 }}>
         <Button
           variant="contained"
-          startIcon={computing ? <CircularProgress size={20} /> : <RefreshIcon />}
+          startIcon={
+            computing ? <CircularProgress size={20} /> : <RefreshIcon />
+          }
           onClick={computeBenchmarks}
           disabled={computing}
         >
@@ -176,7 +183,11 @@ export function AdminBenchmarkDashboard() {
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => setSuccess(null)}
+        >
           {success}
         </Alert>
       )}
@@ -184,7 +195,14 @@ export function AdminBenchmarkDashboard() {
       {status && (
         <>
           {/* Overview Cards */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 2, mb: 3 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 2,
+              mb: 3,
+            }}
+          >
             <Card>
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
@@ -194,7 +212,8 @@ export function AdminBenchmarkDashboard() {
                   {status.status.coveragePercentage.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2">
-                  {status.status.totalBenchmarks} / {status.status.totalSegments} segments
+                  {status.status.totalBenchmarks} /{" "}
+                  {status.status.totalSegments} segments
                 </Typography>
                 <LinearProgress
                   variant="determinate"
@@ -240,9 +259,7 @@ export function AdminBenchmarkDashboard() {
                 <Typography variant="h4">
                   {status.status.uncoveredSegments.length}
                 </Typography>
-                <Typography variant="body2">
-                  Need more users (min 5)
-                </Typography>
+                <Typography variant="body2">Need more users (min 5)</Typography>
               </CardContent>
             </Card>
           </Box>
@@ -273,7 +290,8 @@ export function AdminBenchmarkDashboard() {
                     <TableRow>
                       <TableCell colSpan={9} align="center">
                         <Typography color="text.secondary" sx={{ py: 2 }}>
-                          No benchmarks computed yet. Click "Compute Benchmarks" to start.
+                          No benchmarks computed yet. Click "Compute Benchmarks"
+                          to start.
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -286,8 +304,16 @@ export function AdminBenchmarkDashboard() {
                           <Chip
                             label={benchmark.sampleSize}
                             size="small"
-                            icon={benchmark.sampleSize >= 20 ? <CheckCircleIcon /> : <WarningIcon />}
-                            color={benchmark.sampleSize >= 20 ? "success" : "warning"}
+                            icon={
+                              benchmark.sampleSize >= 20 ? (
+                                <CheckCircleIcon />
+                              ) : (
+                                <WarningIcon />
+                              )
+                            }
+                            color={
+                              benchmark.sampleSize >= 20 ? "success" : "warning"
+                            }
                           />
                         </TableCell>
                         <TableCell align="center">
@@ -298,21 +324,28 @@ export function AdminBenchmarkDashboard() {
                           />
                         </TableCell>
                         <TableCell align="right">
-                          {benchmark.metrics.applicationsPerMonth?.toFixed(1) ?? "—"}
+                          {benchmark.metrics.applicationsPerMonth?.toFixed(1) ??
+                            "—"}
                         </TableCell>
                         <TableCell align="right">
                           {benchmark.metrics.responseRate
-                            ? `${(benchmark.metrics.responseRate * 100).toFixed(1)}%`
+                            ? `${(benchmark.metrics.responseRate * 100).toFixed(
+                                1
+                              )}%`
                             : "—"}
                         </TableCell>
                         <TableCell align="right">
                           {benchmark.metrics.interviewRate
-                            ? `${(benchmark.metrics.interviewRate * 100).toFixed(1)}%`
+                            ? `${(
+                                benchmark.metrics.interviewRate * 100
+                              ).toFixed(1)}%`
                             : "—"}
                         </TableCell>
                         <TableCell align="right">
                           {benchmark.metrics.offerRate
-                            ? `${(benchmark.metrics.offerRate * 100).toFixed(1)}%`
+                            ? `${(benchmark.metrics.offerRate * 100).toFixed(
+                                1
+                              )}%`
                             : "—"}
                         </TableCell>
                         <TableCell>

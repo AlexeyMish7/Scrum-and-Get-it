@@ -33,7 +33,8 @@ export interface CorsOptions {
 const DEFAULT_OPTIONS: Required<CorsOptions> = {
   origin: process.env.CORS_ORIGIN || "*",
   allowedHeaders: "Content-Type, Authorization, X-User-Id",
-  allowedMethods: "GET,POST,OPTIONS",
+  // Frontend uses PATCH/DELETE for some resources; include them to avoid preflight failures.
+  allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   maxAge: "86400",
 };
 

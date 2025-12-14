@@ -1,6 +1,6 @@
 /**
  * TIME INVESTMENT & PRODUCTIVITY CARD
- * 
+ *
  * AI + time tracking analytics showing 8 explicit acceptance criteria:
  * 1. Track time spent on different job search activities
  * 2. Analyze productivity patterns and optimal working schedules
@@ -10,7 +10,7 @@
  * 6. Include burnout prevention and work-life balance monitoring
  * 7. Track energy levels and performance correlation patterns
  * 8. Provide productivity coaching and efficiency improvement suggestions
- * 
+ *
  * Backend: POST /api/analytics/productivity/time-investment (AI + user time logs)
  */
 
@@ -37,6 +37,7 @@ import {
   TipsAndUpdates as CoachingIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 interface TimeActivityStats {
   activityType: string;
@@ -118,7 +119,7 @@ export default function TimeInvestmentCard({ daysBack = 30 }: Props) {
 
     try {
       const res = await fetch(
-        "http://localhost:8787/api/analytics/productivity/time-investment",
+        toApiUrl("/api/analytics/productivity/time-investment"),
         {
           method: "POST",
           headers: {
@@ -233,8 +234,7 @@ export default function TimeInvestmentCard({ daysBack = 30 }: Props) {
                           {a.activityType}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {Math.round(a.totalMinutes)} min ·{" "}
-                          {Math.round(pct)}%
+                          {Math.round(a.totalMinutes)} min · {Math.round(pct)}%
                         </Typography>
                       </Stack>
                       <LinearProgress

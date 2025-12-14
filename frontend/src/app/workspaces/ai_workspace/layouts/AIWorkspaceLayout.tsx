@@ -11,8 +11,7 @@ import AppShell from "@shared/layouts/AppShell";
 import AIWorkspaceSidebar from "@shared/components/sidebars/AIWorkspaceSidebar";
 import { Box, Snackbar, Alert } from "@mui/material";
 import { GenerationProvider } from "../context/GenerationContext";
-
-const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
+import { getApiBaseUrl, toApiUrl } from "@shared/services/apiUrl";
 
 /**
  * Check if the AI server is reachable
@@ -22,7 +21,7 @@ async function checkServerConnection(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-    const response = await fetch(`${AI_BASE_URL}/api/health`, {
+    const response = await fetch(toApiUrl("/api/health"), {
       method: "GET",
       signal: controller.signal,
     });
@@ -46,6 +45,8 @@ async function checkServerConnection(): Promise<boolean> {
 export default function AIWorkspaceLayout() {
   const [serverConnected, setServerConnected] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
+
+  const apiBaseLabel = getApiBaseUrl() || "same origin";
 
   useEffect(() => {
     // Check connection on mount
@@ -91,7 +92,7 @@ export default function AIWorkspaceLayout() {
             }}
           >
             Server connection lost. AI features will not work until the backend
-            server is running on {AI_BASE_URL}
+            server is reachable at {apiBaseLabel}
           </Alert>
         </Snackbar>
       </AppShell>

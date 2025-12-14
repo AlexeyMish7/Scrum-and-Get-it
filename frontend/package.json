@@ -9,8 +9,8 @@
     "dev:production": "vite --mode production",
     "test": "vitest",
     "test:ci": "vitest --run",
-    "build": "tsc -b && vite build",
-    "build:staging": "tsc -b && vite build --mode staging",
+    "build": "vite build",
+    "build:staging": "vite build --mode staging",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
@@ -79,6 +79,7 @@
     "globals": "^16.4.0",
     "jsdom": "^27.2.0",
     "rollup-plugin-visualizer": "^6.0.5",
+    "terser": "^5.44.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
     "vite": "^7.1.12",

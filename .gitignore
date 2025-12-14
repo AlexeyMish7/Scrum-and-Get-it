@@ -171,6 +171,9 @@ junit.xml
 *.bak
 *.tmp
 
+# Generated DB bundles (UC-130)
+db/out/
+
 # =========================
 # Local Copilot Instructions (personal tasks)
 # =========================

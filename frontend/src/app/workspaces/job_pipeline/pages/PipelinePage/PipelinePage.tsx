@@ -22,7 +22,6 @@ import { alpha } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
-import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { ErrorSnackbar } from "@shared/components/feedback/ErrorSnackbar";
 import { EmptyState } from "@shared/components/feedback";
 import { useConfirmDialog } from "@shared/hooks/useConfirmDialog";
@@ -33,13 +32,13 @@ import type { JobRow } from "@shared/types/database";
 import { getAppQueryClient } from "@shared/cache";
 import { coreKeys } from "@shared/cache/coreQueryKeys";
 import { fetchCoreJobs } from "@shared/cache/coreFetchers";
-import JobDetails from "../../components/JobDetails/JobDetails";
+import JobDetails from "../../components/details/JobDetails/JobDetails";
 import JobSearchFilters, {
   type JobFilters,
-} from "../../components/JobSearchFilters/JobSearchFilters";
-import JobFormDialog from "../../components/JobFormDialog";
-import DocumentsDrawer from "../../components/DocumentsDrawer";
-import AnalyticsPanel from "../../components/AnalyticsPanel";
+} from "../../components/search/JobSearchFilters/JobSearchFilters";
+import JobFormDialog from "../../components/dialogs/JobFormDialog";
+import DocumentsDrawer from "../../components/documents/DocumentsDrawer";
+import AnalyticsPanel from "../../components/analytics/AnalyticsPanel";
 
 const STAGES = [
   "Interested",

@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@shared/context/AuthContext";
 import profileService from "@profile/services/profileService";
 import skillsService from "@profile/services/skills";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 type Props = {
   contact: Record<string, any>;
@@ -53,9 +54,7 @@ const GenerateReferenceGuide: React.FC<Props> = ({ contact, job }) => {
         profile: profileRes ?? null,
       };
 
-      const apiBase =
-        (import.meta as any).env?.VITE_API_BASE || `http://localhost:8787`;
-      const url = `${apiBase.replace(/\/$/, "")}/api/generate/reference-points`;
+      const url = toApiUrl("/api/generate/reference-points");
 
       const resp = await fetch(url, {
         method: "POST",

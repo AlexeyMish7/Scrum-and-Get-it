@@ -26,14 +26,14 @@ type SupabaseAdminModule = {
 };
 
 // Import the TypeScript prompt builder directly; using .ts extension since ts-node/esm + allowImportingTsExtensions is enabled.
-import { buildResumePrompt } from "../../prompts/resume.ts";
-import { buildCoverLetterPrompt } from "../../prompts/coverLetter.ts";
-import { buildSkillsOptimizationPrompt } from "../../prompts/skillsOptimization.ts";
-import { buildExperienceTailoringPrompt } from "../../prompts/experienceTailoring.ts";
+import { buildResumePrompt } from "../../prompts/resume.js";
+import { buildCoverLetterPrompt } from "../../prompts/coverLetter.js";
+import { buildSkillsOptimizationPrompt } from "../../prompts/skillsOptimization.js";
+import { buildExperienceTailoringPrompt } from "../../prompts/experienceTailoring.js";
 import {
   buildCompanyResearchPrompt,
   validateCompanyResearchResponse,
-} from "../../prompts/companyResearch.ts";
+} from "../../prompts/companyResearch.js";
 import { fetchCompanyResearch } from "./companyResearchService.js";
 import type { CompanyResearch } from "./companyResearchService.js";
 import type {

@@ -1,6 +1,6 @@
 /**
  * MARKET INTELLIGENCE CARD
- * 
+ *
  * AI-powered market intelligence and industry trends with 8 explicit acceptance criteria:
  * 1. Monitor job market trends in target industries and locations
  * 2. Track skill demand evolution and emerging technology requirements
@@ -10,7 +10,7 @@
  * 6. Generate recommendations for skill development and career positioning
  * 7. Track market opportunity identification and timing optimization
  * 8. Provide competitive landscape analysis for career planning
- * 
+ *
  * Backend: POST /api/analytics/market/intelligence (AI-powered)
  */
 
@@ -38,6 +38,7 @@ import {
   Business as CompanyIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 type DemandLevel = "hot" | "growing" | "stable" | "cool";
 type Timing = "now" | "soon" | "later";
@@ -161,7 +162,7 @@ export default function MarketIntelligenceCard({
 
     try {
       const response = await fetch(
-        "http://localhost:8787/api/analytics/market/intelligence",
+        toApiUrl("/api/analytics/market/intelligence"),
         {
           method: "POST",
           headers: {
@@ -241,8 +242,9 @@ export default function MarketIntelligenceCard({
           sx={{ display: "block", mb: 1.5 }}
         >
           Based on {userContext.totalApplications} tracked applications,{" "}
-          {userContext.totalInterviews} interviews, and {userContext.totalOffers}{" "}
-          offers in {userContext.targetIndustries.join(", ")} across{" "}
+          {userContext.totalInterviews} interviews, and{" "}
+          {userContext.totalOffers} offers in{" "}
+          {userContext.targetIndustries.join(", ")} across{" "}
           {userContext.targetLocations.join(", ")}.
         </Typography>
       )}
@@ -400,8 +402,8 @@ export default function MarketIntelligenceCard({
                         />
                       </Stack>
                       <Typography variant="body2">
-                        Median: $
-                        {Math.round(s.median).toLocaleString()} ({s.range})
+                        Median: ${Math.round(s.median).toLocaleString()} (
+                        {s.range})
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {s.commentary}
@@ -556,8 +558,8 @@ export default function MarketIntelligenceCard({
                 {aiData.competitiveLandscapeSummary}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                For deeper peer benchmarks, see the Competitive Market Positioning
-                panel.
+                For deeper peer benchmarks, see the Competitive Market
+                Positioning panel.
               </Typography>
             </Grid>
           </Grid>

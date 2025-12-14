@@ -91,13 +91,13 @@ FlowATS is a full-stack web application designed to streamline the job search pr
 This PowerShell script automatically:
 
 - Starts the frontend dev server (http://localhost:5173)
-- Starts the backend server (http://localhost:3001)
+- Starts the backend server (http://localhost:8787)
 - Runs both in parallel with proper logging
 
 **URLs:**
 
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+- Backend API: http://localhost:8787
 - Database: Supabase (cloud-hosted)
 
 ---
@@ -186,7 +186,26 @@ Notes:
 
 - Navigate to your Supabase project SQL editor
 - Execute migration files from `db/migrations/` in chronological order
-- Or use the provided `db/apply_migration.sql` helper
+- Or use the provided helper SQL: `db/migrations/apply_migration.sql`
+- UC-130 (recommended): generate a single migration bundle, then paste it into the SQL editor:
+
+```powershell
+./scripts/db-build-migration-bundle.ps1 -OutputFile ./db/out/prod_migrations_bundle.sql
+```
+
+If you are reusing an existing Supabase project (school-project friendly), verify the schema + required seed data instead of re-running the full migration bundle:
+
+```powershell
+# Reads SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from server/.env
+# and verifies the current PRD-aligned schema (teams + documents + generation + analytics + templates/themes)
+./scripts/db-verify-supabase.ps1 -EnvFilePath ./server/.env
+```
+
+If the verification script reports missing system defaults, re-run these seed migrations in the Supabase SQL editor:
+
+- `db/migrations/2025-11-18_seed_default_templates.sql`
+- `db/migrations/2025-11-19_seed_default_themes.sql`
+- `db/migrations/2025-11-20_seed_cover_letter_templates.sql`
 
 5. Start development servers:
 
@@ -227,18 +246,58 @@ npm run dev:staging
 Run all tests from the repo root using the PowerShell helper:
 
 ```powershell
-.\u005cscriptsrun-tests.ps1
+.\scripts\run-tests.ps1
 ```
 
 Suite-specific runs:
 
 ```powershell
 # Frontend only (jsdom)
-.\u005cscriptsrun-tests.ps1 -Suite frontend
+.\scripts\run-tests.ps1 -Suite frontend
 
 # Server only (node)
-.\u005cscriptsrun-tests.ps1 -Suite server
+.\scripts\run-tests.ps1 -Suite server
 ```
+
+## Deployment (UC-129)
+
+This repo is set up for a simple free-tier deployment:
+
+- Frontend: Vercel
+- Backend: Render
+- Database/Auth: Supabase (Option B: reuse the existing Supabase project)
+
+### Backend (Render)
+
+- Root directory: `server/`
+- Build command: `npm install && npm run build`
+- Start command: `node dist/src/index.js`
+- Required env vars (Render → Environment):
+  - `NODE_ENV=production`
+  - `APP_ENV=production` (optional, but keeps mode naming consistent)
+  - `SUPABASE_URL=...`
+  - `SUPABASE_SERVICE_ROLE_KEY=...`
+  - `AI_API_KEY=...` (or `OPENAI_API_KEY=...`)
+  - `CORS_ORIGIN=https://<your-vercel-domain>`
+  - `ALLOW_DEV_AUTH=false`
+  - `FAKE_AI=false`
+  - `FEATURE_AI_ROUTES=true`
+
+### Frontend (Vercel)
+
+- Root directory: `frontend/`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Required env vars (Vercel → Project Settings → Environment Variables):
+  - `VITE_SUPABASE_URL=...`
+  - `VITE_SUPABASE_ANON_KEY=...`
+  - `VITE_API_BASE_URL=https://<your-render-backend-domain>`
+  - `VITE_DEV_MODE=false`
+
+### Smoke check
+
+- Backend: `GET https://<backend>/api/health` returns 200
+- Frontend loads, login/signup works, and at least one server-backed feature works (AI or analytics)
 
 Alternatively, run directly in the tests workspace:
 

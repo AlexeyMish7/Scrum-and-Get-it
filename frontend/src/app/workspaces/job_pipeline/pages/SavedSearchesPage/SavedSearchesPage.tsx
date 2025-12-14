@@ -1,10 +1,10 @@
 import { Box, Typography, Paper } from "@mui/material";
 import JobSearchFilters, {
   type JobFilters,
-} from "../../components/JobSearchFilters/JobSearchFilters";
-import JobCard from "../../components/JobCard/JobCard";
+} from "../../components/search/JobSearchFilters/JobSearchFilters";
+import JobCard from "../../components/cards/JobCard/JobCard";
 import RightDrawer from "@shared/components/common/RightDrawer";
-import JobDetails from "../../components/JobDetails/JobDetails";
+import JobDetails from "../../components/details/JobDetails/JobDetails";
 import { useAuth } from "@shared/context/AuthContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import { useState, useEffect } from "react";
