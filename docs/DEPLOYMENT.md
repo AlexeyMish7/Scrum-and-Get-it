@@ -1,5 +1,9 @@
 # Deployment Guide (UC-129)
 
+If you want a single beginner-friendly checklist that covers **UC-129/130/131/132 end-to-end** (deploy + migrations + GitHub Actions), use:
+
+- [docs/SPRINT4_UC129-UC132_RUNBOOK.md](SPRINT4_UC129-UC132_RUNBOOK.md)
+
 This project can be deployed now (even if other Sprint 4 UCs aren’t finished). Treat it as a “prod-like” environment: don’t commit secrets, keep `VITE_DEV_MODE=false`, and verify the database schema/seeds.
 
 ## How deployment works right now (no CI/CD pipeline)
