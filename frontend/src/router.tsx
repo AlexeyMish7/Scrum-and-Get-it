@@ -25,6 +25,7 @@ import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
 import ProjectDetails from "@profile/pages/projects/ProjectDetails";
 import ProfileDetails from "@profile/pages/profile/ProfileDetails";
 import Settings from "@profile/pages/profile/Settings";
+import Github from "@profile/pages/github/GithubRepos";
 const ProfileAnalytics = lazy(() => import("./pages/AnalyticsDashboard"));
 
 // Layouts and shared components
@@ -628,6 +629,8 @@ export const router = createBrowserRouter([
       { path: "certifications", element: <Certifications /> },
       { path: "details", element: <ProfileDetails /> },
       { path: "settings", element: <Settings /> },
+      { path: "github", element: <Github /> },
+
     ],
   },
 

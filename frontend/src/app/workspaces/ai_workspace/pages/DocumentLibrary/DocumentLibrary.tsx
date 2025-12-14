@@ -6,7 +6,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import {
   Container,
   Typography,
@@ -40,6 +39,8 @@ import { ShareDocumentDialog } from "../../../ai_workspace/components/reviews";
 import type { DocumentRow } from "@shared/types/database";
 import { useCoreDocuments } from "@shared/cache/coreHooks";
 
+const EMPTY_DOCUMENTS: DocumentRow[] = [];
+
 export default function DocumentLibrary() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -52,7 +53,10 @@ export default function DocumentLibrary() {
   >("all");
 
   const documentsQuery = useCoreDocuments(user?.id);
-  const documents = documentsQuery.data ?? [];
+  const documents = useMemo(
+    () => documentsQuery.data ?? EMPTY_DOCUMENTS,
+    [documentsQuery.data]
+  );
   const loading = documentsQuery.isLoading;
 
   // Share dialog state
