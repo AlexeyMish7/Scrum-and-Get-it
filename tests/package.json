@@ -10,8 +10,8 @@
     "vitest": "^0.34.6"
   },
   "scripts": {
-    "test:server": "vitest --config ./server/vitest.config.ts",
-    "test:frontend": "vitest --config ./frontend/vitest.config.ts",
+    "test:server": "vitest run --config ./server/vitest.config.ts",
+    "test:frontend": "vitest run --config ./frontend/vitest.config.ts",
     "test:performance": "vitest run ./frontend/performance/ --reporter=verbose",
     "test:all": "npm run test:server && npm run test:frontend",
     "test": "npm run test:all"

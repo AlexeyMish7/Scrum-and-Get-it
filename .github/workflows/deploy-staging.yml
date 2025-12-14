@@ -1,9 +1,6 @@
 name: Deploy (Staging)
 
 on:
-  push:
-    branches:
-      - develop
   workflow_dispatch:
     inputs:
       ref:
