@@ -308,6 +308,7 @@ export const mapCertification = (
 import type { Result, ListOptions } from "./types";
 import { withUser } from "./crud";
 import { supabase } from "./supabaseClient";
+import { toApiUrl } from "./apiUrl";
 
 export const mapJob = (
   formData: Record<string, unknown>
@@ -380,7 +381,7 @@ export const mapJob = (
       hybrid: "hybrid",
       "in-person": "in person",
       "in person": "in person",
-      "in_person": "in person",
+      in_person: "in person",
       onsite: "in person",
       on_site: "in person",
     };
@@ -2263,17 +2264,14 @@ export async function getNetworkingAnalytics(
   timeRange: string = "30d"
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch(
-      "http://localhost:8787/api/analytics/networking",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ timeRange }),
-      }
-    );
+    const response = await fetch(toApiUrl("/api/analytics/networking"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ timeRange }),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -2318,7 +2316,7 @@ export async function getSalaryAnalytics(
   timeRange: string = "all"
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/salary", {
+    const response = await fetch(toApiUrl("/api/analytics/salary"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2372,7 +2370,7 @@ export async function getGoals(
   options?: { status?: string; category?: string }
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+    const response = await fetch(toApiUrl("/api/analytics/goals"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2425,7 +2423,7 @@ export async function createGoal(
   goalData: Record<string, unknown>
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+    const response = await fetch(toApiUrl("/api/analytics/goals"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2479,7 +2477,7 @@ export async function updateGoal(
   updates: Record<string, unknown>
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+    const response = await fetch(toApiUrl("/api/analytics/goals"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2533,7 +2531,7 @@ export async function deleteGoal(
   goalId: string
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+    const response = await fetch(toApiUrl("/api/analytics/goals"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2585,7 +2583,7 @@ export async function getGoalsAnalytics(
   authToken: string
 ): Promise<Result<unknown>> {
   try {
-    const response = await fetch("http://localhost:8787/api/analytics/goals", {
+    const response = await fetch(toApiUrl("/api/analytics/goals"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

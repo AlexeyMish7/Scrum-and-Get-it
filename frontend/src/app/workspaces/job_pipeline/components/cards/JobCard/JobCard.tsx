@@ -3,7 +3,7 @@ import { Card, CardContent, Typography, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useAuth } from "@shared/context/AuthContext";
 import { useJobMatch } from "@job_pipeline/hooks/useJobMatch";
-import MatchScoreBadge from "../MatchScoreBadge/MatchScoreBadge";
+import MatchScoreBadge from "../../analytics/MatchScoreBadge/MatchScoreBadge";
 
 interface JobCardData {
   id?: string | number;

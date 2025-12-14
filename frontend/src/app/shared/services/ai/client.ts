@@ -12,8 +12,7 @@
 
 import { supabase } from "@shared/services/supabaseClient";
 import { mockDataNotifier } from "@shared/services/mockDataNotifier";
-
-const BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8787";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 /**
  * Get Authorization header with current Supabase session token.
@@ -43,8 +42,8 @@ async function getAuthHeaders(
       // Primary auth method: JWT token
       return {
         Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
+        "Content-Type": "application/json",
+        Accept: "application/json",
       };
     } else {
       // No session - require user to log in
@@ -63,7 +62,7 @@ async function postJson<T>(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _userId?: string // Kept for API compatibility, auth via JWT
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const url = toApiUrl(path);
 
   try {
     let headers = await getAuthHeaders();
@@ -132,7 +131,7 @@ async function getJson<T>(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _userId?: string // Kept for API compatibility, auth via JWT
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const url = toApiUrl(path);
 
   try {
     let headers = await getAuthHeaders();
@@ -200,6 +199,8 @@ async function getJson<T>(
  */
 export async function patchJson<T>(url: string, payload: unknown): Promise<T> {
   try {
+    // PATCH helpers are currently called with full URLs in some spots.
+    // Keep behavior as-is; prefer using toApiUrl() at call sites.
     let headers = await getAuthHeaders();
     let resp = await fetch(url, {
       method: "PATCH",
@@ -258,6 +259,8 @@ export async function patchJson<T>(url: string, payload: unknown): Promise<T> {
  */
 export async function deleteJson(url: string): Promise<void> {
   try {
+    // DELETE helpers are currently called with full URLs in some spots.
+    // Keep behavior as-is; prefer using toApiUrl() at call sites.
     let headers = await getAuthHeaders();
     let resp = await fetch(url, {
       method: "DELETE",

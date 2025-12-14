@@ -10,9 +10,10 @@
     "skipLibCheck": true,
     "types": ["node"],
     "verbatimModuleSyntax": false,
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    "rootDir": ".",
+    "outDir": "dist",
+    "sourceMap": true
   },
-  "include": ["**/*.ts"],
+  "include": ["src/**/*.ts", "prompts/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

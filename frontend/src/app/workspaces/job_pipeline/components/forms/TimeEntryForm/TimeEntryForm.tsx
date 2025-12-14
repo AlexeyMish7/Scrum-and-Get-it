@@ -18,6 +18,7 @@ import {
   Alert,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 export default function TimeEntryForm() {
   const { session } = useAuth();
@@ -27,7 +28,10 @@ export default function TimeEntryForm() {
   const [outcomeType, setOutcomeType] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +41,7 @@ export default function TimeEntryForm() {
     setMessage(null);
 
     try {
-      const response = await fetch("http://localhost:8787/api/time-entries", {
+      const response = await fetch(toApiUrl("/api/time-entries"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -57,7 +61,7 @@ export default function TimeEntryForm() {
       }
 
       setMessage({ type: "success", text: "Time entry logged successfully!" });
-      
+
       // Reset form
       setActivityType("applications");
       setDurationMinutes(30);
@@ -66,7 +70,10 @@ export default function TimeEntryForm() {
       setNotes("");
     } catch (err: any) {
       console.error("[TimeEntryForm] error:", err);
-      setMessage({ type: "error", text: err?.message || "Failed to log time entry" });
+      setMessage({
+        type: "error",
+        text: err?.message || "Failed to log time entry",
+      });
     } finally {
       setLoading(false);
     }
@@ -82,7 +89,11 @@ export default function TimeEntryForm() {
       </Typography>
 
       {message && (
-        <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+        <Alert
+          severity={message.type}
+          sx={{ mb: 2 }}
+          onClose={() => setMessage(null)}
+        >
           {message.text}
         </Alert>
       )}
@@ -137,11 +148,15 @@ export default function TimeEntryForm() {
               onChange={(e) => setOutcomeType(e.target.value)}
             >
               <MenuItem value="">None</MenuItem>
-              <MenuItem value="application_submitted">Application Submitted</MenuItem>
+              <MenuItem value="application_submitted">
+                Application Submitted
+              </MenuItem>
               <MenuItem value="interview">Interview Scheduled</MenuItem>
               <MenuItem value="offer">Offer Received</MenuItem>
               <MenuItem value="referral">Referral Obtained</MenuItem>
-              <MenuItem value="networking_connection">Networking Connection Made</MenuItem>
+              <MenuItem value="networking_connection">
+                Networking Connection Made
+              </MenuItem>
             </Select>
           </FormControl>
 

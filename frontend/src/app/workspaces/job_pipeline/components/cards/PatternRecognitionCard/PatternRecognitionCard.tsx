@@ -1,6 +1,6 @@
 /**
  * PatternRecognitionCard Component
- * 
+ *
  * Displays pattern recognition analysis showing:
  * - Patterns in successful applications, interviews, and offers
  * - Preparation activity correlations
@@ -9,7 +9,7 @@
  * - Success factors and predictive insights
  * - Historical pattern recommendations
  * - Pattern evolution tracking
- * 
+ *
  * All 8 acceptance criteria in ONE collapsible card
  */
 
@@ -46,6 +46,7 @@ import {
   EmojiEvents as SuccessIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 interface PatternData {
   summary: {
@@ -185,14 +186,17 @@ export default function PatternRecognitionCard() {
       setError(null);
 
       try {
-        const response = await fetch("http://localhost:8787/api/analytics/pattern-recognition", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({}),
-        });
+        const response = await fetch(
+          toApiUrl("/api/analytics/pattern-recognition"),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({}),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -234,7 +238,9 @@ export default function PatternRecognitionCard() {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Alert severity="error">
-            <Typography variant="body2">Failed to load pattern analysis: {error}</Typography>
+            <Typography variant="body2">
+              Failed to load pattern analysis: {error}
+            </Typography>
           </Alert>
         </CardContent>
       </Card>
@@ -262,7 +268,11 @@ export default function PatternRecognitionCard() {
         </Stack>
 
         {/* Summary Chips */}
-        <Stack direction="row" spacing={1} sx={{ mb: 3, flexWrap: "wrap", gap: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mb: 3, flexWrap: "wrap", gap: 1 }}
+        >
           <Chip
             label={`${data.summary.patternsIdentified} Patterns Identified`}
             color="primary"
@@ -274,7 +284,9 @@ export default function PatternRecognitionCard() {
             variant="outlined"
           />
           <Chip
-            label={`${(data.summary.topSuccessRate * 100).toFixed(0)}% Top Success Rate`}
+            label={`${(data.summary.topSuccessRate * 100).toFixed(
+              0
+            )}% Top Success Rate`}
             color="info"
             variant="outlined"
           />
@@ -300,28 +312,44 @@ export default function PatternRecognitionCard() {
           <AccordionDetails>
             {data.applicationPatterns.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Need more application data to identify patterns (minimum 5 applications)
+                Need more application data to identify patterns (minimum 5
+                applications)
               </Typography>
             ) : (
               <List dense>
                 {data.applicationPatterns.map((pattern, idx) => (
                   <ListItem key={idx} sx={{ display: "block", mb: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
                       <Typography variant="subtitle2" fontWeight={600}>
                         {pattern.pattern_name}
                       </Typography>
                       <Chip
-                        label={`${(pattern.success_rate * 100).toFixed(0)}% success`}
+                        label={`${(pattern.success_rate * 100).toFixed(
+                          0
+                        )}% success`}
                         size="small"
                         color="success"
                       />
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Confidence: {(pattern.confidence_score * 100).toFixed(0)}% • Sample: {pattern.sample_size} applications
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
+                      Confidence: {(pattern.confidence_score * 100).toFixed(0)}%
+                      • Sample: {pattern.sample_size} applications
                     </Typography>
                     {pattern.recommendations.length > 0 && (
                       <Paper sx={{ mt: 1, p: 1.5, bgcolor: "success.50" }}>
-                        <Typography variant="body2" fontWeight={600} color="success.dark">
+                        <Typography
+                          variant="body2"
+                          fontWeight={600}
+                          color="success.dark"
+                        >
                           💡 {pattern.recommendations[0].action}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
@@ -354,23 +382,34 @@ export default function PatternRecognitionCard() {
           <AccordionDetails>
             {data.interviewPatterns.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Need more interview data to identify patterns (minimum 3 interviews)
+                Need more interview data to identify patterns (minimum 3
+                interviews)
               </Typography>
             ) : (
               <List dense>
                 {data.interviewPatterns.map((pattern, idx) => (
                   <ListItem key={idx} sx={{ display: "block", mb: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
                       <Typography variant="subtitle2" fontWeight={600}>
                         {pattern.pattern_name}
                       </Typography>
                       <Chip
-                        label={`${(pattern.success_rate * 100).toFixed(0)}% conversion`}
+                        label={`${(pattern.success_rate * 100).toFixed(
+                          0
+                        )}% conversion`}
                         size="small"
                         color="success"
                       />
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
                       Based on {pattern.sample_size} interviews
                     </Typography>
                     {pattern.recommendations.length > 0 && (
@@ -412,16 +451,28 @@ export default function PatternRecognitionCard() {
                     <Typography variant="subtitle2" fontWeight={600}>
                       {pattern.pattern_name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
                       Success Rate: {(pattern.success_rate * 100).toFixed(0)}%
                     </Typography>
                     {pattern.pattern_attributes.avg_salary_offered && (
                       <Typography variant="body2" sx={{ mt: 1 }}>
-                        Average Offer: ${(pattern.pattern_attributes.avg_salary_offered / 1000).toFixed(0)}K
+                        Average Offer: $
+                        {(
+                          pattern.pattern_attributes.avg_salary_offered / 1000
+                        ).toFixed(0)}
+                        K
                       </Typography>
                     )}
                     {pattern.recommendations.length > 0 && (
-                      <Typography variant="body2" color="success.dark" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="body2"
+                        color="success.dark"
+                        sx={{ mt: 1 }}
+                      >
                         💡 {pattern.recommendations[0].action}
                       </Typography>
                     )}
@@ -448,19 +499,25 @@ export default function PatternRecognitionCard() {
             </Typography>
             {data.preparationCorrelations.correlations.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Start tracking preparation activities to see what impacts your success
+                Start tracking preparation activities to see what impacts your
+                success
               </Typography>
             ) : (
               <List dense>
                 {data.preparationCorrelations.correlations.map((corr, idx) => (
                   <ListItem key={idx}>
                     <ListItemText
-                      primary={corr.activity.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      primary={corr.activity
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
                       secondary={`Sample: ${corr.sample_size} activities`}
                     />
                     <Stack spacing={0.5} sx={{ minWidth: 200 }}>
                       <Box>
-                        <Typography variant="caption">Response: {(corr.responseCorrelation * 100).toFixed(0)}%</Typography>
+                        <Typography variant="caption">
+                          Response:{" "}
+                          {(corr.responseCorrelation * 100).toFixed(0)}%
+                        </Typography>
                         <LinearProgress
                           variant="determinate"
                           value={corr.responseCorrelation * 100}
@@ -468,7 +525,9 @@ export default function PatternRecognitionCard() {
                         />
                       </Box>
                       <Box>
-                        <Typography variant="caption">Offer: {(corr.offerCorrelation * 100).toFixed(0)}%</Typography>
+                        <Typography variant="caption">
+                          Offer: {(corr.offerCorrelation * 100).toFixed(0)}%
+                        </Typography>
                         <LinearProgress
                           variant="determinate"
                           value={corr.offerCorrelation * 100}
@@ -480,7 +539,13 @@ export default function PatternRecognitionCard() {
                     <Chip
                       label={corr.impact}
                       size="small"
-                      color={corr.impact === "high" ? "error" : corr.impact === "medium" ? "warning" : "default"}
+                      color={
+                        corr.impact === "high"
+                          ? "error"
+                          : corr.impact === "medium"
+                          ? "warning"
+                          : "default"
+                      }
                       sx={{ ml: 2 }}
                     />
                   </ListItem>
@@ -510,20 +575,33 @@ export default function PatternRecognitionCard() {
                 {data.timingPatterns.map((timing, idx) => (
                   <ListItem key={idx}>
                     <ListItemText
-                      primary={`${timing.timing_type.replace(/_/g, " ")}: ${timing.timing_value}`}
+                      primary={`${timing.timing_type.replace(/_/g, " ")}: ${
+                        timing.timing_value
+                      }`}
                       secondary={
                         <>
-                          Response: {(timing.response_rate * 100).toFixed(1)}% • 
-                          Interview: {(timing.interview_rate * 100).toFixed(1)}% • 
-                          Offer: {(timing.offer_rate * 100).toFixed(1)}%
+                          Response: {(timing.response_rate * 100).toFixed(1)}% •
+                          Interview: {(timing.interview_rate * 100).toFixed(1)}%
+                          • Offer: {(timing.offer_rate * 100).toFixed(1)}%
                         </>
                       }
                     />
                     <Stack alignItems="flex-end" spacing={0.5}>
                       <Chip
-                        label={`${((timing.relative_performance - 1) * 100).toFixed(0)}% ${timing.relative_performance >= 1 ? "better" : "worse"}`}
+                        label={`${(
+                          (timing.relative_performance - 1) *
+                          100
+                        ).toFixed(0)}% ${
+                          timing.relative_performance >= 1 ? "better" : "worse"
+                        }`}
                         size="small"
-                        color={timing.relative_performance >= 1.2 ? "success" : timing.relative_performance >= 1 ? "info" : "default"}
+                        color={
+                          timing.relative_performance >= 1.2
+                            ? "success"
+                            : timing.relative_performance >= 1
+                            ? "info"
+                            : "default"
+                        }
                       />
                       {timing.is_optimal && (
                         <Chip label="⭐ Optimal" size="small" color="warning" />
@@ -555,22 +633,37 @@ export default function PatternRecognitionCard() {
               <List dense>
                 {data.strategyEffectiveness.map((strategy, idx) => (
                   <ListItem key={idx} sx={{ display: "block", mb: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
                       <Typography variant="subtitle2" fontWeight={600}>
                         {strategy.strategy_name}
                       </Typography>
                       <Chip
-                        label={`${(strategy.success_rate * 100).toFixed(0)}% success`}
+                        label={`${(strategy.success_rate * 100).toFixed(
+                          0
+                        )}% success`}
                         size="small"
-                        color={strategy.success_rate > 0.25 ? "success" : "default"}
+                        color={
+                          strategy.success_rate > 0.25 ? "success" : "default"
+                        }
                       />
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Used {strategy.times_used} times • {strategy.effectiveness_trend} trend
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
+                      Used {strategy.times_used} times •{" "}
+                      {strategy.effectiveness_trend} trend
                     </Typography>
                     {strategy.recommended_use_cases.length > 0 && (
                       <Box sx={{ mt: 1 }}>
-                        <Typography variant="caption" fontWeight={600}>Best for:</Typography>
+                        <Typography variant="caption" fontWeight={600}>
+                          Best for:
+                        </Typography>
                         {strategy.recommended_use_cases.map((useCase, i) => (
                           <Chip
                             key={i}
@@ -619,7 +712,11 @@ export default function PatternRecognitionCard() {
                     <Chip
                       label={factor.trend}
                       size="small"
-                      color={factor.trend === "healthy" || factor.trend === "stable" ? "success" : "warning"}
+                      color={
+                        factor.trend === "healthy" || factor.trend === "stable"
+                          ? "success"
+                          : "warning"
+                      }
                       sx={{ mt: 1 }}
                     />
                   </Paper>
@@ -630,7 +727,11 @@ export default function PatternRecognitionCard() {
             {/* Predictive Insights */}
             {data.predictiveInsights.nextApplicationProbability && (
               <>
-                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2 }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={600}
+                  sx={{ mb: 1, mt: 2 }}
+                >
                   Predictive Insights
                 </Typography>
                 <List dense>
@@ -640,8 +741,14 @@ export default function PatternRecognitionCard() {
                       secondary={data.predictiveInsights.predictionBasis}
                     />
                     <Chip
-                      label={`${(data.predictiveInsights.nextApplicationProbability * 100).toFixed(0)}%`}
-                      color={data.predictiveInsights.nextApplicationProbability > 0.3 ? "success" : "warning"}
+                      label={`${(
+                        data.predictiveInsights.nextApplicationProbability * 100
+                      ).toFixed(0)}%`}
+                      color={
+                        data.predictiveInsights.nextApplicationProbability > 0.3
+                          ? "success"
+                          : "warning"
+                      }
                     />
                   </ListItem>
                   {data.predictiveInsights.estimatedTimeToOffer && (
@@ -656,7 +763,10 @@ export default function PatternRecognitionCard() {
                     <ListItem>
                       <ListItemText
                         primary="Optimal Application Timing"
-                        secondary={`${data.predictiveInsights.optimalApplicationTiming.confidence * 100}% confidence`}
+                        secondary={`${
+                          data.predictiveInsights.optimalApplicationTiming
+                            .confidence * 100
+                        }% confidence`}
                       />
                       <Chip
                         label={`${data.predictiveInsights.optimalApplicationTiming.dayOfWeek} ${data.predictiveInsights.optimalApplicationTiming.timeOfDay}`}
@@ -671,7 +781,12 @@ export default function PatternRecognitionCard() {
             {/* Strength & Improvement Areas */}
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" fontWeight={600} color="success.main" sx={{ mb: 1 }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={600}
+                  color="success.main"
+                  sx={{ mb: 1 }}
+                >
                   ✅ Strength Areas
                 </Typography>
                 {data.successFactors.strengthAreas.map((strength, idx) => (
@@ -686,19 +801,26 @@ export default function PatternRecognitionCard() {
                 ))}
               </Box>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" fontWeight={600} color="warning.main" sx={{ mb: 1 }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={600}
+                  color="warning.main"
+                  sx={{ mb: 1 }}
+                >
                   🎯 Improvement Areas
                 </Typography>
-                {data.successFactors.improvementAreas.map((improvement, idx) => (
-                  <Chip
-                    key={idx}
-                    label={improvement.area}
-                    size="small"
-                    color="warning"
-                    variant="outlined"
-                    sx={{ m: 0.5 }}
-                  />
-                ))}
+                {data.successFactors.improvementAreas.map(
+                  (improvement, idx) => (
+                    <Chip
+                      key={idx}
+                      label={improvement.area}
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      sx={{ m: 0.5 }}
+                    />
+                  )
+                )}
               </Box>
             </Stack>
           </AccordionDetails>
@@ -722,13 +844,18 @@ export default function PatternRecognitionCard() {
           <AccordionDetails>
             {data.recommendations.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Continue your job search to generate personalized recommendations
+                Continue your job search to generate personalized
+                recommendations
               </Typography>
             ) : (
               <List dense>
                 {data.recommendations.map((rec, idx) => (
                   <ListItem key={idx} sx={{ display: "block", mb: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
                       <Typography variant="subtitle2" fontWeight={600}>
                         {rec.title}
                       </Typography>
@@ -741,18 +868,32 @@ export default function PatternRecognitionCard() {
                         <Chip
                           label={rec.priority}
                           size="small"
-                          color={rec.priority === "high" ? "error" : rec.priority === "medium" ? "warning" : "default"}
+                          color={
+                            rec.priority === "high"
+                              ? "error"
+                              : rec.priority === "medium"
+                              ? "warning"
+                              : "default"
+                          }
                         />
                       </Stack>
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
                       {rec.description}
                     </Typography>
                     <Paper sx={{ mt: 1, p: 1.5, bgcolor: "info.50" }}>
                       <Typography variant="caption" fontWeight={600}>
                         Expected Impact: {rec.expectedImpact}
                       </Typography>
-                      <Typography variant="caption" component="div" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        component="div"
+                        sx={{ mt: 1 }}
+                      >
                         Action Steps:
                       </Typography>
                       <Box component="ul" sx={{ m: 0, pl: 2 }}>

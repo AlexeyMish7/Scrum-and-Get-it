@@ -10,6 +10,22 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
+## Modified Use Cases
+
+The following use cases have been simplified to ensure they are achievable within the project timeline:
+
+| Use Case | Original Title                                  | Revised Title                              | Reason for Change                                         |
+| -------- | ----------------------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
+| UC-113   | Email Integration for Application Tracking      | Email Integration for Application Tracking | Changed from automatic email scanning to manual linking   |
+| UC-115   | External Skills Assessment Platform Integration | Skills and Certifications Showcase         | Changed from API integration to manual entry              |
+| UC-120   | Application Material A/B Testing Dashboard      | Application Material Comparison Dashboard  | Changed from automatic tracking to manual outcome marking |
+| UC-121   | Employer Response Time Prediction               | Personal Response Time Tracking            | Changed from predictive modeling to personal tracking     |
+| UC-123   | Competitive Analysis for Applications           | Job Requirements Match Analysis            | Changed from competitive analysis to skills matching      |
+| UC-124   | Job Application Timing Optimizer                | Application Scheduling and Reminders       | Changed from timing optimization to basic scheduling      |
+| UC-128   | Career Path Simulation                          | Career Growth Calculator                   | Changed from complex simulation to simple calculator      |
+
+---
+
 ## Use Cases by Sprint Goal
 
 ### 🔌 Integration with External APIs (6 Use Cases)
@@ -35,20 +51,21 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 #### UC-113: Email Integration for Application Tracking
 
-**Summary**: As a user, I want to track application-related emails so I can automatically update job statuses based on employer communications.
+**Summary**: As a user, I want to manually link emails to my job applications so I can keep all communication in one place.
 
 **Acceptance Criteria**:
 
 - Integrate with Gmail API read-only access (free tier)
-- Scan inbox for job application-related emails (recruiter, interview invitations)
-- Suggest job status updates based on email content
-- Display recent application emails on job detail pages
-- Allow users to link specific emails to job applications
-- Respect user privacy with opt-in email scanning
+- Display recent emails in sidebar when viewing a job application
+- Search emails by company name or job title keywords
+- Allow users to manually link specific emails to job applications
+- Store email metadata (subject, date, sender, snippet) with application
+- Display linked emails chronologically on job detail page
+- Optional simple keyword detection for status suggestions ("Interview", "Offer", "Rejection" in subject)
+- Respect user privacy with opt-in email access
 - Handle email API rate limits and authentication
-- Provide email scanning frequency preferences
 
-**Frontend Verification**: Connect Gmail account, verify application-related emails are identified and linked
+**Frontend Verification**: Connect Gmail account, search and manually link emails to job application, verify emails display on job detail page
 
 ---
 
@@ -71,22 +88,22 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-115: External Skills Assessment Platform Integration
+#### UC-115: Skills and Certifications Showcase
 
-**Summary**: As a user, I want to link external skill certifications so I can validate my technical abilities.
+**Summary**: As a user, I want to manually add and showcase my skills certifications so I can validate my technical abilities to employers.
 
 **Acceptance Criteria**:
 
-- Support linking to HackerRank, LeetCode, Codecademy profiles
-- Display certification badges and completion status
-- Show skill assessment scores and rankings
-- Import completed courses and certifications
-- Verify certificates with external platform links
-- Update certification status automatically when possible
-- Handle platforms that don't provide public APIs with manual entry
+- Manually add certifications with platform name (HackerRank, LeetCode, Codecademy, Coursera, etc.)
+- Upload certification badge images or screenshots
+- Include certification name, date earned, and verification URL
+- Add skill assessment scores and achievements manually
 - Display certifications prominently on user profile
+- Organize certifications by category (coding, business, design, etc.)
+- Allow editing and removal of certification entries
+- Provide rich text descriptions for each certification
 
-**Frontend Verification**: Link external platform profile, verify certifications display with verification links
+**Frontend Verification**: Add certification manually, verify it displays on profile with image and verification link
 
 ---
 
@@ -169,41 +186,42 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-120: Application Material A/B Testing Dashboard
+#### UC-120: Application Material Comparison Dashboard
 
-**Summary**: As a user, I want to A/B test different versions of my resume and cover letter so I can determine which materials generate the best response rates.
+**Summary**: As a user, I want to compare the performance of different resume and cover letter versions so I can identify which materials work best.
 
 **Acceptance Criteria**:
 
-- Create multiple versions of resume and cover letter for testing
-- Randomly assign versions to similar job applications
-- Track response rates (interview invites, rejections, no response) by version
-- Calculate statistical significance of results (minimum sample size: 10 applications per version)
-- Display comparison metrics: response rate, time to response, interview conversion rate
-- Identify winning version based on key metrics
-- Provide insights on what elements (format, content, length) drive success
-- Allow users to archive underperforming versions and iterate on winners
+- Create and label multiple versions of resume and cover letter (Version A, B, C, etc.)
+- Track which version was used for each job application
+- Manually mark application outcomes (response received, interview, offer, rejection, no response)
+- Display side-by-side comparison showing applications count and outcomes per version
+- Calculate and display simple metrics: response rate %, interview rate %, offer rate %
+- Show average time to response for each version
+- Provide comparison chart visualizing performance differences
+- Include note: "Meaningful comparisons require 10+ applications per version"
+- Allow archiving of unused versions
 
-**Frontend Verification**: Create 2 resume versions, apply to 10+ jobs with each, view comparative performance metrics and statistical significance
+**Frontend Verification**: Create 2 resume versions, track which version used for applications, manually mark outcomes, view comparative performance metrics
 
 ---
 
-#### UC-121: Employer Response Time Prediction
+#### UC-121: Personal Response Time Tracking
 
-**Summary**: As a user, I want to know when I can expect to hear back from employers so I can manage my expectations and follow-up timing.
+**Summary**: As a user, I want to track how long employers take to respond to my applications so I can identify patterns and plan appropriate follow-ups.
 
 **Acceptance Criteria**:
 
-- Analyze historical data to predict average response time by company size, industry, and job level
-- Display predicted response timeline on each application (e.g., "Typically responds in 5-7 days")
-- Factor in seasonality (holidays, fiscal year-end) and day of week applied
-- Track actual vs predicted response times to improve model accuracy
-- Alert user when response is overdue based on prediction
-- Suggest optimal follow-up timing based on predicted timeline
-- Provide confidence interval for predictions (e.g., 80% respond within 3-10 days)
-- Show industry benchmarks for comparison
+- Calculate average response time for user's own applications
+- Display response time statistics grouped by company size and industry
+- Show fastest and slowest response times in user's history
+- Track days since application submission for pending applications
+- Highlight applications that have exceeded user's average response time
+- Suggest follow-up timing based on user's personal average (e.g., "Your average is 7 days")
+- Display response time trends over user's job search history
+- Allow manual entry of response dates for tracking
 
-**Frontend Verification**: View application card, verify response time prediction is displayed with confidence interval and suggested follow-up date
+**Frontend Verification**: View application card, verify days since submission is displayed with personal average comparison
 
 ---
 
@@ -226,41 +244,41 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-123: Competitive Analysis for Applications
+#### UC-123: Job Requirements Match Analysis
 
-**Summary**: As a user, I want to understand how competitive I am for each role so I can prioritize applications and tailor my approach.
+**Summary**: As a user, I want to see how well my skills and experience match each job's requirements so I can prioritize applications and identify areas to emphasize.
 
 **Acceptance Criteria**:
 
-- Estimate number of applicants for each job based on posting age, company size, and platform
-- Calculate user's competitive score (0-100) based on skills, experience, and requirements match
-- Identify user's competitive advantages (unique skills, relevant experience)
-- Highlight competitive disadvantages and mitigation strategies
-- Estimate likelihood of interview (low/medium/high) with confidence percentage
-- Suggest differentiating strategies to stand out from other applicants
-- Compare user's profile to typical hired candidate profile when available
-- Prioritize applications where user has highest competitive advantage
+- Calculate skills match score (0-100) based on job requirements vs user profile
+- Identify matching skills, experiences, and qualifications
+- Highlight missing skills or requirements from user's profile
+- Show experience level match (entry, mid, senior) against job requirements
+- Identify user's strongest qualifications for the role
+- Suggest which skills and experiences to emphasize in application
+- Provide recommendations for addressing missing requirements
+- Rank job postings by overall match score
 
-**Frontend Verification**: View job posting, see competitive analysis with likelihood of success and specific strategies to differentiate
+**Frontend Verification**: View job posting, see requirements match analysis with score and recommendations
 
 ---
 
-#### UC-124: Job Application Timing Optimizer
+#### UC-124: Application Scheduling and Reminders
 
-**Summary**: As a user, I want recommendations on the best time to submit applications so I can maximize visibility to recruiters.
+**Summary**: As a user, I want to schedule application submissions and set reminders so I can submit at convenient times and avoid missing deadlines.
 
 **Acceptance Criteria**:
 
-- Analyze historical data to determine optimal submission times by industry and company size
-- Recommend best day of week and time of day to apply (e.g., "Tuesday 9-11 AM")
-- Factor in time zones for remote positions
-- Warn against bad timing (Friday evenings, holidays, end of fiscal quarter)
-- Allow scheduling of application submissions for optimal times
-- Track correlation between submission timing and response rates
-- Provide A/B test results showing impact of timing on success rates
-- Display real-time recommendation (e.g., "Submit now" vs "Wait until Tuesday morning")
+- Schedule future application submissions with date and time
+- Display general best practices for application timing (e.g., "Avoid weekends and late evenings")
+- Set reminders for application deadlines
+- Track applications submitted on different days/times in user's personal history
+- Show user's own response rate patterns by submission day/time
+- Send notification when scheduled submission time arrives
+- Allow rescheduling or immediate submission of scheduled applications
+- Display calendar view of scheduled and completed applications
 
-**Frontend Verification**: Complete application, view timing recommendation with reasoning and option to schedule submission
+**Frontend Verification**: Schedule application submission, verify reminder notification and submission at scheduled time
 
 ---
 
@@ -321,22 +339,22 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-128: Career Path Simulation
+#### UC-128: Career Growth Calculator
 
-**Summary**: As a user, I want to simulate different career path outcomes so I can make strategic job decisions aligned with long-term goals.
+**Summary**: As a user, I want to calculate potential salary growth and career progression so I can compare different job opportunities.
 
 **Acceptance Criteria**:
 
-- Model career trajectories for different job choices (title progression, salary growth)
-- Factor in industry trends, company growth stage, and economic conditions
-- Simulate 5-year and 10-year outcomes for each path
-- Calculate expected lifetime earnings for each career decision
-- Identify decision points where paths diverge significantly
-- Recommend optimal next role based on long-term career goals
-- Show probability distributions for outcomes (best/worst/average case)
-- Allow user to define custom success criteria (work-life balance, learning opportunities, impact)
+- Input starting salary and expected annual raise percentage
+- Calculate projected salary over 5 and 10 years
+- Compare salary projections for multiple job offers side-by-side
+- Input custom career milestones (promotions, title changes) with timeline
+- Calculate total compensation growth including bonuses and equity
+- Adjust projections for different raise scenarios (conservative, expected, optimistic)
+- Display visual chart of salary growth trajectory
+- Allow user to add notes about non-financial career goals
 
-**Frontend Verification**: Select current job offers or target roles, view 5-year simulation with salary projections and career progression milestones
+**Frontend Verification**: Input job offer details, view salary growth projection chart comparing multiple opportunities
 
 ---
 
@@ -345,6 +363,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-129: Production Environment Setup on Free-Tier Cloud Platform
 
 **Summary**: As a development team, we want to deploy the application to a free-tier cloud platform so it's publicly accessible without incurring costs.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 
@@ -365,6 +385,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 **Summary**: As a development team, we want to migrate the database schema to production so data persistence works correctly.
 
+**Owner**: @AlexeyMish7
+
 **Acceptance Criteria**:
 
 - Create production database on free-tier cloud service
@@ -383,6 +405,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-131: Environment Configuration Management
 
 **Summary**: As a developer, I want separate configurations for development, staging, and production so each environment operates correctly.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 
@@ -403,6 +427,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 **Summary**: As a development team, we want automated deployment pipelines so code changes are deployed efficiently and reliably.
 
+**Owner**: @AlexeyMish7
+
 **Acceptance Criteria**:
 
 - Set up GitHub Actions for automated deployment
@@ -421,6 +447,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-133: Production Monitoring and Logging
 
 **Summary**: As a development team, we want monitoring and logging so we can detect and troubleshoot production issues.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 
@@ -441,6 +469,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 **Summary**: As a user, I want fast page load times so I can efficiently use the application.
 
+**Owner**: @AlexeyMish7
+
 **Acceptance Criteria**:
 
 - Implement code splitting and lazy loading for frontend
@@ -459,6 +489,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-135: Production Security Hardening
 
 **Summary**: As a development team, we want production security measures so user data is protected.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 
@@ -533,6 +565,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-139: Domain and DNS Configuration
 
 **Summary**: As a user, I want to access the application via a professional domain so it appears credible and trustworthy.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 
@@ -648,6 +682,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 **Summary**: As a security tester, I want to conduct basic penetration testing so we identify and fix security vulnerabilities.
 
+**Owner**: @AlexeyMish7
+
 **Acceptance Criteria**:
 
 - Test for common OWASP Top 10 vulnerabilities
@@ -705,6 +741,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 **Summary**: As a project manager, I want a comprehensive pre-launch checklist so we ensure readiness for public release.
 
+**Owner**: @AlexeyMish7
+
 **Acceptance Criteria**:
 
 - Complete all critical bug fixes
@@ -729,6 +767,8 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 #### UC-150: Sprint 4 Complete Test Suite
 
 **Summary**: As a QA engineer, I want comprehensive test coverage for all Sprint 4 features so we ensure production quality.
+
+**Owner**: @AlexeyMish7
 
 **Acceptance Criteria**:
 

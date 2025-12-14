@@ -359,26 +359,6 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
       },
 
       // ============================================================
-      // PAPER & CARD - Remove text shadows inside containers
-      // ============================================================
-      MuiPaper: {
-        styleOverrides: {
-          root: ({ theme }) => ({
-            // Preset-based colored border for Papers too
-            border: `2px solid ${tokens.palette.primary}`,
-            // Remove text shadows from typography inside Paper/Card
-            "& .MuiTypography-root": {
-              textShadow: "none",
-            },
-            "&:hover": {
-              borderColor: tokens.palette.primary,
-              borderWidth: "3px",
-            },
-          }),
-        },
-      },
-
-      // ============================================================
       // CARD COMPONENT - Modern glass morphism with subtle depth
       // ============================================================
       MuiCard: {
@@ -697,8 +677,16 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
               tokens.effects.glow?.appliesTo?.paper ?? false
             ),
             backgroundImage: "none",
-            // Subtle border for definition
-            border: `1px solid ${alpha(tokens.palette.divider, 0.3)}`,
+            // Preset-based colored border for visual definition
+            border: `2px solid ${tokens.palette.primary}`,
+            // Remove text shadows from typography inside Paper
+            "& .MuiTypography-root": {
+              textShadow: "none",
+            },
+            "&:hover": {
+              borderColor: tokens.palette.primary,
+              borderWidth: "3px",
+            },
           },
           elevation1: {
             boxShadow: adjustDepth(

@@ -5,10 +5,16 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch-path=./src --watch-path=./prompts --no-warnings --loader ts-node/esm --env-file=.env src/index.ts",
-    "start": "node --env-file=.env dist/index.js",
+    "dev:development": "node --watch-path=./src --watch-path=./prompts --no-warnings --loader ts-node/esm --env-file=.env.development.local src/index.ts",
+    "dev:staging": "node --watch-path=./src --watch-path=./prompts --no-warnings --loader ts-node/esm --env-file=.env.staging.local src/index.ts",
+    "dev:production": "node --watch-path=./src --watch-path=./prompts --no-warnings --loader ts-node/esm --env-file=.env.production.local src/index.ts",
+    "start": "node --env-file=.env dist/src/index.js",
+    "start:staging": "node --env-file=.env.staging.local dist/src/index.js",
+    "start:production": "node --env-file=.env.production.local dist/src/index.js",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "smoke": "node --loader ts-node/esm --env-file=.env tests/smoke.ts",
+    "smoke:staging": "node --loader ts-node/esm --env-file=.env.staging.local tests/smoke.ts",
     "smoke:simple": "node tests/simple-smoke.mjs"
   },
   "keywords": [],

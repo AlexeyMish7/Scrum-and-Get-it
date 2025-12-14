@@ -25,6 +25,7 @@ import PeerGroupsHub from "@workspaces/network_hub/pages/PeerGroupsHub";
 import { useAuth } from "@shared/context/AuthContext";
 import NetworkHubNavbar from "@workspaces/network_hub/components/NetworkHubNavbar/NetworkHubNavbar";
 import { useContactReminders, useCoreContacts } from "@shared/cache/coreHooks";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 interface NetworkingAnalytics {
   summary: {
@@ -123,17 +124,14 @@ export default function ContactsDashboard() {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        "http://localhost:8787/api/analytics/networking",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ timeRange }),
-        }
-      );
+      const response = await fetch(toApiUrl("/api/analytics/networking"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ timeRange }),
+      });
 
       if (response.ok) {
         const result = await response.json();

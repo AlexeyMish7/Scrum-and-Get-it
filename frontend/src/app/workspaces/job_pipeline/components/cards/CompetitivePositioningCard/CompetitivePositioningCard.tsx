@@ -55,6 +55,7 @@ import {
   Download as DownloadIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@shared/context/AuthContext";
+import { toApiUrl } from "@shared/services/apiUrl";
 
 interface CompetitiveData {
   segment: {
@@ -105,7 +106,7 @@ interface CompetitiveData {
     interviewRate: number;
     offerRate: number;
     timeToHire: number;
-    salaryRange: {min: number; max: number; median: number} | null;
+    salaryRange: { min: number; max: number; median: number } | null;
     requiredSkills: string[];
   };
   careerProgression: {
@@ -127,7 +128,7 @@ interface CompetitiveData {
       peerAverage: number;
       industryRequired: number;
     };
-    topMissingAcrossPeers: Array<{skill: string; frequency: number}>;
+    topMissingAcrossPeers: Array<{ skill: string; frequency: number }>;
     recommendations: Array<{
       skill: string;
       priority: string;
@@ -171,7 +172,7 @@ export default function CompetitivePositioningCard() {
 
     try {
       const response = await fetch(
-        "http://localhost:8787/api/analytics/competitive/position",
+        toApiUrl("/api/analytics/competitive/position"),
         {
           method: "POST",
           headers: {
@@ -414,7 +415,13 @@ export default function CompetitivePositioningCard() {
                       />
                     </Box>
                     <Chip
-                      label={`${data.peerComparison.comparison.responseRate >= 0 ? "+" : ""}${data.peerComparison.comparison.responseRate.toFixed(0)}%`}
+                      label={`${
+                        data.peerComparison.comparison.responseRate >= 0
+                          ? "+"
+                          : ""
+                      }${data.peerComparison.comparison.responseRate.toFixed(
+                        0
+                      )}%`}
                       size="small"
                       color={
                         data.peerComparison.comparison.responseRate >= 0
@@ -444,8 +451,8 @@ export default function CompetitivePositioningCard() {
                   >
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" color="text.secondary">
-                        You:{" "}
-                        {(data.userMetrics.interviewRate * 100).toFixed(1)}%
+                        You: {(data.userMetrics.interviewRate * 100).toFixed(1)}
+                        %
                       </Typography>
                       <LinearProgress
                         variant="determinate"
@@ -454,7 +461,13 @@ export default function CompetitivePositioningCard() {
                       />
                     </Box>
                     <Chip
-                      label={`${data.peerComparison.comparison.interviewRate >= 0 ? "+" : ""}${data.peerComparison.comparison.interviewRate.toFixed(0)}%`}
+                      label={`${
+                        data.peerComparison.comparison.interviewRate >= 0
+                          ? "+"
+                          : ""
+                      }${data.peerComparison.comparison.interviewRate.toFixed(
+                        0
+                      )}%`}
                       size="small"
                       color={
                         data.peerComparison.comparison.interviewRate >= 0
@@ -494,7 +507,9 @@ export default function CompetitivePositioningCard() {
                       />
                     </Box>
                     <Chip
-                      label={`${data.peerComparison.comparison.offerRate >= 0 ? "+" : ""}${data.peerComparison.comparison.offerRate.toFixed(0)}%`}
+                      label={`${
+                        data.peerComparison.comparison.offerRate >= 0 ? "+" : ""
+                      }${data.peerComparison.comparison.offerRate.toFixed(0)}%`}
                       size="small"
                       color={
                         data.peerComparison.comparison.offerRate >= 0
@@ -539,7 +554,13 @@ export default function CompetitivePositioningCard() {
                       />
                     </Box>
                     <Chip
-                      label={`${data.peerComparison.comparison.applicationsPerMonth >= 0 ? "+" : ""}${data.peerComparison.comparison.applicationsPerMonth.toFixed(0)}%`}
+                      label={`${
+                        data.peerComparison.comparison.applicationsPerMonth >= 0
+                          ? "+"
+                          : ""
+                      }${data.peerComparison.comparison.applicationsPerMonth.toFixed(
+                        0
+                      )}%`}
                       size="small"
                       color={
                         data.peerComparison.comparison.applicationsPerMonth >= 0
@@ -577,7 +598,9 @@ export default function CompetitivePositioningCard() {
                 <ListItem>
                   <ListItemText
                     primary="Standard Application Volume"
-                    secondary={`${data.industryStandards.applicationsPerMonth.toFixed(1)} applications/month`}
+                    secondary={`${data.industryStandards.applicationsPerMonth.toFixed(
+                      1
+                    )} applications/month`}
                   />
                   <Chip
                     label={
@@ -598,7 +621,9 @@ export default function CompetitivePositioningCard() {
                 <ListItem>
                   <ListItemText
                     primary="Standard Response Rate"
-                    secondary={`${(data.industryStandards.responseRate * 100).toFixed(1)}%`}
+                    secondary={`${(
+                      data.industryStandards.responseRate * 100
+                    ).toFixed(1)}%`}
                   />
                   <Chip
                     label={
@@ -619,7 +644,9 @@ export default function CompetitivePositioningCard() {
                 <ListItem>
                   <ListItemText
                     primary="Standard Interview Rate"
-                    secondary={`${(data.industryStandards.interviewRate * 100).toFixed(1)}%`}
+                    secondary={`${(
+                      data.industryStandards.interviewRate * 100
+                    ).toFixed(1)}%`}
                   />
                   <Chip
                     label={
@@ -640,7 +667,9 @@ export default function CompetitivePositioningCard() {
                 <ListItem>
                   <ListItemText
                     primary="Standard Offer Rate"
-                    secondary={`${(data.industryStandards.offerRate * 100).toFixed(1)}%`}
+                    secondary={`${(
+                      data.industryStandards.offerRate * 100
+                    ).toFixed(1)}%`}
                   />
                   <Chip
                     label={
@@ -662,7 +691,13 @@ export default function CompetitivePositioningCard() {
                   <ListItem>
                     <ListItemText
                       primary="Salary Range"
-                      secondary={`$${(data.industryStandards.salaryRange.min / 1000).toFixed(0)}K - $${(data.industryStandards.salaryRange.max / 1000).toFixed(0)}K (Median: $${(data.industryStandards.salaryRange.median / 1000).toFixed(0)}K)`}
+                      secondary={`$${(
+                        data.industryStandards.salaryRange.min / 1000
+                      ).toFixed(0)}K - $${(
+                        data.industryStandards.salaryRange.max / 1000
+                      ).toFixed(0)}K (Median: $${(
+                        data.industryStandards.salaryRange.median / 1000
+                      ).toFixed(0)}K)`}
                     />
                   </ListItem>
                 )}
@@ -683,7 +718,8 @@ export default function CompetitivePositioningCard() {
               </AccordionSummary>
               <AccordionDetails>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Typical progression paths from {data.careerProgression.currentTitle}:
+                  Typical progression paths from{" "}
+                  {data.careerProgression.currentTitle}:
                 </Typography>
                 <Stack spacing={2} sx={{ mt: 2 }}>
                   {data.careerProgression.possiblePaths.map((path, idx) => (
@@ -698,7 +734,9 @@ export default function CompetitivePositioningCard() {
                             {path.nextTitle}
                           </Typography>
                           <Chip
-                            label={`${(path.successRate * 100).toFixed(0)}% success rate`}
+                            label={`${(path.successRate * 100).toFixed(
+                              0
+                            )}% success rate`}
                             size="small"
                             color="primary"
                           />
@@ -719,9 +757,19 @@ export default function CompetitivePositioningCard() {
                         >
                           Skills to acquire:
                         </Typography>
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
+                        <Stack
+                          direction="row"
+                          spacing={0.5}
+                          flexWrap="wrap"
+                          sx={{ mt: 0.5 }}
+                        >
                           {path.skillsNeeded.slice(0, 5).map((skill, i) => (
-                            <Chip key={i} label={skill} size="small" variant="outlined" />
+                            <Chip
+                              key={i}
+                              label={skill}
+                              size="small"
+                              variant="outlined"
+                            />
                           ))}
                         </Stack>
                         <Typography
@@ -786,9 +834,14 @@ export default function CompetitivePositioningCard() {
                       {data.skillGapAnalysis.skillMatchPercentage.toFixed(0)}%
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
                     {data.skillGapAnalysis.matchedSkills.length} of{" "}
-                    {data.skillGapAnalysis.skillsDepth.industryRequired} required skills
+                    {data.skillGapAnalysis.skillsDepth.industryRequired}{" "}
+                    required skills
                   </Typography>
                 </Grid>
 
@@ -806,13 +859,17 @@ export default function CompetitivePositioningCard() {
                     <ListItem>
                       <ListItemText
                         primary="Peer Average"
-                        secondary={data.skillGapAnalysis.skillsDepth.peerAverage.toFixed(0)}
+                        secondary={data.skillGapAnalysis.skillsDepth.peerAverage.toFixed(
+                          0
+                        )}
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText
                         primary="Industry Required"
-                        secondary={data.skillGapAnalysis.skillsDepth.industryRequired}
+                        secondary={
+                          data.skillGapAnalysis.skillsDepth.industryRequired
+                        }
                       />
                     </ListItem>
                   </List>
@@ -825,9 +882,16 @@ export default function CompetitivePositioningCard() {
                       Missing High-Priority Skills
                     </Typography>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                      {data.skillGapAnalysis.missingSkills.slice(0, 10).map((skill, idx) => (
-                        <Chip key={idx} label={skill} size="small" color="warning" />
-                      ))}
+                      {data.skillGapAnalysis.missingSkills
+                        .slice(0, 10)
+                        .map((skill, idx) => (
+                          <Chip
+                            key={idx}
+                            label={skill}
+                            size="small"
+                            color="warning"
+                          />
+                        ))}
                     </Stack>
                   </Grid>
                 )}
@@ -850,9 +914,11 @@ export default function CompetitivePositioningCard() {
                 {data.competitiveAdvantages.map((advantage, idx) => (
                   <ListItem key={idx} alignItems="flex-start">
                     <ListItemIcon>
-                      {advantage.type === "strength" || advantage.type === "performance" ? (
+                      {advantage.type === "strength" ||
+                      advantage.type === "performance" ? (
                         <CheckIcon color="success" />
-                      ) : advantage.type === "gap" || advantage.type === "improvement" ? (
+                      ) : advantage.type === "gap" ||
+                        advantage.type === "improvement" ? (
                         <WarningIcon color="warning" />
                       ) : (
                         <InfoIcon color="info" />
@@ -861,7 +927,9 @@ export default function CompetitivePositioningCard() {
                     <ListItemText
                       primary={
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <Typography variant="subtitle2">{advantage.advantage}</Typography>
+                          <Typography variant="subtitle2">
+                            {advantage.advantage}
+                          </Typography>
                           <Chip
                             label={advantage.impact}
                             size="small"
@@ -902,7 +970,11 @@ export default function CompetitivePositioningCard() {
                 {data.differentiationStrategies.map((strategy, idx) => (
                   <Card key={idx} variant="outlined">
                     <CardContent>
-                      <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight={600}
+                        gutterBottom
+                      >
                         {strategy.strategy}
                       </Typography>
                       <Typography
@@ -913,7 +985,11 @@ export default function CompetitivePositioningCard() {
                         {strategy.rationale}
                       </Typography>
                       <Divider sx={{ my: 1 }} />
-                      <Typography variant="caption" fontWeight={600} display="block">
+                      <Typography
+                        variant="caption"
+                        fontWeight={600}
+                        display="block"
+                      >
                         Recommended actions:
                       </Typography>
                       <List dense>
@@ -953,17 +1029,19 @@ export default function CompetitivePositioningCard() {
                     Visibility Enhancement
                   </Typography>
                   <List dense>
-                    {data.marketOptimization.visibility.slice(0, 4).map((tip, idx) => (
-                      <ListItem key={idx} sx={{ py: 0.5 }}>
-                        <ListItemIcon sx={{ minWidth: 24 }}>
-                          <VisibilityIcon fontSize="small" color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={tip}
-                          primaryTypographyProps={{ variant: "body2" }}
-                        />
-                      </ListItem>
-                    ))}
+                    {data.marketOptimization.visibility
+                      .slice(0, 4)
+                      .map((tip, idx) => (
+                        <ListItem key={idx} sx={{ py: 0.5 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <VisibilityIcon fontSize="small" color="primary" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={tip}
+                            primaryTypographyProps={{ variant: "body2" }}
+                          />
+                        </ListItem>
+                      ))}
                   </List>
                 </Grid>
 
@@ -972,17 +1050,19 @@ export default function CompetitivePositioningCard() {
                     Targeting Strategy
                   </Typography>
                   <List dense>
-                    {data.marketOptimization.targeting.slice(0, 4).map((tip, idx) => (
-                      <ListItem key={idx} sx={{ py: 0.5 }}>
-                        <ListItemIcon sx={{ minWidth: 24 }}>
-                          <TrendingIcon fontSize="small" color="success" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={tip}
-                          primaryTypographyProps={{ variant: "body2" }}
-                        />
-                      </ListItem>
-                    ))}
+                    {data.marketOptimization.targeting
+                      .slice(0, 4)
+                      .map((tip, idx) => (
+                        <ListItem key={idx} sx={{ py: 0.5 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <TrendingIcon fontSize="small" color="success" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={tip}
+                            primaryTypographyProps={{ variant: "body2" }}
+                          />
+                        </ListItem>
+                      ))}
                   </List>
                 </Grid>
 
@@ -991,17 +1071,19 @@ export default function CompetitivePositioningCard() {
                     Timing Optimization
                   </Typography>
                   <List dense>
-                    {data.marketOptimization.timing.slice(0, 4).map((tip, idx) => (
-                      <ListItem key={idx} sx={{ py: 0.5 }}>
-                        <ListItemIcon sx={{ minWidth: 24 }}>
-                          <TimelineIcon fontSize="small" color="warning" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={tip}
-                          primaryTypographyProps={{ variant: "body2" }}
-                        />
-                      </ListItem>
-                    ))}
+                    {data.marketOptimization.timing
+                      .slice(0, 4)
+                      .map((tip, idx) => (
+                        <ListItem key={idx} sx={{ py: 0.5 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <TimelineIcon fontSize="small" color="warning" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={tip}
+                            primaryTypographyProps={{ variant: "body2" }}
+                          />
+                        </ListItem>
+                      ))}
                   </List>
                 </Grid>
 
@@ -1010,17 +1092,19 @@ export default function CompetitivePositioningCard() {
                     Application Quality
                   </Typography>
                   <List dense>
-                    {data.marketOptimization.quality.slice(0, 4).map((tip, idx) => (
-                      <ListItem key={idx} sx={{ py: 0.5 }}>
-                        <ListItemIcon sx={{ minWidth: 24 }}>
-                          <TrophyIcon fontSize="small" color="error" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={tip}
-                          primaryTypographyProps={{ variant: "body2" }}
-                        />
-                      </ListItem>
-                    ))}
+                    {data.marketOptimization.quality
+                      .slice(0, 4)
+                      .map((tip, idx) => (
+                        <ListItem key={idx} sx={{ py: 0.5 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <TrophyIcon fontSize="small" color="error" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={tip}
+                            primaryTypographyProps={{ variant: "body2" }}
+                          />
+                        </ListItem>
+                      ))}
                   </List>
                 </Grid>
               </Grid>

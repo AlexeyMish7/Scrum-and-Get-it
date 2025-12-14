@@ -1,0 +1,188 @@
+name: Deploy (Staging)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch, tag, or SHA) to deploy to staging (used for manual redeploy/rollback)."
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+
+    steps:
+      - name: Record start time
+        run: echo "DEPLOY_START_EPOCH=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            server/package-lock.json
+            tests/package-lock.json
+
+      # --- Gate deployments on tests/builds ---
+      - name: Install tests workspace deps
+        working-directory: tests
+        run: npm ci
+
+      - name: Run test suite (server + frontend)
+        working-directory: tests
+        run: npm run test:all
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci
+
+      - name: Server build
+        working-directory: server
+        run: npm run build
+
+      # --- Create GitHub deployment record (history) ---
+      - name: Create GitHub deployment
+        id: gh_deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const res = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'staging',
+              auto_merge: false,
+              required_contexts: [],
+              description: 'Staging deployment via GitHub Actions'
+            });
+            core.setOutput('deployment_id', String(res.data.id));
+
+      - name: Mark deployment in_progress
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number('${{ steps.gh_deploy.outputs.deployment_id }}'),
+              state: 'in_progress'
+            });
+
+      # --- Deploy backend (Render) ---
+      - name: Trigger Render staging deploy (deploy hook)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING != '' }}
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING }}"
+
+      # --- Deploy frontend (Vercel preview) ---
+      - name: Deploy frontend to Vercel (preview)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx vercel@latest pull --yes --environment=preview --token "$VERCEL_TOKEN"
+          npx vercel@latest build --token "$VERCEL_TOKEN"
+          DEPLOY_URL=$(npx vercel@latest deploy --prebuilt --token "$VERCEL_TOKEN")
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          echo "Staging frontend deploy: $DEPLOY_URL" >> $GITHUB_STEP_SUMMARY
+
+      - name: Record end time + write metrics
+        if: always()
+        run: |
+          END=$(date +%s)
+          echo "DEPLOY_END_EPOCH=$END" >> $GITHUB_ENV
+          DURATION=$((END - ${DEPLOY_START_EPOCH}))
+          echo "DEPLOY_DURATION_SECONDS=$DURATION" >> $GITHUB_ENV
+          cat > deployment-metrics.json << EOF
+          {
+            "environment": "staging",
+            "ref": "${{ inputs.ref || github.sha }}",
+            "sha": "${{ github.sha }}",
+            "started_at_epoch": ${DEPLOY_START_EPOCH},
+            "ended_at_epoch": ${END},
+            "duration_seconds": ${DURATION},
+            "frontend_url": "${DEPLOY_URL:-}",
+            "backend_url": "${{ secrets.STAGING_BACKEND_URL }}"
+          }
+          EOF
+
+      - name: Upload deployment metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-metrics-staging
+          path: deployment-metrics.json
+
+      - name: Mark deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number('${{ steps.gh_deploy.outputs.deployment_id }}'),
+              state: 'success',
+              environment_url: process.env.DEPLOY_URL || undefined,
+              description: 'Staging deployment succeeded'
+            });
+
+      - name: Mark deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number('${{ steps.gh_deploy.outputs.deployment_id }}'),
+              state: 'failure',
+              description: 'Staging deployment failed'
+            });
+
+      - name: Notify team (optional webhook)
+        if: always() && secrets.DEPLOYMENT_WEBHOOK_URL != ''
+        env:
+          WEBHOOK_URL: ${{ secrets.DEPLOYMENT_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+        run: |
+          FRONTEND_URL="${DEPLOY_URL:-}"
+          BACKEND_URL="${{ secrets.STAGING_BACKEND_URL }}"
+          BODY=$(cat <<EOF
+          {
+            "text": "FlowATS staging deploy: ${STATUS}. ref=${{ inputs.ref || github.sha }} sha=${{ github.sha }} frontend=${FRONTEND_URL} backend=${BACKEND_URL} duration=${DEPLOY_DURATION_SECONDS:-}s"
+          }
+          EOF
+          )
+          curl -fsS -X POST -H "Content-Type: application/json" -d "$BODY" "$WEBHOOK_URL"

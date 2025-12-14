@@ -37,11 +37,6 @@ export default defineConfig({
             "@emotion/styled",
           ],
           "vendor-dnd": ["@hello-pangea/dnd"],
-          // Workspace-specific chunks for lazy loading
-          "workspace-ai": [
-            "./src/app/workspaces/ai/pages/ResumeEditorV2/index.tsx",
-            "./src/app/workspaces/ai/pages/CoverLetterEditor/index.tsx",
-          ],
         },
       },
     },
