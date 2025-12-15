@@ -371,10 +371,9 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
               tokens.components?.card?.borderRadius ??
               `var(--radius-lg, ${tokens.effects.borderRadius.lg}px)`,
             backgroundColor: tokens.components?.card?.bg ?? undefined,
-            // Preset-based colored border for visual distinction
-            border: tokens.components?.card?.border
-              ? `2px solid ${tokens.components.card.border}`
-              : `2px solid ${tokens.palette.primary}`,
+            // Separation from the background should come from elevation/shadows,
+            // not from heavy outlines.
+            border: "none",
             // Refined shadow with depth
             boxShadow: buildGlowShadow(
               tokens.components?.card?.shadow ??
@@ -389,7 +388,6 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
             transition: `
               box-shadow ${tokens.motion.duration.medium}ms ${tokens.motion.easing.standard},
               transform ${tokens.motion.duration.medium}ms ${tokens.motion.easing.standard},
-              border-color ${tokens.motion.duration.short}ms ${tokens.motion.easing.standard},
               background-color ${tokens.motion.duration.short}ms ${tokens.motion.easing.standard}
             `,
             // Modern hover effect with subtle lift and thicker border
@@ -401,8 +399,6 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
                   tokens.effects.depth,
                   1.2
                 ),
-              borderColor: tokens.palette.primary,
-              borderWidth: "3px",
             },
             // Glass morphism effect for supported surfaces
             ...(tokens.effects.glass
@@ -501,9 +497,9 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
           },
           // Outlined variant - subtle border with hover fill
           outlined: {
-            borderWidth: "1.5px",
+            borderWidth: "1px",
             "&:hover": {
-              borderWidth: "1.5px",
+              borderWidth: "1px",
               backgroundColor: alpha(tokens.palette.primary, 0.04),
             },
           },
@@ -569,7 +565,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
             "& fieldset": {
               borderColor:
                 tokens.input?.border ?? alpha(tokens.palette.divider, 0.8),
-              borderWidth: "1.5px",
+              borderWidth: "1px",
               transition: `border-color ${tokens.motion.duration.short}ms ${tokens.motion.easing.standard}`,
             },
             // Hover state - subtle border darkening
@@ -587,10 +583,10 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
             },
             "&.Mui-focused fieldset": {
               borderColor: tokens.input?.borderFocus ?? tokens.palette.primary,
-              borderWidth: "2px",
+              borderWidth: "1px",
               boxShadow: tokens.effects.glow?.appliesTo?.inputFocus
-                ? `0 0 0 3px ${alpha(tokens.palette.primary, 0.15)}`
-                : `0 0 0 3px ${alpha(tokens.palette.primary, 0.1)}`,
+                ? `0 0 0 2px ${alpha(tokens.palette.primary, 0.14)}`
+                : `0 0 0 2px ${alpha(tokens.palette.primary, 0.1)}`,
             },
             // Error state
             "&.Mui-error fieldset": {
@@ -677,15 +673,11 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
               tokens.effects.glow?.appliesTo?.paper ?? false
             ),
             backgroundImage: "none",
-            // Preset-based colored border for visual definition
-            border: `2px solid ${tokens.palette.primary}`,
+            // No borders on paper surfaces; rely on depth/shadows for separation.
+            border: "none",
             // Remove text shadows from typography inside Paper
             "& .MuiTypography-root": {
               textShadow: "none",
-            },
-            "&:hover": {
-              borderColor: tokens.palette.primary,
-              borderWidth: "3px",
             },
           },
           elevation1: {
@@ -745,7 +737,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
             : { height: 32 },
           // Outlined variant
           outlined: {
-            borderWidth: "1.5px",
+            borderWidth: "1px",
           },
           // Filled variant with subtle depth
           filled: {
@@ -769,7 +761,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
           root: {
             border:
               tokens.components?.avatar?.border ??
-              `2px solid ${alpha(tokens.palette.surface, 0.9)}`,
+              `1px solid ${alpha(tokens.palette.surface, 0.9)}`,
             fontWeight: tokens.typography?.fontWeight.semibold ?? 600,
           },
           colorDefault: {
@@ -927,6 +919,7 @@ export function createThemeFromTokens(tokens: BaseTokens): Theme {
                   ? `blur(${tokens.palette.appBar.blur}px) saturate(1.2)`
                   : undefined,
                 boxShadow: "none",
+                borderRadius: 0,
               }
             : undefined,
         },

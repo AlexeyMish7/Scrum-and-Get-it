@@ -3,19 +3,14 @@ import { supabase } from "@shared/services/supabaseClient";
 import {
   Button,
   TextField,
-  Card,
-  CardContent,
+  Paper,
   Typography,
   Link as MuiLink,
-  AppBar,
-  Toolbar,
-  IconButton,
   Box,
 } from "@mui/material";
 import { Link } from "react-router-dom";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import { useThemeContext } from "@shared/context/ThemeContext";
+import PublicPageLayout from "@shared/layouts/PublicPageLayout";
+import logo from "@shared/assets/logos/logo-full.png";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -54,81 +49,78 @@ export default function ForgotPassword() {
     }
   };
 
-  const { mode, toggleMode } = useThemeContext();
-
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        color: "text.primary",
-      }}
-    >
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{ mb: 2 }}
+    <PublicPageLayout centerContent containerMaxWidth="sm">
+      <Paper
+        elevation={4}
+        sx={{
+          maxWidth: 420,
+          mx: "auto",
+          p: 4,
+          borderRadius: 3,
+        }}
       >
-        <Toolbar>
-          <Box sx={{ flex: 1 }} />
-          <IconButton
-            onClick={toggleMode}
-            aria-label="Toggle theme"
-            color="inherit"
+        <Box
+          component="img"
+          src={logo}
+          alt="FlowATS"
+          sx={{
+            height: 34,
+            width: "auto",
+            display: "block",
+            mx: "auto",
+            mb: 2,
+          }}
+        />
+
+        <Typography variant="h5" fontWeight={800} gutterBottom>
+          Reset your password
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>
+          Enter your email and we'll send you a reset link.
+        </Typography>
+
+        <form onSubmit={handleResetRequest} aria-live="polite">
+          <TextField
+            fullWidth
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            sx={{ mb: 2 }}
+            disabled={loading}
+          />
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={loading}
+            fullWidth
           >
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+            {loading ? "Sending..." : "Send reset link"}
+          </Button>
+        </form>
 
-      <Card sx={{ maxWidth: 400, mx: "auto", mt: 4, p: 2 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Forgot Password
+        {message && (
+          <Typography
+            variant="body2"
+            sx={{ mt: 2, color: "success.main" }}
+            role="status"
+            aria-live="polite"
+          >
+            {message}
           </Typography>
-          <form onSubmit={handleResetRequest} aria-live="polite">
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
-              disabled={loading}
-            />
+        )}
 
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={loading}
-              fullWidth
-            >
-              {loading ? "Sending..." : "Send Reset Link"}
-            </Button>
-          </form>
-
-          {message && (
-            <Typography
-              variant="body2"
-              sx={{ mt: 2, color: "success.main" }}
-              role="status"
-              aria-live="polite"
-            >
-              {message}
-            </Typography>
-          )}
-
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            <MuiLink component={Link} to="/login">
-              Back to sign in
-            </MuiLink>
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          <MuiLink component={Link} to="/login">
+            Back to sign in
+          </MuiLink>
+        </Typography>
+      </Paper>
+    </PublicPageLayout>
   );
 }

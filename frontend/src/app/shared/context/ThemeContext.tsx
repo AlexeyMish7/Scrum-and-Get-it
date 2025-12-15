@@ -71,14 +71,14 @@ import {
 import lightPaletteTokens from "@shared/theme/palettes/lightPalette";
 import darkPaletteTokens from "@shared/theme/palettes/darkPalette";
 
-/** Background mode - default is solid, gradient uses animated gradient, flickering uses grid animation */
-export type BackgroundMode = "default" | "gradient" | "flickering";
-
 /** Font scale for accessibility - affects all text sizes */
 export type FontScale = "small" | "default" | "large" | "x-large";
 
 /** UI density - affects spacing and component sizes */
 export type UIDensity = "compact" | "comfortable" | "spacious";
+
+/** Subtle background treatments for authenticated pages */
+export type BackgroundStyle = "plain" | "noise" | "vignette" | "grid";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -98,10 +98,6 @@ interface ThemeContextValue {
   designPreset: DesignPresetId;
   setDesignPreset: (presetId: DesignPresetId) => void;
 
-  // Background mode
-  backgroundMode: BackgroundMode;
-  setBackgroundMode: (mode: BackgroundMode) => void;
-
   // Accessibility and customization
   fontScale: FontScale;
   setFontScale: (scale: FontScale) => void;
@@ -113,6 +109,10 @@ interface ThemeContextValue {
   // Custom accent color (overrides color preset primary)
   customAccentColor: string | null;
   setCustomAccentColor: (color: string | null) => void;
+
+  // Authenticated background style (public pages stay solid)
+  backgroundStyle: BackgroundStyle;
+  setBackgroundStyle: (style: BackgroundStyle) => void;
 
   // Reset all settings to defaults
   resetToDefaults: () => void;
@@ -126,11 +126,20 @@ const STORAGE_KEY = "app.theme.mode";
 const PRESET_STORAGE_KEY = "app.theme.preset";
 const COLOR_PRESET_KEY = "app.theme.colorPreset";
 const DESIGN_PRESET_KEY = "app.theme.designPreset";
-const BACKGROUND_MODE_KEY = "app.theme.backgroundMode";
 const FONT_SCALE_KEY = "app.theme.fontScale";
 const REDUCED_MOTION_KEY = "app.theme.reducedMotion";
 const UI_DENSITY_KEY = "app.theme.uiDensity";
 const CUSTOM_ACCENT_KEY = "app.theme.customAccent";
+const BACKGROUND_STYLE_KEY = "app.theme.backgroundStyle";
+
+const isValidBackgroundStyle = (value: string): value is BackgroundStyle => {
+  return (
+    value === "plain" ||
+    value === "noise" ||
+    value === "vignette" ||
+    value === "grid"
+  );
+};
 
 // ******************** Context & Hook *******************
 
@@ -212,31 +221,6 @@ const persistPreset = (presetId: PresetId | null) => {
   }
 };
 
-const readStoredBackgroundMode = (): BackgroundMode => {
-  if (typeof window === "undefined") {
-    return "default";
-  }
-
-  const stored = window.localStorage.getItem(BACKGROUND_MODE_KEY);
-  if (stored === "gradient" || stored === "flickering") {
-    return stored;
-  }
-
-  return "default";
-};
-
-const persistBackgroundMode = (bgMode: BackgroundMode) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(BACKGROUND_MODE_KEY, bgMode);
-  } catch {
-    // Swallow storage errors
-  }
-};
-
 // New preset system helpers
 const readStoredColorPreset = (): ColorPresetId => {
   if (typeof window === "undefined") {
@@ -265,15 +249,30 @@ const persistColorPreset = (presetId: ColorPresetId) => {
 
 const readStoredDesignPreset = (): DesignPresetId => {
   if (typeof window === "undefined") {
-    return "modern";
+    return "default";
   }
+
+  // For now, we only expose three design styles.
+  const allowed: readonly DesignPresetId[] = [
+    "default",
+    "extraSharp",
+    "rounded",
+  ];
 
   const stored = window.localStorage.getItem(DESIGN_PRESET_KEY);
-  if (stored && isValidDesignPreset(stored)) {
-    return stored;
+  // Migrate older id used earlier in the project.
+  if (stored === "sharp") {
+    return "default";
+  }
+  if (
+    stored &&
+    isValidDesignPreset(stored) &&
+    (allowed as readonly string[]).includes(stored)
+  ) {
+    return stored as DesignPresetId;
   }
 
-  return "modern";
+  return "default";
 };
 
 const persistDesignPreset = (presetId: DesignPresetId) => {
@@ -369,6 +368,24 @@ const persistCustomAccent = (color: string | null) => {
   }
 };
 
+const readStoredBackgroundStyle = (): BackgroundStyle => {
+  if (typeof window === "undefined") return "noise";
+  const stored = window.localStorage.getItem(BACKGROUND_STYLE_KEY);
+  if (stored && isValidBackgroundStyle(stored)) {
+    return stored;
+  }
+  return "noise";
+};
+
+const persistBackgroundStyle = (style: BackgroundStyle) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(BACKGROUND_STYLE_KEY, style);
+  } catch {
+    // Swallow
+  }
+};
+
 // ******************** Provider Component *******************
 
 export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
@@ -391,9 +408,6 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   const [designPreset, setDesignPresetState] = useState<DesignPresetId>(() =>
     readStoredDesignPreset()
   );
-  const [backgroundMode, setBackgroundModeState] = useState<BackgroundMode>(
-    () => readStoredBackgroundMode()
-  );
 
   // New accessibility and customization state
   const [fontScale, setFontScaleState] = useState<FontScale>(() =>
@@ -407,6 +421,9 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   );
   const [customAccentColor, setCustomAccentState] = useState<string | null>(
     () => readStoredCustomAccent()
+  );
+  const [backgroundStyle, setBackgroundStyleState] = useState<BackgroundStyle>(
+    () => readStoredBackgroundStyle()
   );
 
   useEffect(() => {
@@ -430,11 +447,6 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   useEffect(() => {
     persistDesignPreset(designPreset);
   }, [designPreset]);
-
-  // Persist background mode changes
-  useEffect(() => {
-    persistBackgroundMode(backgroundMode);
-  }, [backgroundMode]);
 
   // Persist new accessibility/customization settings
   useEffect(() => {
@@ -471,10 +483,9 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     persistCustomAccent(customAccentColor);
   }, [customAccentColor]);
 
-  // Background mode setter with persistence
-  const setBackgroundMode = useCallback((newMode: BackgroundMode) => {
-    setBackgroundModeState(newMode);
-  }, []);
+  useEffect(() => {
+    persistBackgroundStyle(backgroundStyle);
+  }, [backgroundStyle]);
 
   // New preset setters
   const setColorPreset = useCallback((presetId: ColorPresetId) => {
@@ -482,7 +493,17 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
   }, []);
 
   const setDesignPreset = useCallback((presetId: DesignPresetId) => {
-    setDesignPresetState(presetId);
+    // For now, we only expose three design styles.
+    const allowed: readonly DesignPresetId[] = [
+      "default",
+      "extraSharp",
+      "rounded",
+    ];
+    if ((allowed as readonly string[]).includes(presetId)) {
+      setDesignPresetState(presetId);
+      return;
+    }
+    setDesignPresetState("default");
   }, []);
 
   // New accessibility/customization setters
@@ -502,17 +523,21 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     setCustomAccentState(color);
   }, []);
 
+  const setBackgroundStyle = useCallback((style: BackgroundStyle) => {
+    setBackgroundStyleState(style);
+  }, []);
+
   // Reset all settings to defaults
   const resetToDefaults = useCallback(() => {
     setModeState(detectPreferredMode());
     setColorPresetState("default");
-    setDesignPresetState("modern");
-    setBackgroundModeState("default");
+    setDesignPresetState("default");
     setFontScaleState("default");
     setReducedMotionState(false);
     setUIDensityState("comfortable");
     setCustomAccentState(null);
     setCurrentPreset(null);
+    setBackgroundStyleState("noise");
   }, []);
 
   // Export all theme settings as JSON string
@@ -522,21 +547,21 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       mode,
       colorPreset,
       designPreset,
-      backgroundMode,
       fontScale,
       reducedMotion,
       uiDensity,
       customAccentColor,
+      backgroundStyle,
     });
   }, [
     mode,
     colorPreset,
     designPreset,
-    backgroundMode,
     fontScale,
     reducedMotion,
     uiDensity,
     customAccentColor,
+    backgroundStyle,
   ]);
 
   // Import theme settings from JSON string
@@ -549,11 +574,23 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       if (settings.colorPreset && isValidColorPreset(settings.colorPreset)) {
         setColorPresetState(settings.colorPreset);
       }
-      if (settings.designPreset && isValidDesignPreset(settings.designPreset)) {
+      // For now, we only accept these three design styles (and migrate old 'sharp' -> 'default').
+      const allowed: readonly DesignPresetId[] = [
+        "default",
+        "extraSharp",
+        "rounded",
+      ];
+      if (settings.designPreset === "sharp") {
+        setDesignPresetState("default");
+      } else if (
+        settings.designPreset &&
+        isValidDesignPreset(settings.designPreset) &&
+        (allowed as readonly string[]).includes(settings.designPreset)
+      ) {
         setDesignPresetState(settings.designPreset);
+      } else {
+        setDesignPresetState("default");
       }
-      if (settings.backgroundMode)
-        setBackgroundModeState(settings.backgroundMode);
       if (settings.fontScale) setFontScaleState(settings.fontScale);
       if (typeof settings.reducedMotion === "boolean") {
         setReducedMotionState(settings.reducedMotion);
@@ -562,6 +599,13 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       if (settings.customAccentColor) {
         setCustomAccentState(settings.customAccentColor);
       }
+      if (typeof settings.backgroundStyle === "string") {
+        setBackgroundStyleState(
+          isValidBackgroundStyle(settings.backgroundStyle)
+            ? settings.backgroundStyle
+            : "noise"
+        );
+      }
 
       return true;
     } catch {
@@ -569,28 +613,9 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     }
   }, []);
 
-  // Determine theme using the new composition system
-  // Priority: new presets > legacy presets > default themes
+  // Determine theme using the new composition system.
+  // Priority: legacy preset (back-compat) > composed theme.
   const theme = useMemo(() => {
-    // If using new preset system or any customization
-    const usingNewSystem =
-      colorPreset !== "default" ||
-      designPreset !== "modern" ||
-      customAccentColor ||
-      reducedMotion;
-
-    if (usingNewSystem) {
-      // Use the new composer to create theme from mode + colorPreset + designPreset
-      // Also pass custom accent color and reduced motion preferences
-      return composeTheme({
-        mode,
-        colorPresetId: colorPreset,
-        designPresetId: designPreset,
-        customAccentColor,
-        reducedMotion,
-      });
-    }
-
     // Legacy preset support - if a legacy preset is active, use it
     if (currentPreset) {
       const baseTokens =
@@ -598,8 +623,15 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       return applyPresetById(currentPreset, baseTokens);
     }
 
-    // Default: use the standard light/dark themes
-    return mode === "dark" ? darkTheme : lightTheme;
+    // Default: use the composed theme even when using default settings.
+    // This keeps the app's default styling consistent with the new preset system.
+    return composeTheme({
+      mode,
+      colorPresetId: colorPreset,
+      designPresetId: designPreset,
+      customAccentColor,
+      reducedMotion,
+    });
   }, [
     mode,
     currentPreset,
@@ -697,9 +729,6 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       setColorPreset,
       designPreset,
       setDesignPreset,
-      // Background mode
-      backgroundMode,
-      setBackgroundMode,
       // Accessibility and customization
       fontScale,
       setFontScale,
@@ -709,6 +738,8 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       setUIDensity,
       customAccentColor,
       setCustomAccentColor,
+      backgroundStyle,
+      setBackgroundStyle,
       // Utility functions
       resetToDefaults,
       exportSettings,
@@ -726,8 +757,6 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       setColorPreset,
       designPreset,
       setDesignPreset,
-      backgroundMode,
-      setBackgroundMode,
       fontScale,
       setFontScale,
       reducedMotion,
@@ -736,6 +765,8 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
       setUIDensity,
       customAccentColor,
       setCustomAccentColor,
+      backgroundStyle,
+      setBackgroundStyle,
       resetToDefaults,
       exportSettings,
       importSettings,
@@ -762,9 +793,10 @@ export function ThemeContextProvider({ children }: PropsWithChildren<unknown>) {
     ).designTokens;
     const br = tokens?.effects?.borderRadius ?? { sm: 2, md: 4, lg: 6 };
     if (radiusMode === "tiny") {
-      root.style.setProperty("--radius-sm", `2px`);
-      root.style.setProperty("--radius-md", `4px`);
-      root.style.setProperty("--radius-lg", `6px`);
+      // Tiny mode is intentionally subtle: corners should read as essentially square.
+      root.style.setProperty("--radius-sm", `1px`);
+      root.style.setProperty("--radius-md", `2px`);
+      root.style.setProperty("--radius-lg", `3px`);
     } else {
       root.style.setProperty("--radius-sm", `${br.sm ?? 2}px`);
       root.style.setProperty("--radius-md", `${br.md ?? 4}px`);

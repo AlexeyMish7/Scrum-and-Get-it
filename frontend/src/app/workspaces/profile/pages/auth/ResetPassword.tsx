@@ -4,19 +4,14 @@ import { supabase } from "@shared/services/supabaseClient";
 import {
   Button,
   TextField,
-  Card,
-  CardContent,
+  Paper,
   Typography,
   Alert,
   Link as MuiLink,
-  AppBar,
-  Toolbar,
-  IconButton,
   Box,
 } from "@mui/material";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import { useThemeContext } from "@shared/context/ThemeContext";
+import PublicPageLayout from "@shared/layouts/PublicPageLayout";
+import logo from "@shared/assets/logos/logo-full.png";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -70,93 +65,85 @@ export default function ResetPassword() {
     setLoading(false);
   };
 
-  const { mode, toggleMode } = useThemeContext();
-
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        color: "text.primary",
-      }}
-    >
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{ mb: 2 }}
+    <PublicPageLayout centerContent containerMaxWidth="sm">
+      <Paper
+        elevation={4}
+        sx={{
+          maxWidth: 420,
+          mx: "auto",
+          p: 4,
+          borderRadius: 3,
+        }}
       >
-        <Toolbar>
-          <Box sx={{ flex: 1 }} />
-          <IconButton
-            onClick={toggleMode}
-            aria-label="Toggle theme"
-            color="inherit"
+        <Box
+          component="img"
+          src={logo}
+          alt="FlowATS"
+          sx={{
+            height: 34,
+            width: "auto",
+            display: "block",
+            mx: "auto",
+            mb: 2,
+          }}
+        />
+
+        <Typography variant="h5" fontWeight={800} gutterBottom>
+          Choose a new password
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {message && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {message}
+          </Alert>
+        )}
+
+        <form onSubmit={handlePasswordReset}>
+          <TextField
+            fullWidth
+            label="New Password"
+            type="password"
+            required
+            value={newPassword}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setNewPassword(e.target.value)
+            }
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Confirm New Password"
+            type="password"
+            required
+            value={confirmPassword}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setConfirmPassword(e.target.value)
+            }
+            sx={{ mb: 2 }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={loading}
+            fullWidth
           >
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+            {loading ? "Updating..." : "Reset password"}
+          </Button>
+        </form>
 
-      <Card sx={{ maxWidth: 400, mx: "auto", mt: 1, p: 2 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Reset Your Password
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {message && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {message}
-            </Alert>
-          )}
-
-          <form onSubmit={handlePasswordReset}>
-            <TextField
-              fullWidth
-              label="New Password"
-              type="password"
-              required
-              value={newPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setNewPassword(e.target.value)
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Confirm New Password"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setConfirmPassword(e.target.value)
-              }
-              sx={{ mb: 2 }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={loading}
-              fullWidth
-            >
-              {loading ? "Updating..." : "Reset Password"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardContent>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            <MuiLink component={Link} to="/login">
-              Back to sign in
-            </MuiLink>
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          <MuiLink component={Link} to="/login">
+            Back to sign in
+          </MuiLink>
+        </Typography>
+      </Paper>
+    </PublicPageLayout>
   );
 }

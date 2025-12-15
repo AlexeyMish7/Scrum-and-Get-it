@@ -270,6 +270,9 @@ function applyDesignPreset(
       card: {
         ...baseTokens.components?.card,
         borderRadius: designPreset.borderRadius.lg,
+        // Use design preset elevation so surfaces visually match the selected design style.
+        shadow: designPreset.elevation.level1,
+        hoverShadow: designPreset.elevation.level2,
       },
     },
 

@@ -9,7 +9,6 @@
  * - Light/Dark mode toggle
  * - Color preset selector (defines colors)
  * - Design preset selector (defines shapes, shadows, effects)
- * - Background mode toggle
  * - Font scale for accessibility
  * - Reduced motion toggle
  * - UI density control
@@ -41,15 +40,17 @@ import { useState } from "react";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ImageIcon from "@mui/icons-material/Image";
-import GradientIcon from "@mui/icons-material/Gradient";
-import GridViewIcon from "@mui/icons-material/GridView";
 import PaletteIcon from "@mui/icons-material/Palette";
 import BrushIcon from "@mui/icons-material/Brush";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 import SpeedIcon from "@mui/icons-material/Speed";
 import ViewCompactIcon from "@mui/icons-material/ViewCompact";
 import ColorLensIcon from "@mui/icons-material/ColorLens";
+import WallpaperIcon from "@mui/icons-material/Wallpaper";
+import GrainIcon from "@mui/icons-material/Grain";
+import BlurOnIcon from "@mui/icons-material/BlurOn";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import LayersClearIcon from "@mui/icons-material/LayersClear";
 import RestoreIcon from "@mui/icons-material/Restore";
 import DownloadIcon from "@mui/icons-material/Download";
 import UploadIcon from "@mui/icons-material/Upload";
@@ -58,7 +59,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AccessibilityNewIcon from "@mui/icons-material/AccessibilityNew";
 import {
   useThemeContext,
-  type BackgroundMode,
+  type BackgroundStyle,
   type FontScale,
   type UIDensity,
 } from "@shared/context/ThemeContext";
@@ -76,8 +77,6 @@ interface ThemeSettingsPanelProps {
   showColorPresets?: boolean;
   /** Show design preset selector */
   showDesignPresets?: boolean;
-  /** Show background mode toggle */
-  showBackgroundMode?: boolean;
   /** Show accessibility options */
   showAccessibility?: boolean;
   /** Show advanced options (export/import, reset) */
@@ -325,7 +324,6 @@ export function ThemeSettingsPanel({
   compact = false,
   showColorPresets = true,
   showDesignPresets = true,
-  showBackgroundMode = true,
   showAccessibility = true,
   showAdvanced = true,
   onSettingChange,
@@ -338,8 +336,8 @@ export function ThemeSettingsPanel({
     setColorPreset,
     designPreset,
     setDesignPreset,
-    backgroundMode,
-    setBackgroundMode,
+    backgroundStyle,
+    setBackgroundStyle,
     fontScale,
     setFontScale,
     reducedMotion,
@@ -373,10 +371,18 @@ export function ThemeSettingsPanel({
     onSettingChange?.();
   };
 
-  const handleBackgroundModeChange = (newBgMode: BackgroundMode) => {
-    setBackgroundMode(newBgMode);
+  const handleBackgroundStyleChange = (style: BackgroundStyle) => {
+    setBackgroundStyle(style);
     onSettingChange?.();
   };
+
+  // For now, we only expose these three design styles in the UI.
+  const availableDesignPresets = allDesignPresets.filter(
+    (preset) =>
+      preset.id === "default" ||
+      preset.id === "extraSharp" ||
+      preset.id === "rounded"
+  );
 
   const handleFontScaleChange = (scale: FontScale) => {
     setFontScale(scale);
@@ -539,11 +545,11 @@ export function ThemeSettingsPanel({
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Choose shapes, shadows, and effects
+            Choose between default, extra sharp, and rounded
           </Typography>
 
           <Grid container spacing={1.5}>
-            {allDesignPresets.map((preset) => (
+            {availableDesignPresets.map((preset) => (
               <Grid size={6} key={preset.id}>
                 <DesignPresetCard
                   preset={preset}
@@ -556,39 +562,63 @@ export function ThemeSettingsPanel({
         </Box>
       )}
 
-      {/* Background Mode Toggle */}
-      {showBackgroundMode && (
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-            <ImageIcon fontSize="small" color="action" />
-            <Typography variant="subtitle1" fontWeight={600}>
-              Background Style
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Choose between solid, gradient, or animated background
+      {/* Background Style Selector */}
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          <WallpaperIcon fontSize="small" color="action" />
+          <Typography variant="subtitle1" fontWeight={600}>
+            Background
           </Typography>
-          <ToggleButtonGroup
-            value={backgroundMode}
-            exclusive
-            onChange={(_e, val) => val && handleBackgroundModeChange(val)}
-            size="medium"
-          >
-            <ToggleButton value="default" sx={{ gap: 1, px: 2 }}>
-              <ImageIcon fontSize="small" />
-              Solid
-            </ToggleButton>
-            <ToggleButton value="gradient" sx={{ gap: 1, px: 2 }}>
-              <GradientIcon fontSize="small" />
-              Gradient
-            </ToggleButton>
-            <ToggleButton value="flickering" sx={{ gap: 1, px: 2 }}>
-              <GridViewIcon fontSize="small" />
-              Animated
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-      )}
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Subtle texture behind the app (public pages stay solid)
+        </Typography>
+
+        <Grid container spacing={1.5}>
+          <Grid size={6}>
+            <Button
+              fullWidth
+              variant={backgroundStyle === "noise" ? "contained" : "outlined"}
+              startIcon={<GrainIcon fontSize="small" />}
+              onClick={() => handleBackgroundStyleChange("noise")}
+            >
+              Noise
+            </Button>
+          </Grid>
+          <Grid size={6}>
+            <Button
+              fullWidth
+              variant={
+                backgroundStyle === "vignette" ? "contained" : "outlined"
+              }
+              startIcon={<BlurOnIcon fontSize="small" />}
+              onClick={() => handleBackgroundStyleChange("vignette")}
+            >
+              Vignette
+            </Button>
+          </Grid>
+          <Grid size={6}>
+            <Button
+              fullWidth
+              variant={backgroundStyle === "grid" ? "contained" : "outlined"}
+              startIcon={<GridOnIcon fontSize="small" />}
+              onClick={() => handleBackgroundStyleChange("grid")}
+            >
+              Grid
+            </Button>
+          </Grid>
+          <Grid size={6}>
+            <Button
+              fullWidth
+              variant={backgroundStyle === "plain" ? "contained" : "outlined"}
+              startIcon={<LayersClearIcon fontSize="small" />}
+              onClick={() => handleBackgroundStyleChange("plain")}
+            >
+              Plain
+            </Button>
+          </Grid>
+        </Grid>
+      </Box>
 
       {/* Accessibility Section */}
       {showAccessibility && (

@@ -1,4 +1,4 @@
-// React state + router imports
+﻿// React state + router imports
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
@@ -10,26 +10,25 @@ import { useAuth } from "@shared/context/AuthContext";
 
 // MUI imports for styling + theme integration
 import {
+  Alert,
   Box,
-  TextField,
   Button,
-  Typography,
+  Checkbox,
+  CircularProgress,
+  FormControlLabel,
+  Link as MuiLink,
   Paper,
   Stack,
-  Alert,
-  CircularProgress,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Link as MuiLink,
-  FormControlLabel,
-  Checkbox,
+  TextField,
+  Typography,
 } from "@mui/material";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import { useThemeContext } from "@shared/context/ThemeContext";
+import { FcGoogle } from "react-icons/fc";
+import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
+
+import PublicPageLayout from "@shared/layouts/PublicPageLayout";
 import TermsOfService from "@shared/components/TermsOfService";
 import PrivacyPolicy from "@shared/components/PrivacyPolicy";
+import logo from "@shared/assets/logos/logo-full.png";
 
 // Type for our registration form fields
 type RegisterForm = {
@@ -49,7 +48,6 @@ export default function Register() {
   // Pull signup method from global Auth context (handles Supabase auth)
   const { signUpNewUser, signInWithOAuth } = useAuth();
 
-  // --- UI + Form state ---
   // Stores all input values for the registration form
   const [form, setForm] = useState<RegisterForm>({
     firstName: "",
@@ -78,25 +76,28 @@ export default function Register() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
     setInfo("");
-    const { name, value, type, checked } = e.target;
-    setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
 
-  const { mode, toggleMode } = useThemeContext();
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
 
   // Validation that collects ALL errors instead of returning early
   const validate = (): string => {
-    const errors: string[] = []; // store all error messages here
+    const errors: string[] = [];
 
     // Normalize email: trim spaces + lowercase
     const email = form.email.trim().toLowerCase();
 
+    if (!form.firstName.trim()) errors.push("First name is required");
+    if (!form.lastName.trim()) errors.push("Last name is required");
+
     // Email must look like "something@something.com"
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.push("Invalid email format");
+    }
 
     // Password rules
     if (form.password.length < 8) errors.push("Password too short");
@@ -112,33 +113,35 @@ export default function Register() {
     if (!form.agreedToTerms) errors.push("You must agree to Terms of Service");
     if (!form.agreedToPrivacy) errors.push("You must agree to Privacy Policy");
 
-    // Join errors with commas (or newline) if any exist
-    return errors.join(", ");
+    return errors.join("\n");
   };
 
   // Main submit handler: sign up via Supabase and branch on session presence
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault(); // Stop default page reload on form submit
+    e.preventDefault();
+
+    // Prevent double-submission while already processing
+    if (loading) {
+      return;
+    }
 
     // Reset any previous error/info messages
     setError("");
     setInfo("");
 
-    // Run validation checks
     const v = validate();
     if (v) {
-      setError(v); // Show validation error to user
-      return; // Stop submission process
+      setError(v);
+      return;
     }
 
-    // Normalize inputs for consistency
-    const email = form.email.trim().toLowerCase(); // clean + lowercase email
-    const firstName = form.firstName.trim(); // remove extra spaces
-    const lastName = form.lastName.trim(); // remove extra spaces
+    const email = form.email.trim().toLowerCase();
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
 
-    setLoading(true); // show loading state (e.g., disable button/spinner)
+    setLoading(true);
+
     try {
-      // Delegate signup to the shared Auth helper for consistency
       const res = await signUpNewUser({
         email,
         password: form.password,
@@ -147,9 +150,8 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        setError(res.message); // show error to user
-        setLoading(false); //reset loading if failed
-        return; // stop execution
+        setError(res.message);
+        return;
       }
 
       // If signup requires email confirmation, inform the user and exit
@@ -157,15 +159,14 @@ export default function Register() {
         setInfo(
           "Check your email to confirm your account. You can sign in after confirming."
         );
-        return; // stop flow here until email is confirmed
+        return;
       }
 
-      // Session exists → fetch signed-in user
+      // Session exists  fetch signed-in user
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
 
       if (userId) {
-        // Insert or update profile row linked to auth.users.id
         const { error: upsertError } = await supabase.from("profiles").upsert(
           [
             {
@@ -176,67 +177,94 @@ export default function Register() {
               email,
             },
           ],
-          { onConflict: "id" } // ensures unique per user
+          { onConflict: "id" }
         );
 
         if (upsertError) {
-          // If profile save fails, let user know but don’t block account creation
+          // If profile save fails, let user know but dont block account creation.
           setInfo("Account created; profile will complete later.");
         }
       }
 
-      navigate("/profile"); // redirect user after successful signup
+      navigate("/profile");
     } catch (err) {
-      // Show error message (fallback if err isn't a standard Error)
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
-      // Always reset loading so UI recovers
       setLoading(false);
     }
   };
 
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        color: "text.primary",
-      }}
-    >
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{ mb: 2 }}
-      >
-        <Toolbar>
-          <Box sx={{ flex: 1 }} />
-          <IconButton
-            onClick={toggleMode}
-            aria-label="Toggle theme"
-            color="inherit"
-          >
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+  // Match common OAuth button patterns (Google neutral, LinkedIn branded)
+  const oauthButtonBaseSx = {
+    position: "relative",
+    justifyContent: "center",
+    py: 1.25,
+    textTransform: "none",
+    fontWeight: 600,
+    "& .MuiButton-startIcon": {
+      position: "absolute" as const,
+      left: 12,
+      margin: 0,
+    },
+  };
 
+  const googleButtonSx = {
+    ...oauthButtonBaseSx,
+    // Standard Google button styling (neutral)
+    backgroundColor: "#ffffff",
+    borderColor: "#dadce0",
+    color: "#3c4043",
+    "&:hover": {
+      backgroundColor: "#f8f9fa",
+      borderColor: "#dadce0",
+    },
+  };
+
+  return (
+    <PublicPageLayout
+      centerContent
+      containerMaxWidth="sm"
+      topRight={
+        <Button variant="outlined" onClick={() => navigate("/login")}>
+          Sign in
+        </Button>
+      }
+    >
       <Paper
         elevation={4}
         sx={{
           p: 4,
           borderRadius: 3,
-          maxWidth: 450,
+          maxWidth: 480,
           width: "100%",
-          textAlign: "center",
           mx: "auto",
         }}
       >
-        <Typography variant="h3" mb={3}>
-          Register
+        <Box
+          component="img"
+          src={logo}
+          alt="FlowATS"
+          sx={{
+            height: 34,
+            width: "auto",
+            display: "block",
+            mx: "auto",
+            mb: 2,
+          }}
+        />
+
+        <Typography variant="h4" mb={2} textAlign="center" fontWeight={800}>
+          Create your account
         </Typography>
 
-        {/* Registration form with controlled inputs */}
+        <Typography
+          variant="body2"
+          sx={{ opacity: 0.8, mb: 3 }}
+          textAlign="center"
+        >
+          Set up your profile and start tracking your applications.
+        </Typography>
+
         <Stack spacing={2} component="form" onSubmit={handleSubmit} noValidate>
           <TextField
             label="First Name"
@@ -247,6 +275,7 @@ export default function Register() {
             value={form.firstName}
             required
             fullWidth
+            disabled={loading}
           />
 
           <TextField
@@ -258,6 +287,7 @@ export default function Register() {
             value={form.lastName}
             required
             fullWidth
+            disabled={loading}
           />
 
           <TextField
@@ -269,6 +299,7 @@ export default function Register() {
             value={form.email}
             required
             fullWidth
+            disabled={loading}
           />
 
           <TextField
@@ -280,6 +311,7 @@ export default function Register() {
             value={form.password}
             required
             fullWidth
+            disabled={loading}
           />
 
           <TextField
@@ -291,15 +323,16 @@ export default function Register() {
             value={form.confirmPassword}
             required
             fullWidth
+            disabled={loading}
           />
 
-          {/* Terms and Privacy Checkboxes */}
           <FormControlLabel
             control={
               <Checkbox
                 name="agreedToTerms"
                 checked={form.agreedToTerms}
                 onChange={handleChange}
+                disabled={loading}
               />
             }
             label={
@@ -308,8 +341,8 @@ export default function Register() {
                 <MuiLink
                   component="button"
                   variant="body2"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={(ev) => {
+                    ev.preventDefault();
                     setTermsOpen(true);
                   }}
                 >
@@ -325,6 +358,7 @@ export default function Register() {
                 name="agreedToPrivacy"
                 checked={form.agreedToPrivacy}
                 onChange={handleChange}
+                disabled={loading}
               />
             }
             label={
@@ -333,8 +367,8 @@ export default function Register() {
                 <MuiLink
                   component="button"
                   variant="body2"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={(ev) => {
+                    ev.preventDefault();
                     setPrivacyOpen(true);
                   }}
                 >
@@ -344,7 +378,6 @@ export default function Register() {
             }
           />
 
-          {/* Disable submit button while loading */}
           <Button
             type="submit"
             variant="contained"
@@ -358,8 +391,7 @@ export default function Register() {
             )}
           </Button>
 
-          {/* Link to login for existing users */}
-          <Typography variant="body2">
+          <Typography variant="body2" textAlign="center">
             Already have an account?{" "}
             <MuiLink
               component={RouterLink}
@@ -373,6 +405,10 @@ export default function Register() {
 
         <Button
           onClick={async () => {
+            if (loading) {
+              return;
+            }
+
             setError("");
             setInfo("");
             setLoading(true);
@@ -382,15 +418,20 @@ export default function Register() {
           }}
           variant="outlined"
           disabled={loading}
-          sx={{ mt: 2 }}
+          sx={{ mt: 2, ...googleButtonSx }}
           fullWidth
+          startIcon={<FcGoogle size={20} />}
         >
-          Sign in with Google
+          Continue with Google
         </Button>
 
-        {/* Show messages if present */}
+        <LinkedInButton
+          sx={{ mt: 1, ...oauthButtonBaseSx }}
+          label="Continue with LinkedIn"
+        />
+
         {error && (
-          <Alert sx={{ mt: 2 }} severity="error">
+          <Alert sx={{ mt: 2, whiteSpace: "pre-line" }} severity="error">
             {error}
           </Alert>
         )}
@@ -401,9 +442,8 @@ export default function Register() {
         )}
       </Paper>
 
-      {/* Terms and Privacy Dialogs */}
       <TermsOfService open={termsOpen} onClose={() => setTermsOpen(false)} />
       <PrivacyPolicy open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
-    </Box>
+    </PublicPageLayout>
   );
 }
