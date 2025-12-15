@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Button } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 // using supabase client directly for OAuth start
 import { supabase } from "@shared/services/supabaseClient";
 
 type Props = {
   fullWidth?: boolean;
-  sx?: any;
+  sx?: SxProps<Theme>;
   label?: string;
 };
 
@@ -58,7 +59,7 @@ const LinkedInButton: React.FC<Props> = ({ fullWidth = true, sx, label }) => {
             color: "rgba(255, 255, 255, 0.9)",
           },
         },
-        sx,
+        ...(sx ? [sx] : []),
       ]}
       startIcon={<LinkedInIcon />}
     >
