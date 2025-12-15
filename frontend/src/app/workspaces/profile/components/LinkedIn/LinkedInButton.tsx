@@ -15,6 +15,26 @@ const LinkedInButton: React.FC<Props> = ({ fullWidth = true, sx, label }) => {
   // intentionally using supabase.auth.signInWithOAuth directly below
   const [loading, setLoading] = useState(false);
 
+  const baseSx: SxProps<Theme> = {
+    // Standard LinkedIn OAuth button styling
+    backgroundColor: "#0A66C2",
+    color: "#ffffff",
+    borderRadius: 0,
+    "&:hover": {
+      backgroundColor: "#004182",
+    },
+    "&:disabled": {
+      backgroundColor: "rgba(10, 102, 194, 0.5)",
+      color: "rgba(255, 255, 255, 0.9)",
+    },
+  };
+
+  const mergedSx: SxProps<Theme> = !sx
+    ? [baseSx]
+    : Array.isArray(sx)
+    ? [baseSx, ...sx]
+    : [baseSx, sx];
+
   const handleClick = async () => {
     setLoading(true);
     try {
@@ -45,22 +65,7 @@ const LinkedInButton: React.FC<Props> = ({ fullWidth = true, sx, label }) => {
       disableElevation
       fullWidth={fullWidth}
       disabled={loading}
-      sx={[
-        {
-          // Standard LinkedIn OAuth button styling
-          backgroundColor: "#0A66C2",
-          color: "#ffffff",
-          borderRadius: 0,
-          "&:hover": {
-            backgroundColor: "#004182",
-          },
-          "&:disabled": {
-            backgroundColor: "rgba(10, 102, 194, 0.5)",
-            color: "rgba(255, 255, 255, 0.9)",
-          },
-        },
-        ...(sx ? [sx] : []),
-      ]}
+      sx={mergedSx}
       startIcon={<LinkedInIcon />}
     >
       {loading ? "Redirecting..." : label ?? "Continue with LinkedIn"}
