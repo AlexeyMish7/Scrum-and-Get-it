@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@shared/services/supabaseClient";
 import { Box, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
+import type { Session } from "@supabase/auth-js";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useThemeContext } from "@shared/context/ThemeContext";
@@ -12,6 +13,9 @@ type ProfileRow = {
   last_name: string;
   email: string;
   professional_title?: string | null;
+  summary?: string | null;
+  city?: string | null;
+  state?: string | null;
   metadata?: Record<string, unknown> | null;
 } | null;
 
@@ -36,7 +40,9 @@ const AuthCallback: React.FC = () => {
         }
 
         if (sessData?.session) {
-          const s = sessData.session as any;
+          const s = sessData.session as Session & {
+            provider_token?: string | null;
+          };
           const user = s.user;
 
           // Prefill holds any discovered profile values to pass to the profile details form.
@@ -58,6 +64,8 @@ const AuthCallback: React.FC = () => {
             const fullNameFromMeta = pickString(
               meta["full_name"],
               meta["name"],
+              // GitHub commonly provides a username but not always a full name.
+              // We still prefer a real name if available.
               // Google OIDC fields
               [meta["given_name"], meta["family_name"]]
                 .filter(Boolean)
@@ -73,10 +81,34 @@ const AuthCallback: React.FC = () => {
               meta["family_name"]
             );
 
+            const metaProfile = meta["profile"];
+            const metaProfileObj =
+              metaProfile && typeof metaProfile === "object"
+                ? (metaProfile as Record<string, unknown>)
+                : null;
+
             const headlineFromMeta = pickString(
               meta["headline"],
-              (meta as any)?.profile?.headline,
+              metaProfileObj?.headline,
               meta["summary"]
+            );
+
+            const bioFromMeta = pickString(
+              meta["bio"],
+              metaProfileObj?.bio,
+              meta["description"]
+            );
+
+            const locationFromMeta = pickString(
+              meta["location"],
+              metaProfileObj?.location
+            );
+
+            let usernameFromMeta: string | null = pickString(
+              meta["user_name"],
+              meta["preferred_username"],
+              meta["username"],
+              meta["login"]
             );
 
             // Try a few common metadata keys for avatar/picture
@@ -85,11 +117,15 @@ const AuthCallback: React.FC = () => {
               meta["picture"],
               meta["avatar_url"],
               meta["image"],
-              (meta as any)?.profile?.pictureUrl
+              metaProfileObj?.pictureUrl
             );
 
             // identities may include identity_data with profile picture fields (best-effort)
-            const identities: Array<any> = s.user?.identities ?? [];
+            const identities = (s.user?.identities ?? []) as Array<{
+              provider?: unknown;
+              identity_data?: Record<string, unknown>;
+            }>;
+            let fullNameFromIdentity: string | null = null;
             for (const id of identities) {
               const idData = id?.identity_data ?? {};
               avatarSource =
@@ -98,7 +134,22 @@ const AuthCallback: React.FC = () => {
                 idData.pictureUrl ||
                 idData.profile_picture ||
                 null;
+
+              fullNameFromIdentity =
+                fullNameFromIdentity ||
+                pickString(idData.name, idData.full_name, idData.fullName);
+
+              usernameFromMeta =
+                usernameFromMeta ||
+                pickString(
+                  idData.user_name,
+                  idData.preferred_username,
+                  idData.username,
+                  idData.login
+                );
             }
+
+            const fullName = fullNameFromMeta || fullNameFromIdentity;
 
             const providerFromIdentities: string | null =
               identities.find((i) => typeof i?.provider === "string")
@@ -111,7 +162,9 @@ const AuthCallback: React.FC = () => {
             // Read existing profile so we only fill missing/placeholder values.
             const { data: existingProfile, error: existingErr } = await supabase
               .from("profiles")
-              .select("first_name,last_name,email,professional_title,metadata")
+              .select(
+                "first_name,last_name,email,professional_title,summary,city,state,metadata"
+              )
               .eq("id", user?.id)
               .maybeSingle();
 
@@ -128,6 +181,8 @@ const AuthCallback: React.FC = () => {
             const existingLast = (existing?.last_name ?? "").trim();
             const existingEmail = (existing?.email ?? "").trim();
             const existingTitle = (existing?.professional_title ?? "").trim();
+            const existingSummary = (existing?.summary ?? "").trim();
+            const existingCity = (existing?.city ?? "").trim();
 
             const nameLooksPlaceholder =
               !existingFirst || existingFirst.toLowerCase() === "user";
@@ -135,10 +190,8 @@ const AuthCallback: React.FC = () => {
             // Derive first/last name in a stable way.
             let derivedFirst = firstFromMeta;
             let derivedLast = lastFromMeta;
-            if ((!derivedFirst || !derivedLast) && fullNameFromMeta) {
-              const parts = String(fullNameFromMeta)
-                .split(/\s+/)
-                .filter(Boolean);
+            if ((!derivedFirst || !derivedLast) && fullName) {
+              const parts = String(fullName).split(/\s+/).filter(Boolean);
               if (!derivedFirst) derivedFirst = parts.shift() ?? null;
               if (!derivedLast)
                 derivedLast = parts.length ? parts.join(" ") : null;
@@ -150,6 +203,8 @@ const AuthCallback: React.FC = () => {
               last_name: derivedLast ?? undefined,
               professional_title: headlineFromMeta ?? undefined,
               headline: headlineFromMeta ?? undefined,
+              bio: bioFromMeta ?? undefined,
+              city: locationFromMeta ?? undefined,
               avatar_path: avatarSource ?? undefined,
               source: "oauth",
               provider: oauthIntent?.provider ?? undefined,
@@ -171,6 +226,15 @@ const AuthCallback: React.FC = () => {
             if (!mergedMetadata.auth_method) {
               mergedMetadata.auth_method = providerUsed ? "oauth" : "email";
             }
+
+            // Store GitHub username in metadata when available.
+            if (
+              providerUsed === "github" &&
+              usernameFromMeta &&
+              !mergedMetadata.github_username
+            ) {
+              mergedMetadata.github_username = usernameFromMeta;
+            }
             mergedMetadata.last_auth_at = new Date().toISOString();
 
             const updatePayload: Record<string, unknown> = {
@@ -191,6 +255,14 @@ const AuthCallback: React.FC = () => {
             }
             if (!existingTitle && headlineFromMeta) {
               updatePayload.professional_title = headlineFromMeta;
+            }
+
+            // Fill additional profile fields when empty.
+            if (!existingSummary && bioFromMeta) {
+              updatePayload.summary = bioFromMeta;
+            }
+            if (!existingCity && locationFromMeta) {
+              updatePayload.city = locationFromMeta;
             }
             if (Object.keys(mergedMetadata).length > 0) {
               updatePayload.metadata = mergedMetadata;
@@ -226,7 +298,9 @@ const AuthCallback: React.FC = () => {
           // invoke the server-side edge function to fetch fuller profile data.
           // Add debug logs to help diagnose whether a provider token is available
           try {
-            const identities: Array<any> = s.user?.identities ?? [];
+            const identities = (s.user?.identities ?? []) as Array<{
+              provider?: unknown;
+            }>;
 
             const hasLinkedInIdentity = identities.some(
               (i) => i.provider === "linkedin_oidc"
@@ -328,7 +402,7 @@ const AuthCallback: React.FC = () => {
                   const newMetadata = { ...(existingMetadata ?? {}) };
                   if (pictureUrl) newMetadata.avatar_path = pictureUrl;
 
-                  const updatePayload: any = {
+                  const updatePayload: Record<string, unknown> = {
                     updated_at: new Date().toISOString(),
                   };
                   if (professional_title)

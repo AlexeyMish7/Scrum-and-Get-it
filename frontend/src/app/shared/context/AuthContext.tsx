@@ -265,15 +265,23 @@ export function AuthContextProvider({ children }: ProviderProps) {
     try {
       // Start OAuth flow: redirect user to provider’s consent screen
       // Support both legacy 'linkedin' and new 'linkedin_oidc' provider keys
-      let requestedProvider: any = provider as any;
-      if (requestedProvider === "linkedin") requestedProvider = "linkedin_oidc";
+      let requestedProvider = provider;
+      if (requestedProvider === "linkedin") {
+        requestedProvider = "linkedin_oidc";
+      }
 
       // For LinkedIn OIDC, request appropriate scopes
-      const options: any = {
+      const options: { redirectTo: string; scopes?: string } = {
         redirectTo: `${window.location.origin}/auth/callback`,
       };
       if (requestedProvider === "linkedin_oidc") {
         options.scopes = "openid r_liteprofile r_emailaddress";
+      }
+
+      // For GitHub, request email access when available so we can prefill
+      // the profile more reliably (some accounts keep email private).
+      if (requestedProvider === "github") {
+        options.scopes = "read:user user:email";
       }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
