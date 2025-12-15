@@ -24,6 +24,8 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import StorageIcon from "@mui/icons-material/StorageRounded";
 import HttpIcon from "@mui/icons-material/Http";
+import BoltIcon from "@mui/icons-material/Bolt";
+import ApiTrackers from "./ApiTrackers";
 import type { ApiLogEntry, SupabaseLogEntry } from "@shared/types";
 
 const MAX_PREVIEW_LENGTH = 220;
@@ -87,7 +89,7 @@ export function DevLogPanel({
   onClearSupabase,
 }: DevLogPanelProps) {
   const [expanded, setExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<"api" | "supabase">("api");
+  const [activeTab, setActiveTab] = useState<"api" | "supabase" | "apitracker">("api");
 
   // Filter out health checks from API logs
   const visibleApiLogs = useMemo(
@@ -113,6 +115,8 @@ export function DevLogPanel({
     return `${latest.operation} ${latest.table}`;
   }, [supabaseLogs]);
 
+  const apitrackerSummary = useMemo(() => "API Monitor", []);
+
   if (!import.meta.env.DEV) {
     return null;
   }
@@ -120,8 +124,10 @@ export function DevLogPanel({
   const handleClear = () => {
     if (activeTab === "api") {
       onClearApi();
-    } else {
+    } else if (activeTab === "supabase") {
       onClearSupabase();
+    } else {
+      // API Monitor tab has no clear action
     }
   };
 
@@ -160,9 +166,13 @@ export function DevLogPanel({
             size="small"
             startIcon={<ClearAllIcon fontSize="small" />}
             onClick={handleClear}
-            disabled={
-              activeTab === "api" ? !apiLogs.length : !supabaseLogs.length
-            }
+              disabled={
+                activeTab === "api"
+                  ? !apiLogs.length
+                  : activeTab === "supabase"
+                  ? !supabaseLogs.length
+                  : true
+              }
           >
             Clear
           </Button>
@@ -187,7 +197,7 @@ export function DevLogPanel({
           {/* Tabs */}
           <Tabs
             value={activeTab}
-            onChange={(_, newValue) => setActiveTab(newValue)}
+            onChange={(_, newValue) => setActiveTab(newValue as "api" | "supabase" | "apitracker")}
             sx={{ minHeight: 36, px: 1 }}
           >
             <Tab
@@ -206,6 +216,16 @@ export function DevLogPanel({
                 <Stack direction="row" spacing={0.5} alignItems="center">
                   <StorageIcon fontSize="small" />
                   <span>Supabase ({visibleSupabaseLogs.length})</span>
+                </Stack>
+              }
+              sx={{ minHeight: 36, py: 0.5 }}
+            />
+            <Tab
+              value="apitracker"
+              label={
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <BoltIcon fontSize="small" />
+                  <span>API Monitor</span>
                 </Stack>
               }
               sx={{ minHeight: 36, py: 0.5 }}
@@ -293,7 +313,7 @@ export function DevLogPanel({
                   ))}
                 </Stack>
               </>
-            ) : (
+            ) : activeTab === "supabase" ? (
               // Supabase Logs Tab
               <>
                 {!visibleSupabaseLogs.length && (
@@ -385,6 +405,11 @@ export function DevLogPanel({
                   ))}
                 </Stack>
               </>
+            ) : (
+              // API Monitor Tab (renders ApiTrackers component)
+              <>
+                <ApiTrackers />
+              </>
             )}
           </Box>
 
@@ -395,7 +420,7 @@ export function DevLogPanel({
             color="text.secondary"
             sx={{ px: 1, py: 0.5, display: "block" }}
           >
-            {activeTab === "api" ? apiSummary : supabaseSummary}
+            {activeTab === "api" ? apiSummary : activeTab === "supabase" ? supabaseSummary : apitrackerSummary}
           </Typography>
         </>
       )}
