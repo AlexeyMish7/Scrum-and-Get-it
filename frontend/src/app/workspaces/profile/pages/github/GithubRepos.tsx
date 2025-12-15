@@ -81,6 +81,40 @@ export default function GithubRepos() {
     setSyncing(true);
     console.log("Starting GitHub Sync...");
 
+    // Best-effort: increment GitHub API usage counter so quotas reflect the upcoming sync.
+    try {
+      const { data: existing, error: selErr } = await supabase
+        .from('api_quotas')
+        .select('current_usage')
+        .eq('service_name', 'github')
+        .single();
+
+      if (selErr && selErr.code !== 'PGRST116') {
+        console.warn('Failed reading github quota:', selErr.message || selErr);
+      } else {
+        const current = (existing && (existing as any).current_usage) ?? 0;
+        const newUsage = current + 1;
+        const { error: updErr } = await supabase
+          .from('api_quotas')
+          .update({ current_usage: newUsage, last_reset_at: new Date().toISOString() })
+          .eq('service_name', 'github');
+
+        if (updErr) {
+          const { error: insErr } = await supabase.from('api_quotas').upsert({
+            service_name: 'github',
+            display_name: 'GitHub',
+            monthly_limit: null,
+            current_usage: newUsage,
+            reset_period: 'never',
+            last_reset_at: new Date().toISOString(),
+          });
+          if (insErr) console.warn('Failed inserting github quota row:', insErr.message || insErr);
+        }
+      }
+    } catch (e) {
+      console.warn('Error incrementing github quota:', e);
+    }
+
     try {
       const { error } = await supabase.functions.invoke('sync-repos', {
         body: { provider_token: token }
