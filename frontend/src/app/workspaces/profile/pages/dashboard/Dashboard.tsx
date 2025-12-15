@@ -25,7 +25,16 @@
  * - RecentActivityTimeline: Latest document activity
  * - CareerTimeline: Employment history visualization
  */
-import { type FC, memo, useMemo, useCallback, lazy, Suspense } from "react";
+import {
+  type FC,
+  memo,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+} from "react";
 import {
   Box,
   Typography,
@@ -35,12 +44,18 @@ import {
   Snackbar,
   Alert,
   Skeleton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import Icon from "@shared/components/common/Icon";
 import { useAvatarContext } from "@shared/context/AvatarContext";
 import { useErrorHandler } from "@shared/hooks/useErrorHandler";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@shared/context/AuthContext";
 
 // Dashboard-specific hook for data management
 import { useDashboardData } from "../../hooks/useDashboardData";
@@ -75,12 +90,30 @@ const Dashboard: FC = () => {
   // Avatar from global context (shared with navbar, no duplicate fetches)
   const { avatarUrl } = useAvatarContext();
 
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const oauthProviderLabel = useMemo(() => {
+    const identities =
+      ((user as any)?.identities as Array<any> | undefined) ?? [];
+    const provider: string | null =
+      identities.find((i) => typeof i?.provider === "string")?.provider ??
+      ((user as any)?.app_metadata?.provider as string | undefined) ??
+      null;
+
+    if (!provider || provider === "email") return null;
+    if (provider === "google") return "Google";
+    if (provider === "linkedin_oidc") return "LinkedIn";
+    return provider;
+  }, [user]);
+
   // Centralized error handling with snackbar notifications
   const { notification, closeNotification, showSuccess } = useErrorHandler();
 
   // Dashboard data hook - handles all data fetching and refresh logic
   const {
     header,
+    profile,
     counts,
     skills,
     careerEvents,
@@ -89,6 +122,57 @@ const Dashboard: FC = () => {
     hasError,
     refresh,
   } = useDashboardData();
+
+  const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
+
+  const needsProfileInfo = useMemo(() => {
+    if (!profile) return false;
+    const name = (profile.fullName || "").trim();
+    const email = (profile.email || "").trim();
+    const headline = (profile.headline || "").trim();
+
+    // "New user" heuristic: placeholder/missing core identity fields.
+    // We keep it simple and deterministic so it works for email/password and OAuth.
+    return !name || !email || !headline;
+  }, [profile]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (loading || hasError) return;
+    if (!needsProfileInfo) return;
+
+    const dismissedKey = `flowats:onboarding:profilePromptDismissed:${user.id}`;
+    const dismissed = window.localStorage.getItem(dismissedKey) === "1";
+    if (!dismissed) setShowOnboardingPrompt(true);
+  }, [user?.id, loading, hasError, needsProfileInfo]);
+
+  const handleGoToProfileDetails = useCallback(() => {
+    setShowOnboardingPrompt(false);
+
+    const fullName = (profile?.fullName || "").trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    const first_name = parts[0] || undefined;
+    const last_name = parts.slice(1).join(" ") || undefined;
+
+    navigate("/profile/details", {
+      replace: false,
+      state: {
+        prefill: {
+          first_name,
+          last_name,
+          headline: profile?.headline || undefined,
+        },
+      },
+    });
+  }, [navigate, profile]);
+
+  const handleDismissOnboardingPrompt = useCallback(() => {
+    if (user?.id) {
+      const dismissedKey = `flowats:onboarding:profilePromptDismissed:${user.id}`;
+      window.localStorage.setItem(dismissedKey, "1");
+    }
+    setShowOnboardingPrompt(false);
+  }, [user?.id]);
 
   /**
    * Export profile data as JSON file
@@ -169,6 +253,30 @@ const Dashboard: FC = () => {
         pt: 2,
       }}
     >
+      <Dialog
+        open={showOnboardingPrompt}
+        onClose={handleDismissOnboardingPrompt}
+        aria-labelledby="complete-profile-dialog-title"
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle id="complete-profile-dialog-title">
+          Complete your profile
+        </DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            To get the best experience, please add your basic info. We’ll take
+            you to the profile info screen now.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDismissOnboardingPrompt}>Not now</Button>
+          <Button variant="contained" onClick={handleGoToProfileDetails}>
+            Enter info
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <AutoBreadcrumbs />
 
       {/* Dashboard Header - Welcome message with large avatar */}
@@ -211,6 +319,11 @@ const Dashboard: FC = () => {
           <Typography variant="body1" color="text.secondary">
             {header?.email || ""}
           </Typography>
+          {oauthProviderLabel ? (
+            <Typography variant="caption" color="text.secondary">
+              Signed in with {oauthProviderLabel} (OAuth)
+            </Typography>
+          ) : null}
         </Box>
       </Box>
 

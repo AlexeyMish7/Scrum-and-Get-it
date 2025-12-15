@@ -10,7 +10,8 @@ import {
   Alert,
 } from "@mui/material";
 import { useAuth } from "@shared/context/AuthContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import type { UserIdentity } from "@supabase/auth-js";
 import ProfilePicture from "@shared/components/common/ProfilePicture";
 import profileService from "../../services/profileService";
 import GenerateProfileTips from "../../components/profile/GenerateProfileTips";
@@ -95,6 +96,7 @@ const usStates = [
 // ProfileDetails
 // Navigation state type for profile prefill
 interface ProfilePrefillState {
+  onboarding?: boolean;
   prefill?: {
     first_name?: string;
     last_name?: string;
@@ -111,6 +113,34 @@ interface ProfilePrefillState {
 const ProfileDetails: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const oauthProviderLabel = React.useMemo(() => {
+    const identities = (user?.identities ?? []) as UserIdentity[];
+
+    const providerFromIdentities =
+      identities.find((i) => typeof i?.provider === "string")?.provider ?? null;
+
+    const providerFromAppMetadata = (() => {
+      const appMeta = user?.app_metadata as unknown as
+        | Record<string, unknown>
+        | undefined;
+      const p = appMeta?.provider;
+      return typeof p === "string" ? p : null;
+    })();
+
+    const provider: string | null =
+      providerFromIdentities || providerFromAppMetadata;
+
+    if (!provider || provider === "email") return null;
+    if (provider === "google") return "Google";
+    if (provider === "linkedin_oidc") return "LinkedIn";
+    return provider;
+  }, [user]);
+
+  const isOnboarding = Boolean(
+    (location.state as ProfilePrefillState | null)?.onboarding
+  );
   const navPrefill =
     (location.state as ProfilePrefillState | null)?.prefill ?? null;
 
@@ -138,6 +168,7 @@ const ProfileDetails: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [showWelcomeStep, setShowWelcomeStep] = useState(false);
 
   // Sync form data when cached profile loads
   // Uses React Query cache - no duplicate network requests
@@ -167,6 +198,25 @@ const ProfileDetails: React.FC = () => {
     setBioCount(cachedProfile.bio?.length ?? 0);
   }, [cachedProfile, profileLoading, navPrefill]);
 
+  // First-time onboarding: show a welcome step once per user before the form.
+  useEffect(() => {
+    if (!isOnboarding) return;
+    if (!user?.id) return;
+
+    const key = `flowats:onboarding:welcomeSeen:${user.id}`;
+    const seen = window.localStorage.getItem(key) === "1";
+    setShowWelcomeStep(!seen);
+  }, [isOnboarding, user?.id]);
+
+  const handleContinueFromWelcome = () => {
+    if (user?.id) {
+      const key = `flowats:onboarding:welcomeSeen:${user.id}`;
+      window.localStorage.setItem(key, "1");
+    }
+    setShowWelcomeStep(false);
+    setEditMode(true);
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -184,29 +234,28 @@ const ProfileDetails: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10}$/;
 
-    // Basic client-side validation to provide immediate feedback.
+    // OAuth onboarding should be linear and non-blocking.
+    // Only enforce what the database truly requires; treat the rest as recommended.
     if (!formData.fullName) newErrors.fullName = "Full name is required";
 
     if (!formData.email) newErrors.email = "Email is required";
-    else if (!emailRegex.test(formData.email))
+    else if (!emailRegex.test(formData.email)) {
       newErrors.email = "Enter a valid email address";
+    }
 
-    if (!formData.phone) newErrors.phone = "Phone is required";
-    else if (!phoneRegex.test(formData.phone.replace(/\D/g, "")))
-      newErrors.phone = "Phone must be 10 digits";
+    if (formData.phone) {
+      const digits = formData.phone.replace(/\D/g, "");
+      if (!phoneRegex.test(digits)) newErrors.phone = "Phone must be 10 digits";
+    }
 
-    if (!formData.city) newErrors.city = "City is required";
-
-    if (!formData.state) newErrors.state = "Please select your state";
+    if (formData.state && !usStates.includes(formData.state)) {
+      newErrors.state = "Please select a valid state";
+    }
 
     if (formData.zipcode && !/^[0-9]{5}$/.test(String(formData.zipcode)))
       newErrors.zipcode = "Enter a valid 5-digit ZIP code";
 
-    if (!formData.headline)
-      newErrors.headline = "Professional headline is required";
-    if (!formData.industry) newErrors.industry = "Please select an industry";
-    if (!formData.experience)
-      newErrors.experience = "Please select experience level";
+    // headline/industry/experience/city are recommended but not required to save.
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -236,7 +285,12 @@ const ProfileDetails: React.FC = () => {
         // Invalidate the profile cache so dashboard sees updated data
         invalidateAll();
         setOpenSnackbar(true);
-        setEditMode(false);
+        if (isOnboarding) {
+          // Finish the registration flow by returning to the profile dashboard.
+          navigate("/profile", { replace: true });
+        } else {
+          setEditMode(false);
+        }
       } catch (err) {
         console.error("Error saving profile", err);
         setErrorMsg(String(err));
@@ -256,226 +310,290 @@ const ProfileDetails: React.FC = () => {
     <Box sx={{ maxWidth: 1000, mx: "auto", p: { xs: 2, sm: 3 }, pt: 2 }}>
       <AutoBreadcrumbs />
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-        <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
-          {editMode ? "Edit Profile" : "Profile Details"}
-        </Typography>
+        {showWelcomeStep ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>
+              Welcome{formData.fullName ? `, ${formData.fullName}` : ""}!
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              Let's add a little more information to finish setting up your
+              profile.
+            </Typography>
 
-        {/* Show profile picture in both view and edit modes */}
-        <ProfilePicture />
+            {oauthProviderLabel ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Signed in with {oauthProviderLabel} (OAuth)
+              </Typography>
+            ) : null}
 
-        {editMode ? (
-          <>
-            {/* Row: Full name + Email */}
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
-              <Box sx={{ flex: 1, minWidth: 240 }}>
-                <TextField
-                  label="Full Name"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.fullName}
-                  helperText={errors.fullName}
-                />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 240 }}>
-                <TextField
-                  label="Email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.email}
-                  helperText={errors.email || "Email can't be changed."}
-                  InputProps={{ readOnly: true }}
-                  disabled
-                  inputProps={{ "aria-readonly": true }}
-                />
-              </Box>
-            </Box>
-
-            {/* Row: Phone / City / State */}
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
-              <Box sx={{ flex: 1, minWidth: 200 }}>
-                <TextField
-                  label="Phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.phone}
-                  helperText={errors.phone}
-                />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 160 }}>
-                <TextField
-                  label="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.city}
-                  helperText={errors.city}
-                />
-              </Box>
-              <Box sx={{ width: 160 }}>
-                <TextField
-                  select
-                  label="State"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.state}
-                  helperText={errors.state}
-                >
-                  {usStates.map((abbrev) => (
-                    <MenuItem key={abbrev} value={abbrev}>
-                      {abbrev}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-                <Box sx={{ width: 120 }}>
-                  <TextField
-                    label="ZIP"
-                    name="zipcode"
-                    value={formData.zipcode ?? ""}
-                    onChange={handleChange}
-                    fullWidth
-                    error={!!errors.zipcode}
-                    helperText={errors.zipcode}
-                  />
-                </Box>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                label="Professional Headline / Title"
-                name="headline"
-                value={formData.headline}
-                onChange={handleChange}
-                fullWidth
-                required
-                error={!!errors.headline}
-                helperText={errors.headline}
-              />
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                label="Brief Bio / Summary"
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                fullWidth
-                multiline
-                minRows={4}
-                inputProps={{ maxLength: 500 }}
-                helperText={`${bioCount} / 500 characters`}
-              />
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
-              <Box sx={{ flex: 1, minWidth: 240 }}>
-                <TextField
-                  select
-                  label="Industry"
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.industry}
-                  helperText={errors.industry}
-                >
-                  {industries.map((ind) => (
-                    <MenuItem key={ind} value={ind}>
-                      {ind}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 240 }}>
-                <TextField
-                  select
-                  label="Experience Level"
-                  name="experience"
-                  value={formData.experience}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  error={!!errors.experience}
-                  helperText={errors.experience}
-                >
-                  {experienceLevels.map((lvl) => (
-                    <MenuItem key={lvl} value={lvl}>
-                      {lvl}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
-              <Button variant="outlined" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save"}
-              </Button>
-            </Box>
-          </>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleContinueFromWelcome}
+            >
+              Continue
+            </Button>
+          </Box>
         ) : (
           <>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="h6">Basic Information</Typography>
-              <Typography>
-                <strong>Full Name:</strong> {formData.fullName || "—"}
-              </Typography>
-              <Typography>
-                <strong>Email:</strong> {formData.email || "—"}
-              </Typography>
-              <Typography>
-                <strong>Phone:</strong> {formData.phone || "—"}
-              </Typography>
-              <Typography>
-                <strong>Location:</strong>{" "}
-                {`${formData.city || "—"}, ${formData.state || "—"} ${formData.zipcode ? ` ${formData.zipcode}` : ""}`}
-              </Typography>
-            </Box>
+            {(() => {
+              const recommendedMissing: string[] = [];
+              if (!formData.headline)
+                recommendedMissing.push("Professional headline");
+              if (!formData.industry) recommendedMissing.push("Industry");
+              if (!formData.experience)
+                recommendedMissing.push("Experience level");
+              if (!formData.city) recommendedMissing.push("City");
+              if (!formData.state) recommendedMissing.push("State");
+              if (!formData.phone) recommendedMissing.push("Phone");
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="h6">Professional Details</Typography>
-              <Typography>
-                <strong>Headline:</strong> {formData.headline || "—"}
-              </Typography>
-              <Typography>
-                <strong>Industry:</strong> {formData.industry || "—"}
-              </Typography>
-              <Typography>
-                <strong>Experience:</strong> {formData.experience || "—"}
-              </Typography>
-              <Typography sx={{ mt: 1 }}>
-                <strong>Bio:</strong>
-              </Typography>
-              <Typography variant="body2">{formData.bio || "—"}</Typography>
-            </Box>
+              if (recommendedMissing.length === 0) return null;
 
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-              <Button variant="contained" onClick={() => setEditMode(true)}>
-                Edit
-              </Button>
-            </Box>
+              return (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  You can save now and finish later. Recommended next:{" "}
+                  {recommendedMissing.join(", ")}.
+                </Alert>
+              );
+            })()}
+            <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
+              {isOnboarding
+                ? "Add More Details"
+                : editMode
+                ? "Edit Profile"
+                : "Profile Details"}
+            </Typography>
+
+            {oauthProviderLabel ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Signed in with {oauthProviderLabel} (OAuth)
+              </Typography>
+            ) : null}
+
+            {/* Show profile picture in both view and edit modes */}
+            <ProfilePicture />
+
+            {editMode ? (
+              <>
+                {/* Row: Full name + Email */}
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+                  <Box sx={{ flex: 1, minWidth: 240 }}>
+                    <TextField
+                      label="Full Name"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.fullName}
+                      helperText={errors.fullName}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 240 }}>
+                    <TextField
+                      label="Email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.email}
+                      helperText={errors.email || "Email can't be changed."}
+                      InputProps={{ readOnly: true }}
+                      disabled
+                      inputProps={{ "aria-readonly": true }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Row: Phone / City / State */}
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+                  <Box sx={{ flex: 1, minWidth: 200 }}>
+                    <TextField
+                      label="Phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.phone}
+                      helperText={errors.phone}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 160 }}>
+                    <TextField
+                      label="City"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.city}
+                      helperText={errors.city}
+                    />
+                  </Box>
+                  <Box sx={{ width: 160 }}>
+                    <TextField
+                      select
+                      label="State"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.state}
+                      helperText={errors.state}
+                    >
+                      {usStates.map((abbrev) => (
+                        <MenuItem key={abbrev} value={abbrev}>
+                          {abbrev}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                  <Box sx={{ width: 120 }}>
+                    <TextField
+                      label="ZIP"
+                      name="zipcode"
+                      value={formData.zipcode ?? ""}
+                      onChange={handleChange}
+                      fullWidth
+                      error={!!errors.zipcode}
+                      helperText={errors.zipcode}
+                    />
+                  </Box>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    label="Professional Headline / Title"
+                    name="headline"
+                    value={formData.headline}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    error={!!errors.headline}
+                    helperText={errors.headline}
+                  />
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    label="Brief Bio / Summary"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    fullWidth
+                    multiline
+                    minRows={4}
+                    inputProps={{ maxLength: 500 }}
+                    helperText={`${bioCount} / 500 characters`}
+                  />
+                </Box>
+
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+                  <Box sx={{ flex: 1, minWidth: 240 }}>
+                    <TextField
+                      select
+                      label="Industry"
+                      name="industry"
+                      value={formData.industry}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.industry}
+                      helperText={errors.industry}
+                    >
+                      {industries.map((ind) => (
+                        <MenuItem key={ind} value={ind}>
+                          {ind}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 240 }}>
+                    <TextField
+                      select
+                      label="Experience Level"
+                      name="experience"
+                      value={formData.experience}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      error={!!errors.experience}
+                      helperText={errors.experience}
+                    >
+                      {experienceLevels.map((lvl) => (
+                        <MenuItem key={lvl} value={lvl}>
+                          {lvl}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}
+                >
+                  <Button variant="outlined" onClick={handleCancel}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? "Saving..." : "Save"}
+                  </Button>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Basic Information</Typography>
+                  <Typography>
+                    <strong>Full Name:</strong> {formData.fullName || "—"}
+                  </Typography>
+                  <Typography>
+                    <strong>Email:</strong> {formData.email || "—"}
+                  </Typography>
+                  <Typography>
+                    <strong>Phone:</strong> {formData.phone || "—"}
+                  </Typography>
+                  <Typography>
+                    <strong>Location:</strong>{" "}
+                    {`${formData.city || "—"}, ${formData.state || "—"} ${
+                      formData.zipcode ? ` ${formData.zipcode}` : ""
+                    }`}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Professional Details</Typography>
+                  <Typography>
+                    <strong>Headline:</strong> {formData.headline || "—"}
+                  </Typography>
+                  <Typography>
+                    <strong>Industry:</strong> {formData.industry || "—"}
+                  </Typography>
+                  <Typography>
+                    <strong>Experience:</strong> {formData.experience || "—"}
+                  </Typography>
+                  <Typography sx={{ mt: 1 }}>
+                    <strong>Bio:</strong>
+                  </Typography>
+                  <Typography variant="body2">{formData.bio || "—"}</Typography>
+                </Box>
+
+                <Box
+                  sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}
+                >
+                  <Button variant="contained" onClick={() => setEditMode(true)}>
+                    Edit
+                  </Button>
+                </Box>
+              </>
+            )}
           </>
         )}
       </Paper>

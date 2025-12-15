@@ -24,6 +24,7 @@ import {
 } from "@mui/material";
 import { FcGoogle } from "react-icons/fc";
 import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
+import { setOAuthIntent } from "@shared/utils/oauthIntent";
 
 import PublicPageLayout from "@shared/layouts/PublicPageLayout";
 import TermsOfService from "@shared/components/TermsOfService";
@@ -163,30 +164,18 @@ export default function Register() {
       }
 
       // Session exists  fetch signed-in user
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-
-      if (userId) {
-        const { error: upsertError } = await supabase.from("profiles").upsert(
-          [
-            {
-              id: userId,
-              first_name: firstName || null,
-              last_name: lastName || null,
-              full_name: `${firstName ?? ""} ${lastName ?? ""}`.trim(),
-              email,
-            },
-          ],
-          { onConflict: "id" }
-        );
-
-        if (upsertError) {
-          // If profile save fails, let user know but dont block account creation.
-          setInfo("Account created; profile will complete later.");
-        }
-      }
-
-      navigate("/profile");
+      // After successful registration, continue to the add-more-details step.
+      // We pass name prefill so the profile details page opens in edit mode.
+      navigate("/profile/details", {
+        replace: true,
+        state: {
+          onboarding: true,
+          prefill: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
@@ -411,6 +400,12 @@ export default function Register() {
 
             setError("");
             setInfo("");
+            setOAuthIntent({
+              source: "register",
+              returnTo: "/profile",
+              provider: "google",
+              startedAt: Date.now(),
+            });
             setLoading(true);
             const res = await signInWithOAuth("google");
             setLoading(false);
@@ -428,6 +423,14 @@ export default function Register() {
         <LinkedInButton
           sx={{ mt: 1, ...oauthButtonBaseSx }}
           label="Continue with LinkedIn"
+          onBeforeAuth={() =>
+            setOAuthIntent({
+              source: "register",
+              returnTo: "/profile",
+              provider: "linkedin_oidc",
+              startedAt: Date.now(),
+            })
+          }
         />
 
         {error && (
