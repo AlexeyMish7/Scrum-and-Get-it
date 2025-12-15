@@ -2,9 +2,6 @@
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
-// Supabase client instance (handles all database/auth requests)
-import { supabase } from "@shared/services/supabaseClient";
-
 // Custom authentication context for managing session + signup logic
 import { useAuth } from "@shared/context/AuthContext";
 
@@ -23,6 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { FcGoogle } from "react-icons/fc";
+import { FaGithub } from "react-icons/fa";
 import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
 import { setOAuthIntent } from "@shared/utils/oauthIntent";
 
@@ -206,6 +204,18 @@ export default function Register() {
     "&:hover": {
       backgroundColor: "#f8f9fa",
       borderColor: "#dadce0",
+    },
+  };
+
+  const githubButtonSx = {
+    ...oauthButtonBaseSx,
+    // Standard GitHub button styling (brand)
+    backgroundColor: "#24292f",
+    borderColor: "#24292f",
+    color: "#ffffff",
+    "&:hover": {
+      backgroundColor: "#1f2328",
+      borderColor: "#1f2328",
     },
   };
 
@@ -418,6 +428,35 @@ export default function Register() {
           startIcon={<FcGoogle size={20} />}
         >
           Continue with Google
+        </Button>
+
+        <Button
+          onClick={async () => {
+            if (loading) {
+              return;
+            }
+
+            setError("");
+            setInfo("");
+            setOAuthIntent({
+              source: "register",
+              returnTo: "/profile",
+              provider: "github",
+              startedAt: Date.now(),
+            });
+            setLoading(true);
+            const res = await signInWithOAuth("github");
+            setLoading(false);
+            if (!res.ok) setError(res.message || "OAuth error");
+          }}
+          variant="contained"
+          disableElevation
+          disabled={loading}
+          sx={{ mt: 1, ...githubButtonSx }}
+          fullWidth
+          startIcon={<FaGithub size={18} />}
+        >
+          Continue with GitHub
         </Button>
 
         <LinkedInButton

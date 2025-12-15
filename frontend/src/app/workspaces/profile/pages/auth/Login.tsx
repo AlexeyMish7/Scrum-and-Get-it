@@ -14,6 +14,7 @@ import {
   Paper,
 } from "@mui/material";
 import { FcGoogle } from "react-icons/fc";
+import { FaGithub } from "react-icons/fa";
 import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
 import logo from "@shared/assets/logos/logo-full.png";
 import { setOAuthIntent } from "@shared/utils/oauthIntent";
@@ -82,6 +83,26 @@ const Login = () => {
     // On success, SDK will redirect to provider; nothing more to do here.
   };
 
+  const handleGitHub = async () => {
+    // Prevent multiple OAuth attempts while one is in progress
+    if (loading) {
+      return;
+    }
+
+    setLoginError("");
+    setOAuthIntent({
+      source: "login",
+      returnTo: "/profile",
+      provider: "github",
+      startedAt: Date.now(),
+    });
+    setLoading(true);
+    const res = await signInWithOAuth("github");
+    setLoading(false);
+    if (!res.ok) setLoginError(res.message || "OAuth error");
+    // On success, SDK will redirect to provider; nothing more to do here.
+  };
+
   const theme = useTheme();
 
   // Match common OAuth button patterns (Google neutral, LinkedIn branded)
@@ -107,6 +128,18 @@ const Login = () => {
     "&:hover": {
       backgroundColor: "#f8f9fa",
       borderColor: "#dadce0",
+    },
+  };
+
+  const githubButtonSx = {
+    ...oauthButtonBaseSx,
+    // Standard GitHub button styling (brand)
+    backgroundColor: "#24292f",
+    borderColor: "#24292f",
+    color: "#ffffff",
+    "&:hover": {
+      backgroundColor: "#1f2328",
+      borderColor: "#1f2328",
     },
   };
 
@@ -210,6 +243,18 @@ const Login = () => {
           startIcon={<FcGoogle size={20} />}
         >
           Continue with Google
+        </Button>
+
+        <Button
+          onClick={handleGitHub}
+          variant="contained"
+          disableElevation
+          fullWidth
+          disabled={loading}
+          sx={{ mt: 1, ...githubButtonSx }}
+          startIcon={<FaGithub size={18} />}
+        >
+          Continue with GitHub
         </Button>
 
         <LinkedInButton

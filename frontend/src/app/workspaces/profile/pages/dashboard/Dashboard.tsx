@@ -56,6 +56,7 @@ import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
 import { AutoBreadcrumbs } from "@shared/components/navigation/AutoBreadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
+import type { UserIdentity } from "@supabase/auth-js";
 
 // Dashboard-specific hook for data management
 import { useDashboardData } from "../../hooks/useDashboardData";
@@ -94,16 +95,26 @@ const Dashboard: FC = () => {
   const { user } = useAuth();
 
   const oauthProviderLabel = useMemo(() => {
-    const identities =
-      ((user as any)?.identities as Array<any> | undefined) ?? [];
+    const identities = (user?.identities ?? []) as UserIdentity[];
+
+    const providerFromIdentities: string | null =
+      identities.find((i) => typeof i?.provider === "string")?.provider ?? null;
+
+    const providerFromAppMetadata = (() => {
+      const appMeta = user?.app_metadata as unknown as
+        | Record<string, unknown>
+        | undefined;
+      const p = appMeta?.provider;
+      return typeof p === "string" ? p : null;
+    })();
+
     const provider: string | null =
-      identities.find((i) => typeof i?.provider === "string")?.provider ??
-      ((user as any)?.app_metadata?.provider as string | undefined) ??
-      null;
+      providerFromIdentities || providerFromAppMetadata;
 
     if (!provider || provider === "email") return null;
     if (provider === "google") return "Google";
     if (provider === "linkedin_oidc") return "LinkedIn";
+    if (provider === "github") return "GitHub";
     return provider;
   }, [user]);
 

@@ -102,6 +102,9 @@ interface ProfilePrefillState {
     last_name?: string;
     headline?: string;
     professional_title?: string;
+    bio?: string;
+    city?: string;
+    state?: string;
   };
 }
 
@@ -135,6 +138,7 @@ const ProfileDetails: React.FC = () => {
     if (!provider || provider === "email") return null;
     if (provider === "google") return "Google";
     if (provider === "linkedin_oidc") return "LinkedIn";
+    if (provider === "github") return "GitHub";
     return provider;
   }, [user]);
 
@@ -187,6 +191,10 @@ const ProfileDetails: React.FC = () => {
       if (navPrefill.headline) prefillMapped.headline = navPrefill.headline;
       else if (navPrefill.professional_title)
         prefillMapped.headline = navPrefill.professional_title;
+
+      if (navPrefill.bio) prefillMapped.bio = navPrefill.bio;
+      if (navPrefill.city) prefillMapped.city = navPrefill.city;
+      if (navPrefill.state) prefillMapped.state = navPrefill.state;
 
       setFormData({ ...cachedProfile, ...prefillMapped });
       setEditMode(true);

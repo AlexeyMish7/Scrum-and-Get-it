@@ -35,6 +35,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Extended session lifetime and aggressive refresh for demo stability
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    flowType: "pkce",
     autoRefreshToken: true, // Automatically refresh tokens before expiry
     persistSession: true, // Persist session in localStorage
     detectSessionInUrl: true, // Handle OAuth callbacks

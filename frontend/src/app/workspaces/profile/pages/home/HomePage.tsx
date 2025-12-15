@@ -25,6 +25,24 @@ const HomePage = () => {
 
   const { user, loading } = useAuth();
 
+  // Some OAuth flows (or misconfigured redirect URLs) can return users to the site root
+  // with auth data in the URL fragment/query. Our app expects to finish onboarding in
+  // /auth/callback, so forward there to keep routing consistent.
+  useEffect(() => {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+
+    const hasOAuthHash =
+      hash.includes("access_token=") ||
+      hash.includes("refresh_token=") ||
+      hash.includes("error=");
+    const hasOAuthCode = new URLSearchParams(search).has("code");
+
+    if (hasOAuthHash || hasOAuthCode) {
+      window.location.replace(`/auth/callback${search}${hash}`);
+    }
+  }, []);
+
   // If the user is already signed in, treat "/" as the app entry point and
   // immediately take them to their workspace instead of showing marketing.
   useEffect(() => {
