@@ -41,14 +41,13 @@ export function useAIGlossyStyles() {
     // Sharp, rigid container styling - minimal rounding, crisp edges
     background: {
       borderRadius: 1, // Sharp corners instead of rounded
-      border: 1,
-      borderColor: theme.palette.divider,
+      border: 0,
+      boxShadow: theme.shadows[1],
     },
 
     // Sharp accent border
     accent: {
-      borderColor: theme.palette.primary.main,
-      borderWidth: 2,
+      boxShadow: `0 0 0 2px rgba(var(--mui-palette-primary-main-rgb), 0.16)`,
     },
 
     shimmer: {},
@@ -58,8 +57,8 @@ export function useAIGlossyStyles() {
       px: 1.5,
       py: 0.5,
       borderRadius: 0.5, // More rigid/boxy
-      border: 1,
-      borderColor: theme.palette.divider,
+      border: 0,
+      boxShadow: theme.shadows[1],
       display: "inline-flex",
       alignItems: "center",
       "& .badge-text": {
@@ -75,8 +74,8 @@ export function useAIGlossyStyles() {
     section: {
       p: 4,
       borderRadius: 1, // Minimal rounding for sharp look
-      border: 2,
-      borderColor: theme.palette.divider,
+      border: 0,
+      boxShadow: theme.shadows[1],
     },
 
     raw: {

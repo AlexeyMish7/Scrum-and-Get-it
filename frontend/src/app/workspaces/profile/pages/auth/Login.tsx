@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
-import { useThemeContext } from "@shared/context/ThemeContext";
+import PublicPageLayout from "@shared/layouts/PublicPageLayout";
 
 import {
   Box,
@@ -10,14 +10,12 @@ import {
   Typography,
   useTheme,
   Divider,
-  AppBar,
-  Toolbar,
-  IconButton,
   Link as MuiLink,
+  Paper,
 } from "@mui/material";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
+import { FcGoogle } from "react-icons/fc";
 import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
+import logo from "@shared/assets/logos/logo-full.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -78,44 +76,65 @@ const Login = () => {
   };
 
   const theme = useTheme();
-  const { mode, toggleMode } = useThemeContext();
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        color: "text.primary",
-      }}
-    >
-      <AppBar
-        position="static"
-        color="transparent"
-        elevation={0}
-        sx={{ mb: 2 }}
-      >
-        <Toolbar>
-          <Box sx={{ flex: 1 }} />
-          <IconButton
-            onClick={toggleMode}
-            aria-label="Toggle theme"
-            color="inherit"
-          >
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
 
-      <Box
+  // Match common OAuth button patterns (Google neutral, LinkedIn branded)
+  const oauthButtonBaseSx = {
+    position: "relative",
+    justifyContent: "center",
+    py: 1.25,
+    textTransform: "none",
+    fontWeight: 600,
+    "& .MuiButton-startIcon": {
+      position: "absolute" as const,
+      left: 12,
+      margin: 0,
+    },
+  };
+
+  const googleButtonSx = {
+    ...oauthButtonBaseSx,
+    // Standard Google button styling (neutral)
+    backgroundColor: "#ffffff",
+    borderColor: "#dadce0",
+    color: "#3c4043",
+    "&:hover": {
+      backgroundColor: "#f8f9fa",
+      borderColor: "#dadce0",
+    },
+  };
+
+  return (
+    <PublicPageLayout
+      centerContent
+      containerMaxWidth="sm"
+      topRight={
+        <Button variant="outlined" onClick={() => navigate("/register")}>
+          Create account
+        </Button>
+      }
+    >
+      <Paper
+        elevation={4}
         sx={{
-          maxWidth: 400,
+          maxWidth: 420,
           mx: "auto",
-          mt: 4,
           p: 4,
           borderRadius: 3,
-          boxShadow: 2,
-          bgcolor: "background.paper",
         }}
       >
+        <Box
+          component="img"
+          src={logo}
+          alt="FlowATS"
+          sx={{
+            height: 34,
+            width: "auto",
+            display: "block",
+            mx: "auto",
+            mb: 2,
+          }}
+        />
+
         <Typography
           variant="h5"
           textAlign="center"
@@ -178,13 +197,18 @@ const Login = () => {
         <Button
           onClick={handleGoogle}
           variant="outlined"
-          color="secondary"
           fullWidth
+          disabled={loading}
+          sx={googleButtonSx}
+          startIcon={<FcGoogle size={20} />}
         >
-          Sign in with Google
+          Continue with Google
         </Button>
 
-        <LinkedInButton sx={{ mt: 1 }} />
+        <LinkedInButton
+          sx={{ mt: 1, ...oauthButtonBaseSx }}
+          label="Continue with LinkedIn"
+        />
 
         <Box textAlign="center" mt={2}>
           <Typography variant="body2">
@@ -216,8 +240,8 @@ const Login = () => {
             </MuiLink>
           </Typography>
         </Box>
-      </Box>
-    </Box>
+      </Paper>
+    </PublicPageLayout>
   );
 };
 

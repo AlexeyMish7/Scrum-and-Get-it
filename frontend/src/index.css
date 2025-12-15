@@ -135,8 +135,8 @@ article,
 
 /* Text fields with variants - accent border using preset color */
 .MuiOutlinedInput-notchedOutline {
-  border-width: 2px !important;
-  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.2) !important;
+  border-width: 1px !important;
+  border-color: rgba(var(--mui-palette-primary-main-rgb), 0.14) !important;
 }
 
 /* Focused inputs get preset primary border */
@@ -147,7 +147,7 @@ article,
 
 .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
   border-color: var(--mui-palette-primary-main) !important;
-  border-width: 2px !important;
+  border-width: 1px !important;
 }
 
 /* Ensure all text has strong contrast with subtle shadows */
@@ -199,7 +199,7 @@ label {
 /* Outlined buttons get preset border */
 .MuiButton-outlined {
   border-color: rgba(var(--mui-palette-primary-main-rgb), 0.5) !important;
-  border-width: 2px !important;
+  border-width: 1px !important;
 }
 
 /* Buttons on hover get stronger shadow */
@@ -229,7 +229,7 @@ label {
 
 /* Table headers get accent border */
 .MuiTableCell-head {
-  border-bottom: 2px solid rgba(var(--mui-palette-primary-main-rgb), 0.2) !important;
+  border-bottom: 1px solid rgba(var(--mui-palette-primary-main-rgb), 0.16) !important;
   font-weight: 600;
 }
 
@@ -248,7 +248,7 @@ img {
 /* Outlined chips get preset border */
 .MuiChip-outlined {
   border-color: rgba(var(--mui-palette-primary-main-rgb), 0.3) !important;
-  border-width: 2px !important;
+  border-width: 1px !important;
 }
 
 /* Dividers use preset color */

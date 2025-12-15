@@ -19,7 +19,9 @@
 export type DesignPresetId =
   | "modern" // Clean, medium radius, subtle shadows
   | "soft" // Large radius, soft shadows, gentle
-  | "sharp" // Minimal radius, crisp edges
+  | "default" // Minimal radius, crisp edges
+  | "extraSharp" // No radius, perfectly square edges
+  | "rounded" // More rounded corners
   | "glass" // Glassmorphism, blur effects, translucency
   | "bold" // Strong shadows, prominent effects
   | "minimal"; // Flat, almost no shadows, clean

@@ -140,26 +140,26 @@ export const softDesign: DesignPreset = {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const sharpDesign: DesignPreset = {
-  id: "sharp",
-  name: "Sharp",
+  id: "default",
+  name: "Default",
   description: "Minimal corners with crisp, defined edges",
   borderRadius: {
     none: 0,
-    sm: 2,
-    md: 4,
-    lg: 6,
-    xl: 8,
+    sm: 1,
+    md: 2,
+    lg: 3,
+    xl: 4,
     full: 9999,
   },
   elevation: {
     none: "none",
-    level1: "0 1px 2px rgba(0,0,0,0.10), 0 1px 1px rgba(0,0,0,0.08)",
-    level2: "0 3px 6px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.08)",
-    level3: "0 6px 12px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)",
-    level4: "0 12px 24px rgba(0,0,0,0.12), 0 6px 12px rgba(0,0,0,0.08)",
-    level5: "0 20px 40px rgba(0,0,0,0.14), 0 10px 20px rgba(0,0,0,0.10)",
+    level1: "0 2px 6px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08)",
+    level2: "0 6px 14px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.10)",
+    level3: "0 10px 24px rgba(0,0,0,0.14), 0 4px 10px rgba(0,0,0,0.10)",
+    level4: "0 16px 36px rgba(0,0,0,0.16), 0 6px 14px rgba(0,0,0,0.12)",
+    level5: "0 24px 54px rgba(0,0,0,0.18), 0 10px 20px rgba(0,0,0,0.14)",
   },
-  depth: "normal",
+  depth: "strong",
   glow: {
     enabled: false,
     spread: "0 0 8px",
@@ -187,6 +187,131 @@ export const sharpDesign: DesignPreset = {
       fast: 80,
       medium: 150,
       slow: 250,
+    },
+    easing: {
+      standard: "cubic-bezier(0.4, 0, 0.2, 1)",
+      emphasized: "cubic-bezier(0.2, 0, 0, 1)",
+      decelerate: "cubic-bezier(0, 0, 0.2, 1)",
+      accelerate: "cubic-bezier(0.4, 0, 1, 1)",
+    },
+  },
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXTRA SHARP - No radius at all
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const extraSharpDesign: DesignPreset = {
+  id: "extraSharp",
+  name: "Extra Sharp",
+  description: "Perfectly square surfaces (no rounding)",
+  borderRadius: {
+    none: 0,
+    sm: 0,
+    md: 0,
+    lg: 0,
+    xl: 0,
+    // Keep full available for intentional pills/circles when needed
+    full: 9999,
+  },
+  elevation: {
+    none: "none",
+    level1: "0 2px 6px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08)",
+    level2: "0 6px 14px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.10)",
+    level3: "0 10px 24px rgba(0,0,0,0.14), 0 4px 10px rgba(0,0,0,0.10)",
+    level4: "0 16px 36px rgba(0,0,0,0.16), 0 6px 14px rgba(0,0,0,0.12)",
+    level5: "0 24px 54px rgba(0,0,0,0.18), 0 10px 20px rgba(0,0,0,0.14)",
+  },
+  depth: "strong",
+  glow: {
+    enabled: false,
+    spread: "0 0 8px",
+    strength: 0.5,
+    appliesTo: {
+      button: false,
+      card: false,
+      input: true,
+      link: false,
+    },
+  },
+  glass: {
+    enabled: false,
+    blur: 8,
+    opacity: 0.95,
+    saturation: 1,
+  },
+  focusRing: {
+    width: 2,
+    offset: 1,
+    style: "solid",
+  },
+  motion: {
+    duration: {
+      fast: 80,
+      medium: 150,
+      slow: 250,
+    },
+    easing: {
+      standard: "cubic-bezier(0.4, 0, 0.2, 1)",
+      emphasized: "cubic-bezier(0.2, 0, 0, 1)",
+      decelerate: "cubic-bezier(0, 0, 0.2, 1)",
+      accelerate: "cubic-bezier(0.4, 0, 1, 1)",
+    },
+  },
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ROUNDED - Intentionally rounded
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const roundedDesign: DesignPreset = {
+  id: "rounded",
+  name: "Rounded",
+  description: "More rounded corners for a softer feel",
+  borderRadius: {
+    none: 0,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    full: 9999,
+  },
+  elevation: {
+    none: "none",
+    level1: "0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)",
+    level2: "0 6px 14px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.08)",
+    level3: "0 10px 24px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.08)",
+    level4: "0 16px 36px rgba(0,0,0,0.14), 0 6px 14px rgba(0,0,0,0.10)",
+    level5: "0 24px 54px rgba(0,0,0,0.16), 0 10px 20px rgba(0,0,0,0.12)",
+  },
+  depth: "medium",
+  glow: {
+    enabled: false,
+    spread: "0 0 10px",
+    strength: 0.6,
+    appliesTo: {
+      button: false,
+      card: false,
+      input: true,
+      link: false,
+    },
+  },
+  glass: {
+    enabled: false,
+    blur: 8,
+    opacity: 0.95,
+    saturation: 1,
+  },
+  focusRing: {
+    width: 2,
+    offset: 2,
+    style: "solid",
+  },
+  motion: {
+    duration: {
+      fast: 120,
+      medium: 220,
+      slow: 360,
     },
     easing: {
       standard: "cubic-bezier(0.4, 0, 0.2, 1)",
@@ -392,6 +517,8 @@ export const allDesignPresets: DesignPreset[] = [
   modernDesign,
   softDesign,
   sharpDesign,
+  extraSharpDesign,
+  roundedDesign,
   glassDesign,
   boldDesign,
   minimalDesign,
@@ -401,7 +528,9 @@ export const allDesignPresets: DesignPreset[] = [
 export const designPresetsById: DesignPresetCollection = {
   modern: modernDesign,
   soft: softDesign,
-  sharp: sharpDesign,
+  default: sharpDesign,
+  extraSharp: extraSharpDesign,
+  rounded: roundedDesign,
   glass: glassDesign,
   bold: boldDesign,
   minimal: minimalDesign,

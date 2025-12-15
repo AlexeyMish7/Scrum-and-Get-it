@@ -34,6 +34,9 @@ import PeopleIcon from "@mui/icons-material/People";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
+import LoginIcon from "@mui/icons-material/Login";
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/context/AuthContext";
@@ -113,6 +116,27 @@ const NAV_ITEMS: NavItemConfig[] = [
   },
 ];
 
+const PUBLIC_NAV_ITEMS: NavItemConfig[] = [
+  {
+    path: "/",
+    shortLabel: "Home",
+    fullLabel: "Home",
+    icon: <HomeOutlinedIcon />,
+  },
+  {
+    path: "/login",
+    shortLabel: "Sign In",
+    fullLabel: "Sign In",
+    icon: <LoginIcon />,
+  },
+  {
+    path: "/register",
+    shortLabel: "Register",
+    fullLabel: "Register",
+    icon: <PersonAddAltOutlinedIcon />,
+  },
+];
+
 const WORKSPACE_ITEMS: NavItem[] = [
   {
     label: "Profile Workspace",
@@ -171,7 +195,8 @@ const AI_TOOL_ITEMS: NavItem[] = [
   { label: "Templates", path: "/ai/templates" },
 ];
 
-const NETWORK_TOOL_ITEMS: NavItem[] = [ //this used to be ToolItem, changed to NavItem due to error?
+const NETWORK_TOOL_ITEMS: NavItem[] = [
+  //this used to be ToolItem, changed to NavItem due to error?
   { label: "Network Hub", path: "/network" },
   { label: "Contacts", path: "/network" },
   { label: "Peer Groups", path: "/network/peer-groups" },
@@ -321,7 +346,25 @@ function NavButton({ item, isActive, theme }: NavButtonProps) {
   );
 }
 
-export default function GlobalTopBar() {
+type GlobalTopBarProps = {
+  /**
+   * "app": authenticated layout (workspaces + account menu)
+   * "public": marketing/auth layout (no workspace nav)
+   */
+  mode?: "app" | "public";
+  rightSlot?: React.ReactNode;
+  /**
+   * When false, hides the theme toggle control (useful for public pages that
+   * should remain on the default preset/background).
+   */
+  showThemeToggle?: boolean;
+};
+
+export default function GlobalTopBar({
+  mode: topBarMode = "app",
+  rightSlot,
+  showThemeToggle = true,
+}: GlobalTopBarProps) {
   const theme = useTheme();
   const { mode, toggleMode } = useThemeContext();
   const [scrolled, setScrolled] = useState(false);
@@ -352,6 +395,8 @@ export default function GlobalTopBar() {
   const appBarBorder = appBarCfg?.border ?? theme.palette.divider;
 
   const { user, signOut } = useAuth();
+  const isAuthenticated = Boolean(user);
+  const isPublicMode = topBarMode === "public" || !isAuthenticated;
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -375,6 +420,15 @@ export default function GlobalTopBar() {
 
   // Get the page title based on current route
   const pageTitle = useMemo(() => {
+    // Public routes should show a simple, friendly title.
+    if (isPublicMode) {
+      if (location.pathname === "/login") return "Sign In";
+      if (location.pathname === "/register") return "Create Account";
+      if (location.pathname === "/forgot-password") return "Forgot Password";
+      if (location.pathname === "/reset-password") return "Reset Password";
+      return "Welcome";
+    }
+
     if (location.pathname === "/ai") return "Generation Hub";
     if (location.pathname === "/ai/library") return "Document Library";
     if (location.pathname === "/ai/templates") return "Templates";
@@ -394,6 +448,13 @@ export default function GlobalTopBar() {
     if (location.pathname === "/team/invitations") return "Invitations";
     if (location.pathname.startsWith("/team")) return "Team Management";
     return "Profile";
+  }, [isPublicMode, location.pathname]);
+
+  const publicNavPath = useMemo(() => {
+    if (location.pathname === "/") return "/";
+    if (location.pathname.startsWith("/login")) return "/login";
+    if (location.pathname.startsWith("/register")) return "/register";
+    return "";
   }, [location.pathname]);
 
   const toolItems = useMemo(() => {
@@ -447,13 +508,14 @@ export default function GlobalTopBar() {
         ),
         borderBottom: `1px solid ${alpha(appBarBorder, 0.6)}`,
         color: appBarColor,
+        borderRadius: 0,
       }}
     >
       <Toolbar sx={{ px: { xs: 2, md: 3 }, py: 1.5, gap: 2 }}>
         {/* Logo and brand - cohesive styling */}
         <Box
           component={NavLink}
-          to="/profile"
+          to={isPublicMode ? "/" : "/profile"}
           sx={{
             display: "flex",
             alignItems: "center",
@@ -477,12 +539,13 @@ export default function GlobalTopBar() {
               height: 44,
               width: "auto",
               transition: "filter 0.3s ease",
-              filter: highlightAi
-                ? `drop-shadow(0 0 10px ${alpha(
-                    theme.palette.primary.main,
-                    0.5
-                  )})`
-                : "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
+              filter:
+                !isPublicMode && highlightAi
+                  ? `drop-shadow(0 0 10px ${alpha(
+                      theme.palette.primary.main,
+                      0.5
+                    )})`
+                  : "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
             }}
           />
           <Box>
@@ -511,213 +574,281 @@ export default function GlobalTopBar() {
           </Box>
         </Box>
 
-        <Box sx={{ flexGrow: 1 }} />
-
-        {!isMobile ? (
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            {/* Main navigation items with icons and lamp effect */}
-            {NAV_ITEMS.slice(0, 5).map((item) => {
-              const isActive =
-                item.path === "/interviews"
-                  ? location.pathname.startsWith("/interviews")
-                  : item.path === "/team"
-                  ? currentWorkspace === "TEAM"
-                  : item.path === "/ai"
-                  ? highlightAi
-                  : item.path === "/jobs"
-                  ? highlightJobs
-                  : item.path === "/network"
-                  ? highlightNetwork
-                  : false;
-
-              return (
+        {isPublicMode ? (
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              justifyContent: "flex-end",
+              minWidth: 0,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="center"
+              sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}
+            >
+              {PUBLIC_NAV_ITEMS.map((item) => (
                 <NavButton
                   key={item.path}
                   item={item}
-                  isActive={isActive}
+                  isActive={publicNavPath === item.path}
                   theme={theme}
                 />
-              );
-            })}
+              ))}
+            </Stack>
+          </Box>
+        ) : (
+          <Box sx={{ flexGrow: 1 }} />
+        )}
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
-            />
+        {/* Public navbar uses centered icon links; no extra right-side actions. */}
 
-            {/* Profile nav item */}
-            <NavButton
-              item={NAV_ITEMS[5]}
-              isActive={highlightProfile}
-              theme={theme}
-            />
+        {!isMobile ? (
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {!isPublicMode ? (
+              <>
+                {/* Main navigation items with icons and lamp effect */}
+                {NAV_ITEMS.slice(0, 5).map((item) => {
+                  const isActive =
+                    item.path === "/interviews"
+                      ? location.pathname.startsWith("/interviews")
+                      : item.path === "/team"
+                      ? currentWorkspace === "TEAM"
+                      : item.path === "/ai"
+                      ? highlightAi
+                      : item.path === "/jobs"
+                      ? highlightJobs
+                      : item.path === "/network"
+                      ? highlightNetwork
+                      : false;
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 1, opacity: 0.15, height: 40, alignSelf: "center" }}
-            />
+                  return (
+                    <NavButton
+                      key={item.path}
+                      item={item}
+                      isActive={isActive}
+                      theme={theme}
+                    />
+                  );
+                })}
 
-            {/* Theme toggle - matching nav style */}
-            <Tooltip title={themeToggleLabel} arrow>
-              <Box
-                component="button"
-                onClick={toggleMode}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 0.5,
-                  px: 1.5,
-                  py: 1,
-                  border: "none",
-                  borderRadius: 2,
-                  cursor: "pointer",
-                  minWidth: 56,
-                  backgroundColor: alpha(theme.palette.text.primary, 0.04),
-                  color: theme.palette.text.secondary,
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    backgroundColor: alpha(theme.palette.text.primary, 0.08),
-                    color: theme.palette.text.primary,
-                    transform: "translateY(-2px)",
-                  },
-                  "& svg": {
-                    fontSize: 24,
-                    transition: "transform 0.2s ease",
-                  },
-                  "&:hover svg": {
-                    transform: "rotate(15deg)",
-                  },
-                }}
-              >
-                {themeToggleIcon}
-                <Typography
-                  sx={{ fontSize: "0.7rem", fontWeight: 500, lineHeight: 1 }}
-                >
-                  {mode === "dark" ? "Light" : "Dark"}
-                </Typography>
-              </Box>
-            </Tooltip>
-
-            {/* Avatar - matching style */}
-            <Tooltip title="Account menu" arrow>
-              <IconButton
-                onClick={(event) => setProfileAnchor(event.currentTarget)}
-                sx={{
-                  p: 0.5,
-                  ml: 0.5,
-                  borderRadius: 2,
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    backgroundColor: alpha(theme.palette.text.primary, 0.06),
-                    transform: "translateY(-2px)",
-                  },
-                }}
-                aria-haspopup="true"
-                aria-controls={profileAnchor ? "profile-menu" : undefined}
-              >
-                <Avatar
-                  src={avatarUrl ?? undefined}
-                  alt="User avatar"
+                <Divider
+                  orientation="vertical"
+                  flexItem
                   sx={{
-                    width: 36,
-                    height: 36,
-                    border: `2px solid ${alpha(
-                      theme.palette.primary.main,
-                      0.2
-                    )}`,
-                    transition: "border-color 0.2s ease",
-                    "&:hover": {
-                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                    mx: 1,
+                    opacity: 0.15,
+                    height: 40,
+                    alignSelf: "center",
+                  }}
+                />
+
+                {/* Profile nav item */}
+                <NavButton
+                  item={NAV_ITEMS[5]}
+                  isActive={highlightProfile}
+                  theme={theme}
+                />
+
+                <Divider
+                  orientation="vertical"
+                  flexItem
+                  sx={{
+                    mx: 1,
+                    opacity: 0.15,
+                    height: 40,
+                    alignSelf: "center",
+                  }}
+                />
+              </>
+            ) : null}
+
+            {showThemeToggle ? (
+              <>
+                {/* Theme toggle - matching nav style */}
+                <Tooltip title={themeToggleLabel} arrow>
+                  <Box
+                    component="button"
+                    onClick={toggleMode}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1.5,
+                      py: 1,
+                      border: "none",
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      minWidth: 56,
+                      backgroundColor: alpha(theme.palette.text.primary, 0.04),
+                      color: theme.palette.text.secondary,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: alpha(
+                          theme.palette.text.primary,
+                          0.08
+                        ),
+                        color: theme.palette.text.primary,
+                        transform: "translateY(-2px)",
+                      },
+                      "& svg": {
+                        fontSize: 24,
+                        transition: "transform 0.2s ease",
+                      },
+                      "&:hover svg": {
+                        transform: "rotate(15deg)",
+                      },
+                    }}
+                  >
+                    {themeToggleIcon}
+                    <Typography
+                      sx={{
+                        fontSize: "0.7rem",
+                        fontWeight: 500,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {mode === "dark" ? "Light" : "Dark"}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              </>
+            ) : null}
+
+            {!isPublicMode ? (
+              <>
+                {/* Avatar - matching style */}
+                <Tooltip title="Account menu" arrow>
+                  <IconButton
+                    onClick={(event) => setProfileAnchor(event.currentTarget)}
+                    sx={{
+                      p: 0.5,
+                      ml: 0.5,
+                      borderRadius: 2,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: alpha(
+                          theme.palette.text.primary,
+                          0.06
+                        ),
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                    aria-haspopup="true"
+                    aria-controls={profileAnchor ? "profile-menu" : undefined}
+                  >
+                    <Avatar
+                      src={avatarUrl ?? undefined}
+                      alt="User avatar"
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        border: `2px solid ${alpha(
+                          theme.palette.primary.main,
+                          0.2
+                        )}`,
+                        transition: "border-color 0.2s ease",
+                        "&:hover": {
+                          borderColor: alpha(theme.palette.primary.main, 0.5),
+                        },
+                      }}
+                    >
+                      {!avatarUrl &&
+                        (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+                    </Avatar>
+                  </IconButton>
+                </Tooltip>
+                <Menu
+                  id="profile-menu"
+                  anchorEl={profileAnchor}
+                  open={Boolean(profileAnchor)}
+                  onClose={() => setProfileAnchor(null)}
+                  slotProps={{
+                    paper: {
+                      sx: { minWidth: 220 },
                     },
                   }}
                 >
-                  {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-            <Menu
-              id="profile-menu"
-              anchorEl={profileAnchor}
-              open={Boolean(profileAnchor)}
-              onClose={() => setProfileAnchor(null)}
-              slotProps={{
-                paper: {
-                  sx: { minWidth: 220 },
-                },
-              }}
-            >
-              {MENU_ITEMS.map((item) => (
-                <MenuItem
-                  key={item.path}
-                  component={NavLink}
-                  to={item.path}
-                  onClick={() => setProfileAnchor(null)}
-                  sx={{ gap: theme.spacing(1) }}
-                >
-                  {item.path === "/profile/settings" ? (
-                    <SettingsIcon fontSize="small" />
-                  ) : (
-                    <AccountCircleIcon fontSize="small" />
-                  )}
-                  {item.label}
-                </MenuItem>
-              ))}
+                  {MENU_ITEMS.map((item) => (
+                    <MenuItem
+                      key={item.path}
+                      component={NavLink}
+                      to={item.path}
+                      onClick={() => setProfileAnchor(null)}
+                      sx={{ gap: theme.spacing(1) }}
+                    >
+                      {item.path === "/profile/settings" ? (
+                        <SettingsIcon fontSize="small" />
+                      ) : (
+                        <AccountCircleIcon fontSize="small" />
+                      )}
+                      {item.label}
+                    </MenuItem>
+                  ))}
 
-              <Divider sx={{ my: theme.spacing(0.5) }} />
+                  <Divider sx={{ my: theme.spacing(0.5) }} />
 
-              {/* Theme Section */}
-              <Box sx={{ px: 2, py: 1 }}>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={1}
-                  sx={{ mb: 1 }}
-                >
-                  <PaletteIcon fontSize="small" color="action" />
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    fontWeight={500}
+                  {/* Theme Section */}
+                  <Box sx={{ px: 2, py: 1 }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={1}
+                      sx={{ mb: 1 }}
+                    >
+                      <PaletteIcon fontSize="small" color="action" />
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontWeight={500}
+                      >
+                        Appearance
+                      </Typography>
+                    </Stack>
+                    <ToggleButtonGroup
+                      value={mode}
+                      exclusive
+                      onChange={() => {
+                        toggleMode();
+                        setProfileAnchor(null);
+                      }}
+                      size="small"
+                      fullWidth
+                    >
+                      <ToggleButton value="light" sx={{ gap: 0.5, py: 0.5 }}>
+                        <LightModeIcon fontSize="small" />
+                        Light
+                      </ToggleButton>
+                      <ToggleButton value="dark" sx={{ gap: 0.5, py: 0.5 }}>
+                        <DarkModeIcon fontSize="small" />
+                        Dark
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
+
+                  <Divider sx={{ my: theme.spacing(0.5) }} />
+                  <MenuItem
+                    onClick={handleOpenGettingStarted}
+                    sx={{ gap: theme.spacing(1) }}
                   >
-                    Appearance
-                  </Typography>
-                </Stack>
-                <ToggleButtonGroup
-                  value={mode}
-                  exclusive
-                  onChange={() => {
-                    toggleMode();
-                    setProfileAnchor(null);
-                  }}
-                  size="small"
-                  fullWidth
-                >
-                  <ToggleButton value="light" sx={{ gap: 0.5, py: 0.5 }}>
-                    <LightModeIcon fontSize="small" />
-                    Light
-                  </ToggleButton>
-                  <ToggleButton value="dark" sx={{ gap: 0.5, py: 0.5 }}>
-                    <DarkModeIcon fontSize="small" />
-                    Dark
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
-
-              <Divider sx={{ my: theme.spacing(0.5) }} />
-              <MenuItem onClick={handleOpenGettingStarted} sx={{ gap: theme.spacing(1) }}>
-                <HelpOutlineIcon fontSize="small" />
-                Help & Getting Started
-              </MenuItem>
-              <MenuItem onClick={handleLogout} sx={{ gap: theme.spacing(1) }}>
-                <LogoutIcon fontSize="small" />
-                Logout
-              </MenuItem>
-            </Menu>
+                    <HelpOutlineIcon fontSize="small" />
+                    Help & Getting Started
+                  </MenuItem>
+                  <MenuItem
+                    onClick={handleLogout}
+                    sx={{ gap: theme.spacing(1) }}
+                  >
+                    <LogoutIcon fontSize="small" />
+                    Logout
+                  </MenuItem>
+                </Menu>
+              </>
+            ) : null}
           </Stack>
-        ) : (
+        ) : !isPublicMode ? (
           <IconButton
             color="inherit"
             onClick={handleDrawerToggle(true)}
@@ -726,79 +857,91 @@ export default function GlobalTopBar() {
           >
             <MenuIcon />
           </IconButton>
-        )}
+        ) : showThemeToggle ? (
+          <Tooltip title={themeToggleLabel} arrow>
+            <IconButton
+              onClick={toggleMode}
+              color="inherit"
+              aria-label={themeToggleLabel}
+            >
+              {themeToggleIcon}
+            </IconButton>
+          </Tooltip>
+        ) : null}
       </Toolbar>
 
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={handleDrawerToggle(false)}
-      >
-        <Box
-          sx={{
-            width: { xs: "100vw", sm: theme.spacing(45) },
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            backgroundColor: alpha(theme.palette.background.default, 0.96),
-          }}
+      {!isPublicMode ? (
+        <Drawer
+          anchor="right"
+          open={drawerOpen}
+          onClose={handleDrawerToggle(false)}
         >
-          <Box sx={{ px: theme.spacing(3), py: theme.spacing(2.5) }}>
-            <Stack
-              direction="row"
-              spacing={theme.spacing(2)}
-              alignItems="center"
-            >
-              <Avatar
-                src={avatarUrl ?? undefined}
-                alt="User avatar"
-                sx={{ width: theme.spacing(6), height: theme.spacing(6) }}
+          <Box
+            sx={{
+              width: { xs: "100vw", sm: theme.spacing(45) },
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+              backgroundColor: alpha(theme.palette.background.default, 0.96),
+            }}
+          >
+            <Box sx={{ px: theme.spacing(3), py: theme.spacing(2.5) }}>
+              <Stack
+                direction="row"
+                spacing={theme.spacing(2)}
+                alignItems="center"
               >
-                {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
-              </Avatar>
-              <Box>
-                <Typography variant="subtitle1" fontWeight={600}>
-                  {user?.email ?? "Signed in"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {highlightAi ? "AI Workspace" : "Profile Workspace"}
-                </Typography>
-              </Box>
-            </Stack>
+                <Avatar
+                  src={avatarUrl ?? undefined}
+                  alt="User avatar"
+                  sx={{ width: theme.spacing(6), height: theme.spacing(6) }}
+                >
+                  {!avatarUrl && (user?.email?.charAt(0)?.toUpperCase() ?? "U")}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {user?.email ?? "Signed in"}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {highlightAi ? "AI Workspace" : "Profile Workspace"}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+            <Divider />
+            <List>
+              <ListSubheader>Workspaces</ListSubheader>
+              {WORKSPACE_ITEMS.map((item) => (
+                <ListItemButton
+                  key={item.path}
+                  component={NavLink}
+                  to={item.path}
+                  onClick={handleDrawerToggle(false)}
+                >
+                  <ListItemText
+                    primary={item.label}
+                    secondary={item.description}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+            <Divider />
+            <List>
+              <ListSubheader>Tools</ListSubheader>
+              {toolItems.map((item) => (
+                <ListItemButton
+                  key={item.path}
+                  component={NavLink}
+                  to={item.path}
+                  onClick={handleDrawerToggle(false)}
+                >
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              ))}
+            </List>
           </Box>
-          <Divider />
-          <List>
-            <ListSubheader>Workspaces</ListSubheader>
-            {WORKSPACE_ITEMS.map((item) => (
-              <ListItemButton
-                key={item.path}
-                component={NavLink}
-                to={item.path}
-                onClick={handleDrawerToggle(false)}
-              >
-                <ListItemText
-                  primary={item.label}
-                  secondary={item.description}
-                />
-              </ListItemButton>
-            ))}
-          </List>
-          <Divider />
-          <List>
-            <ListSubheader>Tools</ListSubheader>
-            {toolItems.map((item) => (
-              <ListItemButton
-                key={item.path}
-                component={NavLink}
-                to={item.path}
-                onClick={handleDrawerToggle(false)}
-              >
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
+        </Drawer>
+      ) : null}
     </AppBar>
   );
 }
