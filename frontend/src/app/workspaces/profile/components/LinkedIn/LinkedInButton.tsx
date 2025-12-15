@@ -9,9 +9,15 @@ type Props = {
   fullWidth?: boolean;
   sx?: SxProps<Theme>;
   label?: string;
+  onBeforeAuth?: () => void;
 };
 
-const LinkedInButton: React.FC<Props> = ({ fullWidth = true, sx, label }) => {
+const LinkedInButton: React.FC<Props> = ({
+  fullWidth = true,
+  sx,
+  label,
+  onBeforeAuth,
+}) => {
   // intentionally using supabase.auth.signInWithOAuth directly below
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +42,7 @@ const LinkedInButton: React.FC<Props> = ({ fullWidth = true, sx, label }) => {
     : [baseSx, sx];
 
   const handleClick = async () => {
+    onBeforeAuth?.();
     setLoading(true);
     try {
       // Minimal sign-in call per Supabase docs — keep simple for testing

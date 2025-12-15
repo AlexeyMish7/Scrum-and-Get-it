@@ -16,6 +16,7 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import LinkedInButton from "../../components/LinkedIn/LinkedInButton";
 import logo from "@shared/assets/logos/logo-full.png";
+import { setOAuthIntent } from "@shared/utils/oauthIntent";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -68,6 +69,12 @@ const Login = () => {
     }
 
     setLoginError("");
+    setOAuthIntent({
+      source: "login",
+      returnTo: "/profile",
+      provider: "google",
+      startedAt: Date.now(),
+    });
     setLoading(true);
     const res = await signInWithOAuth("google");
     setLoading(false);
@@ -208,6 +215,14 @@ const Login = () => {
         <LinkedInButton
           sx={{ mt: 1, ...oauthButtonBaseSx }}
           label="Continue with LinkedIn"
+          onBeforeAuth={() =>
+            setOAuthIntent({
+              source: "login",
+              returnTo: "/profile",
+              provider: "linkedin_oidc",
+              startedAt: Date.now(),
+            })
+          }
         />
 
         <Box textAlign="center" mt={2}>

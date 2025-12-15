@@ -107,6 +107,7 @@ export interface RecentActivityItem {
  */
 export interface DashboardData {
   header: ProfileHeader | null;
+  profile: ProfileData | null;
   counts: {
     employmentCount: number;
     skillsCount: number;
@@ -480,6 +481,7 @@ export function useDashboardData(): DashboardData {
 
   return {
     header,
+    profile: data?.profile ?? null,
     counts: {
       employmentCount: data?.employment.length ?? 0,
       skillsCount: data?.skills.length ?? 0,

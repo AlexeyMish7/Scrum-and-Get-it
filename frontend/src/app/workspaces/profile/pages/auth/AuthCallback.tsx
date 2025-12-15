@@ -5,6 +5,15 @@ import { Box, Typography, AppBar, Toolbar, IconButton } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useThemeContext } from "@shared/context/ThemeContext";
+import { consumeOAuthIntent } from "@shared/utils/oauthIntent";
+
+type ProfileRow = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  professional_title?: string | null;
+  metadata?: Record<string, unknown> | null;
+} | null;
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +24,8 @@ const AuthCallback: React.FC = () => {
 
     async function handleCallback() {
       try {
+        const oauthIntent = consumeOAuthIntent();
+
         // Try to read session (supabase-js may process the URL automatically)
         const { data: sessData, error: sessErr } =
           await supabase.auth.getSession();
@@ -28,31 +39,54 @@ const AuthCallback: React.FC = () => {
           const s = sessData.session as any;
           const user = s.user;
 
-          // Upsert a minimal profile record so the frontend has a profile row to read
-          // prefill will hold any discovered profile values to pass to the profile details form
-          let prefill: Record<string, any> | null = null;
+          // Prefill holds any discovered profile values to pass to the profile details form.
+          // We only force the user into Profile Details when it's a registration intent or
+          // we detect missing/placeholder profile values.
+          let prefill: Record<string, unknown> | null = null;
+          let shouldRouteToProfileDetails = oauthIntent?.source === "register";
 
           try {
-            const meta = user?.user_metadata ?? {};
+            const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
 
-            // Build best-effort profile enrichment fields from user metadata and identities
-            const fullNameFromMeta =
-              meta.full_name ||
-              meta.name ||
-              `${meta.first_name ?? ""} ${meta.last_name ?? ""}`.trim() ||
-              null;
-            const headlineFromMeta =
-              meta.headline || meta.profile?.headline || meta.summary || null;
+            const pickString = (...values: unknown[]) => {
+              for (const v of values) {
+                if (typeof v === "string" && v.trim()) return v.trim();
+              }
+              return null;
+            };
+
+            const fullNameFromMeta = pickString(
+              meta["full_name"],
+              meta["name"],
+              // Google OIDC fields
+              [meta["given_name"], meta["family_name"]]
+                .filter(Boolean)
+                .join(" ")
+            );
+
+            const firstFromMeta = pickString(
+              meta["first_name"],
+              meta["given_name"]
+            );
+            const lastFromMeta = pickString(
+              meta["last_name"],
+              meta["family_name"]
+            );
+
+            const headlineFromMeta = pickString(
+              meta["headline"],
+              (meta as any)?.profile?.headline,
+              meta["summary"]
+            );
 
             // Try a few common metadata keys for avatar/picture
             let avatarSource: string | null = null;
-            avatarSource =
-              avatarSource ||
-              meta.picture ||
-              meta.avatar_url ||
-              meta.image ||
-              meta.profile?.pictureUrl ||
-              null;
+            avatarSource = pickString(
+              meta["picture"],
+              meta["avatar_url"],
+              meta["image"],
+              (meta as any)?.profile?.pictureUrl
+            );
 
             // identities may include identity_data with profile picture fields (best-effort)
             const identities: Array<any> = s.user?.identities ?? [];
@@ -66,67 +100,121 @@ const AuthCallback: React.FC = () => {
                 null;
             }
 
-            // Prepare base upsert. The `profiles` table requires `first_name` and `last_name` NOT NULL,
-            // so provide empty strings if we can't derive them yet. We'll let the user confirm/complete
-            // the profile on the `/profile/details` page — we pass any discovered values there as state.
-            let first_name_base: string = "";
-            let last_name_base: string = "";
-            if (fullNameFromMeta) {
-              const parts = fullNameFromMeta.split(" ").filter(Boolean);
-              first_name_base = parts.shift() ?? "";
-              last_name_base = parts.length ? parts.join(" ") : "";
-            } else if (meta.first_name || meta.last_name) {
-              first_name_base = meta.first_name ?? "";
-              last_name_base = meta.last_name ?? "";
+            const providerFromIdentities: string | null =
+              identities.find((i) => typeof i?.provider === "string")
+                ?.provider ?? null;
+            const providerFromIntent: string | null =
+              (oauthIntent?.provider as string | undefined) ?? null;
+            const providerUsed: string | null =
+              providerFromIntent || providerFromIdentities;
+
+            // Read existing profile so we only fill missing/placeholder values.
+            const { data: existingProfile, error: existingErr } = await supabase
+              .from("profiles")
+              .select("first_name,last_name,email,professional_title,metadata")
+              .eq("id", user?.id)
+              .maybeSingle();
+
+            if (existingErr) {
+              console.warn(
+                "Failed to read existing profile during callback:",
+                existingErr
+              );
             }
 
-            const baseUpsert: any = {
-              id: user?.id,
-              email: user?.email ?? null,
-              first_name: first_name_base,
-              last_name: last_name_base,
-              updated_at: new Date().toISOString(),
-            };
+            const existing = (existingProfile ?? null) as ProfileRow;
 
-            if (headlineFromMeta)
-              baseUpsert.professional_title = headlineFromMeta;
+            const existingFirst = (existing?.first_name ?? "").trim();
+            const existingLast = (existing?.last_name ?? "").trim();
+            const existingEmail = (existing?.email ?? "").trim();
+            const existingTitle = (existing?.professional_title ?? "").trim();
 
-            // Build a prefill object from metadata so `/profile/details` can prefill the form even
-            // if the provider_token flow hasn't run yet.
+            const nameLooksPlaceholder =
+              !existingFirst || existingFirst.toLowerCase() === "user";
+
+            // Derive first/last name in a stable way.
+            let derivedFirst = firstFromMeta;
+            let derivedLast = lastFromMeta;
+            if ((!derivedFirst || !derivedLast) && fullNameFromMeta) {
+              const parts = String(fullNameFromMeta)
+                .split(/\s+/)
+                .filter(Boolean);
+              if (!derivedFirst) derivedFirst = parts.shift() ?? null;
+              if (!derivedLast)
+                derivedLast = parts.length ? parts.join(" ") : null;
+            }
+
+            // Build prefill state for the profile form.
             prefill = {
-              first_name: first_name_base || undefined,
-              last_name: last_name_base || undefined,
+              first_name: derivedFirst ?? undefined,
+              last_name: derivedLast ?? undefined,
               professional_title: headlineFromMeta ?? undefined,
+              headline: headlineFromMeta ?? undefined,
               avatar_path: avatarSource ?? undefined,
+              source: "oauth",
+              provider: oauthIntent?.provider ?? undefined,
             };
-
-            // First, check if profile exists and merge metadata to preserve existing data
-            const { data: existingProfile } = await supabase
-              .from("profiles")
-              .select("metadata")
-              .eq("id", user?.id)
-              .single();
 
             // Merge avatar_path into existing metadata (don't overwrite other keys)
             const existingMeta =
-              (existingProfile?.metadata as Record<string, unknown>) ?? {};
+              (existing?.metadata as Record<string, unknown>) ?? {};
             const mergedMetadata: Record<string, unknown> = { ...existingMeta };
-            if (avatarSource) mergedMetadata.avatar_path = avatarSource;
-
-            // Only include metadata in upsert if we have something to save
-            if (Object.keys(mergedMetadata).length > 0) {
-              baseUpsert.metadata = mergedMetadata;
+            if (avatarSource && !mergedMetadata.avatar_path) {
+              mergedMetadata.avatar_path = avatarSource;
             }
 
-            // Upsert profile row - this handles both new users and existing users
-            const { error: upsertErr } = await supabase
-              .from("profiles")
-              .upsert(baseUpsert);
-            if (upsertErr)
-              console.warn(
-                "Failed to upsert profile after OAuth callback:",
-                upsertErr
-              );
+            // Record last sign-in method/provider for UX (“Signed in with Google/LinkedIn”).
+            // Keep it best-effort and do not overwrite if the user already has richer metadata.
+            if (providerUsed && !mergedMetadata.auth_provider) {
+              mergedMetadata.auth_provider = providerUsed;
+            }
+            if (!mergedMetadata.auth_method) {
+              mergedMetadata.auth_method = providerUsed ? "oauth" : "email";
+            }
+            mergedMetadata.last_auth_at = new Date().toISOString();
+
+            const updatePayload: Record<string, unknown> = {
+              updated_at: new Date().toISOString(),
+            };
+
+            if (nameLooksPlaceholder && derivedFirst) {
+              updatePayload.first_name = derivedFirst;
+            }
+            if (!existingLast && derivedLast) {
+              updatePayload.last_name = derivedLast;
+            }
+            if (
+              (!existingEmail || existingEmail.endsWith("@no-email.local")) &&
+              user?.email
+            ) {
+              updatePayload.email = String(user.email).trim().toLowerCase();
+            }
+            if (!existingTitle && headlineFromMeta) {
+              updatePayload.professional_title = headlineFromMeta;
+            }
+            if (Object.keys(mergedMetadata).length > 0) {
+              updatePayload.metadata = mergedMetadata;
+            }
+
+            // Only write when we have something beyond updated_at.
+            if (Object.keys(updatePayload).length > 1 && user?.id) {
+              const { error: updErr } = await supabase
+                .from("profiles")
+                .update(updatePayload)
+                .eq("id", user.id);
+              if (updErr) {
+                console.warn(
+                  "Failed to update profile after OAuth callback:",
+                  updErr
+                );
+              }
+            }
+
+            // If this looks like a new/placeholder profile and the user came from login,
+            // we still route them to profile details once to confirm.
+            if (nameLooksPlaceholder) {
+              shouldRouteToProfileDetails = true;
+            }
           } catch (err) {
             console.error(
               "Error creating/updating profile after OAuth callback:",
@@ -274,9 +362,21 @@ const AuthCallback: React.FC = () => {
             console.error("LinkedIn sync step failed:", e);
           }
 
-          // Redirect user to profile details page after sync/upsert.
-          // Pass discovered values in navigation state so the form can prefill them.
-          navigate("/profile/details", { replace: true, state: { prefill } });
+          // Route decisions:
+          // - Register intent: always send to Profile Details (linear onboarding)
+          // - Login intent: send to dashboard unless the profile looks placeholder
+          const returnTo = oauthIntent?.returnTo || "/profile";
+          if (shouldRouteToProfileDetails) {
+            navigate("/profile/details", {
+              replace: true,
+              state: {
+                prefill,
+                onboarding: oauthIntent?.source === "register",
+              },
+            });
+          } else {
+            navigate(returnTo, { replace: true });
+          }
         } else {
           if (mounted)
             setError("No active session found after OAuth callback.");
