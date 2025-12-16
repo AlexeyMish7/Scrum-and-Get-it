@@ -38,18 +38,18 @@ import { withUser } from "./crud";
 import type { Result, ListOptions } from "./types";
 import { supabase } from "./supabaseClient";
 
-export type DocumentKind = "resume" | "cover_letter" | "portfolio" | "other";
+export type DocumentKind = "resume" | "cover-letter" | "portfolio" | "other";
 
 export interface DocumentRow {
   id: string;
   user_id: string;
-  kind: DocumentKind;
-  file_name: string;
+  type: DocumentKind;
+  name: string;
   file_path: string; // Expected format: "<bucket>/<key>" or "key" with configured bucket
   mime_type?: string | null;
   bytes?: number | null;
   meta?: Record<string, unknown> | null;
-  uploaded_at: string; // ISO timestamp
+  created_at: string; // ISO timestamp
 }
 
 // List documents for a user with optional filters
