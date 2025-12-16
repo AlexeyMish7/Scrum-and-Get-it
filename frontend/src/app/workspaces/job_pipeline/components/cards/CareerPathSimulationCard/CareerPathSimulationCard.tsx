@@ -14,7 +14,7 @@
  * Backend: POST /api/analytics/career/paths (AI-powered)
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -35,6 +35,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  TextField,
+  IconButton,
 } from "@mui/material";
 import {
   Timeline as PathIcon,
@@ -47,7 +49,19 @@ import {
   Lightbulb as RecommendIcon,
   CompareArrows as CompareIcon,
   Star as SuccessIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { useAuth } from "@shared/context/AuthContext";
 import { toApiUrl } from "@shared/services/apiUrl";
 
@@ -180,6 +194,77 @@ export default function CareerPathSimulationCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPathIndex, setSelectedPathIndex] = useState(0);
+
+  // Salary comparison calculator state
+  const [salaryOffers, setSalaryOffers] = useState([
+    { name: "Offer A", startingSalary: 120000, annualRaise: 5 },
+    { name: "Offer B", startingSalary: 115000, annualRaise: 7 },
+  ]);
+  const [comparisonYears] = useState(5);
+
+  // Calculate salary trajectory for each offer
+  const calculateTrajectory = (startSalary: number, raisePercent: number, years: number) => {
+    const trajectory = [];
+    let currentSalary = startSalary;
+    
+    for (let year = 0; year <= years; year++) {
+      trajectory.push({
+        year,
+        salary: Math.round(currentSalary),
+      });
+      currentSalary = currentSalary * (1 + raisePercent / 100);
+    }
+    
+    return trajectory;
+  };
+
+  // Generate chart data combining all offers
+  const salaryChartData = useMemo(() => {
+    const yearData: any[] = [];
+    
+    for (let year = 0; year <= comparisonYears; year++) {
+      const dataPoint: any = { year: `Year ${year}` };
+      
+      salaryOffers.forEach((offer) => {
+        const trajectory = calculateTrajectory(offer.startingSalary, offer.annualRaise, year);
+        dataPoint[offer.name] = trajectory[year].salary;
+      });
+      
+      yearData.push(dataPoint);
+    }
+    
+    return yearData;
+  }, [salaryOffers, comparisonYears]);
+
+  // Calculate scenarios (conservative, expected, optimistic)
+  const scenarioData = useMemo(() => {
+    const avgStartSalary = salaryOffers.reduce((sum, o) => sum + o.startingSalary, 0) / salaryOffers.length;
+    
+    return {
+      conservative: calculateTrajectory(avgStartSalary, 3, comparisonYears),
+      expected: calculateTrajectory(avgStartSalary, 5, comparisonYears),
+      optimistic: calculateTrajectory(avgStartSalary, 7, comparisonYears),
+    };
+  }, [salaryOffers, comparisonYears]);
+
+  const addOffer = () => {
+    setSalaryOffers([
+      ...salaryOffers,
+      { name: `Offer ${String.fromCharCode(65 + salaryOffers.length)}`, startingSalary: 120000, annualRaise: 5 },
+    ]);
+  };
+
+  const removeOffer = (index: number) => {
+    if (salaryOffers.length > 1) {
+      setSalaryOffers(salaryOffers.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateOffer = (index: number, field: string, value: any) => {
+    const updated = [...salaryOffers];
+    updated[index] = { ...updated[index], [field]: value };
+    setSalaryOffers(updated);
+  };
 
   const loadData = async () => {
     if (!session?.access_token) return;
@@ -694,6 +779,267 @@ export default function CareerPathSimulationCard({
                   </Typography>
                 </CardContent>
               </Card>
+            </Grid>
+
+            {/* 9) Salary Comparison Calculator */}
+            <Grid size={{ xs: 12 }}>
+              <SectionHeader
+                icon={<CompareIcon fontSize="small" />}
+                title="Salary Comparison Calculator"
+                subtitle="Compare offers with different raise scenarios over time"
+              />
+              <Divider sx={{ my: 1 }} />
+
+              {/* Offer Input Fields */}
+              <Stack spacing={2} sx={{ mb: 3 }}>
+                {salaryOffers.map((offer, index) => (
+                  <Paper key={index} elevation={2} sx={{ p: 2 }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <TextField
+                        label="Offer Name"
+                        value={offer.name}
+                        onChange={(e) =>
+                          updateOffer(index, "name", e.target.value)
+                        }
+                        size="small"
+                        sx={{ flex: 1 }}
+                      />
+                      <TextField
+                        label="Starting Salary"
+                        type="number"
+                        value={offer.startingSalary}
+                        onChange={(e) =>
+                          updateOffer(
+                            index,
+                            "startingSalary",
+                            parseInt(e.target.value) || 0
+                          )
+                        }
+                        size="small"
+                        sx={{ flex: 1 }}
+                        InputProps={{
+                          startAdornment: (
+                            <Typography variant="body2" sx={{ mr: 0.5 }}>
+                              $
+                            </Typography>
+                          ),
+                        }}
+                      />
+                      <TextField
+                        label="Annual Raise"
+                        type="number"
+                        value={offer.annualRaise}
+                        onChange={(e) =>
+                          updateOffer(
+                            index,
+                            "annualRaise",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        size="small"
+                        sx={{ flex: 1 }}
+                        InputProps={{
+                          endAdornment: (
+                            <Typography variant="body2" sx={{ ml: 0.5 }}>
+                              %
+                            </Typography>
+                          ),
+                        }}
+                      />
+                      <IconButton
+                        onClick={() => removeOffer(index)}
+                        disabled={salaryOffers.length === 1}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                ))}
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={addOffer}
+                  variant="outlined"
+                  size="small"
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  Add Another Offer
+                </Button>
+              </Stack>
+
+              {/* Salary Trajectory Chart */}
+              <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Salary Trajectory Comparison ({comparisonYears} Years)
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salaryChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="year"
+                      label={{
+                        value: "Year",
+                        position: "insideBottom",
+                        offset: -5,
+                      }}
+                    />
+                    <YAxis
+                      label={{
+                        value: "Salary ($)",
+                        angle: -90,
+                        position: "insideLeft",
+                      }}
+                      tickFormatter={(value) =>
+                        `$${(value / 1000).toFixed(0)}K`
+                      }
+                    />
+                    <Tooltip
+                      formatter={(value: number) =>
+                        `$${value.toLocaleString()}`
+                      }
+                    />
+                    <Legend />
+                    {salaryOffers.map((offer, index) => {
+                      const colors = [
+                        "#1976d2",
+                        "#d32f2f",
+                        "#388e3c",
+                        "#f57c00",
+                        "#7b1fa2",
+                      ];
+                      return (
+                        <Line
+                          key={index}
+                          type="monotone"
+                          dataKey={offer.name}
+                          stroke={colors[index % colors.length]}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </Paper>
+
+              {/* Offer Summaries */}
+              <Paper elevation={1} sx={{ p: 2, mb: 3, bgcolor: "grey.50" }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  5-Year Projections
+                </Typography>
+                <Stack spacing={1}>
+                  {salaryOffers.map((offer, index) => {
+                    const trajectory = calculateTrajectory(
+                      offer.startingSalary,
+                      offer.annualRaise,
+                      comparisonYears
+                    );
+                    const finalSalary = trajectory[trajectory.length - 1].salary;
+                    return (
+                      <Box key={index}>
+                        <Typography variant="body2">
+                          <strong>{offer.name}</strong> with{" "}
+                          {offer.annualRaise}% raises:{" "}
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            fontWeight={600}
+                            color="primary.main"
+                          >
+                            ${(finalSalary / 1000).toFixed(0)}K in{" "}
+                            {comparisonYears} years
+                          </Typography>
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+
+              {/* Scenario Comparison */}
+              <Typography variant="subtitle2" gutterBottom>
+                Standard Scenarios (Starting from $120K)
+              </Typography>
+              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                {/* Conservative Scenario */}
+                <Card
+                  variant="outlined"
+                  sx={{ flex: 1, borderColor: "warning.main" }}
+                >
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Chip
+                        label="Conservative"
+                        color="warning"
+                        size="small"
+                        sx={{ alignSelf: "flex-start" }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        3% annual raises
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        ${(scenarioData.conservative / 1000).toFixed(0)}K
+                      </Typography>
+                      <Typography variant="caption">
+                        in {comparisonYears} years
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Expected Scenario */}
+                <Card
+                  variant="outlined"
+                  sx={{ flex: 1, borderColor: "primary.main", borderWidth: 2 }}
+                >
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Chip
+                        label="Expected"
+                        color="primary"
+                        size="small"
+                        sx={{ alignSelf: "flex-start" }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        5% annual raises
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        ${(scenarioData.expected / 1000).toFixed(0)}K
+                      </Typography>
+                      <Typography variant="caption">
+                        in {comparisonYears} years
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                {/* Optimistic Scenario */}
+                <Card
+                  variant="outlined"
+                  sx={{ flex: 1, borderColor: "success.main" }}
+                >
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Chip
+                        label="Optimistic"
+                        color="success"
+                        size="small"
+                        sx={{ alignSelf: "flex-start" }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        7% annual raises
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        ${(scenarioData.optimistic / 1000).toFixed(0)}K
+                      </Typography>
+                      <Typography variant="caption">
+                        in {comparisonYears} years
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
             </Grid>
           </Grid>
         </Box>

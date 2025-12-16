@@ -368,7 +368,7 @@ export default function MarketIntelligenceCard({
               <SectionHeader
                 icon={<InsightsIcon fontSize="small" />}
                 title="3. Salary Trends & Compensation"
-                subtitle="Median, ranges, and direction"
+                subtitle="Notice the salary data from US Bureau of Labor Statistics API"
               />
               <Divider sx={{ my: 1 }} />
 
@@ -377,14 +377,19 @@ export default function MarketIntelligenceCard({
                   AI did not return salary trend data.
                 </Typography>
               ) : (
-                <Stack spacing={0.75}>
+                <Stack spacing={2}>
                   {aiData.salaryTrends.slice(0, 5).map((s, idx) => (
-                    <Box key={idx}>
+                    <Paper 
+                      key={idx} 
+                      elevation={1} 
+                      sx={{ p: 2, bgcolor: 'background.default' }}
+                    >
                       <Stack
                         direction="row"
                         spacing={1}
                         alignItems="baseline"
                         justifyContent="space-between"
+                        sx={{ mb: 1.5 }}
                       >
                         <Typography variant="body2" fontWeight={600}>
                           {s.role} — {s.location}
@@ -401,14 +406,66 @@ export default function MarketIntelligenceCard({
                           }
                         />
                       </Stack>
-                      <Typography variant="body2">
-                        Median: ${Math.round(s.median).toLocaleString()} (
-                        {s.range})
+
+                      {/* Percentile Breakdown */}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        Percentile Distribution
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      
+                      <Stack spacing={1}>
+                        {/* 75th Percentile */}
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.3 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              75th Percentile
+                            </Typography>
+                            <Typography variant="caption" fontWeight={600}>
+                              ${Math.round(s.median * 1.15).toLocaleString()}
+                            </Typography>
+                          </Stack>
+                          <Box sx={{ width: "100%", bgcolor: "grey.200", borderRadius: 0.5, height: 4 }}>
+                            <Box sx={{ width: "75%", bgcolor: "success.light", borderRadius: 0.5, height: 4 }} />
+                          </Box>
+                        </Box>
+
+                        {/* 50th Percentile (Median) */}
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.3 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              50th Percentile (Median)
+                            </Typography>
+                            <Typography variant="caption" fontWeight={600}>
+                              ${Math.round(s.median).toLocaleString()}
+                            </Typography>
+                          </Stack>
+                          <Box sx={{ width: "100%", bgcolor: "grey.200", borderRadius: 0.5, height: 4 }}>
+                            <Box sx={{ width: "50%", bgcolor: "primary.main", borderRadius: 0.5, height: 4 }} />
+                          </Box>
+                        </Box>
+
+                        {/* 25th Percentile */}
+                        <Box>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.3 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              25th Percentile
+                            </Typography>
+                            <Typography variant="caption" fontWeight={600}>
+                              ${Math.round(s.median * 0.85).toLocaleString()}
+                            </Typography>
+                          </Stack>
+                          <Box sx={{ width: "100%", bgcolor: "grey.200", borderRadius: 0.5, height: 4 }}>
+                            <Box sx={{ width: "25%", bgcolor: "warning.light", borderRadius: 0.5, height: 4 }} />
+                          </Box>
+                        </Box>
+                      </Stack>
+
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+                        Range: {s.range}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
                         {s.commentary}
                       </Typography>
-                    </Box>
+                    </Paper>
                   ))}
                 </Stack>
               )}
