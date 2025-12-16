@@ -3,20 +3,46 @@
  * Coverage: Logging functions, Timer, RequestLogger
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  logDebug,
-  logInfo,
-  logWarn,
-  logError,
-  Timer,
-  RequestLogger,
-  createRequestLogger,
-  nowIso,
-  genRequestId,
-  logSystemEvent,
-  logConfigEvent,
-} from "../../../server/utils/logger.js";
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+} from "vitest";
+
+let logDebug: typeof import("../../../server/utils/logger.js")["logDebug"];
+let logInfo: typeof import("../../../server/utils/logger.js")["logInfo"];
+let logWarn: typeof import("../../../server/utils/logger.js")["logWarn"];
+let logError: typeof import("../../../server/utils/logger.js")["logError"];
+let Timer: typeof import("../../../server/utils/logger.js")["Timer"];
+let RequestLogger: typeof import("../../../server/utils/logger.js")["RequestLogger"];
+let createRequestLogger: typeof import("../../../server/utils/logger.js")["createRequestLogger"];
+let nowIso: typeof import("../../../server/utils/logger.js")["nowIso"];
+let genRequestId: typeof import("../../../server/utils/logger.js")["genRequestId"];
+let logSystemEvent: typeof import("../../../server/utils/logger.js")["logSystemEvent"];
+let logConfigEvent: typeof import("../../../server/utils/logger.js")["logConfigEvent"];
+
+beforeAll(async () => {
+  // logger.ts reads LOG_LEVEL at import time; override it here for this suite.
+  process.env.LOG_LEVEL = "debug";
+  vi.resetModules();
+
+  const mod = await import("../../../server/utils/logger.js");
+  logDebug = mod.logDebug;
+  logInfo = mod.logInfo;
+  logWarn = mod.logWarn;
+  logError = mod.logError;
+  Timer = mod.Timer;
+  RequestLogger = mod.RequestLogger;
+  createRequestLogger = mod.createRequestLogger;
+  nowIso = mod.nowIso;
+  genRequestId = mod.genRequestId;
+  logSystemEvent = mod.logSystemEvent;
+  logConfigEvent = mod.logConfigEvent;
+});
 
 describe("Logger Utilities", () => {
   let consoleLogSpy: any;

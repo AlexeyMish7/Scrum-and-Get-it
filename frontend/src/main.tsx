@@ -1,6 +1,8 @@
 // MUST be first import - installs fetch interceptor before any other code runs
 import "./fetchInterceptor";
 
+import { initSentry } from "./sentry";
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 //import "./index.css";
@@ -26,6 +28,8 @@ import { AppBootstrapPrefetch, AppQueryProvider } from "@shared/cache";
 //     auditDelay: 2000, // Wait 2s after changes before auditing
 //   }).catch(console.error);
 // }
+
+initSentry();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

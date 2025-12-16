@@ -21,6 +21,7 @@
  */
 
 import http from "http";
+import * as zlib from "zlib";
 import { URL } from "url";
 import fs from "fs";
 import path from "path";
@@ -34,6 +35,8 @@ import { ApiError, errorPayload } from "../utils/errors.js";
 import { getCorsHeaders, handleCorsPreflight } from "./middleware/cors.js";
 import { createRequestContext } from "./middleware/logging.js";
 import { requireAuth, tryAuth } from "./middleware/auth.js";
+import { getMetricsSnapshot } from "./observability/metrics.js";
+import { captureException, initSentry } from "./observability/sentry.js";
 import {
   handleHealth,
   handleGenerateResume,
@@ -177,6 +180,25 @@ export function validateConfiguration() {
       issue: "Dev auth should be disabled in production",
     });
   }
+
+  // Validate CORS configuration
+  // Why: In production, allowing "*" usually breaks authenticated browser requests and is not a secure default.
+  if (process.env.NODE_ENV === "production") {
+    const corsOrigin = (process.env.CORS_ORIGIN || "").trim();
+    if (!corsOrigin) {
+      logConfigEvent("missing", "CORS_ORIGIN", {
+        severity: "error",
+        issue:
+          "CORS_ORIGIN should be set to your frontend origin in production",
+      });
+    } else if (corsOrigin === "*") {
+      logConfigEvent("invalid", "CORS_ORIGIN", {
+        severity: "error",
+        issue:
+          'CORS_ORIGIN should not be "*" in production; set it to https://<your-app>.vercel.app',
+      });
+    }
+  }
 }
 
 // ------------------------------------------------------------------
@@ -210,16 +232,45 @@ const counters: ServerCounters = {
  *
  * Outputs: Sends complete HTTP response with JSON body
  */
-function jsonReply(res: http.ServerResponse, status: number, payload: unknown) {
+function jsonReply(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  status: number,
+  payload: unknown
+) {
   const body = JSON.stringify(payload);
   const corsHeaders = getCorsHeaders();
 
+  const acceptEncoding = String(req.headers["accept-encoding"] || "");
+  const gzipAccepted = acceptEncoding.includes("gzip");
+
+  // Why: gzip can significantly reduce payload size for JSON responses.
+  // We keep a small threshold to avoid wasting CPU on tiny responses.
+  const gzipThresholdBytes = 1024;
+  const uncompressed = Buffer.from(body);
+
+  if (gzipAccepted && uncompressed.byteLength >= gzipThresholdBytes) {
+    const compressed = zlib.gzipSync(uncompressed, {
+      level: zlib.constants.Z_BEST_SPEED,
+    });
+
+    res.writeHead(status, {
+      "Content-Type": "application/json",
+      "Content-Encoding": "gzip",
+      Vary: "Accept-Encoding",
+      "Content-Length": compressed.byteLength.toString(),
+      ...corsHeaders,
+    });
+    res.end(compressed);
+    return;
+  }
+
   res.writeHead(status, {
     "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(body).toString(),
+    "Content-Length": uncompressed.byteLength.toString(),
     ...corsHeaders,
   });
-  res.end(body);
+  res.end(uncompressed);
 }
 
 /**
@@ -231,9 +282,13 @@ function jsonReply(res: http.ServerResponse, status: number, payload: unknown) {
  *
  * Outputs: JSON error response with appropriate status code
  */
-function sendError(res: http.ServerResponse, err: any) {
+function sendError(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  err: any
+) {
   const status = err instanceof ApiError ? err.status : 500;
-  jsonReply(res, status, errorPayload(err));
+  jsonReply(req, res, status, errorPayload(err));
 }
 
 // ------------------------------------------------------------------
@@ -306,6 +361,69 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // MONITORING ENDPOINTS (public but protected by shared secret)
+    // ------------------------------------------------------------------
+    if (method === "GET" && pathname === "/api/metrics") {
+      const metricsToken = (process.env.METRICS_TOKEN || "").trim();
+      if (!metricsToken) {
+        jsonReply(req, res, 404, { error: "Not Found" });
+        ctx.logComplete(method, pathname, 404);
+        return;
+      }
+
+      const authHeader = String(req.headers.authorization || "");
+      if (authHeader !== `Bearer ${metricsToken}`) {
+        jsonReply(req, res, 401, { error: "unauthorized" });
+        ctx.logComplete(method, pathname, 401);
+        return;
+      }
+
+      const windowSecondsRaw = url.searchParams.get("window");
+      const windowSeconds = windowSecondsRaw ? Number(windowSecondsRaw) : 300;
+
+      jsonReply(req, res, 200, {
+        status: "ok",
+        uptime_sec: Math.round((Date.now() - startedAt) / 1000),
+        ...getMetricsSnapshot({
+          windowSeconds: Number.isFinite(windowSeconds) ? windowSeconds : 300,
+        }),
+      });
+      ctx.logComplete(method, pathname, 200);
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/monitoring/test-error") {
+      const testToken = (process.env.MONITORING_TEST_TOKEN || "").trim();
+      if (!testToken) {
+        jsonReply(req, res, 404, { error: "Not Found" });
+        ctx.logComplete(method, pathname, 404);
+        return;
+      }
+
+      const authHeader = String(req.headers.authorization || "");
+      if (authHeader !== `Bearer ${testToken}`) {
+        jsonReply(req, res, 401, { error: "unauthorized" });
+        ctx.logComplete(method, pathname, 401);
+        return;
+      }
+
+      const err = new Error("Monitoring test error (intentional)");
+      captureException(err, {
+        requestId: ctx.reqId,
+        route: pathname,
+        method,
+        status: 500,
+      });
+
+      jsonReply(req, res, 500, {
+        error: "monitoring_test_error",
+        message: "Intentional error emitted for monitoring verification",
+      });
+      ctx.logComplete(method, pathname, 500);
+      return;
+    }
+
+    // ------------------------------------------------------------------
     // AI GENERATION ENDPOINTS (protected)
     // ------------------------------------------------------------------
     const aiRoutesEnabled =
@@ -318,7 +436,7 @@ async function handleRequest(
       method === "POST" &&
       pathname.startsWith("/api/generate/")
     ) {
-      jsonReply(res, 503, {
+      jsonReply(req, res, 503, {
         error: "AI endpoints are disabled in this environment",
         feature: "FEATURE_AI_ROUTES",
       });
@@ -572,7 +690,7 @@ async function handleRequest(
         return;
       } catch (err: any) {
         console.error("[analytics/overview] Error:", err);
-        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        jsonReply(req, res, 500, { error: err?.message ?? String(err) });
         return;
       }
     }
@@ -587,7 +705,7 @@ async function handleRequest(
         return;
       } catch (err: any) {
         console.error("[analytics/trends] Error:", err);
-        jsonReply(res, 500, { error: err?.message ?? String(err) });
+        jsonReply(req, res, 500, { error: err?.message ?? String(err) });
         return;
       }
     }
@@ -638,7 +756,7 @@ async function handleRequest(
         return;
       } catch (error) {
         console.error("❌ ERROR in competitive route:", error);
-        jsonReply(res, 500, { error: "Internal server error" });
+        jsonReply(req, res, 500, { error: "Internal server error" });
         return;
       }
     }
@@ -659,7 +777,7 @@ async function handleRequest(
         return;
       } catch (error) {
         console.error("❌ ERROR in market intelligence route:", error);
-        jsonReply(res, 500, { error: "Internal server error" });
+        jsonReply(req, res, 500, { error: "Internal server error" });
         return;
       }
     }
@@ -677,7 +795,7 @@ async function handleRequest(
         return;
       } catch (error) {
         console.error("❌ ERROR in time entries route:", error);
-        jsonReply(res, 500, { error: "Internal server error" });
+        jsonReply(req, res, 500, { error: "Internal server error" });
         return;
       }
     }
@@ -698,7 +816,7 @@ async function handleRequest(
         return;
       } catch (error) {
         console.error("❌ ERROR in time investment route:", error);
-        jsonReply(res, 500, { error: "Internal server error" });
+        jsonReply(req, res, 500, { error: "Internal server error" });
         return;
       }
     }
@@ -721,7 +839,7 @@ async function handleRequest(
         return;
       } catch (error) {
         console.error("❌ ERROR in pattern recognition route:", error);
-        jsonReply(res, 500, { error: "Internal server error" });
+        jsonReply(req, res, 500, { error: "Internal server error" });
         return;
       }
     }
@@ -896,7 +1014,7 @@ async function handleRequest(
     // ------------------------------------------------------------------
     // 404 NOT FOUND
     // ------------------------------------------------------------------
-    jsonReply(res, 404, { error: "Not Found", path: pathname });
+    jsonReply(req, res, 404, { error: "Not Found", path: pathname });
     ctx.logComplete(method, pathname, 404);
   } catch (err: any) {
     // Error handling - log full details safely
@@ -920,12 +1038,18 @@ async function handleRequest(
       console.error("Failed to log error:", logErr);
       console.error("Original error:", err);
     }
-    sendError(res, err);
-    ctx.logComplete(
-      req.method,
-      req.url || "/",
-      err instanceof ApiError ? err.status : 500
-    );
+
+    const status = err instanceof ApiError ? err.status : 500;
+    if (status >= 500) {
+      captureException(err, {
+        requestId: ctx.reqId,
+        route: req.url || "/",
+        method: req.method || "UNKNOWN",
+        status,
+      });
+    }
+    sendError(req, res, err);
+    ctx.logComplete(req.method, req.url || "/", status);
   }
 }
 
@@ -951,6 +1075,9 @@ export function createServer(): http.Server {
   // Initialize environment and configuration
   loadEnvFromFiles();
   validateConfiguration();
+
+  // UC-133: enable backend error tracking when SENTRY_DSN is provided.
+  initSentry();
 
   // Reset counters and start time (for testing/restart scenarios)
   startedAt = Date.now();

@@ -13,6 +13,7 @@
     "start:production": "node --env-file=.env.production.local dist/src/index.js",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:coverage": "vitest run --config ./vitest.coverage.config.ts --coverage",
     "smoke": "node --loader ts-node/esm --env-file=.env tests/smoke.ts",
     "smoke:staging": "node --loader ts-node/esm --env-file=.env.staging.local tests/smoke.ts",
     "smoke:simple": "node tests/simple-smoke.mjs"
@@ -22,6 +23,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sentry/node": "^10.30.0",
     "@supabase/supabase-js": "^2.80.0",
     "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",

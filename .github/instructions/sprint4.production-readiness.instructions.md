@@ -257,6 +257,21 @@ Notes:
 - Structured logging approach documented (fields like env, requestId, userId when safe)
 - Incident response notes (where to look first, who gets notified)
 
+**What’s implemented in this repo**:
+
+- Backend structured JSON logs via `server/utils/logger.ts` (LOG_LEVEL controlled)
+- Backend health checks:
+  - `GET /api/health`
+  - `GET /api/health?deep=1`
+- Backend metrics snapshot (disabled unless token is set):
+  - `GET /api/metrics?window=300` with `Authorization: Bearer <METRICS_TOKEN>`
+- Backend Sentry test endpoint (disabled unless token is set):
+  - `POST /api/monitoring/test-error` with `Authorization: Bearer <MONITORING_TEST_TOKEN>`
+
+**Runbook**:
+
+- `docs/SPRINT4_UC133_UC134_MANUAL_STEPS.md`
+
 **Verification**:
 
 - Trigger a known error and confirm it appears in Sentry
@@ -290,15 +305,26 @@ Notes:
 **Deliverables**:
 
 - Frontend code splitting/lazy loading where appropriate
+  - Implemented via route-level lazy loading in `frontend/src/router.tsx`
 - Bundle minimized (tree shaking, dead code removed)
+  - Vite build + manual chunk splitting in `frontend/vite.config.ts`
 - Server gzip enabled (or platform compression)
+  - Implemented for JSON responses in `server/src/server.ts`
 - Browser caching strategy defined for static assets
+  - Implemented via Vercel caching headers in `vercel.json`
+- CDN for static assets (Cloudflare free tier) documented (optional if using a custom domain)
 - Lighthouse score target: > 90
 - TTFB target: < 600ms (where measurable)
+
+**Runbook**:
+
+- `docs/SPRINT4_UC133_UC134_MANUAL_STEPS.md`
 
 **Verification**:
 
 - Lighthouse run on production URL meets targets
+- Confirm asset caching headers for `/assets/*`
+- Confirm gzip negotiation for API responses (where applicable)
 
 ---
 
@@ -313,9 +339,15 @@ Notes:
 - Redirect policy set (www → non-www or the reverse)
 - DNS documentation captured (records and what they do)
 
+**Runbook**:
+
+- `docs/SPRINT4_UC133_UC134_MANUAL_STEPS.md`
+
 **Verification**:
 
 - Domain loads correctly from multiple networks
+- SSL certificate is valid on the custom domain
+- www redirect works in the chosen direction
 
 ---
 

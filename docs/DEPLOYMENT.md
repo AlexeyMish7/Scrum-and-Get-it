@@ -4,31 +4,42 @@ If you want a single beginner-friendly checklist that covers **UC-129/130/131/13
 
 - [docs/SPRINT4_UC129-UC132_RUNBOOK.md](SPRINT4_UC129-UC132_RUNBOOK.md)
 
+For monitoring/logging, performance, and domains (UC-133/UC-134/UC-139), use:
+
+- [docs/SPRINT4_UC133_UC134_MANUAL_STEPS.md](SPRINT4_UC133_UC134_MANUAL_STEPS.md)
+
 This project can be deployed now (even if other Sprint 4 UCs aren’t finished). Treat it as a “prod-like” environment: don’t commit secrets, keep `VITE_DEV_MODE=false`, and verify the database schema/seeds.
 
-## How deployment works right now (no CI/CD pipeline)
+## How deployment works (platform-managed deploys + optional GitHub Actions)
 
-Right now, we **do not** have a repo-level CI/CD pipeline (like GitHub Actions) that automatically:
+This repo supports two common deployment styles:
 
-- runs tests/typecheck on every commit,
-- blocks bad builds from being deployed,
-- promotes builds from staging → production.
+1. **Platform-managed deploys** (simplest)
 
-Instead, we’re relying on **platform-managed deploys**:
-
-- **Vercel** and **Render** pull your GitHub repo and run the build commands you configure.
+- Vercel and Render pull your GitHub repo and run the build commands you configure.
 - Deploys are triggered either:
-  - **automatically** when you push commits (if “Auto Deploy” is enabled), or
-  - **manually** by clicking “Deploy / Redeploy” in the platform UI.
+  - automatically when you push commits (if “Auto Deploy” is enabled), or
+  - manually by clicking “Deploy / Redeploy” in the platform UI.
+
+2. **GitHub Actions CI/CD** (optional; UC-132)
+
+- CI runs tests/builds on every push and pull request.
+- Deploy workflows can automatically deploy to staging/production.
+- If you do not set the required secrets, the deploy jobs will **skip** (so Actions doesn’t show a failing deployment).
+
+Workflows:
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/deploy-staging.yml`
+- `.github/workflows/deploy-production.yml`
+
+Most teams use either approach. For a class project, either is acceptable as long as you can document the process and verify production works.
 
 Important implications:
 
 - **Frontend env vars are build-time** (Vite reads `VITE_*` during `npm run build`). If you change `VITE_API_BASE_URL`, you must redeploy the frontend.
 - **Backend env vars are runtime** (Node reads `process.env` at runtime). On Render, changing env vars typically triggers a restart/redeploy.
-- Because nothing is “gating” deployments, your safety net is:
-  - build locally first,
-  - deploy,
-  - verify with the smoke tests.
+- If you use GitHub Actions deploy workflows, deployments are gated on tests/builds, and you’ll have a deployment record in the GitHub UI.
 
 ## What you’re deploying
 
@@ -133,6 +144,12 @@ After Render deploys, verify the health endpoint:
 
 You should get HTTP 200.
 
+To verify database connectivity (UC-130), you can also run the deep health check:
+
+- `https://<your-render-backend-domain>/api/health?deep=1`
+
+Expected: HTTP 200 with a payload that includes a Supabase connectivity check.
+
 If you don’t:
 
 - Open the Render service → **Logs** tab and look for the first crash.
@@ -212,6 +229,8 @@ The main reasons to wait would be if:
 ---
 
 ## Appendix: What to do when you change code (no CI/CD)
+
+If you enabled the GitHub Actions deploy workflows, merges to `main` (production) and `develop` (staging) can deploy automatically once secrets are configured.
 
 - When you change frontend code:
 

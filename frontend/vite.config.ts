@@ -30,13 +30,25 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks for better caching
           "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-mui": [
+          "vendor-mui-core": [
             "@mui/material",
-            "@mui/icons-material",
+            "@mui/lab",
+            "@mui/x-date-pickers",
             "@emotion/react",
             "@emotion/styled",
           ],
-          "vendor-dnd": ["@hello-pangea/dnd"],
+          "vendor-mui-icons": ["@mui/icons-material"],
+          "vendor-dnd": [
+            "@hello-pangea/dnd",
+            "@dnd-kit/core",
+            "@dnd-kit/sortable",
+            "@dnd-kit/utilities",
+          ],
+          "vendor-sentry": ["@sentry/react"],
+          "vendor-charts": ["recharts"],
+          "vendor-pdf": ["jspdf", "html2canvas"],
+          "vendor-editor": ["@tiptap/react", "@tiptap/starter-kit"],
+          "vendor-maps": ["leaflet", "react-leaflet"],
         },
       },
     },

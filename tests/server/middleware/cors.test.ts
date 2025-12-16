@@ -1,27 +1,12 @@
 /**
- * Tests for middleware/cors.ts
+ * Tests for server/src/middleware/cors.ts
  * Coverage: CORS headers and preflight handling
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ServerResponse } from "http";
+import type { ServerResponse } from "http";
 
-// Mock CORS functions
-function getCorsHeaders(): Record<string, string> {
-  const origin = process.env.CORS_ORIGIN || "*";
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-Id",
-    "Access-Control-Max-Age": "86400",
-  };
-}
-
-function handleCorsPreflight(req: any, res: ServerResponse): void {
-  const headers = getCorsHeaders();
-  res.writeHead(204, headers);
-  res.end();
-}
+import { getCorsHeaders, handleCorsPreflight } from "@server/middleware/cors";
 
 describe("CORS Middleware", () => {
   describe("getCorsHeaders", () => {
@@ -36,30 +21,11 @@ describe("CORS Middleware", () => {
       );
     });
 
-    it("should allow all origins by default", () => {
-      const originalOrigin = process.env.CORS_ORIGIN;
-      delete process.env.CORS_ORIGIN;
-
-      const headers = getCorsHeaders();
-      expect(headers["Access-Control-Allow-Origin"]).toBe("*");
-
-      if (originalOrigin) process.env.CORS_ORIGIN = originalOrigin;
-    });
-
-    it("should respect CORS_ORIGIN env variable", () => {
-      const originalOrigin = process.env.CORS_ORIGIN;
-      process.env.CORS_ORIGIN = "https://app.example.com";
-
-      const headers = getCorsHeaders();
+    it("should respect explicit origin option", () => {
+      const headers = getCorsHeaders({ origin: "https://app.example.com" });
       expect(headers["Access-Control-Allow-Origin"]).toBe(
         "https://app.example.com"
       );
-
-      if (originalOrigin) {
-        process.env.CORS_ORIGIN = originalOrigin;
-      } else {
-        delete process.env.CORS_ORIGIN;
-      }
     });
 
     it("should include all HTTP methods", () => {
@@ -82,11 +48,6 @@ describe("CORS Middleware", () => {
       expect(allowedHeaders).toContain("Authorization");
       expect(allowedHeaders).toContain("X-User-Id");
     });
-
-    it("should set max age for preflight cache", () => {
-      const headers = getCorsHeaders();
-      expect(headers["Access-Control-Max-Age"]).toBe("86400"); // 24 hours
-    });
   });
 
   describe("handleCorsPreflight", () => {
@@ -101,28 +62,37 @@ describe("CORS Middleware", () => {
 
     it("should respond with 204 No Content", () => {
       const req = { method: "OPTIONS" };
-      handleCorsPreflight(req, res);
+      const handled = handleCorsPreflight(req as any, res as ServerResponse);
 
+      expect(handled).toBe(true);
       expect(res.writeHead).toHaveBeenCalledWith(204, expect.any(Object));
       expect(res.end).toHaveBeenCalled();
     });
 
     it("should include CORS headers in preflight response", () => {
       const req = { method: "OPTIONS" };
-      handleCorsPreflight(req, res);
+      handleCorsPreflight(req as any, res as ServerResponse);
 
       const [status, headers] = res.writeHead.mock.calls[0];
       expect(status).toBe(204);
       expect(headers["Access-Control-Allow-Origin"]).toBeDefined();
       expect(headers["Access-Control-Allow-Methods"]).toBeDefined();
       expect(headers["Access-Control-Allow-Headers"]).toBeDefined();
+      expect(headers["Access-Control-Max-Age"]).toBe("86400");
     });
 
     it("should call end to complete response", () => {
       const req = { method: "OPTIONS" };
-      handleCorsPreflight(req, res);
+      handleCorsPreflight(req as any, res as ServerResponse);
 
       expect(res.end).toHaveBeenCalledTimes(1);
+    });
+
+    it("should return false for non-OPTIONS", () => {
+      const req = { method: "GET" };
+      const handled = handleCorsPreflight(req as any, res as ServerResponse);
+      expect(handled).toBe(false);
+      expect(res.writeHead).not.toHaveBeenCalled();
     });
   });
 });

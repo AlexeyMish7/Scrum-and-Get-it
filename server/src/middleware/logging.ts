@@ -18,6 +18,7 @@
 
 import type { IncomingMessage } from "node:http";
 import { createRequestLogger } from "../../utils/logger.js";
+import { recordRequest } from "../observability/metrics.js";
 
 export interface RequestContext {
   /** Request logger instance with requestId */
@@ -57,6 +58,14 @@ export function createRequestContext(req: IncomingMessage): RequestContext {
     logComplete: (method: string | undefined, path: string, status: number) => {
       const duration = Date.now() - startTime;
       logger.requestEnd(method || "UNKNOWN", path, status, duration);
+
+      recordRequest({
+        ts: Date.now(),
+        duration_ms: duration,
+        status,
+        method: method || "UNKNOWN",
+        path,
+      });
     },
   };
 }

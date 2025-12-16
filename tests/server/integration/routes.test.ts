@@ -1,326 +1,170 @@
 /**
  * Integration tests for server routes
- * Tests end-to-end request handling
+ *
+ * These tests start the real HTTP server via createServer() and
+ * exercise request routing end-to-end over an ephemeral port.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  httpRequest,
+  startTestServer,
+  type TestServer,
+} from "../helpers/httpTestClient";
 
-// Mock request/response helpers
-function createMockRequest(options: {
-  method: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: any;
-}) {
-  const chunks: Buffer[] = [];
-
-  return {
-    method: options.method,
-    url: options.url,
-    headers: options.headers || {},
-    on(event: string, handler: Function) {
-      if (event === "data" && options.body) {
-        handler(Buffer.from(JSON.stringify(options.body)));
-      }
-      if (event === "end") {
-        handler();
-      }
-      return this;
-    },
-  };
-}
-
-function createMockResponse() {
-  let statusCode = 200;
-  let headers: Record<string, string> = {};
-  let body = "";
-
-  return {
-    writeHead(status: number, hdrs?: Record<string, string>) {
-      statusCode = status;
-      if (hdrs) headers = { ...headers, ...hdrs };
-    },
-    setHeader(name: string, value: string) {
-      headers[name] = value;
-    },
-    end(data?: string) {
-      if (data) body = data;
-    },
-    getStatus() {
-      return statusCode;
-    },
-    getHeaders() {
-      return headers;
-    },
-    getBody() {
-      return body;
-    },
-  };
-}
+let testServer: TestServer;
 
 describe("Server Routes Integration", () => {
+  beforeAll(async () => {
+    testServer = await startTestServer();
+  });
+
+  afterAll(async () => {
+    await testServer.close();
+  });
+
   describe("Health Check", () => {
-    it("should respond to health check", () => {
-      const req = createMockRequest({ method: "GET", url: "/api/health" });
-      const res: any = createMockResponse();
+    it("responds to GET /api/health", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
+        method: "GET",
+        path: "/api/health",
+      });
 
-      // Mock health handler
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", uptime_seconds: 42 }));
+      expect(res.status).toBe(200);
+      expect(res.json).toBeTruthy();
 
-      expect(res.getStatus()).toBe(200);
-      const body = JSON.parse(res.getBody());
+      const body = res.json as any;
       expect(body.status).toBe("ok");
+      expect(body.mock_mode).toBe(true);
+      expect(body.supabase_env).toBe("present");
+      expect(typeof body.uptime_sec).toBe("number");
     });
   });
 
   describe("CORS Preflight", () => {
-    it("should handle OPTIONS request", () => {
-      const req = createMockRequest({
+    it("handles OPTIONS requests", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
         method: "OPTIONS",
-        url: "/api/generate/resume",
+        path: "/api/generate/resume",
+        headers: {
+          Origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+          "Access-Control-Request-Method": "POST",
+        },
       });
-      const res: any = createMockResponse();
 
-      res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      });
-      res.end();
-
-      expect(res.getStatus()).toBe(204);
-      expect(res.getHeaders()["Access-Control-Allow-Origin"]).toBeDefined();
+      expect(res.status).toBe(204);
+      expect(String(res.headers["access-control-allow-origin"] || "")).toBe(
+        process.env.CORS_ORIGIN
+      );
+      expect(
+        String(res.headers["access-control-allow-methods"] || "")
+      ).toContain("POST");
     });
   });
 
   describe("Authentication", () => {
-    it("should reject requests without auth", () => {
-      const req = createMockRequest({
+    it("rejects protected routes without auth", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
         method: "POST",
-        url: "/api/generate/resume",
+        path: "/api/generate/resume",
         body: { jobId: 1 },
       });
-      const res: any = createMockResponse();
 
-      // Mock auth failure
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          error: "unauthorized",
-          message: "Authentication required",
-        })
+      expect(res.status).toBe(401);
+      expect(res.json).toEqual(
+        expect.objectContaining({ error: "auth_failed" })
       );
-
-      expect(res.getStatus()).toBe(401);
-      const body = JSON.parse(res.getBody());
-      expect(body.error).toBe("unauthorized");
-    });
-
-    it("should accept valid JWT token", () => {
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers: { Authorization: "Bearer valid-jwt-token" },
-        body: { jobId: 1 },
-      });
-      const res: any = createMockResponse();
-
-      // Mock successful auth + generation
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          id: "artifact-123",
-          kind: "resume",
-          created_at: new Date().toISOString(),
-        })
-      );
-
-      expect(res.getStatus()).toBe(201);
-    });
-
-    it("should accept X-User-Id in dev mode", () => {
-      const originalEnv = process.env.ALLOW_DEV_AUTH;
-      process.env.ALLOW_DEV_AUTH = "true";
-
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers: { "X-User-Id": "user-123" },
-        body: { jobId: 1 },
-      });
-      const res: any = createMockResponse();
-
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ id: "artifact-123" }));
-
-      expect(res.getStatus()).toBe(201);
-
-      if (originalEnv !== undefined) {
-        process.env.ALLOW_DEV_AUTH = originalEnv;
-      } else {
-        delete process.env.ALLOW_DEV_AUTH;
-      }
     });
   });
 
   describe("Error Handling", () => {
-    it("should return 404 for unknown routes", () => {
-      const req = createMockRequest({ method: "GET", url: "/api/unknown" });
-      const res: any = createMockResponse();
-
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not Found", path: "/api/unknown" }));
-
-      expect(res.getStatus()).toBe(404);
-    });
-
-    it("should return 400 for invalid JSON", () => {
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
+    it("returns 404 for unknown routes", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
+        method: "GET",
+        path: "/api/unknown",
       });
-      const res: any = createMockResponse();
 
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({ error: "bad_json", message: "invalid JSON body" })
-      );
+      expect(res.status).toBe(404);
+      expect(res.json).toEqual({ error: "Not Found", path: "/api/unknown" });
+    });
+  });
 
-      expect(res.getStatus()).toBe(400);
+  describe("Monitoring Endpoints", () => {
+    it("rejects /api/metrics without correct token", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
+        method: "GET",
+        path: "/api/metrics",
+        headers: {
+          Authorization: "Bearer wrong",
+        },
+      });
+
+      expect(res.status).toBe(401);
+      expect(res.json).toEqual({ error: "unauthorized" });
     });
 
-    it("should return 500 for server errors", () => {
-      const req = createMockRequest({
+    it("serves /api/metrics with correct token", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
+        method: "GET",
+        path: "/api/metrics?window=60",
+        headers: {
+          Authorization: `Bearer ${process.env.METRICS_TOKEN}`,
+          "Accept-Encoding": "gzip",
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const body = res.json as any;
+      expect(body.status).toBe("ok");
+      expect(typeof body.uptime_sec).toBe("number");
+    });
+
+    it("emits intentional monitoring error with correct token", async () => {
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
         method: "POST",
-        url: "/api/generate/resume",
-        headers: { Authorization: "Bearer valid-jwt" },
+        path: "/api/monitoring/test-error",
+        headers: {
+          Authorization: `Bearer ${process.env.MONITORING_TEST_TOKEN}`,
+        },
+      });
+
+      expect(res.status).toBe(500);
+      expect(res.json).toEqual({
+        error: "monitoring_test_error",
+        message: "Intentional error emitted for monitoring verification",
+      });
+    });
+  });
+
+  describe("Feature Flags", () => {
+    it("returns 503 when FEATURE_AI_ROUTES is disabled", async () => {
+      const prev = process.env.FEATURE_AI_ROUTES;
+      process.env.FEATURE_AI_ROUTES = "false";
+
+      const res = await httpRequest({
+        baseUrl: testServer.baseUrl,
+        method: "POST",
+        path: "/api/generate/resume",
+        headers: {
+          "X-User-Id": "test-user",
+        },
         body: { jobId: 1 },
       });
-      const res: any = createMockResponse();
 
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({ error: "error", message: "Internal server error" })
+      expect(res.status).toBe(503);
+      expect(res.json).toEqual(
+        expect.objectContaining({ feature: "FEATURE_AI_ROUTES" })
       );
 
-      expect(res.getStatus()).toBe(500);
-    });
-  });
-
-  describe("Rate Limiting", () => {
-    it("should enforce rate limits", () => {
-      const headers = { Authorization: "Bearer valid-jwt" };
-      const body = { jobId: 1 };
-
-      // First 5 requests should succeed
-      for (let i = 0; i < 5; i++) {
-        const req = createMockRequest({
-          method: "POST",
-          url: "/api/generate/resume",
-          headers,
-          body,
-        });
-        const res: any = createMockResponse();
-        res.writeHead(201);
-        res.end();
-        expect(res.getStatus()).toBe(201);
-      }
-
-      // 6th request should be rate limited
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers,
-        body,
-      });
-      const res: any = createMockResponse();
-      res.setHeader("Retry-After", "60");
-      res.writeHead(429);
-      res.end(JSON.stringify({ error: "rate_limited" }));
-
-      expect(res.getStatus()).toBe(429);
-      expect(res.getHeaders()["Retry-After"]).toBe("60");
-    });
-  });
-
-  describe("Request Validation", () => {
-    it("should validate required fields", () => {
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers: { Authorization: "Bearer valid-jwt" },
-        body: {}, // Missing jobId
-      });
-      const res: any = createMockResponse();
-
-      res.writeHead(400);
-      res.end(
-        JSON.stringify({
-          error: "bad_request",
-          message: "jobId is required and must be a number",
-        })
-      );
-
-      expect(res.getStatus()).toBe(400);
-    });
-
-    it("should validate field types", () => {
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers: { Authorization: "Bearer valid-jwt" },
-        body: { jobId: "not-a-number" },
-      });
-      const res: any = createMockResponse();
-
-      res.writeHead(400);
-      res.end(
-        JSON.stringify({
-          error: "bad_request",
-          message: "jobId is required and must be a number",
-        })
-      );
-
-      expect(res.getStatus()).toBe(400);
-    });
-  });
-
-  describe("Response Format", () => {
-    it("should return JSON responses", () => {
-      const req = createMockRequest({
-        method: "POST",
-        url: "/api/generate/resume",
-        headers: { Authorization: "Bearer valid-jwt" },
-        body: { jobId: 1 },
-      });
-      const res: any = createMockResponse();
-
-      const responseData = {
-        id: "artifact-123",
-        kind: "resume",
-        content: { summary: "Test" },
-        created_at: new Date().toISOString(),
-      };
-
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(responseData));
-
-      expect(res.getHeaders()["Content-Type"]).toBe("application/json");
-      const body = JSON.parse(res.getBody());
-      expect(body.id).toBe("artifact-123");
-    });
-
-    it("should include CORS headers", () => {
-      const req = createMockRequest({ method: "GET", url: "/api/health" });
-      const res: any = createMockResponse();
-
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      });
-      res.end(JSON.stringify({ status: "ok" }));
-
-      expect(res.getHeaders()["Access-Control-Allow-Origin"]).toBeDefined();
+      if (prev === undefined) delete process.env.FEATURE_AI_ROUTES;
+      else process.env.FEATURE_AI_ROUTES = prev;
     });
   });
 });

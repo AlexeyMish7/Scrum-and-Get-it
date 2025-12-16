@@ -1,28 +1,13 @@
 /**
- * Tests for utils/http.ts
+ * Tests for server/utils/http.ts
  * Coverage: HTTP utility functions
  */
 
 import { describe, it, expect, vi } from "vitest";
 import { Readable } from "stream";
+import type { ServerResponse } from "http";
 
-// Mock the http module functions
-const readJson = async (req: any): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", (chunk: any) => {
-      body += chunk;
-    });
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(body));
-      } catch (e) {
-        reject(new Error("Invalid JSON"));
-      }
-    });
-    req.on("error", reject);
-  });
-};
+import { readJson, sendJson } from "@serverUtils/http";
 
 describe("HTTP Utilities", () => {
   describe("readJson", () => {
@@ -31,7 +16,7 @@ describe("HTTP Utilities", () => {
       req.push(JSON.stringify({ key: "value", number: 42 }));
       req.push(null);
 
-      const result = await readJson(req);
+      const result = await readJson(req as any);
       expect(result).toEqual({ key: "value", number: 42 });
     });
 
@@ -40,7 +25,7 @@ describe("HTTP Utilities", () => {
       req.push(JSON.stringify({}));
       req.push(null);
 
-      const result = await readJson(req);
+      const result = await readJson(req as any);
       expect(result).toEqual({});
     });
 
@@ -49,7 +34,7 @@ describe("HTTP Utilities", () => {
       req.push(JSON.stringify([1, 2, 3]));
       req.push(null);
 
-      const result = await readJson(req);
+      const result = await readJson(req as any);
       expect(result).toEqual([1, 2, 3]);
     });
 
@@ -58,7 +43,7 @@ describe("HTTP Utilities", () => {
       req.push("not json {");
       req.push(null);
 
-      await expect(readJson(req)).rejects.toThrow("Invalid JSON");
+      await expect(readJson(req as any)).rejects.toThrow();
     });
 
     it("should handle multiple data chunks", async () => {
@@ -72,7 +57,7 @@ describe("HTTP Utilities", () => {
       req.push(json.slice(20));
       req.push(null);
 
-      const result = await readJson(req);
+      const result = await readJson(req as any);
       expect(result).toEqual(data);
     });
 
@@ -81,7 +66,7 @@ describe("HTTP Utilities", () => {
       req.push('{"invalid": }'); // Malformed JSON
       req.push(null);
 
-      await expect(readJson(req)).rejects.toThrow();
+      await expect(readJson(req as any)).rejects.toThrow();
     });
 
     it("should handle nested objects", async () => {
@@ -97,8 +82,32 @@ describe("HTTP Utilities", () => {
       req.push(JSON.stringify(complex));
       req.push(null);
 
-      const result = await readJson(req);
+      const result = await readJson(req as any);
       expect(result).toEqual(complex);
+    });
+  });
+
+  describe("sendJson", () => {
+    it("writes JSON with content-type and content-length", () => {
+      const res: Partial<ServerResponse> & {
+        status?: number;
+        headers?: Record<string, string>;
+        body?: string;
+      } = {
+        writeHead: vi.fn((status: number, headers: Record<string, string>) => {
+          res.status = status;
+          res.headers = headers;
+        }) as any,
+        end: vi.fn((bodyStr?: string) => {
+          res.body = bodyStr || "";
+        }) as any,
+      };
+
+      sendJson(res as ServerResponse, 201, { ok: true });
+      expect(res.status).toBe(201);
+      expect(res.headers?.["Content-Type"]).toBe("application/json");
+      expect(Number(res.headers?.["Content-Length"])).toBeGreaterThan(0);
+      expect(JSON.parse(res.body || "{}")).toEqual({ ok: true });
     });
   });
 });
