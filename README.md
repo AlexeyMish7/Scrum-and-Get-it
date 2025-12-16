@@ -7,7 +7,7 @@
 
 FlowATS is a full-stack web application designed to streamline the job search process by providing intelligent tools for managing job applications, generating tailored resumes and cover letters, and analyzing job matches using AI-powered insights.
 
-This README change exists to validate the CI pipeline via a simple PR.
+<!-- CI/CD Pipeline Test: 2025-12-16 -->
 
 ## Key Features
 
