@@ -3,25 +3,25 @@
 
 CREATE TABLE IF NOT EXISTS job_time_entries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+
   -- Activity classification
   activity_type text NOT NULL, -- e.g., "applications", "networking", "research", "interview_prep", "skill_building", "other"
-  
+
   -- Time tracking
   duration_minutes integer NOT NULL CHECK (duration_minutes > 0),
   created_at timestamptz NOT NULL DEFAULT now(),
-  
+
   -- Optional metadata
   energy_level integer CHECK (energy_level >= 1 AND energy_level <= 5), -- 1=very low, 5=very high
   outcome_type text, -- e.g., "application_submitted", "interview", "offer", "referral", "networking_connection"
   notes text, -- Optional user notes about the session
-  
+
   -- Indexes for performance
   CONSTRAINT valid_activity_type CHECK (
     activity_type IN (
       'applications',
-      'networking', 
+      'networking',
       'research',
       'interview_prep',
       'skill_building',
@@ -69,7 +69,7 @@ CREATE POLICY "Users can delete own time entries"
 -- Seed some sample data for testing (optional - comment out for production)
 -- This will be removed after initial testing
 INSERT INTO job_time_entries (user_id, activity_type, duration_minutes, energy_level, outcome_type, created_at)
-SELECT 
+SELECT
   auth.uid() as user_id,
   activity,
   duration,
@@ -84,21 +84,21 @@ FROM (
     ('networking', 30, 5, 'networking_connection', now() - interval '3 days'),
     ('research', 90, 4, null, now() - interval '4 days'),
     ('interview_prep', 120, 3, null, now() - interval '5 days'),
-    
+
     -- Week 2
     ('applications', 50, 4, 'application_submitted', now() - interval '8 days'),
     ('applications', 55, 3, 'application_submitted', now() - interval '9 days'),
     ('networking', 40, 4, 'referral', now() - interval '10 days'),
     ('skill_building', 180, 2, null, now() - interval '11 days'),
     ('research', 75, 3, null, now() - interval '12 days'),
-    
+
     -- Week 3
     ('applications', 40, 5, 'application_submitted', now() - interval '15 days'),
     ('interview_prep', 90, 4, 'interview', now() - interval '16 days'),
     ('networking', 35, 4, 'networking_connection', now() - interval '17 days'),
     ('applications', 65, 3, 'application_submitted', now() - interval '18 days'),
     ('research', 60, 3, null, now() - interval '19 days'),
-    
+
     -- Week 4
     ('applications', 45, 2, 'application_submitted', now() - interval '22 days'),
     ('skill_building', 150, 2, null, now() - interval '23 days'),
