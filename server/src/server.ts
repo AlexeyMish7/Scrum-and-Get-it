@@ -361,7 +361,7 @@ async function handleRequest(
     // HEALTH CHECK ENDPOINT (public)
     // ------------------------------------------------------------------
     if (method === "GET" && pathname === "/api/health") {
-      await handleHealth(url, res, { startedAt, counters });
+      await handleHealth(url, req, res, { startedAt, counters });
       // Don't log health checks to reduce clutter
       return;
     }

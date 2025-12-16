@@ -1,8 +1,8 @@
-// src/components/Icon.tsx
 import React from "react";
-import * as Icons from "@mui/icons-material";
-import type { SvgIconProps } from '@mui/material/SvgIcon';
+import type { SvgIconProps } from "@mui/material/SvgIcon";
 import { useTheme } from "@mui/material/styles";
+import DownloadIcon from "@mui/icons-material/Download";
+import EditIcon from "@mui/icons-material/Edit";
 
 /**
  * Centralized Icon system.
@@ -11,19 +11,36 @@ import { useTheme } from "@mui/material/styles";
  * - Allows easy replacement of the icon library in the future.
  */
 
+const ICONS = {
+  Download: DownloadIcon,
+  Edit: EditIcon,
+} as const;
+
+type IconName = keyof typeof ICONS;
+
 interface IconProps extends SvgIconProps {
-  name: keyof typeof Icons;
-  colorType?: "primary" | "secondary" | "error" | "warning" | "success" | "info" | "text";
+  name: IconName;
+  size?: number;
+  colorType?:
+    | "primary"
+    | "secondary"
+    | "error"
+    | "warning"
+    | "success"
+    | "info"
+    | "text";
 }
 
-const Icon: React.FC<IconProps> = ({ name, colorType = "text", sx, ...props }) => {
+const Icon: React.FC<IconProps> = ({
+  name,
+  size,
+  colorType = "text",
+  sx,
+  ...props
+}) => {
   const theme = useTheme();
-  const MUIIcon = Icons[name];
 
-  if (!MUIIcon) {
-    console.warn(`Icon "${name}" not found in @mui/icons-material`);
-    return null;
-  }
+  const MUIIcon = ICONS[name];
 
   const colorMap: Record<string, string> = {
     primary: theme.palette.primary.main,
@@ -35,11 +52,16 @@ const Icon: React.FC<IconProps> = ({ name, colorType = "text", sx, ...props }) =
     text: theme.palette.text.primary,
   };
 
+  const allowMuiColorPropToControlColor =
+    props.color !== undefined || props.htmlColor !== undefined;
+
   return (
     <MUIIcon
       sx={{
-        fontSize: 24,
-        color: colorMap[colorType],
+        fontSize: size ?? 24,
+        ...(allowMuiColorPropToControlColor
+          ? {}
+          : { color: colorMap[colorType] }),
         verticalAlign: "middle",
         ...sx,
       }}

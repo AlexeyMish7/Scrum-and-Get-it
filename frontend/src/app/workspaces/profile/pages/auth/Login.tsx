@@ -8,7 +8,6 @@ import {
   Button,
   TextField,
   Typography,
-  useTheme,
   Divider,
   Link as MuiLink,
   Paper,
@@ -103,8 +102,6 @@ const Login = () => {
     // On success, SDK will redirect to provider; nothing more to do here.
   };
 
-  const theme = useTheme();
-
   // Match common OAuth button patterns (Google neutral, LinkedIn branded)
   const oauthButtonBaseSx = {
     position: "relative",
@@ -166,6 +163,8 @@ const Login = () => {
           component="img"
           src={logo}
           alt="FlowATS"
+          width={400}
+          height={200}
           sx={{
             height: 34,
             width: "auto",
@@ -180,7 +179,7 @@ const Login = () => {
           textAlign="center"
           fontWeight="bold"
           mb={3}
-          color={theme.palette.text.primary}
+          color="text.primary"
         >
           Sign In
         </Typography>
@@ -226,7 +225,14 @@ const Login = () => {
             color="primary"
             fullWidth
             disabled={loading}
-            sx={{ mt: 3 }}
+            sx={{
+              mt: 3,
+              bgcolor: "primary.dark",
+              color: "primary.contrastText",
+              "&:hover": {
+                bgcolor: "primary.dark",
+              },
+            }}
           >
             {loading ? "Signing in..." : "Log In"}
           </Button>
@@ -276,7 +282,7 @@ const Login = () => {
               component={RouterLink}
               to="/forgot-password"
               sx={{
-                color: "primary.main",
+                color: "primary.dark",
                 textDecoration: "none",
                 fontWeight: 500,
               }}
@@ -291,7 +297,7 @@ const Login = () => {
               component={RouterLink}
               to="/register"
               sx={{
-                color: "primary.main",
+                color: "primary.dark",
                 textDecoration: "none",
                 fontWeight: 500,
               }}

@@ -48,6 +48,7 @@ export default function PublicPageLayout({
         />
 
         <Box
+          component="main"
           sx={{
             flex: 1,
             display: "flex",

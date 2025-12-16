@@ -24,8 +24,9 @@
  * }
  */
 
-import type { ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { URL } from "node:url";
+import * as zlib from "node:zlib";
 import { getCorsHeaders } from "../middleware/cors.js";
 
 export interface HealthCounters {
@@ -60,6 +61,7 @@ export interface HealthCheckOptions {
  */
 export async function handleHealth(
   url: URL,
+  req: IncomingMessage,
   res: ServerResponse,
   options: HealthCheckOptions
 ): Promise<void> {
@@ -103,10 +105,39 @@ export async function handleHealth(
   };
 
   const body = JSON.stringify(payload);
+  const corsHeaders = getCorsHeaders();
+
+  const acceptEncoding = String(req.headers["accept-encoding"] || "");
+  const gzipAccepted = acceptEncoding.includes("gzip");
+
+  // Why: Health checks are polled frequently; compression keeps bandwidth low.
+  const gzipThresholdBytes = 512;
+  const uncompressed = Buffer.from(body);
+
+  if (gzipAccepted && uncompressed.byteLength >= gzipThresholdBytes) {
+    const compressed = zlib.gzipSync(uncompressed, {
+      level: zlib.constants.Z_BEST_SPEED,
+    });
+
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Content-Encoding": "gzip",
+      Vary: "Accept-Encoding",
+      // Why: Never cache health checks; uptime monitors should reflect the current state.
+      "Cache-Control": "no-store",
+      "Content-Length": compressed.byteLength.toString(),
+      ...corsHeaders,
+    });
+    res.end(compressed);
+    return;
+  }
+
   res.writeHead(200, {
     "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(body).toString(),
-    ...getCorsHeaders(),
+    // Why: Never cache health checks; uptime monitors should reflect the current state.
+    "Cache-Control": "no-store",
+    "Content-Length": uncompressed.byteLength.toString(),
+    ...corsHeaders,
   });
-  res.end(body);
+  res.end(uncompressed);
 }
