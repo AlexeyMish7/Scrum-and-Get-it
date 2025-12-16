@@ -1,0 +1,46 @@
+# Artillery Load Test - Health Check Endpoint
+# UC-137: Basic availability and response time testing
+
+config:
+  target: 'http://localhost:8787'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up"
+    # Gradual ramp-up
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Ramp-up"
+    # Peak load
+    - duration: 60
+      arrivalRate: 100
+      name: "Peak load"
+    # Cool-down
+    - duration: 30
+      arrivalRate: 10
+      name: "Cool-down"
+  
+  # Performance thresholds (UC-137 targets)
+  ensure:
+    - p95: 100  # 95th percentile < 100ms
+    - p99: 200  # 99th percentile < 200ms
+    - maxErrorRate: 0.1  # < 0.1% errors
+
+scenarios:
+  - name: "Health Check"
+    weight: 1
+    flow:
+      - get:
+          url: "/api/health"
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: status
+      
+      # Log health status
+      - log: "Health status: {{ healthStatus }}"

@@ -1,0 +1,133 @@
+# Artillery Load Test - Job Listing Flow
+# UC-137: Test job browsing and pagination performance
+
+config:
+  target: 'http://localhost:8787'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Light load"
+    - duration: 120
+      arrivalRate: 30
+      rampTo: 60
+      name: "Medium load"
+    - duration: 60
+      arrivalRate: 80
+      name: "Heavy load"
+  
+  # Performance thresholds
+  ensure:
+    - p95: 500   # 95th percentile < 500ms
+    - p99: 1000  # 99th percentile < 1s
+    - maxErrorRate: 1  # < 1% errors
+  
+  # Payload data
+  payload:
+    path: "./test-users.csv"
+    fields:
+      - "email"
+      - "password"
+
+scenarios:
+  - name: "Browse Jobs"
+    weight: 70  # 70% of users just browse
+    flow:
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+            - json: "$.user.id"
+              as: "userId"
+      
+      # Get first page
+      - get:
+          url: "/api/jobs?page=1&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      
+      # Get second page
+      - get:
+          url: "/api/jobs?page=2&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      
+      # Filter by status
+      - get:
+          url: "/api/jobs?status=active&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      
+      # Think time (simulate user reading)
+      - think: 3
+
+  - name: "Create Job"
+    weight: 20  # 20% create new jobs
+    flow:
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+      
+      # Create job
+      - post:
+          url: "/api/jobs"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            title: "Software Engineer"
+            company: "Test Corp {{ $randomString() }}"
+            location: "Remote"
+            status: "wishlist"
+          expect:
+            - statusCode: 201
+      
+      # Fetch updated list
+      - get:
+          url: "/api/jobs?page=1&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+
+  - name: "Update Job"
+    weight: 10  # 10% update existing jobs
+    flow:
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+      
+      # Get jobs
+      - get:
+          url: "/api/jobs?limit=1"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          capture:
+            - json: "$.data[0].id"
+              as: "jobId"
+      
+      # Update job status
+      - put:
+          url: "/api/jobs/{{ jobId }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            status: "applied"
+          expect:
+            - statusCode: 200
