@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
-    "@types/node": "^24.10.1",
+    "@types/node": "^25.0.2",
     "@vitest/coverage-v8": "^4.0.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
