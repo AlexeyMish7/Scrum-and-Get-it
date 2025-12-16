@@ -3,11 +3,11 @@
 > **Built by:** Scrum and Get It Team
 > A comprehensive job search management platform that helps job seekers organize their applications, optimize their resumes, and track their progress through the interview process.
 
+[![CI](https://github.com/AlexeyMish7/Scrum-and-Get-it/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexeyMish7/Scrum-and-Get-it/actions/workflows/ci.yml)
+
 ## Overview
 
 FlowATS is a full-stack web application designed to streamline the job search process by providing intelligent tools for managing job applications, generating tailored resumes and cover letters, and analyzing job matches using AI-powered insights.
-
-This README change exists to validate the CI pipeline via a simple PR.
 
 ## Key Features
 
