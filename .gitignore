@@ -155,13 +155,15 @@ dist/
 .env.production.local
 
 # =========================
-# Test Frameworks (Jest / Cypress)
+# Test Frameworks (Jest / Cypress / Vitest)
 # =========================
 cypress/videos/
 cypress/screenshots/
 cypress/downloads/
 jest-test-results.json
 junit.xml
+.vitest-results-*.json
+tests/.vitest-results-*.json
 
 # =========================
 # Optional Project Artifacts
