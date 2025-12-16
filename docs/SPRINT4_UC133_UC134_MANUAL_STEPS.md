@@ -1,10 +1,8 @@
-# Sprint 4 — UC-133 + UC-134 + UC-139 Manual Steps (Exact Order)
+# Sprint 4 — UC-134 (Production Monitoring & Logging) + Other Manual Steps
 
 This doc is the “do this next” checklist for the items that cannot be completed purely in code.
 
-- UC-133 (Monitoring & Logging): external setup + verification
-- UC-134 (Performance Optimization): external CDN + audit verification
-- UC-139 (Domain & DNS): custom domain, DNS records, SSL, redirects
+Note on UC numbering: In some Sprint 4 lists, “monitoring & logging” is labeled UC-133; in this checklist we treat it as UC-134 because that’s the acceptance criteria you’re submitting against.
 
 ---
 
@@ -21,7 +19,7 @@ This doc is the “do this next” checklist for the items that cannot be comple
 
 ---
 
-## UC-133 — Production Monitoring and Logging (Manual Steps)
+## UC-134 — Production Monitoring and Logging (Manual Steps)
 
 ### What’s already implemented in code
 
@@ -31,7 +29,19 @@ This doc is the “do this next” checklist for the items that cannot be comple
 - API response time + error rate tracking exists via a token-protected metrics endpoint.
 - Incident response procedures are documented.
 
-This document contains all required UC-133 steps; you should not need any other UC-133 docs.
+### UC-134 Acceptance Criteria mapping (quick checklist)
+
+- Implement application logging with appropriate levels ✅ (`LOG_LEVEL`)
+- Implement structured logging with searchable fields ✅ (JSON logs w/ `requestId`, `http_*`, etc.)
+- Set up error tracking with Sentry (free tier) ✅ (manual setup required)
+- Monitor application uptime with UptimeRobot (free tier) ✅ (manual setup required)
+- Track API response times and error rates ✅ (`GET /api/metrics`)
+- Set up alerts for critical errors and downtime ✅ (manual setup required)
+- Create dashboard for key metrics ✅ (Sentry dashboard + UptimeRobot dashboard + `/api/metrics`)
+- Document incident response procedures ✅ (below)
+- Frontend verification: trigger error in production, verify logged + alert sent ✅ (below)
+
+This document contains all required UC-134 steps; you should not need any other UC-134 docs.
 
 ### Step 1 — Create Sentry projects (free tier)
 
@@ -119,6 +129,11 @@ Verify:
 
 Why: this is your lightweight “dashboard feed” for request counts, 4xx/5xx, p95 latency, etc.
 
+Optional helper scripts (local):
+
+- `scripts/monitoring/fetch-metrics.ps1`
+- `scripts/monitoring/trigger-sentry-test-error.ps1`
+
 ### Step 6 — Incident response procedure (required)
 
 When something breaks in production, use this exact order:
@@ -148,9 +163,9 @@ When something breaks in production, use this exact order:
 5. Follow-up
    - Write a short note: what happened, how it was fixed, and how you’ll prevent it next time.
 
-### Step 7 — UC-133 Frontend verification (required)
+### Step 7 — UC-134 Frontend verification (required)
 
-UC-133 requires: “Trigger error in production, verify it’s logged and alert is sent.”
+UC-134 requires: “Trigger error in production, verify it’s logged and alert is sent.”
 
 Recommended order:
 
