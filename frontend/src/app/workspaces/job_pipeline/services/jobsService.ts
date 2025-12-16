@@ -301,6 +301,7 @@ const getJob = async (
  * Error modes:
  * - Validation error (missing required fields)
  * - Database constraint violations
+ * - Profile not found (auto-creates if missing)
  */
 const createJob = async (
   userId: string,
@@ -320,6 +321,68 @@ const createJob = async (
       error: { message: "Company name is required", status: null },
       status: null,
     } as Result<JobRow>;
+  }
+
+  // Ensure profile exists before creating job (jobs table has FK to profiles)
+  // This handles users who signed up before the auto-create profile trigger was deployed
+  const { data: profileData, error: profileCheckError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .single();
+
+  // If no profile exists, create a minimal one using auth user's email
+  if (!profileData && !profileCheckError) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return {
+          data: null,
+          error: {
+            message: "Authentication required to add jobs.",
+            status: null,
+          },
+          status: null,
+        } as Result<JobRow>;
+      }
+
+      const minimalProfile = {
+        id: userId,
+        first_name: user.user_metadata?.first_name || "User",
+        last_name: user.user_metadata?.last_name || "",
+        email: user.email || "",
+      };
+
+      // Create profile directly since profiles table uses 'id' not 'user_id'
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert(minimalProfile);
+
+      if (profileError) {
+        console.error("Profile creation failed:", profileError);
+        return {
+          data: null,
+          error: {
+            message: "Failed to create profile. Please try again.",
+            status: null,
+          },
+          status: null,
+        } as Result<JobRow>;
+      }
+    } catch (err) {
+      console.error("Profile creation error:", err);
+      return {
+        data: null,
+        error: {
+          message: "Failed to initialize profile. Please try again.",
+          status: null,
+        },
+        status: null,
+      } as Result<JobRow>;
+    }
   }
 
   const userCrud = crud.withUser(userId);
