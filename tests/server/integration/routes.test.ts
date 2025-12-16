@@ -136,10 +136,31 @@ describe("Server Routes Integration", () => {
       });
 
       expect(res.status).toBe(500);
-      expect(res.json).toEqual({
-        error: "monitoring_test_error",
-        message: "Intentional error emitted for monitoring verification",
-      });
+      expect(res.json).toEqual(
+        expect.objectContaining({
+          error: "monitoring_test_error",
+          message: "Intentional error emitted for monitoring verification",
+          sentry_enabled: expect.any(Boolean),
+          sentry_environment: expect.any(String),
+        })
+      );
+
+      // In test/CI we often don't set a real DSN; metadata can be null.
+      expect(
+        Object.prototype.hasOwnProperty.call(res.json, "sentry_dsn_host")
+      ).toBe(true);
+      expect(
+        res.json.sentry_dsn_host === null ||
+          typeof res.json.sentry_dsn_host === "string"
+      ).toBe(true);
+
+      expect(
+        Object.prototype.hasOwnProperty.call(res.json, "sentry_project_id")
+      ).toBe(true);
+      expect(
+        res.json.sentry_project_id === null ||
+          typeof res.json.sentry_project_id === "string"
+      ).toBe(true);
     });
   });
 

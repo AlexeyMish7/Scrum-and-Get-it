@@ -1141,6 +1141,16 @@ export async function previewDocument(
   template: Template,
   theme: Theme
 ): Promise<string> {
+  function escapeHtml(str: any) {
+    if (str == null) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // TODO: Generate preview HTML with template+theme rendering
   // Return blob URL or server preview endpoint
 
@@ -1151,16 +1161,16 @@ export async function previewDocument(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Preview: ${document.config.name}</title>
+  <title>Preview: ${escapeHtml(document.config.name)}</title>
   <style>
-    body { font-family: ${theme.typography.bodyFont}; margin: 2rem; }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 2rem; }
     /* Theme styles */
   </style>
 </head>
 <body>
-  <h1>${document.config.name}</h1>
-  <p>Template: ${template.name}</p>
-  <p>Theme: ${theme.name}</p>
+  <h1>${escapeHtml(document.config.name)}</h1>
+  <p>Template: ${escapeHtml(template.name)}</p>
+  <p>Theme: ${escapeHtml(theme.name)}</p>
   <!-- Rendered document content -->
 </body>
 </html>`;

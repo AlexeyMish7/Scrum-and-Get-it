@@ -1,0 +1,4417 @@
+{
+  "numTotalTestSuites": 171,
+  "numPassedTestSuites": 171,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 350,
+  "numPassedTests": 350,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "startTime": 1765905663064,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Health Check"
+          ],
+          "fullName": " Server Routes Integration Health Check responds to GET /api/health",
+          "status": "passed",
+          "title": "responds to GET /api/health",
+          "duration": 10,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "CORS Preflight"
+          ],
+          "fullName": " Server Routes Integration CORS Preflight handles OPTIONS requests",
+          "status": "passed",
+          "title": "handles OPTIONS requests",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Authentication"
+          ],
+          "fullName": " Server Routes Integration Authentication rejects protected routes without auth",
+          "status": "passed",
+          "title": "rejects protected routes without auth",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Error Handling"
+          ],
+          "fullName": " Server Routes Integration Error Handling returns 404 for unknown routes",
+          "status": "passed",
+          "title": "returns 404 for unknown routes",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Monitoring Endpoints"
+          ],
+          "fullName": " Server Routes Integration Monitoring Endpoints rejects /api/metrics without correct token",
+          "status": "passed",
+          "title": "rejects /api/metrics without correct token",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Monitoring Endpoints"
+          ],
+          "fullName": " Server Routes Integration Monitoring Endpoints serves /api/metrics with correct token",
+          "status": "passed",
+          "title": "serves /api/metrics with correct token",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Monitoring Endpoints"
+          ],
+          "fullName": " Server Routes Integration Monitoring Endpoints emits intentional monitoring error with correct token",
+          "status": "passed",
+          "title": "emits intentional monitoring error with correct token",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Server Routes Integration",
+            "Feature Flags"
+          ],
+          "fullName": " Server Routes Integration Feature Flags returns 503 when FEATURE_AI_ROUTES is disabled",
+          "status": "passed",
+          "title": "returns 503 when FEATURE_AI_ROUTES is disabled",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905666986,
+      "endTime": 1765905667013,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/integration/routes.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Middleware",
+            "requireAuth"
+          ],
+          "fullName": " Auth Middleware requireAuth throws ApiError(401) on missing auth",
+          "status": "passed",
+          "title": "throws ApiError(401) on missing auth",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Middleware",
+            "requireAuth"
+          ],
+          "fullName": " Auth Middleware requireAuth accepts X-User-Id when dev auth enabled",
+          "status": "passed",
+          "title": "accepts X-User-Id when dev auth enabled",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Middleware",
+            "tryAuth"
+          ],
+          "fullName": " Auth Middleware tryAuth should return null on failure instead of throwing",
+          "status": "passed",
+          "title": "should return null on failure instead of throwing",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665838,
+      "endTime": 1765905665845,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/middleware/auth.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "getCorsHeaders"
+          ],
+          "fullName": " CORS Middleware getCorsHeaders should return default CORS headers",
+          "status": "passed",
+          "title": "should return default CORS headers",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "getCorsHeaders"
+          ],
+          "fullName": " CORS Middleware getCorsHeaders should respect explicit origin option",
+          "status": "passed",
+          "title": "should respect explicit origin option",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "getCorsHeaders"
+          ],
+          "fullName": " CORS Middleware getCorsHeaders should include all HTTP methods",
+          "status": "passed",
+          "title": "should include all HTTP methods",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "getCorsHeaders"
+          ],
+          "fullName": " CORS Middleware getCorsHeaders should include necessary headers",
+          "status": "passed",
+          "title": "should include necessary headers",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "handleCorsPreflight"
+          ],
+          "fullName": " CORS Middleware handleCorsPreflight should respond with 204 No Content",
+          "status": "passed",
+          "title": "should respond with 204 No Content",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "handleCorsPreflight"
+          ],
+          "fullName": " CORS Middleware handleCorsPreflight should include CORS headers in preflight response",
+          "status": "passed",
+          "title": "should include CORS headers in preflight response",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "handleCorsPreflight"
+          ],
+          "fullName": " CORS Middleware handleCorsPreflight should call end to complete response",
+          "status": "passed",
+          "title": "should call end to complete response",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "CORS Middleware",
+            "handleCorsPreflight"
+          ],
+          "fullName": " CORS Middleware handleCorsPreflight should return false for non-OPTIONS",
+          "status": "passed",
+          "title": "should return false for non-OPTIONS",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665562,
+      "endTime": 1765905665573,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/middleware/cors.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "createRequestContext"
+          ],
+          "fullName": " Logging Middleware createRequestContext should create context with request ID",
+          "status": "passed",
+          "title": "should create context with request ID",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "createRequestContext"
+          ],
+          "fullName": " Logging Middleware createRequestContext should generate unique request IDs",
+          "status": "passed",
+          "title": "should generate unique request IDs",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "createRequestContext"
+          ],
+          "fullName": " Logging Middleware createRequestContext should record start time",
+          "status": "passed",
+          "title": "should record start time",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "createRequestContext"
+          ],
+          "fullName": " Logging Middleware createRequestContext should provide logComplete function",
+          "status": "passed",
+          "title": "should provide logComplete function",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should log request completion with duration",
+          "status": "passed",
+          "title": "should log request completion with duration",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should calculate correct duration",
+          "status": "passed",
+          "title": "should calculate correct duration",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should handle different HTTP methods",
+          "status": "passed",
+          "title": "should handle different HTTP methods",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should handle different status codes",
+          "status": "passed",
+          "title": "should handle different status codes",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should handle various URL paths",
+          "status": "passed",
+          "title": "should handle various URL paths",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should measure very short durations",
+          "status": "passed",
+          "title": "should measure very short durations",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logging Middleware",
+            "logComplete"
+          ],
+          "fullName": " Logging Middleware logComplete should measure long durations",
+          "status": "passed",
+          "title": "should measure long durations",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665666,
+      "endTime": 1765905665678,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/middleware/logging.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Sentry Observability"
+          ],
+          "fullName": " Sentry Observability does not enable Sentry when SENTRY_DSN is missing",
+          "status": "passed",
+          "title": "does not enable Sentry when SENTRY_DSN is missing",
+          "duration": 1547,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Sentry Observability"
+          ],
+          "fullName": " Sentry Observability initializes once when SENTRY_DSN is set",
+          "status": "passed",
+          "title": "initializes once when SENTRY_DSN is set",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Sentry Observability"
+          ],
+          "fullName": " Sentry Observability captureException sets context and forwards to Sentry",
+          "status": "passed",
+          "title": "captureException sets context and forwards to Sentry",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Sentry Observability"
+          ],
+          "fullName": " Sentry Observability captureMessage forwards message when enabled",
+          "status": "passed",
+          "title": "captureMessage forwards message when enabled",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Sentry Observability"
+          ],
+          "fullName": " Sentry Observability flushSentry calls Sentry.flush when enabled",
+          "status": "passed",
+          "title": "flushSentry calls Sentry.flush when enabled",
+          "duration": 17,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663857,
+      "endTime": 1765905665464,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/observability/sentry.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Artifacts Routes"
+          ],
+          "fullName": " Artifacts Routes GET /api/artifacts returns persisted=false when DB not configured",
+          "status": "passed",
+          "title": "GET /api/artifacts returns persisted=false when DB not configured",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Artifacts Routes"
+          ],
+          "fullName": " Artifacts Routes GET /api/artifacts/:id throws not_found when persistence disabled",
+          "status": "passed",
+          "title": "GET /api/artifacts/:id throws not_found when persistence disabled",
+          "duration": 2,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665818,
+      "endTime": 1765905665823,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/artifacts.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-108: Team Account Management API",
+            "POST /api/teams"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-108: Team Account Management API POST /api/teams should create a new team",
+          "status": "passed",
+          "title": "should create a new team",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-108: Team Account Management API",
+            "POST /api/teams"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-108: Team Account Management API POST /api/teams should require authentication",
+          "status": "passed",
+          "title": "should require authentication",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-108: Team Account Management API",
+            "GET /api/teams/:teamId"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-108: Team Account Management API GET /api/teams/:teamId should return team details",
+          "status": "passed",
+          "title": "should return team details",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-108: Team Account Management API",
+            "POST /api/teams/:teamId/members"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-108: Team Account Management API POST /api/teams/:teamId/members should invite a new member",
+          "status": "passed",
+          "title": "should invite a new member",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-108: Team Account Management API",
+            "DELETE /api/teams/:teamId/members/:memberId"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-108: Team Account Management API DELETE /api/teams/:teamId/members/:memberId should remove a member from team",
+          "status": "passed",
+          "title": "should remove a member from team",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-109: Mentor Dashboard API",
+            "GET /api/mentor/mentees"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-109: Mentor Dashboard API GET /api/mentor/mentees should return assigned mentees",
+          "status": "passed",
+          "title": "should return assigned mentees",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-109: Mentor Dashboard API",
+            "POST /api/mentor/feedback"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-109: Mentor Dashboard API POST /api/mentor/feedback should create feedback for mentee",
+          "status": "passed",
+          "title": "should create feedback for mentee",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-109: Mentor Dashboard API",
+            "GET /api/mentor/dashboard-summary"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-109: Mentor Dashboard API GET /api/mentor/dashboard-summary should return mentor dashboard summary",
+          "status": "passed",
+          "title": "should return mentor dashboard summary",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-110: Collaborative Document Review API",
+            "POST /api/reviews"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-110: Collaborative Document Review API POST /api/reviews should create a review request",
+          "status": "passed",
+          "title": "should create a review request",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-110: Collaborative Document Review API",
+            "POST /api/reviews/:reviewId/comments"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-110: Collaborative Document Review API POST /api/reviews/:reviewId/comments should add a comment to review",
+          "status": "passed",
+          "title": "should add a comment to review",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-110: Collaborative Document Review API",
+            "POST /api/reviews/:reviewId/approve"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-110: Collaborative Document Review API POST /api/reviews/:reviewId/approve should approve a document",
+          "status": "passed",
+          "title": "should approve a document",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-111: Progress Sharing API",
+            "GET /api/progress/settings"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-111: Progress Sharing API GET /api/progress/settings should return user's sharing settings",
+          "status": "passed",
+          "title": "should return user's sharing settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-111: Progress Sharing API",
+            "PUT /api/progress/settings"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-111: Progress Sharing API PUT /api/progress/settings should update sharing settings",
+          "status": "passed",
+          "title": "should update sharing settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-111: Progress Sharing API",
+            "POST /api/progress/snapshots"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-111: Progress Sharing API POST /api/progress/snapshots should create a progress snapshot",
+          "status": "passed",
+          "title": "should create a progress snapshot",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-112: Accountability Partnerships API",
+            "POST /api/partnerships"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-112: Accountability Partnerships API POST /api/partnerships should create a partnership request",
+          "status": "passed",
+          "title": "should create a partnership request",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-112: Accountability Partnerships API",
+            "POST /api/partnerships/:id/accept"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-112: Accountability Partnerships API POST /api/partnerships/:id/accept should accept a partnership request",
+          "status": "passed",
+          "title": "should accept a partnership request",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-113: Support Circle API",
+            "POST /api/support-circle"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-113: Support Circle API POST /api/support-circle should create a support circle",
+          "status": "passed",
+          "title": "should create a support circle",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-113: Support Circle API",
+            "POST /api/support-circle/:id/invite"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-113: Support Circle API POST /api/support-circle/:id/invite should invite someone to support circle",
+          "status": "passed",
+          "title": "should invite someone to support circle",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-114: Enterprise Features API",
+            "POST /api/enterprise/cohorts"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-114: Enterprise Features API POST /api/enterprise/cohorts should create a cohort",
+          "status": "passed",
+          "title": "should create a cohort",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-114: Enterprise Features API",
+            "GET /api/enterprise/analytics"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-114: Enterprise Features API GET /api/enterprise/analytics should return team analytics",
+          "status": "passed",
+          "title": "should return team analytics",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-114: Enterprise Features API",
+            "POST /api/enterprise/roi-reports"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-114: Enterprise Features API POST /api/enterprise/roi-reports should generate an ROI report",
+          "status": "passed",
+          "title": "should generate an ROI report",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-114: Enterprise Features API",
+            "PUT /api/enterprise/branding"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-114: Enterprise Features API PUT /api/enterprise/branding should update branding settings",
+          "status": "passed",
+          "title": "should update branding settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-114: Enterprise Features API",
+            "POST /api/enterprise/compliance/export"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-114: Enterprise Features API POST /api/enterprise/compliance/export should export user data (GDPR)",
+          "status": "passed",
+          "title": "should export user data (GDPR)",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-115: External Advisor API",
+            "POST /api/advisors/invite"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-115: External Advisor API POST /api/advisors/invite should invite an external advisor",
+          "status": "passed",
+          "title": "should invite an external advisor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-115: External Advisor API",
+            "POST /api/advisors/sessions"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-115: External Advisor API POST /api/advisors/sessions should create a coaching session",
+          "status": "passed",
+          "title": "should create a coaching session",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-115: External Advisor API",
+            "GET /api/advisors/:advisorId/impact"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-115: External Advisor API GET /api/advisors/:advisorId/impact should return advisor impact metrics",
+          "status": "passed",
+          "title": "should return advisor impact metrics",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-115: External Advisor API",
+            "POST /api/advisors/billing"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-115: External Advisor API POST /api/advisors/billing should create a billing record",
+          "status": "passed",
+          "title": "should create a billing record",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "UC-115: External Advisor API",
+            "POST /api/advisors/messages"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests UC-115: External Advisor API POST /api/advisors/messages should send a message to client",
+          "status": "passed",
+          "title": "should send a message to client",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Authentication & Authorization"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Authentication & Authorization should require auth for all protected endpoints",
+          "status": "passed",
+          "title": "should require auth for all protected endpoints",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Authentication & Authorization"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Authentication & Authorization should validate team membership for team endpoints",
+          "status": "passed",
+          "title": "should validate team membership for team endpoints",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Authentication & Authorization"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Authentication & Authorization should validate admin role for enterprise features",
+          "status": "passed",
+          "title": "should validate admin role for enterprise features",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Input Validation"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Input Validation should validate email format for invitations",
+          "status": "passed",
+          "title": "should validate email format for invitations",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Input Validation"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Input Validation should validate date ranges for reports",
+          "status": "passed",
+          "title": "should validate date ranges for reports",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Input Validation"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Input Validation should validate role values",
+          "status": "passed",
+          "title": "should validate role values",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Error Responses"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Error Responses should return 400 for missing required fields",
+          "status": "passed",
+          "title": "should return 400 for missing required fields",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Error Responses"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Error Responses should return 404 for non-existent resources",
+          "status": "passed",
+          "title": "should return 404 for non-existent resources",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Multi-User Collaboration Backend Tests",
+            "Error Responses"
+          ],
+          "fullName": " Multi-User Collaboration Backend Tests Error Responses should return 403 for unauthorized access",
+          "status": "passed",
+          "title": "should return 403 for unauthorized access",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665214,
+      "endTime": 1765905665255,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/collaboration.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Health Route"
+          ],
+          "fullName": " Health Route returns ok payload with counters",
+          "status": "passed",
+          "title": "returns ok payload with counters",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Health Route"
+          ],
+          "fullName": " Health Route reports supabase missing-env when env vars are missing",
+          "status": "passed",
+          "title": "reports supabase missing-env when env vars are missing",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665689,
+      "endTime": 1765905665694,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/health.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Utils"
+          ],
+          "fullName": " Auth Utils throws on missing Authorization header",
+          "status": "passed",
+          "title": "throws on missing Authorization header",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Utils"
+          ],
+          "fullName": " Auth Utils throws on non-Bearer Authorization",
+          "status": "passed",
+          "title": "throws on non-Bearer Authorization",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Auth Utils"
+          ],
+          "fullName": " Auth Utils throws on empty Bearer token",
+          "status": "passed",
+          "title": "throws on empty Bearer token",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665952,
+      "endTime": 1765905665958,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/auth.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "ApiError"
+          ],
+          "fullName": " ApiError should create ApiError with status and message",
+          "status": "passed",
+          "title": "should create ApiError with status and message",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "ApiError"
+          ],
+          "fullName": " ApiError should create ApiError with optional code",
+          "status": "passed",
+          "title": "should create ApiError with optional code",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "ApiError"
+          ],
+          "fullName": " ApiError should have correct name property",
+          "status": "passed",
+          "title": "should have correct name property",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should format ApiError correctly",
+          "status": "passed",
+          "title": "should format ApiError correctly",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should handle ApiError without code",
+          "status": "passed",
+          "title": "should handle ApiError without code",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should handle regular Error",
+          "status": "passed",
+          "title": "should handle regular Error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should handle string error",
+          "status": "passed",
+          "title": "should handle string error",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should handle null/undefined error",
+          "status": "passed",
+          "title": "should handle null/undefined error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "errorPayload"
+          ],
+          "fullName": " errorPayload should handle object without message",
+          "status": "passed",
+          "title": "should handle object without message",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665720,
+      "endTime": 1765905665730,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/errors.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should parse valid JSON from request",
+          "status": "passed",
+          "title": "should parse valid JSON from request",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should handle empty object",
+          "status": "passed",
+          "title": "should handle empty object",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should handle arrays",
+          "status": "passed",
+          "title": "should handle arrays",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should reject on invalid JSON",
+          "status": "passed",
+          "title": "should reject on invalid JSON",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should handle multiple data chunks",
+          "status": "passed",
+          "title": "should handle multiple data chunks",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should reject malformed JSON",
+          "status": "passed",
+          "title": "should reject malformed JSON",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "readJson"
+          ],
+          "fullName": " HTTP Utilities readJson should handle nested objects",
+          "status": "passed",
+          "title": "should handle nested objects",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "HTTP Utilities",
+            "sendJson"
+          ],
+          "fullName": " HTTP Utilities sendJson writes JSON with content-type and content-length",
+          "status": "passed",
+          "title": "writes JSON with content-type and content-length",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665526,
+      "endTime": 1765905665536,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/http.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "nowIso"
+          ],
+          "fullName": " Logger Utilities nowIso should return ISO timestamp",
+          "status": "passed",
+          "title": "should return ISO timestamp",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "genRequestId"
+          ],
+          "fullName": " Logger Utilities genRequestId should generate 8-character ID",
+          "status": "passed",
+          "title": "should generate 8-character ID",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "genRequestId"
+          ],
+          "fullName": " Logger Utilities genRequestId should generate unique IDs",
+          "status": "passed",
+          "title": "should generate unique IDs",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logInfo"
+          ],
+          "fullName": " Logger Utilities logInfo should log info message",
+          "status": "passed",
+          "title": "should log info message",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logInfo"
+          ],
+          "fullName": " Logger Utilities logInfo should include context",
+          "status": "passed",
+          "title": "should include context",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logWarn"
+          ],
+          "fullName": " Logger Utilities logWarn should log warning message",
+          "status": "passed",
+          "title": "should log warning message",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logError"
+          ],
+          "fullName": " Logger Utilities logError should log error message",
+          "status": "passed",
+          "title": "should log error message",
+          "duration": 10,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logError"
+          ],
+          "fullName": " Logger Utilities logError should handle non-Error objects",
+          "status": "passed",
+          "title": "should handle non-Error objects",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "Timer"
+          ],
+          "fullName": " Logger Utilities Timer should measure operation duration",
+          "status": "passed",
+          "title": "should measure operation duration",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "Timer"
+          ],
+          "fullName": " Logger Utilities Timer should log checkpoint",
+          "status": "passed",
+          "title": "should log checkpoint",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should create logger with requestId",
+          "status": "passed",
+          "title": "should create logger with requestId",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should update context",
+          "status": "passed",
+          "title": "should update context",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should log with context",
+          "status": "passed",
+          "title": "should log with context",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should log request start",
+          "status": "passed",
+          "title": "should log request start",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should log request end with correct level",
+          "status": "passed",
+          "title": "should log request end with correct level",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "RequestLogger"
+          ],
+          "fullName": " Logger Utilities RequestLogger should create timer with context",
+          "status": "passed",
+          "title": "should create timer with context",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "createRequestLogger"
+          ],
+          "fullName": " Logger Utilities createRequestLogger should create logger without request object",
+          "status": "passed",
+          "title": "should create logger without request object",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "createRequestLogger"
+          ],
+          "fullName": " Logger Utilities createRequestLogger should extract context from request object",
+          "status": "passed",
+          "title": "should extract context from request object",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logSystemEvent"
+          ],
+          "fullName": " Logger Utilities logSystemEvent should log system events",
+          "status": "passed",
+          "title": "should log system events",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logConfigEvent"
+          ],
+          "fullName": " Logger Utilities logConfigEvent should log config loaded",
+          "status": "passed",
+          "title": "should log config loaded",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Logger Utilities",
+            "logConfigEvent"
+          ],
+          "fullName": " Logger Utilities logConfigEvent should log config missing as warning",
+          "status": "passed",
+          "title": "should log config missing as warning",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665163,
+      "endTime": 1765905665196,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/logger.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Observability Metrics"
+          ],
+          "fullName": " Observability Metrics should summarize only samples in the window",
+          "status": "passed",
+          "title": "should summarize only samples in the window",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Observability Metrics"
+          ],
+          "fullName": " Observability Metrics should compute latency percentiles",
+          "status": "passed",
+          "title": "should compute latency percentiles",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665785,
+      "endTime": 1765905665792,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/metrics.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should allow requests within limit",
+          "status": "passed",
+          "title": "should allow requests within limit",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should block requests exceeding limit",
+          "status": "passed",
+          "title": "should block requests exceeding limit",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should reset after time window",
+          "status": "passed",
+          "title": "should reset after time window",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should track separate keys independently",
+          "status": "passed",
+          "title": "should track separate keys independently",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should calculate correct retry-after seconds",
+          "status": "passed",
+          "title": "should calculate correct retry-after seconds",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should handle different rate limits per key",
+          "status": "passed",
+          "title": "should handle different rate limits per key",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should handle very short windows",
+          "status": "passed",
+          "title": "should handle very short windows",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "checkLimit"
+          ],
+          "fullName": " Rate Limiter checkLimit should handle concurrent requests to same key",
+          "status": "passed",
+          "title": "should handle concurrent requests to same key",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Rate Limiter",
+            "resetLimits"
+          ],
+          "fullName": " Rate Limiter resetLimits should clear all rate limit data",
+          "status": "passed",
+          "title": "should clear all rate limit data",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665614,
+      "endTime": 1765905665630,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/utils/rateLimiter.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should generate resume content",
+          "status": "passed",
+          "title": "should generate resume content",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should generate cover letter content",
+          "status": "passed",
+          "title": "should generate cover letter content",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should generate company research data",
+          "status": "passed",
+          "title": "should generate company research data",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should reject prompts that are too short",
+          "status": "passed",
+          "title": "should reject prompts that are too short",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should reject prompts that are too long",
+          "status": "passed",
+          "title": "should reject prompts that are too long",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should handle empty prompt",
+          "status": "passed",
+          "title": "should handle empty prompt",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should accept minimum valid prompt length",
+          "status": "passed",
+          "title": "should accept minimum valid prompt length",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should handle different generation kinds",
+          "status": "passed",
+          "title": "should handle different generation kinds",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should respect generation options",
+          "status": "passed",
+          "title": "should respect generation options",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should return token count in result",
+          "status": "passed",
+          "title": "should return token count in result",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should include metadata in response",
+          "status": "passed",
+          "title": "should include metadata in response",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should handle special characters in prompt",
+          "status": "passed",
+          "title": "should handle special characters in prompt",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should handle unicode characters",
+          "status": "passed",
+          "title": "should handle unicode characters",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "generate"
+          ],
+          "fullName": " AI Client generate should handle newlines and tabs in prompt",
+          "status": "passed",
+          "title": "should handle newlines and tabs in prompt",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "provider selection"
+          ],
+          "fullName": " AI Client provider selection should use mock provider in test environment",
+          "status": "passed",
+          "title": "should use mock provider in test environment",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "provider selection"
+          ],
+          "fullName": " AI Client provider selection should handle provider-specific options",
+          "status": "passed",
+          "title": "should handle provider-specific options",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "error handling"
+          ],
+          "fullName": " AI Client error handling should accept various prompt types",
+          "status": "passed",
+          "title": "should accept various prompt types",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "error handling"
+          ],
+          "fullName": " AI Client error handling should handle whitespace-only prompts",
+          "status": "passed",
+          "title": "should handle whitespace-only prompts",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "error handling"
+          ],
+          "fullName": " AI Client error handling should validate generation kind",
+          "status": "passed",
+          "title": "should validate generation kind",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "response parsing"
+          ],
+          "fullName": " AI Client response parsing should parse JSON responses correctly",
+          "status": "passed",
+          "title": "should parse JSON responses correctly",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "response parsing"
+          ],
+          "fullName": " AI Client response parsing should handle text-only responses",
+          "status": "passed",
+          "title": "should handle text-only responses",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AI Client",
+            "response parsing"
+          ],
+          "fullName": " AI Client response parsing should include raw response for debugging",
+          "status": "passed",
+          "title": "should include raw response for debugging",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665618,
+      "endTime": 1765905665632,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/services/aiClient.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - in-memory fallback"
+          ],
+          "fullName": " analyticsService - in-memory fallback computeOverview uses seeded in-memory data",
+          "status": "passed",
+          "title": "computeOverview uses seeded in-memory data",
+          "duration": 94,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - in-memory fallback"
+          ],
+          "fullName": " analyticsService - in-memory fallback computeTrends returns monthly conversion + confidence timeseries",
+          "status": "passed",
+          "title": "computeTrends returns monthly conversion + confidence timeseries",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - Supabase path"
+          ],
+          "fullName": " analyticsService - Supabase path computeOverview combines interviews + job pipeline and aggregates themes",
+          "status": "passed",
+          "title": "computeOverview combines interviews + job pipeline and aggregates themes",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - Supabase path"
+          ],
+          "fullName": " analyticsService - Supabase path computeTrends returns conversion + confidence + culture comparison",
+          "status": "passed",
+          "title": "computeTrends returns conversion + confidence + culture comparison",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - Supabase path"
+          ],
+          "fullName": " analyticsService - Supabase path throws when interviews query errors",
+          "status": "passed",
+          "title": "throws when interviews query errors",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "analyticsService - computeBenchmarks"
+          ],
+          "fullName": " analyticsService - computeBenchmarks returns static benchmark payload",
+          "status": "passed",
+          "title": "returns static benchmark payload",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665103,
+      "endTime": 1765905665213,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/services/analyticsService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - extractCompanyName"
+          ],
+          "fullName": " companyResearchService - extractCompanyName extracts from job title '... at Company'",
+          "status": "passed",
+          "title": "extracts from job title '... at Company'",
+          "duration": 52,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - extractCompanyName"
+          ],
+          "fullName": " companyResearchService - extractCompanyName extracts from description 'About Company'",
+          "status": "passed",
+          "title": "extracts from description 'About Company'",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - extractCompanyName"
+          ],
+          "fullName": " companyResearchService - extractCompanyName extracts from description 'Company is ...'",
+          "status": "passed",
+          "title": "extracts from description 'Company is ...'",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - extractCompanyName"
+          ],
+          "fullName": " companyResearchService - extractCompanyName returns null when no patterns match",
+          "status": "passed",
+          "title": "returns null when no patterns match",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - fetchCompanyResearch"
+          ],
+          "fullName": " companyResearchService - fetchCompanyResearch returns null for blank company name",
+          "status": "passed",
+          "title": "returns null for blank company name",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - fetchCompanyResearch"
+          ],
+          "fullName": " companyResearchService - fetchCompanyResearch returns cached company research when DB cache hit",
+          "status": "passed",
+          "title": "returns cached company research when DB cache hit",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - fetchCompanyResearch"
+          ],
+          "fullName": " companyResearchService - fetchCompanyResearch regenerates via AI when cache expired and saves with normalized size",
+          "status": "passed",
+          "title": "regenerates via AI when cache expired and saves with normalized size",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - fetchCompanyResearch"
+          ],
+          "fullName": " companyResearchService - fetchCompanyResearch returns null when AI responds NOT_FOUND",
+          "status": "passed",
+          "title": "returns null when AI responds NOT_FOUND",
+          "duration": 24,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "companyResearchService - fetchCompanyResearch"
+          ],
+          "fullName": " companyResearchService - fetchCompanyResearch returns null when AI response cannot be parsed as JSON",
+          "status": "passed",
+          "title": "returns null when AI response cannot be parsed as JSON",
+          "duration": 22,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665151,
+      "endTime": 1765905665263,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/services/companyResearchService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSalaryResearch"
+          ],
+          "fullName": " orchestrator - handleSalaryResearch returns unauthenticated when userId missing",
+          "status": "passed",
+          "title": "returns unauthenticated when userId missing",
+          "duration": 377,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSalaryResearch"
+          ],
+          "fullName": " orchestrator - handleSalaryResearch returns missing title when title empty",
+          "status": "passed",
+          "title": "returns missing title when title empty",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSalaryResearch"
+          ],
+          "fullName": " orchestrator - handleSalaryResearch parses salary JSON from fenced codeblock text",
+          "status": "passed",
+          "title": "parses salary JSON from fenced codeblock text",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSalaryResearch"
+          ],
+          "fullName": " orchestrator - handleSalaryResearch returns Invalid AI response format when salary JSON parsing fails",
+          "status": "passed",
+          "title": "returns Invalid AI response format when salary JSON parsing fails",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSalaryResearch"
+          ],
+          "fullName": " orchestrator - handleSalaryResearch returns AI error when provider throws",
+          "status": "passed",
+          "title": "returns AI error when provider throws",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleCompanyResearch"
+          ],
+          "fullName": " orchestrator - handleCompanyResearch returns unauthenticated when userId missing",
+          "status": "passed",
+          "title": "returns unauthenticated when userId missing",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleCompanyResearch"
+          ],
+          "fullName": " orchestrator - handleCompanyResearch returns missing companyName when blank",
+          "status": "passed",
+          "title": "returns missing companyName when blank",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleCompanyResearch"
+          ],
+          "fullName": " orchestrator - handleCompanyResearch parses JSON string, normalizes size, and persists (non-blocking)",
+          "status": "passed",
+          "title": "parses JSON string, normalizes size, and persists (non-blocking)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleCompanyResearch"
+          ],
+          "fullName": " orchestrator - handleCompanyResearch falls back to fetchCompanyResearch when AI throws and still returns artifact",
+          "status": "passed",
+          "title": "falls back to fetchCompanyResearch when AI throws and still returns artifact",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSkillsOptimization"
+          ],
+          "fullName": " orchestrator - handleSkillsOptimization returns unauthenticated when userId missing",
+          "status": "passed",
+          "title": "returns unauthenticated when userId missing",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSkillsOptimization"
+          ],
+          "fullName": " orchestrator - handleSkillsOptimization returns error when job belongs to different user",
+          "status": "passed",
+          "title": "returns error when job belongs to different user",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleSkillsOptimization"
+          ],
+          "fullName": " orchestrator - handleSkillsOptimization returns artifact when skills query + AI succeed",
+          "status": "passed",
+          "title": "returns artifact when skills query + AI succeed",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleExperienceTailoring"
+          ],
+          "fullName": " orchestrator - handleExperienceTailoring returns artifact with kind=resume and subkind metadata",
+          "status": "passed",
+          "title": "returns artifact with kind=resume and subkind metadata",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateResume"
+          ],
+          "fullName": " orchestrator - handleGenerateResume returns unauthenticated when userId missing",
+          "status": "passed",
+          "title": "returns unauthenticated when userId missing",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateResume"
+          ],
+          "fullName": " orchestrator - handleGenerateResume returns missing jobId when jobId missing",
+          "status": "passed",
+          "title": "returns missing jobId when jobId missing",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateResume"
+          ],
+          "fullName": " orchestrator - handleGenerateResume returns error when job belongs to different user",
+          "status": "passed",
+          "title": "returns error when job belongs to different user",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateResume"
+          ],
+          "fullName": " orchestrator - handleGenerateResume generates resume and normalizes malformed summary + sections",
+          "status": "passed",
+          "title": "generates resume and normalizes malformed summary + sections",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateResume"
+          ],
+          "fullName": " orchestrator - handleGenerateResume returns AI error when provider throws",
+          "status": "passed",
+          "title": "returns AI error when provider throws",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateCoverLetter"
+          ],
+          "fullName": " orchestrator - handleGenerateCoverLetter returns unauthenticated when userId missing",
+          "status": "passed",
+          "title": "returns unauthenticated when userId missing",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateCoverLetter"
+          ],
+          "fullName": " orchestrator - handleGenerateCoverLetter returns missing jobId when jobId missing",
+          "status": "passed",
+          "title": "returns missing jobId when jobId missing",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateCoverLetter"
+          ],
+          "fullName": " orchestrator - handleGenerateCoverLetter queries optional company research and still generates cover letter",
+          "status": "passed",
+          "title": "queries optional company research and still generates cover letter",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateCoverLetter"
+          ],
+          "fullName": " orchestrator - handleGenerateCoverLetter continues when company research query rejects",
+          "status": "passed",
+          "title": "continues when company research query rejects",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "orchestrator - handleGenerateCoverLetter"
+          ],
+          "fullName": " orchestrator - handleGenerateCoverLetter returns AI error when provider throws",
+          "status": "passed",
+          "title": "returns AI error when provider throws",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663888,
+      "endTime": 1765905664295,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/services/orchestrator.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Salary Analytics Route"
+          ],
+          "fullName": " Salary Analytics Route returns 200 with analytics payload when query succeeds",
+          "status": "passed",
+          "title": "returns 200 with analytics payload when query succeeds",
+          "duration": 480,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Salary Analytics Route"
+          ],
+          "fullName": " Salary Analytics Route returns 500 when Supabase query errors",
+          "status": "passed",
+          "title": "returns 500 when Supabase query errors",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Salary Analytics Route"
+          ],
+          "fullName": " Salary Analytics Route applies gte() filter when timeRange is 30d/90d/1y",
+          "status": "passed",
+          "title": "applies gte() filter when timeRange is 30d/90d/1y",
+          "duration": 11,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663888,
+      "endTime": 1765905664396,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/analytics/salary.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Job Materials Routes"
+          ],
+          "fullName": " Job Materials Routes post() returns 201 with persisted=false when Supabase is not configured",
+          "status": "passed",
+          "title": "post() returns 201 with persisted=false when Supabase is not configured",
+          "duration": 234,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Job Materials Routes"
+          ],
+          "fullName": " Job Materials Routes getByJob() returns 200 empty items when Supabase is not configured",
+          "status": "passed",
+          "title": "getByJob() returns 200 empty items when Supabase is not configured",
+          "duration": 13,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663956,
+      "endTime": 1765905664203,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/artifacts/job-materials.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Company Research Route"
+          ],
+          "fullName": " Company Research Route returns 400 when name is missing",
+          "status": "passed",
+          "title": "returns 400 when name is missing",
+          "duration": 44,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Company Research Route"
+          ],
+          "fullName": " Company Research Route returns 200 with data null when research not found",
+          "status": "passed",
+          "title": "returns 200 with data null when research not found",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Company Research Route"
+          ],
+          "fullName": " Company Research Route calls service with sanitized params and returns 200 with data",
+          "status": "passed",
+          "title": "calls service with sanitized params and returns 200 with data",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Company Research Route"
+          ],
+          "fullName": " Company Research Route returns 500 when service throws",
+          "status": "passed",
+          "title": "returns 500 when service throws",
+          "duration": 11,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664791,
+      "endTime": 1765905664868,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/company/research.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "User Companies Route"
+          ],
+          "fullName": " User Companies Route returns 503 when database is not configured",
+          "status": "passed",
+          "title": "returns 503 when database is not configured",
+          "duration": 492,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663867,
+      "endTime": 1765905664361,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/company/user-companies.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes list() calls service and returns drafts",
+          "status": "passed",
+          "title": "list() calls service and returns drafts",
+          "duration": 111,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes get() throws bad_request when draftId is missing",
+          "status": "passed",
+          "title": "get() throws bad_request when draftId is missing",
+          "duration": 16,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes get() calls service and returns draft",
+          "status": "passed",
+          "title": "get() calls service and returns draft",
+          "duration": 16,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes post() throws bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "post() throws bad_json when body is invalid JSON",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes post() throws bad_request when name is missing",
+          "status": "passed",
+          "title": "post() throws bad_request when name is missing",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes post() creates draft and returns 201",
+          "status": "passed",
+          "title": "post() creates draft and returns 201",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes patch() throws bad_request when draftId is missing",
+          "status": "passed",
+          "title": "patch() throws bad_request when draftId is missing",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes patch() throws bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "patch() throws bad_json when body is invalid JSON",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes patch() updates draft and returns 200",
+          "status": "passed",
+          "title": "patch() updates draft and returns 200",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes del() throws bad_request when draftId is missing",
+          "status": "passed",
+          "title": "del() throws bad_request when draftId is missing",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Cover Letter Drafts Routes"
+          ],
+          "fullName": " Cover Letter Drafts Routes del() deletes draft and returns 204",
+          "status": "passed",
+          "title": "del() deletes draft and returns 204",
+          "duration": 7,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664049,
+      "endTime": 1765905664257,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/cover-letter/drafts.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predict Job Search Route - validation"
+          ],
+          "fullName": " Predict Job Search Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 60,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predict Job Search Route - validation"
+          ],
+          "fullName": " Predict Job Search Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predict Job Search Route - validation"
+          ],
+          "fullName": " Predict Job Search Route - validation throws 400 bad_request when jobs is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobs is missing",
+          "duration": 15,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predict Job Search Route - validation"
+          ],
+          "fullName": " Predict Job Search Route - validation throws 502 ai_error when service returns {error}",
+          "status": "passed",
+          "title": "throws 502 ai_error when service returns {error}",
+          "duration": 25,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predict Job Search Route - validation"
+          ],
+          "fullName": " Predict Job Search Route - validation returns 200 with predictions",
+          "status": "passed",
+          "title": "returns 200 with predictions",
+          "duration": 18,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664829,
+      "endTime": 1765905664960,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/predict/job-search.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Checklist Route - validation"
+          ],
+          "fullName": " Generate Checklist Route - validation throws 401 auth_required when userId is missing",
+          "status": "passed",
+          "title": "throws 401 auth_required when userId is missing",
+          "duration": 160,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Checklist Route - validation"
+          ],
+          "fullName": " Generate Checklist Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Checklist Route - validation"
+          ],
+          "fullName": " Generate Checklist Route - validation throws 400 bad_request when jobTitle and company are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobTitle and company are missing",
+          "duration": 18,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Checklist Route - validation"
+          ],
+          "fullName": " Generate Checklist Route - validation returns 201 with items",
+          "status": "passed",
+          "title": "returns 201 with items",
+          "duration": 18,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664025,
+      "endTime": 1765905664238,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/checklist.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Coaching Insights Route - validation"
+          ],
+          "fullName": " Generate Coaching Insights Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 85,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Coaching Insights Route - validation"
+          ],
+          "fullName": " Generate Coaching Insights Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 22,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Coaching Insights Route - validation"
+          ],
+          "fullName": " Generate Coaching Insights Route - validation throws 400 missing_field when menteeData is missing",
+          "status": "passed",
+          "title": "throws 400 missing_field when menteeData is missing",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Coaching Insights Route - validation"
+          ],
+          "fullName": " Generate Coaching Insights Route - validation throws 400 missing_field when menteeData lacks name/jobStats",
+          "status": "passed",
+          "title": "throws 400 missing_field when menteeData lacks name/jobStats",
+          "duration": 29,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Coaching Insights Route - validation"
+          ],
+          "fullName": " Generate Coaching Insights Route - validation returns 200 with parsed insights and meta",
+          "status": "passed",
+          "title": "returns 200 with parsed insights and meta",
+          "duration": 21,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664906,
+      "endTime": 1765905665085,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/coaching-insights.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 177,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 23,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 400 bad_request when companyName is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when companyName is missing",
+          "duration": 16,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 400 bad_request when jobId is present but not numeric",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is present but not numeric",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 502 ai_error when orchestrator returns error",
+          "status": "passed",
+          "title": "throws 502 ai_error when orchestrator returns error",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation throws 500 no_artifact when orchestrator returns no artifact",
+          "status": "passed",
+          "title": "throws 500 no_artifact when orchestrator returns no artifact",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Company Research Route - validation"
+          ],
+          "fullName": " Generate Company Research Route - validation returns 201 with persisted=false when Supabase env is missing",
+          "status": "passed",
+          "title": "returns 201 with persisted=false when Supabase env is missing",
+          "duration": 21,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664025,
+      "endTime": 1765905664294,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/company-research.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 320,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 28,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation throws 400 bad_request when jobId is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is missing",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation throws 502 ai_error when orchestrator returns error",
+          "status": "passed",
+          "title": "throws 502 ai_error when orchestrator returns error",
+          "duration": 15,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation throws 500 no_artifact when orchestrator returns no artifact",
+          "status": "passed",
+          "title": "throws 500 no_artifact when orchestrator returns no artifact",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Cover Letter Route - validation"
+          ],
+          "fullName": " Generate Cover Letter Route - validation returns 201 with persisted=false when Supabase env is missing",
+          "status": "passed",
+          "title": "returns 201 with persisted=false when Supabase env is missing",
+          "duration": 11,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663885,
+      "endTime": 1765905664280,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/cover-letter.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Event Contacts Route - validation"
+          ],
+          "fullName": " Generate Event Contacts Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 89,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Event Contacts Route - validation"
+          ],
+          "fullName": " Generate Event Contacts Route - validation throws 400 bad_request when event_name and url are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when event_name and url are missing",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Event Contacts Route - validation"
+          ],
+          "fullName": " Generate Event Contacts Route - validation returns 200 with suggestions when AI returns json",
+          "status": "passed",
+          "title": "returns 200 with suggestions when AI returns json",
+          "duration": 28,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664872,
+      "endTime": 1765905665011,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/event-contacts.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Experience Tailoring Route - validation"
+          ],
+          "fullName": " Generate Experience Tailoring Route - validation throws 400 bad_request when jobId is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is missing",
+          "duration": 115,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Experience Tailoring Route - validation"
+          ],
+          "fullName": " Generate Experience Tailoring Route - validation returns 201 with artifact payload when orchestrator succeeds",
+          "status": "passed",
+          "title": "returns 201 with artifact payload when orchestrator succeeds",
+          "duration": 11,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665103,
+      "endTime": 1765905665232,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/experience-tailoring.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Feedback Route - validation"
+          ],
+          "fullName": " Generate Interview Feedback Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 89,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Feedback Route - validation"
+          ],
+          "fullName": " Generate Interview Feedback Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 29,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Feedback Route - validation"
+          ],
+          "fullName": " Generate Interview Feedback Route - validation returns 201 with modelAnswer/feedback when AI returns json",
+          "status": "passed",
+          "title": "returns 201 with modelAnswer/feedback when AI returns json",
+          "duration": 12,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664974,
+      "endTime": 1765905665107,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/interview-feedback.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Questions Route - validation"
+          ],
+          "fullName": " Generate Interview Questions Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 198,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Questions Route - validation"
+          ],
+          "fullName": " Generate Interview Questions Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 19,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Questions Route - validation"
+          ],
+          "fullName": " Generate Interview Questions Route - validation returns 201 with questions when AI returns json.questions",
+          "status": "passed",
+          "title": "returns 201 with questions when AI returns json.questions",
+          "duration": 19,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Questions Route - validation"
+          ],
+          "fullName": " Generate Interview Questions Route - validation throws 502 ai_error when AI throws",
+          "status": "passed",
+          "title": "throws 502 ai_error when AI throws",
+          "duration": 10,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663956,
+      "endTime": 1765905664204,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/interview-questions.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Request Route - validation"
+          ],
+          "fullName": " Generate Interview Request Route - validation throws 400 bad_request when required data is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when required data is missing",
+          "duration": 139,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Interview Request Route - validation"
+          ],
+          "fullName": " Generate Interview Request Route - validation returns 201 with subject/email/prep when AI returns json",
+          "status": "passed",
+          "title": "returns 201 with subject/email/prep when AI returns json",
+          "duration": 17,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664046,
+      "endTime": 1765905664203,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/interview-request.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Import Route - validation"
+          ],
+          "fullName": " Generate Job Import Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 1329,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Import Route - validation"
+          ],
+          "fullName": " Generate Job Import Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Import Route - validation"
+          ],
+          "fullName": " Generate Job Import Route - validation throws 400 bad_request when url is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when url is missing",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Import Route - validation"
+          ],
+          "fullName": " Generate Job Import Route - validation throws 400 bad_request when url protocol is not http/https",
+          "status": "passed",
+          "title": "throws 400 bad_request when url protocol is not http/https",
+          "duration": 12,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663868,
+      "endTime": 1765905665237,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/job-import.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Match Route - validation"
+          ],
+          "fullName": " Generate Job Match Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 201,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Match Route - validation"
+          ],
+          "fullName": " Generate Job Match Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 24,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Job Match Route - validation"
+          ],
+          "fullName": " Generate Job Match Route - validation throws 400 bad_request when jobId is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is missing",
+          "duration": 18,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663956,
+      "endTime": 1765905664202,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/job-match.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Mock Interview Summary Route - validation"
+          ],
+          "fullName": " Generate Mock Interview Summary Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 68,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Mock Interview Summary Route - validation"
+          ],
+          "fullName": " Generate Mock Interview Summary Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 30,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Mock Interview Summary Route - validation"
+          ],
+          "fullName": " Generate Mock Interview Summary Route - validation returns 201 fallback when AI returns no structured output",
+          "status": "passed",
+          "title": "returns 201 fallback when AI returns no structured output",
+          "duration": 19,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Mock Interview Summary Route - validation"
+          ],
+          "fullName": " Generate Mock Interview Summary Route - validation returns 201 with sanitized AI fields when json is present",
+          "status": "passed",
+          "title": "returns 201 with sanitized AI fields when json is present",
+          "duration": 28,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664948,
+      "endTime": 1765905665096,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/mock-interview-summary.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Profile Tips Route - validation"
+          ],
+          "fullName": " Generate Profile Tips Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 68,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Profile Tips Route - validation"
+          ],
+          "fullName": " Generate Profile Tips Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 10,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Profile Tips Route - validation"
+          ],
+          "fullName": " Generate Profile Tips Route - validation throws 400 bad_request when body is null",
+          "status": "passed",
+          "title": "throws 400 bad_request when body is null",
+          "duration": 21,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Profile Tips Route - validation"
+          ],
+          "fullName": " Generate Profile Tips Route - validation returns 200 with tips when AI returns json.tips",
+          "status": "passed",
+          "title": "returns 200 with tips when AI returns json.tips",
+          "duration": 10,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664994,
+      "endTime": 1765905665105,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/profile-tips.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Reference Points Route - validation"
+          ],
+          "fullName": " Generate Reference Points Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 130,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Reference Points Route - validation"
+          ],
+          "fullName": " Generate Reference Points Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 18,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Reference Points Route - validation"
+          ],
+          "fullName": " Generate Reference Points Route - validation throws 400 bad_request when skills/job_descriptions/notes are all missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when skills/job_descriptions/notes are all missing",
+          "duration": 17,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Reference Points Route - validation"
+          ],
+          "fullName": " Generate Reference Points Route - validation returns 200 with guide/talking_points from AI json",
+          "status": "passed",
+          "title": "returns 200 with guide/talking_points from AI json",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Reference Points Route - validation"
+          ],
+          "fullName": " Generate Reference Points Route - validation returns 200 with fallback guide when AI returns empty",
+          "status": "passed",
+          "title": "returns 200 with fallback guide when AI returns empty",
+          "duration": 16,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664025,
+      "endTime": 1765905664220,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/reference-points.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Referral Request Route - validation"
+          ],
+          "fullName": " Generate Referral Request Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 140,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Referral Request Route - validation"
+          ],
+          "fullName": " Generate Referral Request Route - validation throws 400 bad_request when job_title and job_company are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when job_title and job_company are missing",
+          "duration": 13,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Referral Request Route - validation"
+          ],
+          "fullName": " Generate Referral Request Route - validation returns 200 with suggestions when AI returns json",
+          "status": "passed",
+          "title": "returns 200 with suggestions when AI returns json",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Referral Request Route - validation"
+          ],
+          "fullName": " Generate Referral Request Route - validation returns 200 with fallback suggestions when AI returns none",
+          "status": "passed",
+          "title": "returns 200 with fallback suggestions when AI returns none",
+          "duration": 16,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664046,
+      "endTime": 1765905664223,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/referral-request.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Relationship Route - validation"
+          ],
+          "fullName": " Generate Relationship Route - validation throws 429 rate_limited when over limit",
+          "status": "passed",
+          "title": "throws 429 rate_limited when over limit",
+          "duration": 86,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Relationship Route - validation"
+          ],
+          "fullName": " Generate Relationship Route - validation throws 400 bad_json when body parse fails",
+          "status": "passed",
+          "title": "throws 400 bad_json when body parse fails",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Relationship Route - validation"
+          ],
+          "fullName": " Generate Relationship Route - validation throws 400 bad_request when required fields are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when required fields are missing",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Relationship Route - validation"
+          ],
+          "fullName": " Generate Relationship Route - validation returns 200 with relationshipSuggestions from AI json",
+          "status": "passed",
+          "title": "returns 200 with relationshipSuggestions from AI json",
+          "duration": 5,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665119,
+      "endTime": 1765905665228,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/relationship.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 160,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 29,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation throws 400 bad_request when jobId is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is missing",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation throws 502 ai_error when orchestrator returns error",
+          "status": "passed",
+          "title": "throws 502 ai_error when orchestrator returns error",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation throws 500 no_artifact when orchestrator returns no artifact",
+          "status": "passed",
+          "title": "throws 500 no_artifact when orchestrator returns no artifact",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Resume Route - validation"
+          ],
+          "fullName": " Generate Resume Route - validation returns 201 with persisted=false when Supabase env is missing",
+          "status": "passed",
+          "title": "returns 201 with persisted=false when Supabase env is missing",
+          "duration": 16,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664046,
+      "endTime": 1765905664287,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/resume.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Skills Optimization Route - validation"
+          ],
+          "fullName": " Generate Skills Optimization Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 154,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Skills Optimization Route - validation"
+          ],
+          "fullName": " Generate Skills Optimization Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 29,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Skills Optimization Route - validation"
+          ],
+          "fullName": " Generate Skills Optimization Route - validation throws 400 bad_request when jobId is missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when jobId is missing",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Skills Optimization Route - validation"
+          ],
+          "fullName": " Generate Skills Optimization Route - validation throws 502 ai_error when orchestrator returns error",
+          "status": "passed",
+          "title": "throws 502 ai_error when orchestrator returns error",
+          "duration": 16,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Skills Optimization Route - validation"
+          ],
+          "fullName": " Generate Skills Optimization Route - validation returns 200 with persisted=false when Supabase env is missing",
+          "status": "passed",
+          "title": "returns 200 with persisted=false when Supabase env is missing",
+          "duration": 14,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664048,
+      "endTime": 1765905664276,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/skills-optimization.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Suggest Contacts Route - validation"
+          ],
+          "fullName": " Generate Suggest Contacts Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 50,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Suggest Contacts Route - validation"
+          ],
+          "fullName": " Generate Suggest Contacts Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 17,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Suggest Contacts Route - validation"
+          ],
+          "fullName": " Generate Suggest Contacts Route - validation throws 400 bad_request when job_title and job_company are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when job_title and job_company are missing",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Generate Suggest Contacts Route - validation"
+          ],
+          "fullName": " Generate Suggest Contacts Route - validation returns 200 with roleSuggestions/publicLeaders from AI json",
+          "status": "passed",
+          "title": "returns 200 with roleSuggestions/publicLeaders from AI json",
+          "duration": 22,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664829,
+      "endTime": 1765905664939,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/suggest-contacts.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should return null for null/undefined content",
+          "status": "passed",
+          "title": "should return null for null/undefined content",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle short strings",
+          "status": "passed",
+          "title": "should handle short strings",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should truncate long strings",
+          "status": "passed",
+          "title": "should truncate long strings",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle exactly 400 character strings",
+          "status": "passed",
+          "title": "should handle exactly 400 character strings",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should extract bullets from resume content",
+          "status": "passed",
+          "title": "should extract bullets from resume content",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle bullets with text property",
+          "status": "passed",
+          "title": "should handle bullets with text property",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should filter out empty bullets",
+          "status": "passed",
+          "title": "should filter out empty bullets",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle mixed bullet types",
+          "status": "passed",
+          "title": "should handle mixed bullet types",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should only take first 3 bullets",
+          "status": "passed",
+          "title": "should only take first 3 bullets",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle empty bullets array",
+          "status": "passed",
+          "title": "should handle empty bullets array",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should stringify non-bullet objects",
+          "status": "passed",
+          "title": "should stringify non-bullet objects",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should truncate stringified long objects",
+          "status": "passed",
+          "title": "should truncate stringified long objects",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle arrays",
+          "status": "passed",
+          "title": "should handle arrays",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle numbers",
+          "status": "passed",
+          "title": "should handle numbers",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle booleans",
+          "status": "passed",
+          "title": "should handle booleans",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle nested objects",
+          "status": "passed",
+          "title": "should handle nested objects",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle objects with special characters",
+          "status": "passed",
+          "title": "should handle objects with special characters",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle circular references gracefully",
+          "status": "passed",
+          "title": "should handle circular references gracefully",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle Date objects",
+          "status": "passed",
+          "title": "should handle Date objects",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle objects with toString method",
+          "status": "passed",
+          "title": "should handle objects with toString method",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should preserve newlines in string content",
+          "status": "passed",
+          "title": "should preserve newlines in string content",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "makePreview"
+          ],
+          "fullName": " makePreview should handle unicode characters",
+          "status": "passed",
+          "title": "should handle unicode characters",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905665722,
+      "endTime": 1765905665731,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/generate/utils.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predictions Response Time Route - validation"
+          ],
+          "fullName": " Predictions Response Time Route - validation throws 429 rate_limited and sets Retry-After",
+          "status": "passed",
+          "title": "throws 429 rate_limited and sets Retry-After",
+          "duration": 89,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predictions Response Time Route - validation"
+          ],
+          "fullName": " Predictions Response Time Route - validation throws 400 bad_json when body is invalid JSON",
+          "status": "passed",
+          "title": "throws 400 bad_json when body is invalid JSON",
+          "duration": 17,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predictions Response Time Route - validation"
+          ],
+          "fullName": " Predictions Response Time Route - validation throws 400 bad_request when submissions and job are missing",
+          "status": "passed",
+          "title": "throws 400 bad_request when submissions and job are missing",
+          "duration": 17,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Predictions Response Time Route - validation"
+          ],
+          "fullName": " Predictions Response Time Route - validation returns 200 with grouped aggregates when submissions provided",
+          "status": "passed",
+          "title": "returns 200 with grouped aggregates when submissions provided",
+          "duration": 7,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905664974,
+      "endTime": 1765905665108,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/predictions/response-time.validation.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Time Entries Create Route"
+          ],
+          "fullName": " Time Entries Create Route returns 400 when activity_type is missing",
+          "status": "passed",
+          "title": "returns 400 when activity_type is missing",
+          "duration": 448,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Time Entries Create Route"
+          ],
+          "fullName": " Time Entries Create Route returns 400 when duration_minutes < 1",
+          "status": "passed",
+          "title": "returns 400 when duration_minutes < 1",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Time Entries Create Route"
+          ],
+          "fullName": " Time Entries Create Route returns 201 when insert succeeds",
+          "status": "passed",
+          "title": "returns 201 when insert succeeds",
+          "duration": 27,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663901,
+      "endTime": 1765905664398,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/time-entries/create.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            ""
+          ],
+          "fullName": " registers test suite (smoke)",
+          "status": "passed",
+          "title": "registers test suite (smoke)",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Salary Research Route"
+          ],
+          "fullName": " Salary Research Route returns 400 when title is missing",
+          "status": "passed",
+          "title": "returns 400 when title is missing",
+          "duration": 1120,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Salary Research Route"
+          ],
+          "fullName": " Salary Research Route returns 201 with artifact content object",
+          "status": "passed",
+          "title": "returns 201 with artifact content object",
+          "duration": 141,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905663956,
+      "endTime": 1765905665218,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/server/routes/salary/research.test.ts"
+    }
+  ]
+}
