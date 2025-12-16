@@ -37,7 +37,6 @@ export default defineConfig({
             "@emotion/react",
             "@emotion/styled",
           ],
-          "vendor-mui-icons": ["@mui/icons-material"],
           "vendor-dnd": [
             "@hello-pangea/dnd",
             "@dnd-kit/core",
