@@ -43,6 +43,7 @@ import CompanyResearchCard from "@job_pipeline/components/cards/CompanyResearchC
 import SkillsGapCard from "@job_pipeline/components/cards/SkillsGapCard/SkillsGapCard";
 import ApplicationQualityCard from "@job_pipeline/components/cards/ApplicationQualityCard/ApplicationQualityCard";
 import MarketIntelligenceCard from "@job_pipeline/components/cards/MarketIntelligenceCard/MarketIntelligenceCard";
+import CareerPathSimulationCard from "@job_pipeline/components/cards/CareerPathSimulationCard/CareerPathSimulationCard";
 import TimeToHireCard from "@job_pipeline/components/cards/TimeToHireCard/TimeToHireCard";
 import ResponseRateCard from "@job_pipeline/components/cards/ResponseRateCard/ResponseRateCard";
 import GoalSettingCard from "@job_pipeline/components/cards/GoalSettingCard/GoalSettingCard";
@@ -184,6 +185,9 @@ export default function AnalyticsView() {
     }).length;
   }, [jobs]);
 
+  // Weekly application goal
+  const weeklyGoal = 5; // Default weekly goal
+
   // AI-powered recommendations
   const recommendations = useMemo(() => {
     return generateAIInsights(
@@ -192,7 +196,7 @@ export default function AnalyticsView() {
       responseRate,
       deadlineStats.adherence,
       timeToOffer,
-      5, // Default weekly goal
+      weeklyGoal,
       thisWeekApplications
     );
   }, [
@@ -819,6 +823,9 @@ export default function AnalyticsView() {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <MarketIntelligenceCard />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <CareerPathSimulationCard />
           </Grid>
         </Grid>
 

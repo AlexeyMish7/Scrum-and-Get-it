@@ -820,6 +820,27 @@ async function handleRequest(
     }
 
     // ------------------------------------------------------------------
+    // CAREER PATH SIMULATION ENDPOINT (protected)
+    // ------------------------------------------------------------------
+    if (
+      method === "POST" &&
+      pathname === "/api/analytics/career/paths"
+    ) {
+      try {
+        const { handleCareerPathSimulation } = await import(
+          "./routes/analytics/career-paths.js"
+        );
+        await handleCareerPathSimulation(req, res);
+        ctx.logComplete(method, pathname, 200);
+        return;
+      } catch (error) {
+        console.error("❌ ERROR in career paths route:", error);
+        jsonReply(req, res, 500, { error: "Internal server error" });
+        return;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // TIME ENTRIES ENDPOINT (protected)
     // ------------------------------------------------------------------
     if (method === "POST" && pathname === "/api/time-entries") {

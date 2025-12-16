@@ -203,6 +203,333 @@ function randomSampleForKind(kind: string) {
             "Strong candidate market with companies competing for talent. Senior roles particularly competitive.",
         },
       };
+    case "career_paths":
+      return {
+        json: {
+          paths: [
+            {
+              id: "path-1",
+              name: "Senior Engineering Track",
+              description: "Continue on individual contributor path, becoming a senior/staff engineer with deep technical expertise",
+              targetRole: "Staff Software Engineer",
+              targetIndustry: "Technology",
+              companyType: "mid-size",
+              milestones: [
+                {
+                  year: 2,
+                  title: "Senior Software Engineer",
+                  salaryRange: { min: 140000, max: 180000, median: 160000 },
+                  probability: 0.85,
+                  requiredSkills: ["System Design", "Leadership", "Advanced TypeScript"],
+                  description: "Lead major projects, mentor junior engineers, design scalable systems"
+                },
+                {
+                  year: 5,
+                  title: "Staff Software Engineer",
+                  salaryRange: { min: 180000, max: 240000, median: 210000 },
+                  probability: 0.65,
+                  requiredSkills: ["Architecture", "Cross-team Leadership", "Strategic Planning"],
+                  description: "Define technical strategy, influence org-wide decisions, lead multiple teams"
+                },
+                {
+                  year: 8,
+                  title: "Principal Engineer",
+                  salaryRange: { min: 220000, max: 320000, median: 270000 },
+                  probability: 0.40,
+                  requiredSkills: ["Technical Vision", "Org-wide Influence", "Innovation"],
+                  description: "Set company-wide technical direction, solve hardest problems, industry thought leadership"
+                }
+              ],
+              salaryProgression: [
+                { year: 1, best: 145000, average: 125000, worst: 110000, percentile25: 118000, percentile75: 135000 },
+                { year: 2, best: 180000, average: 160000, worst: 140000, percentile25: 150000, percentile75: 170000 },
+                { year: 3, best: 195000, average: 170000, worst: 150000, percentile25: 160000, percentile75: 185000 },
+                { year: 4, best: 210000, average: 185000, worst: 165000, percentile25: 175000, percentile75: 200000 },
+                { year: 5, best: 240000, average: 210000, worst: 180000, percentile25: 195000, percentile75: 225000 },
+                { year: 6, best: 260000, average: 225000, worst: 195000, percentile25: 210000, percentile75: 245000 },
+                { year: 7, best: 280000, average: 240000, worst: 210000, percentile25: 225000, percentile75: 265000 },
+                { year: 8, best: 310000, average: 265000, worst: 230000, percentile25: 245000, percentile75: 290000 },
+                { year: 9, best: 335000, average: 285000, worst: 245000, percentile25: 265000, percentile75: 310000 },
+                { year: 10, best: 360000, average: 305000, worst: 260000, percentile25: 285000, percentile75: 335000 }
+              ],
+              fiveYearEarnings: { best: 970000, average: 850000, worst: 745000 },
+              tenYearEarnings: { best: 2575000, average: 2205000, worst: 1915000 },
+              lifetimeEarningsEstimate: 8500000,
+              riskAnalysis: {
+                volatility: "low",
+                marketDependence: "medium",
+                skillObsolescence: "low",
+                competitionLevel: "medium",
+                summary: "Stable path with consistent demand. Technical skills age slower than management skills. Low layoff risk for senior ICs."
+              },
+              successScores: {
+                salary: 82,
+                workLifeBalance: 75,
+                learningOpportunities: 95,
+                careerImpact: 80,
+                autonomy: 90,
+                overall: 84
+              },
+              advantages: [
+                "Deep technical expertise highly valued",
+                "Strong work-life balance at senior IC levels",
+                "Continuous learning opportunities",
+                "High autonomy in technical decisions",
+                "Less office politics than management track"
+              ],
+              disadvantages: [
+                "Lower ceiling than management for total comp",
+                "Fewer leadership development opportunities",
+                "Can feel isolated without direct reports",
+                "Harder to transition to management later",
+                "Limited influence on business strategy"
+              ],
+              criticalSkillsNeeded: [
+                "Advanced system design and architecture",
+                "Technical mentorship and code reviews",
+                "Cross-functional collaboration",
+                "Technical writing and documentation"
+              ],
+              recommendedActions: [
+                "Lead a major architectural initiative in next 6 months",
+                "Mentor 2-3 junior engineers consistently",
+                "Write technical blog posts or speak at meetups",
+                "Deep dive into distributed systems and scalability",
+                "Build relationships with other senior ICs across teams"
+              ]
+            },
+            {
+              id: "path-2",
+              name: "Engineering Management Track",
+              description: "Transition into people management, leading teams and driving organizational impact",
+              targetRole: "Engineering Manager",
+              targetIndustry: "Technology",
+              companyType: "mid-size",
+              milestones: [
+                {
+                  year: 2,
+                  title: "Tech Lead",
+                  salaryRange: { min: 145000, max: 185000, median: 165000 },
+                  probability: 0.75,
+                  requiredSkills: ["Team Leadership", "Project Management", "Technical Mentorship"],
+                  description: "Lead team of 3-5 engineers, manage sprints, guide technical decisions"
+                },
+                {
+                  year: 4,
+                  title: "Engineering Manager",
+                  salaryRange: { min: 170000, max: 230000, median: 200000 },
+                  probability: 0.70,
+                  requiredSkills: ["People Management", "Hiring", "Performance Reviews", "Strategy"],
+                  description: "Manage 6-10 engineers, own team roadmap, drive hiring and retention"
+                },
+                {
+                  year: 7,
+                  title: "Senior Engineering Manager",
+                  salaryRange: { min: 200000, max: 280000, median: 240000 },
+                  probability: 0.50,
+                  requiredSkills: ["Org Design", "Budget Management", "Executive Communication"],
+                  description: "Lead multiple teams (20-30 people), influence product strategy, manage managers"
+                },
+                {
+                  year: 10,
+                  title: "Director of Engineering",
+                  salaryRange: { min: 240000, max: 350000, median: 295000 },
+                  probability: 0.35,
+                  requiredSkills: ["Strategic Planning", "Executive Leadership", "Cross-org Collaboration"],
+                  description: "Own engineering for major product area, set technical vision, executive presence"
+                }
+              ],
+              salaryProgression: [
+                { year: 1, best: 145000, average: 125000, worst: 110000, percentile25: 118000, percentile75: 135000 },
+                { year: 2, best: 185000, average: 165000, worst: 145000, percentile25: 155000, percentile75: 175000 },
+                { year: 3, best: 205000, average: 180000, worst: 160000, percentile25: 170000, percentile75: 195000 },
+                { year: 4, best: 230000, average: 200000, worst: 175000, percentile25: 185000, percentile75: 220000 },
+                { year: 5, best: 250000, average: 215000, worst: 190000, percentile25: 200000, percentile75: 235000 },
+                { year: 6, best: 270000, average: 230000, worst: 205000, percentile25: 215000, percentile75: 255000 },
+                { year: 7, best: 295000, average: 250000, worst: 220000, percentile25: 235000, percentile75: 275000 },
+                { year: 8, best: 315000, average: 270000, worst: 235000, percentile25: 255000, percentile75: 295000 },
+                { year: 9, best: 340000, average: 290000, worst: 250000, percentile25: 270000, percentile75: 320000 },
+                { year: 10, best: 365000, average: 310000, worst: 270000, percentile25: 290000, percentile75: 340000 }
+              ],
+              fiveYearEarnings: { best: 1015000, average: 885000, worst: 780000 },
+              tenYearEarnings: { best: 2685000, average: 2285000, worst: 1995000 },
+              lifetimeEarningsEstimate: 9200000,
+              riskAnalysis: {
+                volatility: "medium",
+                marketDependence: "high",
+                skillObsolescence: "medium",
+                competitionLevel: "high",
+                summary: "Higher compensation ceiling but more volatile. Management positions often first to be cut in downturns. Requires continuous people skills development."
+              },
+              successScores: {
+                salary: 88,
+                workLifeBalance: 55,
+                learningOpportunities: 75,
+                careerImpact: 90,
+                autonomy: 70,
+                overall: 76
+              },
+              advantages: [
+                "Higher compensation ceiling with equity multipliers",
+                "Significant organizational impact and influence",
+                "Develops valuable leadership skills",
+                "Career mobility across industries",
+                "Clearer progression to executive roles"
+              ],
+              disadvantages: [
+                "Significantly worse work-life balance",
+                "Less hands-on technical work",
+                "More meetings and administrative work",
+                "Higher stress managing people issues",
+                "First to be cut during layoffs"
+              ],
+              criticalSkillsNeeded: [
+                "One-on-one coaching and feedback",
+                "Hiring and interviewing skills",
+                "Performance management and difficult conversations",
+                "Strategic planning and roadmap creation",
+                "Stakeholder management and communication"
+              ],
+              recommendedActions: [
+                "Shadow current engineering managers for 3 months",
+                "Take management training courses (Rands Leadership Slack, etc)",
+                "Start mentoring junior engineers formally",
+                "Lead team initiatives and coordinate across functions",
+                "Read 'The Manager's Path' and 'High Output Management'"
+              ]
+            },
+            {
+              id: "path-3",
+              name: "Startup Technical Co-founder",
+              description: "Launch your own startup, building product from scratch with high risk/reward",
+              targetRole: "CTO/Co-founder",
+              targetIndustry: "Startup",
+              companyType: "startup",
+              milestones: [
+                {
+                  year: 1,
+                  title: "Founder/CTO",
+                  salaryRange: { min: 0, max: 80000, median: 60000 },
+                  probability: 1.0,
+                  requiredSkills: ["Full-stack Development", "Product Management", "Fundraising"],
+                  description: "Build MVP, find co-founders, raise pre-seed funding, acquire first customers"
+                },
+                {
+                  year: 3,
+                  title: "CTO (Series A)",
+                  salaryRange: { min: 100000, max: 180000, median: 140000 },
+                  probability: 0.20,
+                  requiredSkills: ["Team Building", "Technical Vision", "Scaling Systems"],
+                  description: "Grow eng team to 10-15, scale product, raise Series A"
+                },
+                {
+                  year: 5,
+                  title: "CTO (Series B+)",
+                  salaryRange: { min: 150000, max: 250000, median: 200000 },
+                  probability: 0.08,
+                  requiredSkills: ["Organization Building", "Strategic Partnerships", "Executive Leadership"],
+                  description: "Lead 30+ person engineering org, prepare for potential exit/IPO"
+                }
+              ],
+              salaryProgression: [
+                { year: 1, best: 80000, average: 60000, worst: 0, percentile25: 40000, percentile75: 70000 },
+                { year: 2, best: 120000, average: 80000, worst: 0, percentile25: 50000, percentile75: 100000 },
+                { year: 3, best: 180000, average: 120000, worst: 0, percentile25: 80000, percentile75: 150000 },
+                { year: 4, best: 200000, average: 140000, worst: 0, percentile25: 100000, percentile75: 180000 },
+                { year: 5, best: 250000, average: 180000, worst: 0, percentile25: 120000, percentile75: 220000 },
+                { year: 6, best: 2000000, average: 200000, worst: 0, percentile25: 140000, percentile75: 300000 },
+                { year: 7, best: 5000000, average: 220000, worst: 0, percentile25: 150000, percentile75: 500000 },
+                { year: 8, best: 10000000, average: 250000, worst: 0, percentile25: 160000, percentile75: 1000000 },
+                { year: 9, best: 15000000, average: 280000, worst: 0, percentile25: 180000, percentile75: 2000000 },
+                { year: 10, best: 50000000, average: 320000, worst: 0, percentile25: 200000, percentile75: 5000000 }
+              ],
+              fiveYearEarnings: { best: 830000, average: 580000, worst: 0 },
+              tenYearEarnings: { best: 82830000, average: 1850000, worst: 0 },
+              lifetimeEarningsEstimate: 3500000,
+              riskAnalysis: {
+                volatility: "high",
+                marketDependence: "high",
+                skillObsolescence: "low",
+                competitionLevel: "high",
+                summary: "Extremely high risk with potential for life-changing outcomes. 90% of startups fail. Requires sacrifice of stability, work-life balance, and guaranteed income. Success depends on timing, market fit, and luck."
+              },
+              successScores: {
+                salary: 65,
+                workLifeBalance: 20,
+                learningOpportunities: 100,
+                careerImpact: 95,
+                autonomy: 100,
+                overall: 76
+              },
+              advantages: [
+                "Unlimited upside potential with successful exit",
+                "Complete autonomy over technical decisions",
+                "Maximum learning across all domains",
+                "Building something from scratch",
+                "Potential to change an industry"
+              ],
+              disadvantages: [
+                "90% probability of failure",
+                "Extremely long hours (60-80 hours/week)",
+                "Financial instability for years",
+                "High stress and burnout risk",
+                "Delayed retirement savings"
+              ],
+              criticalSkillsNeeded: [
+                "Full-stack product development",
+                "Fundraising and pitch skills",
+                "Sales and business development",
+                "Team building and culture creation",
+                "Financial management and unit economics"
+              ],
+              recommendedActions: [
+                "Validate business idea with 50+ customer interviews",
+                "Build MVP in 3 months while keeping day job",
+                "Save 12-18 months of living expenses",
+                "Find technical or business co-founder",
+                "Join YC or other accelerator program"
+              ]
+            }
+          ],
+          decisionPoints: [
+            {
+              timeframe: "Year 2-3",
+              decision: "Stay IC vs. Transition to Management",
+              pathA: "Continue as Senior/Staff Engineer (IC track)",
+              pathB: "Become Tech Lead, then Engineering Manager",
+              impactDescription: "This is the critical fork where technical and management paths diverge. Harder to switch later.",
+              salaryDifferential: 80000,
+              recommendedChoice: "Path A (Senior Engineering)",
+              reasoning: "Given your learning priority (8/10) and autonomy preference (5/10), the IC track better aligns with your values. Management has only 10% higher 10-year earnings but significantly worse work-life balance."
+            },
+            {
+              timeframe: "Year 0-1",
+              decision: "Corporate Job vs. Start Startup",
+              pathA: "Continue in stable corporate role",
+              pathB: "Leave to start startup as technical co-founder",
+              impactDescription: "Startup path has 90% failure rate but 10x+ upside if successful. Requires financial cushion and risk tolerance.",
+              salaryDifferential: -400000,
+              recommendedChoice: "Path A (Corporate)",
+              reasoning: "Your work-life balance priority (6/10) conflicts with startup demands (60-80 hour weeks). Consider starting as side project first to validate idea with less risk."
+            }
+          ],
+          topRecommendation: "path-1",
+          reasoning: "The Senior Engineering (IC) track best matches your priorities: highest learning opportunities (95/100), excellent autonomy (90/100), and strong work-life balance (75/100). While management offers 4% higher lifetime earnings, the IC path better aligns with your learning focus and provides more technical depth.",
+          industryContext: {
+            targetIndustries: ["Technology", "Fintech", "Healthcare Tech"],
+            growthOutlook: {
+              "Technology": "strong",
+              "Fintech": "moderate",
+              "Healthcare Tech": "strong"
+            },
+            emergingOpportunities: [
+              "AI/ML Engineering roles seeing 40% YoY salary growth",
+              "Platform engineering becoming critical as companies scale",
+              "Security engineering demand outpacing supply by 3:1"
+            ]
+          }
+        }
+      };
     case "time_investment":
       return {
         json: {
