@@ -36,7 +36,12 @@ import { getCorsHeaders, handleCorsPreflight } from "./middleware/cors.js";
 import { createRequestContext } from "./middleware/logging.js";
 import { requireAuth, tryAuth } from "./middleware/auth.js";
 import { getMetricsSnapshot } from "./observability/metrics.js";
-import { captureException, initSentry } from "./observability/sentry.js";
+import {
+  captureException,
+  flushSentry,
+  initSentry,
+  isSentryEnabled,
+} from "./observability/sentry.js";
 import {
   handleHealth,
   handleGenerateResume,
@@ -415,9 +420,19 @@ async function handleRequest(
         status: 500,
       });
 
+      // Why: This endpoint exists specifically for verification; flush ensures the event
+      // is delivered immediately so instructors/users can confirm it in the Sentry UI.
+      await flushSentry(2000);
+
       jsonReply(req, res, 500, {
         error: "monitoring_test_error",
         message: "Intentional error emitted for monitoring verification",
+        sentry_enabled: isSentryEnabled(),
+        sentry_environment:
+          process.env.SENTRY_ENVIRONMENT ||
+          process.env.APP_ENV ||
+          process.env.NODE_ENV ||
+          "development",
       });
       ctx.logComplete(method, pathname, 500);
       return;
