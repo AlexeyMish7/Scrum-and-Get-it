@@ -584,11 +584,11 @@ function SectionHeader({
     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
       {icon}
       <Box>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" fontWeight={600} component="div">
           {title}
         </Typography>
         {subtitle && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" component="div">
             {subtitle}
           </Typography>
         )}
