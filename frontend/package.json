@@ -67,7 +67,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/file-saver": "^2.0.7",
     "@types/leaflet": "^1.9.21",
-    "@types/node": "^24.6.0",
+    "@types/node": "^25.0.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/react-image-crop": "^8.1.6",
