@@ -2,6 +2,8 @@ import * as Sentry from "@sentry/node";
 
 let sentryEnabled = false;
 let sentryInitialized = false;
+let sentryDsnHost: string | null = null;
+let sentryProjectId: string | null = null;
 
 type SentryApi = Pick<
   typeof Sentry,
@@ -42,6 +44,17 @@ export function initSentry(): void {
     return;
   }
 
+  // Why: DSN contains a secret key; we store only non-sensitive metadata so we can
+  // debug "events not appearing" issues without leaking credentials.
+  try {
+    const url = new URL(dsn);
+    sentryDsnHost = url.host;
+    sentryProjectId = url.pathname.replace(/^\//, "") || null;
+  } catch {
+    sentryDsnHost = null;
+    sentryProjectId = null;
+  }
+
   const environment =
     process.env.SENTRY_ENVIRONMENT ||
     process.env.APP_ENV ||
@@ -62,6 +75,18 @@ export function initSentry(): void {
 
   sentryEnabled = true;
   sentryInitialized = true;
+}
+
+export function getSentryMeta(): {
+  enabled: boolean;
+  dsnHost: string | null;
+  projectId: string | null;
+} {
+  return {
+    enabled: sentryEnabled,
+    dsnHost: sentryDsnHost,
+    projectId: sentryProjectId,
+  };
 }
 
 export function isSentryEnabled(): boolean {
