@@ -17,6 +17,8 @@ export default defineConfig({
     },
     include: ["server/**/*.test.ts"],
     setupFiles: [resolve(__dirname, "./setup.ts")],
+    // Increase timeout for tests that import heavy modules
+    testTimeout: 30000,
   },
   resolve: {
     alias: {
@@ -24,5 +26,10 @@ export default defineConfig({
       "@utils": resolve(__dirname, "../../server/utils"),
       "@serverUtils": resolve(__dirname, "../../server/utils"),
     },
+  },
+  // Mark native/heavy Node modules as external to prevent bundling issues
+  ssr: {
+    external: ["cheerio", "puppeteer", "linkedom"],
+    noExternal: [],
   },
 });
