@@ -18,16 +18,18 @@ export default defineConfig({
     include: ["server/**/*.test.ts"],
     setupFiles: [resolve(__dirname, "./setup.ts")],
     testTimeout: 30000,
-    // Prevent Vitest from trying to bundle native Node modules
-    deps: {
-      external: [/cheerio/, /puppeteer/, /linkedom/],
-    },
   },
   resolve: {
     alias: {
       "@server": resolve(__dirname, "../../server/src"),
       "@utils": resolve(__dirname, "../../server/utils"),
       "@serverUtils": resolve(__dirname, "../../server/utils"),
+    },
+  },
+  // Prevent Vitest from bundling native Node modules (uses new non-deprecated config)
+  server: {
+    deps: {
+      external: [/cheerio/, /puppeteer/, /linkedom/, /@supabase/, /@sentry/],
     },
   },
 });
