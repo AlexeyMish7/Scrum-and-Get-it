@@ -38,7 +38,6 @@ import { requireAuth, tryAuth } from "./middleware/auth.js";
 import { getMetricsSnapshot } from "./observability/metrics.js";
 import {
   captureException,
-  getSentryMeta,
   flushSentry,
   initSentry,
   isSentryEnabled,
@@ -425,8 +424,6 @@ async function handleRequest(
       // is delivered immediately so instructors/users can confirm it in the Sentry UI.
       await flushSentry(2000);
 
-      const sentryMeta = getSentryMeta();
-
       jsonReply(req, res, 500, {
         error: "monitoring_test_error",
         message: "Intentional error emitted for monitoring verification",
@@ -436,9 +433,6 @@ async function handleRequest(
           process.env.APP_ENV ||
           process.env.NODE_ENV ||
           "development",
-        // Non-sensitive hint: helps confirm which Sentry project is receiving events.
-        sentry_dsn_host: sentryMeta.dsnHost,
-        sentry_project_id: sentryMeta.projectId,
       });
       ctx.logComplete(method, pathname, 500);
       return;
