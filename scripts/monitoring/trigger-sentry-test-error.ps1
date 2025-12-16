@@ -37,16 +37,16 @@ try {
     } catch {}
   }
 
-    # Expected: endpoint returns HTTP 500.
-    if ($status -eq 500) {
-      Write-Host "OK: got HTTP 500 (intentional)." -ForegroundColor Green
-      if ($bodyText) {
-        Write-Host "Response body:" -ForegroundColor Green
-        $bodyText | Write-Host
-      }
-      Write-Host "Now check Sentry for a new issue + alert." -ForegroundColor Green
-      return
+  # Expected: endpoint returns HTTP 500.
+  if ($status -eq 500) {
+    Write-Host "OK: got HTTP 500 (intentional)." -ForegroundColor Green
+    if ($bodyText) {
+      Write-Host "Response body:" -ForegroundColor Green
+      $bodyText | Write-Host
     }
+    Write-Host "Now check Sentry for a new issue + alert." -ForegroundColor Green
+    return
+  }
 
   if ($status) {
     Write-Host "HTTP status: $status" -ForegroundColor Red
