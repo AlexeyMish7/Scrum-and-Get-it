@@ -36,6 +36,11 @@ jobs:
             server/package-lock.json
             tests/package-lock.json
 
+      # Server deps are needed because tests import server code that uses these packages
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
       - name: Install test dependencies
         working-directory: tests
         run: npm ci
