@@ -13,6 +13,8 @@
   "scripts": {
     "test:server": "vitest run --config ./server/vitest.config.ts",
     "test:frontend": "vitest run --config ./frontend/vitest.config.ts",
+    "test:frontend:ui": "vitest run --config ./frontend/vitest.config.ts frontend/ui/",
+    "test:frontend:supabase": "vitest run --config ./frontend/vitest.config.ts frontend/supabase/",
     "test:performance": "vitest run ./frontend/performance/ --reporter=verbose",
     "test:all": "npm run test:server && npm run test:frontend",
     "test": "npm run test:all"
