@@ -3,6 +3,8 @@
  *
  * Loads environment variables, creates the HTTP server, and starts listening.
  * Handles graceful shutdown on SIGTERM/SIGINT.
+ * 
+ * Last CI/CD test: 2025-12-16
  */
 
 // Load environment variables FIRST (before any imports that depend on process.env)
