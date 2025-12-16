@@ -15,7 +15,12 @@
     "fenced-code-language": false
   },
   "files.associations": {
-    "*.instructions.md": "markdown"
+    "*.instructions.md": "markdown",
+    "**/.github/workflows/*.yml": "yaml",
+    "**/.github/workflows/*.yaml": "yaml"
+  },
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": "**/.github/workflows/*.{yml,yaml}"
   },
   "markdownlint.ignore": ["**/*.instructions.md", ".github/instructions/**"]
 }

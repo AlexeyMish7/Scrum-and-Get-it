@@ -14,28 +14,50 @@ import AuthCallback from "@profile/pages/auth/AuthCallback";
 import ForgotPassword from "@profile/pages/auth/ForgetPassword";
 import ResetPassword from "@profile/pages/auth/ResetPassword";
 
-// Profile workspace pages (eager loaded - frequently accessed)
-import HomePage from "@profile/pages/home/HomePage";
-import Dashboard from "@profile/pages/dashboard/Dashboard";
-import EducationOverview from "@profile/pages/education/EducationOverview";
-import Certifications from "@profile/pages/certifications/Certifications";
-import SkillsOverview from "@profile/pages/skills/SkillsOverview";
-import EmploymentHistoryList from "@profile/pages/employment/EmploymentHistoryList";
-import ProjectPortfolio from "@profile/pages/projects/ProjectPortfolio";
-import ProjectDetails from "@profile/pages/projects/ProjectDetails";
-import ProfileDetails from "@profile/pages/profile/ProfileDetails";
-import Settings from "@profile/pages/profile/Settings";
-import Github from "@profile/pages/github/GithubRepos";
+// Public home (lazy loaded to keep the initial JS bundle smaller)
+const HomePage = lazy(() => import("@profile/pages/home/HomePage"));
+
+// Profile workspace pages (lazy loaded for faster initial load)
+const Dashboard = lazy(() => import("@profile/pages/dashboard/Dashboard"));
+const EducationOverview = lazy(
+  () => import("@profile/pages/education/EducationOverview")
+);
+const Certifications = lazy(
+  () => import("@profile/pages/certifications/Certifications")
+);
+const SkillsOverview = lazy(
+  () => import("@profile/pages/skills/SkillsOverview")
+);
+const EmploymentHistoryList = lazy(
+  () => import("@profile/pages/employment/EmploymentHistoryList")
+);
+const ProjectPortfolio = lazy(
+  () => import("@profile/pages/projects/ProjectPortfolio")
+);
+const ProjectDetails = lazy(
+  () => import("@profile/pages/projects/ProjectDetails")
+);
+const ProfileDetails = lazy(
+  () => import("@profile/pages/profile/ProfileDetails")
+);
+const Settings = lazy(() => import("@profile/pages/profile/Settings"));
+const Github = lazy(() => import("@profile/pages/github/GithubRepos"));
 const ProfileAnalytics = lazy(() => import("./pages/AnalyticsDashboard"));
 
 // Layouts and shared components
 import ProtectedRoute from "@shared/components/common/ProtectedRoute";
-import ProfileLayout from "@profile/ProfileLayout";
-import AIWorkspaceLayout from "@ai_workspace/layouts/AIWorkspaceLayout";
-import JobsLayout from "@workspaces/job_pipeline/layouts/JobPipelineLayout";
-import UnifiedJobsLayout from "@workspaces/job_pipeline/layouts/UnifiedJobsLayout";
 import LoadingSpinner from "@shared/components/feedback/LoadingSpinner";
-import AppShell from "@shared/layouts/AppShell";
+const ProfileLayout = lazy(() => import("@profile/ProfileLayout"));
+const AIWorkspaceLayout = lazy(
+  () => import("@ai_workspace/layouts/AIWorkspaceLayout")
+);
+const JobsLayout = lazy(
+  () => import("@workspaces/job_pipeline/layouts/JobPipelineLayout")
+);
+const UnifiedJobsLayout = lazy(
+  () => import("@workspaces/job_pipeline/layouts/UnifiedJobsLayout")
+);
+const AppShell = lazy(() => import("@shared/layouts/AppShell"));
 
 // AI workspace (redesigned)
 const AIWorkspaceHub = lazy(() => import("@ai_workspace/pages/AIWorkspaceHub"));
@@ -130,7 +152,11 @@ const FamilySupportHub = lazy(
 );
 
 // Team Management workspace
-import { TeamLayout } from "@workspaces/team_management/layouts/TeamLayout";
+const TeamLayout = lazy(() =>
+  import("@workspaces/team_management/layouts/TeamLayout").then((module) => ({
+    default: module.TeamLayout,
+  }))
+);
 const TeamDashboard = lazy(() =>
   import("@workspaces/team_management/pages/TeamDashboard").then((module) => ({
     default: module.TeamDashboard,
@@ -232,14 +258,23 @@ const LazyLoadFallback = () => (
 );
 
 export const router = createBrowserRouter([
-  { path: "/", element: <HomePage /> },
+  {
+    path: "/",
+    element: (
+      <Suspense fallback={<LazyLoadFallback />}>
+        <HomePage />
+      </Suspense>
+    ),
+  },
 
   // AI workspace - Redesigned with centralized hub
   {
     path: "/ai",
     element: (
       <ProtectedRoute>
-        <AIWorkspaceLayout />
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AIWorkspaceLayout />
+        </Suspense>
       </ProtectedRoute>
     ),
     children: [
@@ -345,11 +380,13 @@ export const router = createBrowserRouter([
     path: "/network",
     element: (
       <ProtectedRoute>
-        <AppShell>
-          <Suspense fallback={<LazyLoadFallback />}>
-            <NetworkContacts />
-          </Suspense>
-        </AppShell>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AppShell>
+            <Suspense fallback={<LazyLoadFallback />}>
+              <NetworkContacts />
+            </Suspense>
+          </AppShell>
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -357,11 +394,13 @@ export const router = createBrowserRouter([
     path: "/network/templates",
     element: (
       <ProtectedRoute>
-        <AppShell>
-          <Suspense fallback={<LazyLoadFallback />}>
-            <NetworkTemplatesPage />
-          </Suspense>
-        </AppShell>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AppShell>
+            <Suspense fallback={<LazyLoadFallback />}>
+              <NetworkTemplatesPage />
+            </Suspense>
+          </AppShell>
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -369,11 +408,13 @@ export const router = createBrowserRouter([
     path: "/network/interviews",
     element: (
       <ProtectedRoute>
-        <AppShell>
-          <Suspense fallback={<LazyLoadFallback />}>
-            <NetworkInterviewsPage />
-          </Suspense>
-        </AppShell>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AppShell>
+            <Suspense fallback={<LazyLoadFallback />}>
+              <NetworkInterviewsPage />
+            </Suspense>
+          </AppShell>
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -382,11 +423,13 @@ export const router = createBrowserRouter([
     path: "/network/peer-groups",
     element: (
       <ProtectedRoute>
-        <AppShell>
-          <Suspense fallback={<LazyLoadFallback />}>
-            <PeerGroupsHub />
-          </Suspense>
-        </AppShell>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AppShell>
+            <Suspense fallback={<LazyLoadFallback />}>
+              <PeerGroupsHub />
+            </Suspense>
+          </AppShell>
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -395,11 +438,13 @@ export const router = createBrowserRouter([
     path: "/network/family-support",
     element: (
       <ProtectedRoute>
-        <AppShell>
-          <Suspense fallback={<LazyLoadFallback />}>
-            <FamilySupportHub />
-          </Suspense>
-        </AppShell>
+        <Suspense fallback={<LazyLoadFallback />}>
+          <AppShell>
+            <Suspense fallback={<LazyLoadFallback />}>
+              <FamilySupportHub />
+            </Suspense>
+          </AppShell>
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -408,7 +453,9 @@ export const router = createBrowserRouter([
     path: "/team",
     element: (
       <ProtectedRoute>
-        <TeamLayout />
+        <Suspense fallback={<LazyLoadFallback />}>
+          <TeamLayout />
+        </Suspense>
       </ProtectedRoute>
     ),
     children: [
@@ -526,7 +573,9 @@ export const router = createBrowserRouter([
     path: "/jobs",
     element: (
       <ProtectedRoute>
-        <UnifiedJobsLayout />
+        <Suspense fallback={<LazyLoadFallback />}>
+          <UnifiedJobsLayout />
+        </Suspense>
       </ProtectedRoute>
     ),
     children: [
@@ -554,7 +603,9 @@ export const router = createBrowserRouter([
     path: "/jobs-legacy",
     element: (
       <ProtectedRoute>
-        <JobsLayout />
+        <Suspense fallback={<LazyLoadFallback />}>
+          <JobsLayout />
+        </Suspense>
       </ProtectedRoute>
     ),
     children: [
@@ -616,21 +667,92 @@ export const router = createBrowserRouter([
     path: "/profile",
     element: (
       <ProtectedRoute>
-        <ProfileLayout />
+        <Suspense fallback={<LazyLoadFallback />}>
+          <ProfileLayout />
+        </Suspense>
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: "education", element: <EducationOverview /> },
-      { path: "skills", element: <SkillsOverview /> },
-      { path: "employment", element: <EmploymentHistoryList /> },
-      { path: "projects", element: <ProjectPortfolio /> },
-      { path: "projects/:id", element: <ProjectDetails /> },
-      { path: "certifications", element: <Certifications /> },
-      { path: "details", element: <ProfileDetails /> },
-      { path: "settings", element: <Settings /> },
-      { path: "github", element: <Github /> },
-
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: "education",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <EducationOverview />
+          </Suspense>
+        ),
+      },
+      {
+        path: "skills",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <SkillsOverview />
+          </Suspense>
+        ),
+      },
+      {
+        path: "employment",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <EmploymentHistoryList />
+          </Suspense>
+        ),
+      },
+      {
+        path: "projects",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProjectPortfolio />
+          </Suspense>
+        ),
+      },
+      {
+        path: "projects/:id",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProjectDetails />
+          </Suspense>
+        ),
+      },
+      {
+        path: "certifications",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <Certifications />
+          </Suspense>
+        ),
+      },
+      {
+        path: "details",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <ProfileDetails />
+          </Suspense>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <Settings />
+          </Suspense>
+        ),
+      },
+      {
+        path: "github",
+        element: (
+          <Suspense fallback={<LazyLoadFallback />}>
+            <Github />
+          </Suspense>
+        ),
+      },
     ],
   },
 

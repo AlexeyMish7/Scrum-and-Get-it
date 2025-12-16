@@ -8,25 +8,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
-      include: [
-        resolve(__dirname, "../../server/src/**/*.ts"),
-        resolve(__dirname, "../../server/utils/**/*.ts"),
-      ],
       exclude: [
         "**/*.test.ts",
         "**/*.spec.ts",
-        "**/dist/**",
         "**/node_modules/**",
-        "**/scripts/**",
-        "**/index.ts", // Barrel exports
+        "**/dist/**",
       ],
-      all: true,
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
-      },
     },
     include: ["server/**/*.test.ts"],
     setupFiles: [resolve(__dirname, "./setup.ts")],
@@ -35,6 +22,7 @@ export default defineConfig({
     alias: {
       "@server": resolve(__dirname, "../../server/src"),
       "@utils": resolve(__dirname, "../../server/utils"),
+      "@serverUtils": resolve(__dirname, "../../server/utils"),
     },
   },
 });

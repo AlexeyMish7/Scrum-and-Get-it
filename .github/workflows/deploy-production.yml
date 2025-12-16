@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
 name: Deploy (Production)
 
 on:
@@ -10,7 +12,6 @@ on:
         description: "Git ref (branch, tag, or SHA) to deploy to production (used for manual redeploy/rollback)."
         required: false
         default: ""
-
 permissions:
   contents: read
   deployments: write
@@ -24,15 +25,20 @@ env:
 
 jobs:
   deploy:
-    # If you haven't configured Vercel/Render yet, we skip this job so GitHub doesn't show a failing deploy.
-    if: >-
-      ${{
-        secrets.RENDER_DEPLOY_HOOK_URL_PRODUCTION != '' ||
-        (secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '')
-      }}
+    # NOTE: We don't gate the entire job on secrets because the GitHub Actions
+    # expression linter in editors can flag `secrets.*` as an invalid context
+    # in some `if:` locations. Instead, we always run tests/builds and we
+    # conditionally run the deploy steps based on env values.
     runs-on: ubuntu-latest
     environment:
       name: production
+    env:
+      RENDER_DEPLOY_HOOK_URL_PRODUCTION: ${{ secrets.RENDER_DEPLOY_HOOK_URL_PRODUCTION }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PRODUCTION_BACKEND_URL: ${{ secrets.PRODUCTION_BACKEND_URL }}
+      DEPLOYMENT_WEBHOOK_URL: ${{ secrets.DEPLOYMENT_WEBHOOK_URL }}
 
     steps:
       - name: Record start time
@@ -108,18 +114,14 @@ jobs:
 
       # --- Deploy backend (Render) ---
       - name: Trigger Render production deploy (deploy hook)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_PRODUCTION != '' }}
+        if: env.RENDER_DEPLOY_HOOK_URL_PRODUCTION != ''
         run: |
-          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL_PRODUCTION }}"
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL_PRODUCTION"
 
       # --- Deploy frontend (Vercel production) ---
       - name: Deploy frontend to Vercel (production)
-        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
         working-directory: frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
           npx vercel@latest build --prod --token "$VERCEL_TOKEN"
@@ -143,7 +145,7 @@ jobs:
             "ended_at_epoch": ${END},
             "duration_seconds": ${DURATION},
             "frontend_url": "${DEPLOY_URL:-}",
-            "backend_url": "${{ secrets.PRODUCTION_BACKEND_URL }}"
+            "backend_url": "${PRODUCTION_BACKEND_URL:-}"
           }
           EOF
 
@@ -182,13 +184,13 @@ jobs:
             });
 
       - name: Notify team (optional webhook)
-        if: always() && secrets.DEPLOYMENT_WEBHOOK_URL != ''
+        if: always() && env.DEPLOYMENT_WEBHOOK_URL != ''
         env:
-          WEBHOOK_URL: ${{ secrets.DEPLOYMENT_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ env.DEPLOYMENT_WEBHOOK_URL }}
           STATUS: ${{ job.status }}
         run: |
           FRONTEND_URL="${DEPLOY_URL:-}"
-          BACKEND_URL="${{ secrets.PRODUCTION_BACKEND_URL }}"
+          BACKEND_URL="${PRODUCTION_BACKEND_URL:-}"
           BODY=$(cat <<EOF
           {
             "text": "FlowATS production deploy: ${STATUS}. ref=${{ inputs.ref || github.sha }} sha=${{ github.sha }} frontend=${FRONTEND_URL} backend=${BACKEND_URL} duration=${DEPLOY_DURATION_SECONDS:-}s"

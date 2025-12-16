@@ -38,8 +38,12 @@ Input:
 - contact name: ${name ?? "(not provided)"}
 - contact current company: ${contact_current_company ?? "(not provided)"}
 - contact previous companies: ${contact_previous_companies ?? "(not provided)"}
-- personal notes about the contact: ${personal_notes ? personal_notes : "(none)"}
-- professional notes about the contact: ${professional_notes ? professional_notes : "(none)"}
+- personal notes about the contact: ${
+    personal_notes ? personal_notes : "(none)"
+  }
+- professional notes about the contact: ${
+    professional_notes ? professional_notes : "(none)"
+  }
 - relationship_strength (0-100): ${relationship_strength ?? "unknown"}
 - target job title: ${job_title ?? "(not provided)"}
 - target job company: ${job_company ?? "(not provided)"}
@@ -85,7 +89,11 @@ export async function post(
 
   // Basic validation: need at least job title/company and some contact identifier or notes
   if (!body.job_title && !body.job_company) {
-    throw new ApiError(400, "Missing required data: job_title or job_company", "bad_request");
+    throw new ApiError(
+      400,
+      "Missing required data: job_title or job_company",
+      "bad_request"
+    );
   }
 
   counters.generate_total++;
@@ -93,11 +101,15 @@ export async function post(
 
   try {
     // If caller provided a contact id, try to fetch the contact's name from the DB
-    let promptBody = { ...body } as ReferralRequestBody & Record<string, unknown>;
+    let promptBody = { ...body } as ReferralRequestBody &
+      Record<string, unknown>;
     try {
-      const contactId = (body as any).contact_id ?? (body as any).contactId ?? null;
+      const contactId =
+        (body as any).contact_id ?? (body as any).contactId ?? null;
       if (contactId) {
-        const { default: supabase } = await import("../../services/supabaseAdmin.js");
+        const { default: supabase } = await import(
+          "../../services/supabaseAdmin.js"
+        );
         if (supabase) {
           const { data: contactRow, error: contactErr } = await supabase
             .from("contacts")
@@ -107,7 +119,10 @@ export async function post(
           if (!contactErr && contactRow) {
             const fname = (contactRow.first_name as string) ?? "";
             const lname = (contactRow.last_name as string) ?? "";
-            const contactName = (fname || lname) ? `${(fname || "").trim()} ${(lname || "").trim()}`.trim() : null;
+            const contactName =
+              fname || lname
+                ? `${(fname || "").trim()} ${(lname || "").trim()}`.trim()
+                : null;
             if (contactName) promptBody.name = contactName;
           }
         }
@@ -125,7 +140,11 @@ export async function post(
       timeoutMs: 20000,
     });
 
-    let suggestions: Array<{ message: string; tone?: string; rationale?: string }> = [];
+    let suggestions: Array<{
+      message: string;
+      tone?: string;
+      rationale?: string;
+    }> = [];
     if (aiResult.json && Array.isArray((aiResult.json as any).suggestions)) {
       suggestions = (aiResult.json as any).suggestions;
     } else if (aiResult.text) {
@@ -141,20 +160,32 @@ export async function post(
     if (!suggestions || suggestions.length === 0) {
       const nameShort = body.name?.split(" ")[0] ?? "there";
       const fallback: any[] = [];
-      const companyMention = body.contact_previous_companies && body.contact_previous_companies.includes(body.job_company ?? "")
-        ? `I noticed you have experience at ${body.job_company}. `
-        : '';
+      const companyMention =
+        body.contact_previous_companies &&
+        body.contact_previous_companies.includes(body.job_company ?? "")
+          ? `I noticed you have experience at ${body.job_company}. `
+          : "";
 
       fallback.push({
-        message: `Hi ${nameShort}, I hope you're well. I'm applying for the ${body.job_title ?? 'role'} at ${body.job_company ?? 'the company'} and was wondering if you'd be comfortable referring me — I can send a short summary or resume to make it easy. ${companyMention}`,
+        message: `Hi ${nameShort}, I hope you're well. I'm applying for the ${
+          body.job_title ?? "role"
+        } at ${
+          body.job_company ?? "the company"
+        } and was wondering if you'd be comfortable referring me — I can send a short summary or resume to make it easy. ${companyMention}`,
         tone: "professional",
-        rationale: "Clear ask with offer to make referring easy and references any company experience when available",
+        rationale:
+          "Clear ask with offer to make referring easy and references any company experience when available",
       });
 
       fallback.push({
-        message: `Hey ${nameShort}, quick note — I'm interested in the ${body.job_title ?? 'role'} at ${body.job_company ?? 'the company'}. If you're open to it, would you mind referring me or pointing me to the right person? I can provide a 2–3 line summary to paste into the referral`,
+        message: `Hey ${nameShort}, quick note — I'm interested in the ${
+          body.job_title ?? "role"
+        } at ${
+          body.job_company ?? "the company"
+        }. If you're open to it, would you mind referring me or pointing me to the right person? I can provide a 2–3 line summary to paste into the referral`,
         tone: "casual",
-        rationale: "Short, low-friction ask that offers a ready-to-send summary",
+        rationale:
+          "Short, low-friction ask that offers a ready-to-send summary",
       });
 
       suggestions = fallback;
@@ -162,13 +193,23 @@ export async function post(
 
     const latencyMs = Date.now() - start;
     counters.generate_success++;
-    logInfo("referral_generate_success", { userId, reqId, latencyMs, count: suggestions.length });
+    logInfo("referral_generate_success", {
+      userId,
+      reqId,
+      latencyMs,
+      count: suggestions.length,
+    });
 
     sendJson(res, 200, { suggestions, meta: { latency_ms: latencyMs } });
   } catch (err: any) {
     const latencyMs = Date.now() - start;
     counters.generate_fail++;
-    logError("referral_generate_error", { userId, reqId, error: err?.message ?? String(err), latencyMs });
+    logError("referral_generate_error", {
+      userId,
+      reqId,
+      error: err?.message ?? String(err),
+      latencyMs,
+    });
     throw new ApiError(502, err?.message ?? "AI generation failed", "ai_error");
   }
-      }
+}

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
 name: Deploy (Staging)
 
 on:
@@ -10,7 +12,6 @@ on:
         description: "Git ref (branch, tag, or SHA) to deploy to staging (used for manual redeploy/rollback)."
         required: false
         default: ""
-
 permissions:
   contents: read
   deployments: write
@@ -24,15 +25,20 @@ env:
 
 jobs:
   deploy:
-    # If you haven't configured Vercel/Render yet, we skip this job so GitHub doesn't show a failing deploy.
-    if: >-
-      ${{
-        secrets.RENDER_DEPLOY_HOOK_URL_STAGING != '' ||
-        (secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '')
-      }}
+    # NOTE: We don't gate the entire job on secrets because the GitHub Actions
+    # expression linter in editors can flag `secrets.*` as an invalid context
+    # in some `if:` locations. Instead, we always run tests/builds and we
+    # conditionally run the deploy steps based on env values.
     runs-on: ubuntu-latest
     environment:
       name: staging
+    env:
+      RENDER_DEPLOY_HOOK_URL_STAGING: ${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      STAGING_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
+      DEPLOYMENT_WEBHOOK_URL: ${{ secrets.DEPLOYMENT_WEBHOOK_URL }}
 
     steps:
       - name: Record start time
@@ -108,18 +114,14 @@ jobs:
 
       # --- Deploy backend (Render) ---
       - name: Trigger Render staging deploy (deploy hook)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING != '' }}
+        if: env.RENDER_DEPLOY_HOOK_URL_STAGING != ''
         run: |
-          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING }}"
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL_STAGING"
 
       # --- Deploy frontend (Vercel preview) ---
       - name: Deploy frontend to Vercel (preview)
-        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
         working-directory: frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           npx vercel@latest pull --yes --environment=preview --token "$VERCEL_TOKEN"
           npx vercel@latest build --token "$VERCEL_TOKEN"
@@ -143,7 +145,7 @@ jobs:
             "ended_at_epoch": ${END},
             "duration_seconds": ${DURATION},
             "frontend_url": "${DEPLOY_URL:-}",
-            "backend_url": "${{ secrets.STAGING_BACKEND_URL }}"
+            "backend_url": "${STAGING_BACKEND_URL:-}"
           }
           EOF
 
@@ -182,13 +184,13 @@ jobs:
             });
 
       - name: Notify team (optional webhook)
-        if: always() && secrets.DEPLOYMENT_WEBHOOK_URL != ''
+        if: always() && env.DEPLOYMENT_WEBHOOK_URL != ''
         env:
-          WEBHOOK_URL: ${{ secrets.DEPLOYMENT_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ env.DEPLOYMENT_WEBHOOK_URL }}
           STATUS: ${{ job.status }}
         run: |
           FRONTEND_URL="${DEPLOY_URL:-}"
-          BACKEND_URL="${{ secrets.STAGING_BACKEND_URL }}"
+          BACKEND_URL="${STAGING_BACKEND_URL:-}"
           BODY=$(cat <<EOF
           {
             "text": "FlowATS staging deploy: ${STATUS}. ref=${{ inputs.ref || github.sha }} sha=${{ github.sha }} frontend=${FRONTEND_URL} backend=${BACKEND_URL} duration=${DEPLOY_DURATION_SECONDS:-}s"

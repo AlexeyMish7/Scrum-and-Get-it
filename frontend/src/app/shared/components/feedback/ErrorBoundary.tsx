@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Box, Button, Container, Paper, Typography } from "@mui/material";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { getAppQueryClient } from "@shared/cache";
+import { captureException as captureSentryException } from "@/sentry";
 
 /**
  * ERROR BOUNDARY COMPONENT
@@ -76,8 +77,9 @@ export class ErrorBoundary extends Component<
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Send error to logging service (e.g., Sentry, LogRocket)
-    // Example: logErrorToService(error, errorInfo);
+    captureSentryException(error, {
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   /**
