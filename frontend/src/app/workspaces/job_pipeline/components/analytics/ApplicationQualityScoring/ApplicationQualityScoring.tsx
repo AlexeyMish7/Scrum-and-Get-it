@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { 
   Box, Typography, Card, CardContent, Chip, Stack, Divider, 
   Alert, Button, Switch, FormControlLabel, CircularProgress, 
-  FormControl, InputLabel, Select, MenuItem 
+  FormControl, InputLabel, Select, MenuItem, Checkbox, List, ListItem, ListItemIcon, ListItemText
 } from "@mui/material";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useAuth } from "@shared/context/AuthContext";
@@ -18,6 +18,13 @@ interface AnalysisResult {
   feedback: string[];
   missingSkills: string[];
   strengths: string[];
+  suggestions?: Suggestion[];
+}
+
+interface Suggestion {
+  id: string;
+  text: string;
+  impact: number; // points to add to score when applied
 }
 
 const simulateAIAnalysis = async (): Promise<AnalysisResult> => {
@@ -53,6 +60,13 @@ const simulateAIAnalysis = async (): Promise<AnalysisResult> => {
         // We hardcode some generic "tech" skills for the simulation
         missingSkills: ["Cloud Architecture", "System Design"], 
         strengths: ["React", "TypeScript", "Team Leadership", "Agile"]
+        ,
+        // Provide prioritized improvement suggestions with impact scores
+        suggestions: [
+          { id: 's1', text: "Add explicit System Design and Architecture examples in recent projects.", impact: 10 },
+          { id: 's2', text: "Quantify achievements with metrics for two recent roles (e.g., % improvements).", impact: 7 },
+          { id: 's3', text: "Add short summary sentence tying experience to cloud systems/architecture.", impact: 5 }
+        ]
       });
     }, delay);
   });
@@ -87,6 +101,7 @@ export default function ApplicationQualityScoring({ job, onValidationChange }: A
   // Analysis State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Record<string, boolean>>({});
 
   // 1. Fetch Documents List (Only to populate dropdowns)
   useEffect(() => {
@@ -138,7 +153,31 @@ export default function ApplicationQualityScoring({ job, onValidationChange }: A
   // Reset analysis if user changes selection (to force them to run it again)
   useEffect(() => {
     setAnalysis(null);
+    setAppliedSuggestions({});
   }, [selectedResumeId, selectedCoverId]);
+
+  // Compute adjusted score based on applied suggestions
+  const adjustedScore = React.useMemo(() => {
+    if (!analysis) return null;
+    const base = analysis.score;
+    const suggestions = analysis.suggestions || [];
+    const added = suggestions.reduce((sum, s) => {
+      return sum + (appliedSuggestions[s.id] ? s.impact : 0);
+    }, 0);
+    const total = Math.min(100, base + added);
+    return total;
+  }, [analysis, appliedSuggestions]);
+
+  // When adjusted score changes, notify parent validation
+  useEffect(() => {
+    if (onValidationChange && adjustedScore !== null) {
+      onValidationChange(adjustedScore >= 70);
+    }
+  }, [adjustedScore, onValidationChange]);
+
+  const handleToggleSuggestion = (id: string) => {
+    setAppliedSuggestions(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
     <Box>
@@ -237,7 +276,7 @@ export default function ApplicationQualityScoring({ job, onValidationChange }: A
                    />
                    <CircularProgress 
                       variant="determinate" 
-                      value={analysis.score} 
+                      value={adjustedScore ?? analysis.score} 
                       size={70} 
                       thickness={4}
                       color={analysis.score >= 90 ? "success" : "primary"} 
@@ -248,13 +287,18 @@ export default function ApplicationQualityScoring({ job, onValidationChange }: A
                      alignItems: 'center', justifyContent: 'center' 
                    }}>
                      <Typography variant="h6" component="div" fontWeight="bold" color="text.primary">
-                       {analysis.score}
+                      {adjustedScore ?? analysis.score}
                      </Typography>
                    </Box>
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight="bold">
-                    {analysis.matchLevel} Match
+                    {(() => {
+                      const sc = adjustedScore ?? analysis.score;
+                      if (sc >= 90) return 'Excellent';
+                      if (sc < 80) return 'Fair';
+                      return 'Good';
+                    })()} Match
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     AI Analysis Complete
@@ -314,6 +358,30 @@ export default function ApplicationQualityScoring({ job, onValidationChange }: A
                   ))}
                 </Box>
               </Box>
+
+              {/* Improvement Suggestions (Prioritized by Impact) */}
+              {analysis.suggestions && analysis.suggestions.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                    IMPROVEMENT SUGGESTIONS (PRIORITIZED):
+                  </Typography>
+                  <List dense>
+                    {analysis.suggestions
+                      .slice()
+                      .sort((a, b) => b.impact - a.impact)
+                      .map((s) => (
+                        <ListItem key={s.id} disableGutters secondaryAction={
+                          <Chip label={`+${s.impact}`} size="small" color="primary" />
+                        }>
+                          <ListItemIcon sx={{ minWidth: 36 }}>
+                            <Checkbox edge="start" checked={!!appliedSuggestions[s.id]} onChange={() => handleToggleSuggestion(s.id)} />
+                          </ListItemIcon>
+                          <ListItemText primary={<Typography variant="body2">{s.text}</Typography>} />
+                        </ListItem>
+                      ))}
+                  </List>
+                </Box>
+              )}
               
             </Box>
           )}
