@@ -1,0 +1,2822 @@
+{
+  "numTotalTestSuites": 92,
+  "numPassedTestSuites": 92,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 228,
+  "numPassedTests": 228,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "startTime": 1765905667995,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Profile Workspace Performance Baseline",
+            "API Call Efficiency"
+          ],
+          "fullName": " Profile Workspace Performance Baseline API Call Efficiency should track baseline API calls for dashboard load",
+          "status": "passed",
+          "title": "should track baseline API calls for dashboard load",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Profile Workspace Performance Baseline",
+            "API Call Efficiency"
+          ],
+          "fullName": " Profile Workspace Performance Baseline API Call Efficiency should measure cached navigation (dashboard → employment → dashboard)",
+          "status": "passed",
+          "title": "should measure cached navigation (dashboard → employment → dashboard)",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Profile Workspace Performance Baseline",
+            "API Call Efficiency"
+          ],
+          "fullName": " Profile Workspace Performance Baseline API Call Efficiency should measure full profile navigation cycle",
+          "status": "passed",
+          "title": "should measure full profile navigation cycle",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Profile Workspace Performance Baseline",
+            "Load Time Benchmarks"
+          ],
+          "fullName": " Profile Workspace Performance Baseline Load Time Benchmarks should establish baseline load times",
+          "status": "passed",
+          "title": "should establish baseline load times",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Profile Workspace Performance Baseline",
+            "Memory & Cache Size"
+          ],
+          "fullName": " Profile Workspace Performance Baseline Memory & Cache Size should estimate cache memory usage",
+          "status": "passed",
+          "title": "should estimate cache memory usage",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Performance Comparison Helper"
+          ],
+          "fullName": " Performance Comparison Helper should output comparison template",
+          "status": "passed",
+          "title": "should output comparison template",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669910,
+      "endTime": 1765905669918,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/performance/profile-performance.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should invite an external advisor",
+          "status": "passed",
+          "title": "should invite an external advisor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should get all advisors for team",
+          "status": "passed",
+          "title": "should get all advisors for team",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should get advisor by id with full details",
+          "status": "passed",
+          "title": "should get advisor by id with full details",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should update advisor profile",
+          "status": "passed",
+          "title": "should update advisor profile",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should deactivate an advisor",
+          "status": "passed",
+          "title": "should deactivate an advisor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should reactivate an advisor",
+          "status": "passed",
+          "title": "should reactivate an advisor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should get advisor's assigned clients",
+          "status": "passed",
+          "title": "should get advisor's assigned clients",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should assign a client to advisor",
+          "status": "passed",
+          "title": "should assign a client to advisor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Advisor Profile Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Advisor Profile Management should unassign a client from advisor",
+          "status": "passed",
+          "title": "should unassign a client from advisor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should create a coaching session",
+          "status": "passed",
+          "title": "should create a coaching session",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should get upcoming sessions for advisor",
+          "status": "passed",
+          "title": "should get upcoming sessions for advisor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should get past sessions with notes",
+          "status": "passed",
+          "title": "should get past sessions with notes",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should get session by id",
+          "status": "passed",
+          "title": "should get session by id",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should update session details",
+          "status": "passed",
+          "title": "should update session details",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should cancel a session",
+          "status": "passed",
+          "title": "should cancel a session",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should complete a session with summary",
+          "status": "passed",
+          "title": "should complete a session with summary",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Session Management"
+          ],
+          "fullName": " Advisor Service (UC-115) Session Management should add notes to session",
+          "status": "passed",
+          "title": "should add notes to session",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Recommendations"
+          ],
+          "fullName": " Advisor Service (UC-115) Recommendations should create a recommendation",
+          "status": "passed",
+          "title": "should create a recommendation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Recommendations"
+          ],
+          "fullName": " Advisor Service (UC-115) Recommendations should get client recommendations",
+          "status": "passed",
+          "title": "should get client recommendations",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Recommendations"
+          ],
+          "fullName": " Advisor Service (UC-115) Recommendations should update a recommendation",
+          "status": "passed",
+          "title": "should update a recommendation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Recommendations"
+          ],
+          "fullName": " Advisor Service (UC-115) Recommendations should mark recommendation as complete",
+          "status": "passed",
+          "title": "should mark recommendation as complete",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Material Sharing"
+          ],
+          "fullName": " Advisor Service (UC-115) Material Sharing should share material with client",
+          "status": "passed",
+          "title": "should share material with client",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Material Sharing"
+          ],
+          "fullName": " Advisor Service (UC-115) Material Sharing should get shared materials for client",
+          "status": "passed",
+          "title": "should get shared materials for client",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Material Sharing"
+          ],
+          "fullName": " Advisor Service (UC-115) Material Sharing should get material access details",
+          "status": "passed",
+          "title": "should get material access details",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Material Sharing"
+          ],
+          "fullName": " Advisor Service (UC-115) Material Sharing should revoke material access",
+          "status": "passed",
+          "title": "should revoke material access",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Impact & Analytics"
+          ],
+          "fullName": " Advisor Service (UC-115) Impact & Analytics should get advisor impact metrics",
+          "status": "passed",
+          "title": "should get advisor impact metrics",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Impact & Analytics"
+          ],
+          "fullName": " Advisor Service (UC-115) Impact & Analytics should get client progress for advisor",
+          "status": "passed",
+          "title": "should get client progress for advisor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Impact & Analytics"
+          ],
+          "fullName": " Advisor Service (UC-115) Impact & Analytics should get advisor statistics",
+          "status": "passed",
+          "title": "should get advisor statistics",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Billing"
+          ],
+          "fullName": " Advisor Service (UC-115) Billing should create a billing record for session",
+          "status": "passed",
+          "title": "should create a billing record for session",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Billing"
+          ],
+          "fullName": " Advisor Service (UC-115) Billing should get billing records for advisor",
+          "status": "passed",
+          "title": "should get billing records for advisor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Billing"
+          ],
+          "fullName": " Advisor Service (UC-115) Billing should generate an invoice",
+          "status": "passed",
+          "title": "should generate an invoice",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Billing"
+          ],
+          "fullName": " Advisor Service (UC-115) Billing should get billing settings",
+          "status": "passed",
+          "title": "should get billing settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Billing"
+          ],
+          "fullName": " Advisor Service (UC-115) Billing should update billing settings",
+          "status": "passed",
+          "title": "should update billing settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Messaging"
+          ],
+          "fullName": " Advisor Service (UC-115) Messaging should send a message to client",
+          "status": "passed",
+          "title": "should send a message to client",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Messaging"
+          ],
+          "fullName": " Advisor Service (UC-115) Messaging should get messages for advisor",
+          "status": "passed",
+          "title": "should get messages for advisor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Messaging"
+          ],
+          "fullName": " Advisor Service (UC-115) Messaging should get conversation with client",
+          "status": "passed",
+          "title": "should get conversation with client",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Messaging"
+          ],
+          "fullName": " Advisor Service (UC-115) Messaging should mark message as read",
+          "status": "passed",
+          "title": "should mark message as read",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Messaging"
+          ],
+          "fullName": " Advisor Service (UC-115) Messaging should get unread message count",
+          "status": "passed",
+          "title": "should get unread message count",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Availability"
+          ],
+          "fullName": " Advisor Service (UC-115) Availability should set advisor availability",
+          "status": "passed",
+          "title": "should set advisor availability",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Availability"
+          ],
+          "fullName": " Advisor Service (UC-115) Availability should get advisor availability",
+          "status": "passed",
+          "title": "should get advisor availability",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Availability"
+          ],
+          "fullName": " Advisor Service (UC-115) Availability should get available slots for booking",
+          "status": "passed",
+          "title": "should get available slots for booking",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Error Handling"
+          ],
+          "fullName": " Advisor Service (UC-115) Error Handling should handle advisor not found",
+          "status": "passed",
+          "title": "should handle advisor not found",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Error Handling"
+          ],
+          "fullName": " Advisor Service (UC-115) Error Handling should handle scheduling conflict",
+          "status": "passed",
+          "title": "should handle scheduling conflict",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Advisor Service (UC-115)",
+            "Error Handling"
+          ],
+          "fullName": " Advisor Service (UC-115) Error Handling should handle unauthorized billing access",
+          "status": "passed",
+          "title": "should handle unauthorized billing access",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669926,
+      "endTime": 1765905669936,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/advisorService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should create a cohort",
+          "status": "passed",
+          "title": "should create a cohort",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should update a cohort",
+          "status": "passed",
+          "title": "should update a cohort",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should delete a cohort",
+          "status": "passed",
+          "title": "should delete a cohort",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should get all cohorts for team",
+          "status": "passed",
+          "title": "should get all cohorts for team",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should get cohort by id with details",
+          "status": "passed",
+          "title": "should get cohort by id with details",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should add member to cohort",
+          "status": "passed",
+          "title": "should add member to cohort",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should remove member from cohort",
+          "status": "passed",
+          "title": "should remove member from cohort",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should get cohort members with progress",
+          "status": "passed",
+          "title": "should get cohort members with progress",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Cohort Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) Cohort Management should get cohort progress summary",
+          "status": "passed",
+          "title": "should get cohort progress summary",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Team Analytics"
+          ],
+          "fullName": " Enterprise Service (UC-114) Team Analytics should get comprehensive team analytics",
+          "status": "passed",
+          "title": "should get comprehensive team analytics",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Team Analytics"
+          ],
+          "fullName": " Enterprise Service (UC-114) Team Analytics should get team activity report",
+          "status": "passed",
+          "title": "should get team activity report",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Team Analytics"
+          ],
+          "fullName": " Enterprise Service (UC-114) Team Analytics should get team placement statistics",
+          "status": "passed",
+          "title": "should get team placement statistics",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Team Analytics"
+          ],
+          "fullName": " Enterprise Service (UC-114) Team Analytics should get team engagement metrics",
+          "status": "passed",
+          "title": "should get team engagement metrics",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "ROI Reporting"
+          ],
+          "fullName": " Enterprise Service (UC-114) ROI Reporting should create an ROI report",
+          "status": "passed",
+          "title": "should create an ROI report",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "ROI Reporting"
+          ],
+          "fullName": " Enterprise Service (UC-114) ROI Reporting should get all ROI reports",
+          "status": "passed",
+          "title": "should get all ROI reports",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "ROI Reporting"
+          ],
+          "fullName": " Enterprise Service (UC-114) ROI Reporting should get ROI report by id with full data",
+          "status": "passed",
+          "title": "should get ROI report by id with full data",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "ROI Reporting"
+          ],
+          "fullName": " Enterprise Service (UC-114) ROI Reporting should export ROI report",
+          "status": "passed",
+          "title": "should export ROI report",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Branding"
+          ],
+          "fullName": " Enterprise Service (UC-114) Branding should update branding settings",
+          "status": "passed",
+          "title": "should update branding settings",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Branding"
+          ],
+          "fullName": " Enterprise Service (UC-114) Branding should get branding settings",
+          "status": "passed",
+          "title": "should get branding settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Branding"
+          ],
+          "fullName": " Enterprise Service (UC-114) Branding should upload logo",
+          "status": "passed",
+          "title": "should upload logo",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Branding"
+          ],
+          "fullName": " Enterprise Service (UC-114) Branding should set custom colors",
+          "status": "passed",
+          "title": "should set custom colors",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should log a compliance event",
+          "status": "passed",
+          "title": "should log a compliance event",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should get compliance log",
+          "status": "passed",
+          "title": "should get compliance log",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should get data retention settings",
+          "status": "passed",
+          "title": "should get data retention settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should update data retention settings",
+          "status": "passed",
+          "title": "should update data retention settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should export user data (GDPR)",
+          "status": "passed",
+          "title": "should export user data (GDPR)",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Compliance"
+          ],
+          "fullName": " Enterprise Service (UC-114) Compliance should delete user data (GDPR right to be forgotten)",
+          "status": "passed",
+          "title": "should delete user data (GDPR right to be forgotten)",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Integrations"
+          ],
+          "fullName": " Enterprise Service (UC-114) Integrations should get available integrations",
+          "status": "passed",
+          "title": "should get available integrations",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Integrations"
+          ],
+          "fullName": " Enterprise Service (UC-114) Integrations should configure an integration",
+          "status": "passed",
+          "title": "should configure an integration",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Integrations"
+          ],
+          "fullName": " Enterprise Service (UC-114) Integrations should test integration connection",
+          "status": "passed",
+          "title": "should test integration connection",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Integrations"
+          ],
+          "fullName": " Enterprise Service (UC-114) Integrations should sync integration data",
+          "status": "passed",
+          "title": "should sync integration data",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Integrations"
+          ],
+          "fullName": " Enterprise Service (UC-114) Integrations should get integration logs",
+          "status": "passed",
+          "title": "should get integration logs",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "License Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) License Management should get license info",
+          "status": "passed",
+          "title": "should get license info",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "License Management"
+          ],
+          "fullName": " Enterprise Service (UC-114) License Management should get license usage details",
+          "status": "passed",
+          "title": "should get license usage details",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Enterprise Settings"
+          ],
+          "fullName": " Enterprise Service (UC-114) Enterprise Settings should get enterprise settings",
+          "status": "passed",
+          "title": "should get enterprise settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Enterprise Settings"
+          ],
+          "fullName": " Enterprise Service (UC-114) Enterprise Settings should update enterprise settings",
+          "status": "passed",
+          "title": "should update enterprise settings",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Error Handling"
+          ],
+          "fullName": " Enterprise Service (UC-114) Error Handling should handle unauthorized access",
+          "status": "passed",
+          "title": "should handle unauthorized access",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Error Handling"
+          ],
+          "fullName": " Enterprise Service (UC-114) Error Handling should handle license limit exceeded",
+          "status": "passed",
+          "title": "should handle license limit exceeded",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Enterprise Service (UC-114)",
+            "Error Handling"
+          ],
+          "fullName": " Enterprise Service (UC-114) Error Handling should handle integration connection failure",
+          "status": "passed",
+          "title": "should handle integration connection failure",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669926,
+      "endTime": 1765905669938,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/enterpriseService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getSupporters"
+          ],
+          "fullName": " FamilySupportService getSupporters should get all supporters for a user",
+          "status": "passed",
+          "title": "should get all supporters for a user",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getSupporters"
+          ],
+          "fullName": " FamilySupportService getSupporters should filter by status when provided",
+          "status": "passed",
+          "title": "should filter by status when provided",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getSupporters"
+          ],
+          "fullName": " FamilySupportService getSupporters should filter by role when provided",
+          "status": "passed",
+          "title": "should filter by role when provided",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getSupporters"
+          ],
+          "fullName": " FamilySupportService getSupporters should handle errors",
+          "status": "passed",
+          "title": "should handle errors",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "inviteSupporter"
+          ],
+          "fullName": " FamilySupportService inviteSupporter should create a new supporter invitation",
+          "status": "passed",
+          "title": "should create a new supporter invitation",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "inviteSupporter"
+          ],
+          "fullName": " FamilySupportService inviteSupporter should reject if supporter already exists and is active",
+          "status": "passed",
+          "title": "should reject if supporter already exists and is active",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "updateSupporterPermissions"
+          ],
+          "fullName": " FamilySupportService updateSupporterPermissions should update permissions successfully",
+          "status": "passed",
+          "title": "should update permissions successfully",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "removeSupporter"
+          ],
+          "fullName": " FamilySupportService removeSupporter should mark supporter as removed",
+          "status": "passed",
+          "title": "should mark supporter as removed",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getFamilySupportSettings"
+          ],
+          "fullName": " FamilySupportService getFamilySupportSettings should return existing settings",
+          "status": "passed",
+          "title": "should return existing settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getFamilySupportSettings"
+          ],
+          "fullName": " FamilySupportService getFamilySupportSettings should create default settings if none exist",
+          "status": "passed",
+          "title": "should create default settings if none exist",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "updateFamilySupportSettings"
+          ],
+          "fullName": " FamilySupportService updateFamilySupportSettings should update settings successfully",
+          "status": "passed",
+          "title": "should update settings successfully",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getMilestones"
+          ],
+          "fullName": " FamilySupportService getMilestones should get milestones for a user",
+          "status": "passed",
+          "title": "should get milestones for a user",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getMilestones"
+          ],
+          "fullName": " FamilySupportService getMilestones should filter by milestone type",
+          "status": "passed",
+          "title": "should filter by milestone type",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getMilestones"
+          ],
+          "fullName": " FamilySupportService getMilestones should filter by shared status",
+          "status": "passed",
+          "title": "should filter by shared status",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "createMilestone"
+          ],
+          "fullName": " FamilySupportService createMilestone should create a milestone successfully",
+          "status": "passed",
+          "title": "should create a milestone successfully",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "toggleMilestoneSharing"
+          ],
+          "fullName": " FamilySupportService toggleMilestoneSharing should toggle milestone sharing",
+          "status": "passed",
+          "title": "should toggle milestone sharing",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getStressMetrics"
+          ],
+          "fullName": " FamilySupportService getStressMetrics should get stress metrics for a user",
+          "status": "passed",
+          "title": "should get stress metrics for a user",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getStressMetrics"
+          ],
+          "fullName": " FamilySupportService getStressMetrics should filter by date range",
+          "status": "passed",
+          "title": "should filter by date range",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getTodaysCheckIn"
+          ],
+          "fullName": " FamilySupportService getTodaysCheckIn should return today's check-in if exists",
+          "status": "passed",
+          "title": "should return today's check-in if exists",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getTodaysCheckIn"
+          ],
+          "fullName": " FamilySupportService getTodaysCheckIn should return null if no check-in today",
+          "status": "passed",
+          "title": "should return null if no check-in today",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "submitStressCheckIn"
+          ],
+          "fullName": " FamilySupportService submitStressCheckIn should create new check-in if none exists today",
+          "status": "passed",
+          "title": "should create new check-in if none exists today",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "submitStressCheckIn"
+          ],
+          "fullName": " FamilySupportService submitStressCheckIn should update existing check-in",
+          "status": "passed",
+          "title": "should update existing check-in",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getWellBeingAnalytics"
+          ],
+          "fullName": " FamilySupportService getWellBeingAnalytics should return analytics with trends",
+          "status": "passed",
+          "title": "should return analytics with trends",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getWellBeingAnalytics"
+          ],
+          "fullName": " FamilySupportService getWellBeingAnalytics should return default values when no metrics",
+          "status": "passed",
+          "title": "should return default values when no metrics",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getBoundaries"
+          ],
+          "fullName": " FamilySupportService getBoundaries should get active boundaries for a user",
+          "status": "passed",
+          "title": "should get active boundaries for a user",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "createBoundary"
+          ],
+          "fullName": " FamilySupportService createBoundary should create a boundary",
+          "status": "passed",
+          "title": "should create a boundary",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "deleteBoundary"
+          ],
+          "fullName": " FamilySupportService deleteBoundary should soft delete a boundary",
+          "status": "passed",
+          "title": "should soft delete a boundary",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getResources"
+          ],
+          "fullName": " FamilySupportService getResources should get active resources",
+          "status": "passed",
+          "title": "should get active resources",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getResources"
+          ],
+          "fullName": " FamilySupportService getResources should filter by category",
+          "status": "passed",
+          "title": "should filter by category",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "sendCommunication"
+          ],
+          "fullName": " FamilySupportService sendCommunication should send a communication",
+          "status": "passed",
+          "title": "should send a communication",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "getFamilySupportDashboard"
+          ],
+          "fullName": " FamilySupportService getFamilySupportDashboard should aggregate dashboard data",
+          "status": "passed",
+          "title": "should aggregate dashboard data",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "error handling"
+          ],
+          "fullName": " FamilySupportService error handling should handle unexpected exceptions",
+          "status": "passed",
+          "title": "should handle unexpected exceptions",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilySupportService",
+            "error handling"
+          ],
+          "fullName": " FamilySupportService error handling should handle null data gracefully",
+          "status": "passed",
+          "title": "should handle null data gracefully",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905670051,
+      "endTime": 1765905670094,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/familySupportService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Mentee Progress Tracking"
+          ],
+          "fullName": " Mentor Service (UC-109) Mentee Progress Tracking should get assigned mentees with progress data",
+          "status": "passed",
+          "title": "should get assigned mentees with progress data",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Mentee Progress Tracking"
+          ],
+          "fullName": " Mentor Service (UC-109) Mentee Progress Tracking should return empty array when no mentees assigned",
+          "status": "passed",
+          "title": "should return empty array when no mentees assigned",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Mentee Progress Tracking"
+          ],
+          "fullName": " Mentor Service (UC-109) Mentee Progress Tracking should calculate engagement levels correctly",
+          "status": "passed",
+          "title": "should calculate engagement levels correctly",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Mentee Document Access"
+          ],
+          "fullName": " Mentor Service (UC-109) Mentee Document Access should get mentee documents for review",
+          "status": "passed",
+          "title": "should get mentee documents for review",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Mentee Document Access"
+          ],
+          "fullName": " Mentor Service (UC-109) Mentee Document Access should deny access to unauthorized mentee documents",
+          "status": "passed",
+          "title": "should deny access to unauthorized mentee documents",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Feedback Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Feedback Management should create feedback for mentee",
+          "status": "passed",
+          "title": "should create feedback for mentee",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Feedback Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Feedback Management should get all feedback written by mentor",
+          "status": "passed",
+          "title": "should get all feedback written by mentor",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Feedback Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Feedback Management should filter feedback by candidate",
+          "status": "passed",
+          "title": "should filter feedback by candidate",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Feedback Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Feedback Management should delete feedback",
+          "status": "passed",
+          "title": "should delete feedback",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Goal Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Goal Management should create goal for mentee",
+          "status": "passed",
+          "title": "should create goal for mentee",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Goal Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Goal Management should get mentee goals",
+          "status": "passed",
+          "title": "should get mentee goals",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Goal Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Goal Management should update goal progress",
+          "status": "passed",
+          "title": "should update goal progress",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Goal Management"
+          ],
+          "fullName": " Mentor Service (UC-109) Goal Management should mark goal as completed",
+          "status": "passed",
+          "title": "should mark goal as completed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Dashboard Summary"
+          ],
+          "fullName": " Mentor Service (UC-109) Dashboard Summary should get mentor dashboard summary",
+          "status": "passed",
+          "title": "should get mentor dashboard summary",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Dashboard Summary"
+          ],
+          "fullName": " Mentor Service (UC-109) Dashboard Summary should handle empty dashboard data",
+          "status": "passed",
+          "title": "should handle empty dashboard data",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Feedback Types"
+          ],
+          "fullName": " Mentor Service (UC-109) Feedback Types should support all feedback types",
+          "status": "passed",
+          "title": "should support all feedback types",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Goal Types"
+          ],
+          "fullName": " Mentor Service (UC-109) Goal Types should support all goal types",
+          "status": "passed",
+          "title": "should support all goal types",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "AI Coaching Insights"
+          ],
+          "fullName": " Mentor Service (UC-109) AI Coaching Insights should generate coaching insights for a mentee",
+          "status": "passed",
+          "title": "should generate coaching insights for a mentee",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "AI Coaching Insights"
+          ],
+          "fullName": " Mentor Service (UC-109) AI Coaching Insights should include priority levels in focus areas",
+          "status": "passed",
+          "title": "should include priority levels in focus areas",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "AI Coaching Insights"
+          ],
+          "fullName": " Mentor Service (UC-109) AI Coaching Insights should suggest actionable goals with types",
+          "status": "passed",
+          "title": "should suggest actionable goals with types",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "AI Coaching Insights"
+          ],
+          "fullName": " Mentor Service (UC-109) AI Coaching Insights should provide weekly action plans",
+          "status": "passed",
+          "title": "should provide weekly action plans",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Error Handling"
+          ],
+          "fullName": " Mentor Service (UC-109) Error Handling should handle authorization errors",
+          "status": "passed",
+          "title": "should handle authorization errors",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Mentor Service (UC-109)",
+            "Error Handling"
+          ],
+          "fullName": " Mentor Service (UC-109) Error Handling should handle database errors gracefully",
+          "status": "passed",
+          "title": "should handle database errors gracefully",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669975,
+      "endTime": 1765905669991,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/mentorService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Sharing Settings"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Sharing Settings should get user's sharing settings",
+          "status": "passed",
+          "title": "should get user's sharing settings",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Sharing Settings"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Sharing Settings should update sharing settings",
+          "status": "passed",
+          "title": "should update sharing settings",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Sharing Settings"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Sharing Settings should support all visibility levels",
+          "status": "passed",
+          "title": "should support all visibility levels",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Snapshots"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Snapshots should create a progress snapshot",
+          "status": "passed",
+          "title": "should create a progress snapshot",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Snapshots"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Snapshots should get progress snapshots with date range",
+          "status": "passed",
+          "title": "should get progress snapshots with date range",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Snapshots"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Snapshots should get latest progress snapshot",
+          "status": "passed",
+          "title": "should get latest progress snapshot",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Snapshots"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Snapshots should delete a progress snapshot",
+          "status": "passed",
+          "title": "should delete a progress snapshot",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should create a partnership request",
+          "status": "passed",
+          "title": "should create a partnership request",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should accept a partnership request",
+          "status": "passed",
+          "title": "should accept a partnership request",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should decline a partnership request",
+          "status": "passed",
+          "title": "should decline a partnership request",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should get all partnerships",
+          "status": "passed",
+          "title": "should get all partnerships",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should get pending partnership requests",
+          "status": "passed",
+          "title": "should get pending partnership requests",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should update partnership goals",
+          "status": "passed",
+          "title": "should update partnership goals",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Accountability Partnerships (UC-112 Peer Networking)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Accountability Partnerships (UC-112 Peer Networking) should end a partnership",
+          "status": "passed",
+          "title": "should end a partnership",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Achievements"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Achievements should get user achievements",
+          "status": "passed",
+          "title": "should get user achievements",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Achievements"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Achievements should create an achievement",
+          "status": "passed",
+          "title": "should create an achievement",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Achievements"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Achievements should share an achievement",
+          "status": "passed",
+          "title": "should share an achievement",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Achievements"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Achievements should unshare an achievement",
+          "status": "passed",
+          "title": "should unshare an achievement",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should create a support circle",
+          "status": "passed",
+          "title": "should create a support circle",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should get user's support circle",
+          "status": "passed",
+          "title": "should get user's support circle",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should invite someone to support circle",
+          "status": "passed",
+          "title": "should invite someone to support circle",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should remove member from support circle",
+          "status": "passed",
+          "title": "should remove member from support circle",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should update support circle member permissions",
+          "status": "passed",
+          "title": "should update support circle member permissions",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Family/Support Circle Access (UC-113)"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Family/Support Circle Access (UC-113) should get support circle members with roles",
+          "status": "passed",
+          "title": "should get support circle members with roles",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Shared View Access"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Shared View Access should get shared progress view",
+          "status": "passed",
+          "title": "should get shared progress view",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Shared View Access"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Shared View Access should validate share token",
+          "status": "passed",
+          "title": "should validate share token",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Shared View Access"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Shared View Access should create a share link",
+          "status": "passed",
+          "title": "should create a share link",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Shared View Access"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Shared View Access should revoke a share link",
+          "status": "passed",
+          "title": "should revoke a share link",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Analytics"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Analytics should get progress analytics",
+          "status": "passed",
+          "title": "should get progress analytics",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Progress Analytics"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Progress Analytics should get accountability report",
+          "status": "passed",
+          "title": "should get accountability report",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Error Handling"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Error Handling should handle partnership not found",
+          "status": "passed",
+          "title": "should handle partnership not found",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Error Handling"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Error Handling should handle unauthorized access to shared view",
+          "status": "passed",
+          "title": "should handle unauthorized access to shared view",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Error Handling"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Error Handling should handle expired share token",
+          "status": "passed",
+          "title": "should handle expired share token",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Progress Sharing Service (UC-111, UC-112, UC-113)",
+            "Error Handling"
+          ],
+          "fullName": " Progress Sharing Service (UC-111, UC-112, UC-113) Error Handling should handle duplicate partnership request",
+          "status": "passed",
+          "title": "should handle duplicate partnership request",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669973,
+      "endTime": 1765905669991,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/progressSharingService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review CRUD Operations"
+          ],
+          "fullName": " Review Service (UC-110) Review CRUD Operations should create a document review request",
+          "status": "passed",
+          "title": "should create a document review request",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review CRUD Operations"
+          ],
+          "fullName": " Review Service (UC-110) Review CRUD Operations should get all reviews for a document",
+          "status": "passed",
+          "title": "should get all reviews for a document",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review CRUD Operations"
+          ],
+          "fullName": " Review Service (UC-110) Review CRUD Operations should get incoming reviews for user",
+          "status": "passed",
+          "title": "should get incoming reviews for user",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review CRUD Operations"
+          ],
+          "fullName": " Review Service (UC-110) Review CRUD Operations should get outgoing reviews for user",
+          "status": "passed",
+          "title": "should get outgoing reviews for user",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Status Management"
+          ],
+          "fullName": " Review Service (UC-110) Review Status Management should update review status to in_progress",
+          "status": "passed",
+          "title": "should update review status to in_progress",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Status Management"
+          ],
+          "fullName": " Review Service (UC-110) Review Status Management should approve a document",
+          "status": "passed",
+          "title": "should approve a document",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Status Management"
+          ],
+          "fullName": " Review Service (UC-110) Review Status Management should request changes on document",
+          "status": "passed",
+          "title": "should request changes on document",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Status Management"
+          ],
+          "fullName": " Review Service (UC-110) Review Status Management should cancel a review request",
+          "status": "passed",
+          "title": "should cancel a review request",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should add a comment to review",
+          "status": "passed",
+          "title": "should add a comment to review",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should get all comments for a review as threaded structure",
+          "status": "passed",
+          "title": "should get all comments for a review as threaded structure",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should update a comment",
+          "status": "passed",
+          "title": "should update a comment",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should resolve a comment",
+          "status": "passed",
+          "title": "should resolve a comment",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should unresolve a comment",
+          "status": "passed",
+          "title": "should unresolve a comment",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Management"
+          ],
+          "fullName": " Review Service (UC-110) Comment Management should delete a comment",
+          "status": "passed",
+          "title": "should delete a comment",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Comment Types"
+          ],
+          "fullName": " Review Service (UC-110) Comment Types should support all comment types",
+          "status": "passed",
+          "title": "should support all comment types",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Summary and Analytics"
+          ],
+          "fullName": " Review Service (UC-110) Review Summary and Analytics should get document review summary",
+          "status": "passed",
+          "title": "should get document review summary",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Summary and Analytics"
+          ],
+          "fullName": " Review Service (UC-110) Review Summary and Analytics should get review feedback summary",
+          "status": "passed",
+          "title": "should get review feedback summary",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Reviewer Discovery"
+          ],
+          "fullName": " Review Service (UC-110) Reviewer Discovery should get available reviewers from team",
+          "status": "passed",
+          "title": "should get available reviewers from team",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Reviewer Discovery"
+          ],
+          "fullName": " Review Service (UC-110) Reviewer Discovery should return empty when no team context",
+          "status": "passed",
+          "title": "should return empty when no team context",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Deadline Management"
+          ],
+          "fullName": " Review Service (UC-110) Deadline Management should get overdue reviews",
+          "status": "passed",
+          "title": "should get overdue reviews",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Deadline Management"
+          ],
+          "fullName": " Review Service (UC-110) Deadline Management should update review deadline",
+          "status": "passed",
+          "title": "should update review deadline",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Access Control"
+          ],
+          "fullName": " Review Service (UC-110) Access Control should support all access levels",
+          "status": "passed",
+          "title": "should support all access levels",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Review Types"
+          ],
+          "fullName": " Review Service (UC-110) Review Types should support all review types",
+          "status": "passed",
+          "title": "should support all review types",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Error Handling"
+          ],
+          "fullName": " Review Service (UC-110) Error Handling should handle review not found",
+          "status": "passed",
+          "title": "should handle review not found",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Review Service (UC-110)",
+            "Error Handling"
+          ],
+          "fullName": " Review Service (UC-110) Error Handling should handle unauthorized access",
+          "status": "passed",
+          "title": "should handle unauthorized access",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669920,
+      "endTime": 1765905669929,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/reviewService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Team CRUD Operations"
+          ],
+          "fullName": " Team Management Service (UC-108) Team CRUD Operations should create a new team with user as admin",
+          "status": "passed",
+          "title": "should create a new team with user as admin",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Team CRUD Operations"
+          ],
+          "fullName": " Team Management Service (UC-108) Team CRUD Operations should get team with members",
+          "status": "passed",
+          "title": "should get team with members",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Team CRUD Operations"
+          ],
+          "fullName": " Team Management Service (UC-108) Team CRUD Operations should get all teams for a user",
+          "status": "passed",
+          "title": "should get all teams for a user",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Team CRUD Operations"
+          ],
+          "fullName": " Team Management Service (UC-108) Team CRUD Operations should update team settings",
+          "status": "passed",
+          "title": "should update team settings",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Team CRUD Operations"
+          ],
+          "fullName": " Team Management Service (UC-108) Team CRUD Operations should soft delete a team",
+          "status": "passed",
+          "title": "should soft delete a team",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Member Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Member Management should get team members with profiles",
+          "status": "passed",
+          "title": "should get team members with profiles",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Member Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Member Management should update member role",
+          "status": "passed",
+          "title": "should update member role",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Member Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Member Management should remove a member from team",
+          "status": "passed",
+          "title": "should remove a member from team",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Invitation Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Invitation Management should send team invitation",
+          "status": "passed",
+          "title": "should send team invitation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Invitation Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Invitation Management should accept an invitation",
+          "status": "passed",
+          "title": "should accept an invitation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Invitation Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Invitation Management should get user pending invitations",
+          "status": "passed",
+          "title": "should get user pending invitations",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Invitation Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Invitation Management should decline an invitation",
+          "status": "passed",
+          "title": "should decline an invitation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Invitation Management"
+          ],
+          "fullName": " Team Management Service (UC-108) Invitation Management should cancel a pending invitation",
+          "status": "passed",
+          "title": "should cancel a pending invitation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Mentor-Candidate Assignments"
+          ],
+          "fullName": " Team Management Service (UC-108) Mentor-Candidate Assignments should assign mentor to candidate",
+          "status": "passed",
+          "title": "should assign mentor to candidate",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Mentor-Candidate Assignments"
+          ],
+          "fullName": " Team Management Service (UC-108) Mentor-Candidate Assignments should get assigned candidates for mentor",
+          "status": "passed",
+          "title": "should get assigned candidates for mentor",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Mentor-Candidate Assignments"
+          ],
+          "fullName": " Team Management Service (UC-108) Mentor-Candidate Assignments should remove mentor-candidate assignment",
+          "status": "passed",
+          "title": "should remove mentor-candidate assignment",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Activity and Analytics"
+          ],
+          "fullName": " Team Management Service (UC-108) Activity and Analytics should get team activity log",
+          "status": "passed",
+          "title": "should get team activity log",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Activity and Analytics"
+          ],
+          "fullName": " Team Management Service (UC-108) Activity and Analytics should get team aggregate insights",
+          "status": "passed",
+          "title": "should get team aggregate insights",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Permission Checks"
+          ],
+          "fullName": " Team Management Service (UC-108) Permission Checks should check team permission",
+          "status": "passed",
+          "title": "should check team permission",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Permission Checks"
+          ],
+          "fullName": " Team Management Service (UC-108) Permission Checks should deny permission for unauthorized user",
+          "status": "passed",
+          "title": "should deny permission for unauthorized user",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Error Handling"
+          ],
+          "fullName": " Team Management Service (UC-108) Error Handling should handle team not found",
+          "status": "passed",
+          "title": "should handle team not found",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Error Handling"
+          ],
+          "fullName": " Team Management Service (UC-108) Error Handling should handle access denied",
+          "status": "passed",
+          "title": "should handle access denied",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Error Handling"
+          ],
+          "fullName": " Team Management Service (UC-108) Error Handling should handle expired invitation",
+          "status": "passed",
+          "title": "should handle expired invitation",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "Team Management Service (UC-108)",
+            "Error Handling"
+          ],
+          "fullName": " Team Management Service (UC-108) Error Handling should handle duplicate member invitation",
+          "status": "passed",
+          "title": "should handle duplicate member invitation",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1765905669950,
+      "endTime": 1765905669960,
+      "status": "passed",
+      "message": "",
+      "name": "C:/School/Fall2025/Cs490/Scrum-and-Get-it/tests/frontend/services/teamService.test.ts"
+    }
+  ]
+}

@@ -2,6 +2,12 @@ import { describe, it, expect } from "vitest";
 
 import { handleHealth } from "@server/routes/health";
 
+function createMockRequest(headers: Record<string, string> = {}) {
+  return {
+    headers,
+  } as any;
+}
+
 function createMockResponse() {
   const state: {
     status?: number;
@@ -17,8 +23,14 @@ function createMockResponse() {
       state.status = status;
       state.headers = { ...headers };
     },
-    end: (data?: string) => {
-      state.body = data || "";
+    end: (data?: any) => {
+      if (!data) {
+        state.body = "";
+        return;
+      }
+
+      // The route writes Buffers; normalize to string for JSON parsing.
+      state.body = Buffer.isBuffer(data) ? data.toString("utf8") : String(data);
     },
   };
 
@@ -29,6 +41,7 @@ describe("Health Route", () => {
   it("returns ok payload with counters", async () => {
     const url = new URL("/api/health", "http://localhost");
     const { res, state } = createMockResponse();
+    const req = createMockRequest();
 
     const startedAt = Date.now() - 10_000;
     const counters = {
@@ -38,7 +51,7 @@ describe("Health Route", () => {
       generate_fail: 1,
     };
 
-    await handleHealth(url, res, { startedAt, counters });
+    await handleHealth(url, req, res, { startedAt, counters });
 
     expect(state.status).toBe(200);
     expect(state.headers["Content-Type"]).toBe("application/json");
@@ -58,8 +71,9 @@ describe("Health Route", () => {
 
     const url = new URL("/api/health", "http://localhost");
     const { res, state } = createMockResponse();
+    const req = createMockRequest();
 
-    await handleHealth(url, res, {
+    await handleHealth(url, req, res, {
       startedAt: Date.now() - 1000,
       counters: {
         requests_total: 0,

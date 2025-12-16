@@ -36,9 +36,13 @@ jobs:
         working-directory: tests
         run: npm ci
 
-      - name: Run test suite (server + frontend)
+      - name: Run server tests (Node; API + generation routes)
         working-directory: tests
-        run: npm run test:all
+        run: npm run test:server
+
+      - name: Run frontend tests (JSDOM; frontend services/perf)
+        working-directory: tests
+        run: npm run test:frontend
 
       - name: Install frontend deps
         working-directory: frontend

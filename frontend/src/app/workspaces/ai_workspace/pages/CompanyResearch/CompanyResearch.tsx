@@ -289,49 +289,103 @@ Source: ${research.source}
   const handleExportPDF = () => {
     if (!research) return;
 
+    function escapeHtml(str: any) {
+      if (str == null) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function safeHttpUrl(raw: any): string | null {
+      if (!raw) return null;
+      try {
+        const u = new URL(String(raw));
+        if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+        return u.toString();
+      } catch {
+        return null;
+      }
+    }
+
     // Build simple HTML from the markdown-like content for printing
     const parts: string[] = [];
-    parts.push(`<h1>${research.companyName}</h1>`);
+    parts.push(`<h1>${escapeHtml(research.companyName)}</h1>`);
     parts.push(
-      `<p><strong>Industry:</strong> ${research.industry || "Unknown"}</p>`
-    );
-    parts.push(`<p><strong>Size:</strong> ${research.size || "Unknown"}</p>`);
-    parts.push(
-      `<p><strong>Location:</strong> ${research.location || "Unknown"}</p>`
+      `<p><strong>Industry:</strong> ${escapeHtml(
+        research.industry || "Unknown"
+      )}</p>`
     );
     parts.push(
-      `<p><strong>Founded:</strong> ${research.founded || "Unknown"}</p>`
+      `<p><strong>Size:</strong> ${escapeHtml(research.size || "Unknown")}</p>`
     );
-    if (research.website)
-      parts.push(
-        `<p><strong>Website:</strong> <a href="${research.website}">${research.website}</a></p>`
-      );
-    parts.push(`<h2>Mission</h2><p>${research.mission || "N/A"}</p>`);
-    parts.push(`<h2>Description</h2><p>${research.description || "N/A"}</p>`);
+    parts.push(
+      `<p><strong>Location:</strong> ${escapeHtml(
+        research.location || "Unknown"
+      )}</p>`
+    );
+    parts.push(
+      `<p><strong>Founded:</strong> ${escapeHtml(
+        research.founded || "Unknown"
+      )}</p>`
+    );
+    if (research.website) {
+      const safe = safeHttpUrl(research.website);
+      if (safe) {
+        parts.push(
+          `<p><strong>Website:</strong> <a href="${escapeHtml(
+            safe
+          )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+            safe
+          )}</a></p>`
+        );
+      } else {
+        parts.push(
+          `<p><strong>Website:</strong> ${escapeHtml(research.website)}</p>`
+        );
+      }
+    }
+    parts.push(
+      `<h2>Mission</h2><p>${escapeHtml(research.mission || "N/A")}</p>`
+    );
+    parts.push(
+      `<h2>Description</h2><p>${escapeHtml(research.description || "N/A")}</p>`
+    );
     parts.push(`<h2>Recent News</h2>`);
     parts.push(
       `<ul>${research.news
         .map(
           (n) =>
-            `<li><strong>${n.title}</strong> (${new Date(
+            `<li><strong>${escapeHtml(n.title)}</strong> (${new Date(
               n.date
-            ).toLocaleDateString()}): ${n.summary}</li>`
+            ).toLocaleDateString()}): ${escapeHtml(n.summary)}</li>`
         )
         .join("")}</ul>`
     );
     parts.push(
-      `<h2>Culture</h2><p>Type: ${research.culture.type}</p><p>Remote: ${
+      `<h2>Culture</h2><p>Type: ${escapeHtml(
+        research.culture.type
+      )}</p><p>Remote: ${escapeHtml(
         research.culture.remotePolicy || "Unknown"
-      }</p>`
+      )}</p>`
     );
     if (research.culture.values.length)
-      parts.push(`<p>Values: ${research.culture.values.join(", ")}</p>`);
+      parts.push(
+        `<p>Values: ${escapeHtml(research.culture.values.join(", "))}</p>`
+      );
     if (research.culture.perks.length)
-      parts.push(`<p>Perks: ${research.culture.perks.join(", ")}</p>`);
+      parts.push(
+        `<p>Perks: ${escapeHtml(research.culture.perks.join(", "))}</p>`
+      );
     parts.push(
       `<h2>Leadership</h2><ul>${research.leadership
         .map(
-          (l) => `<li>${l.name} — ${l.title}${l.bio ? ` — ${l.bio}` : ""}</li>`
+          (l) =>
+            `<li>${escapeHtml(l.name)} — ${escapeHtml(l.title)}${
+              l.bio ? ` — ${escapeHtml(l.bio)}` : ""
+            }</li>`
         )
         .join("")}</ul>`
     );
@@ -342,7 +396,12 @@ Source: ${research.source}
     ) {
       parts.push(
         `<h2>Potential Interviewers</h2><ul>${research.potentialInterviewers
-          .map((p) => `<li>${p.role}${p.name ? ` — ${p.name}` : ""}</li>`)
+          .map(
+            (p) =>
+              `<li>${escapeHtml(p.role)}${
+                p.name ? ` — ${escapeHtml(p.name)}` : ""
+              }</li>`
+          )
           .join("")}</ul>`
       );
     }
@@ -350,33 +409,40 @@ Source: ${research.source}
     if (research.competitors && research.competitors.length) {
       parts.push(
         `<h2>Competitors</h2><ul>${research.competitors
-          .map((c) => `<li>${c.name}${c.note ? ` — ${c.note}` : ""}</li>`)
+          .map(
+            (c) =>
+              `<li>${escapeHtml(c.name)}${
+                c.note ? ` — ${escapeHtml(c.note)}` : ""
+              }</li>`
+          )
           .join("")}</ul>`
       );
     }
     if (research.marketPositioning)
       parts.push(
-        `<p><strong>Market positioning:</strong> ${research.marketPositioning}</p>`
+        `<p><strong>Market positioning:</strong> ${escapeHtml(
+          research.marketPositioning
+        )}</p>`
       );
 
     if (research.talkingPoints && research.talkingPoints.length) {
       parts.push(
         `<h2>Talking Points</h2><ul>${research.talkingPoints
-          .map((t) => `<li>${t}</li>`)
+          .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>`
       );
     }
     if (research.interviewQuestions && research.interviewQuestions.length) {
       parts.push(
         `<h2>Interview Questions</h2><ul>${research.interviewQuestions
-          .map((q) => `<li>${q}</li>`)
+          .map((q) => `<li>${escapeHtml(q)}</li>`)
           .join("")}</ul>`
       );
     }
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(
       research.companyName
-    } Research</title><style>body{font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; padding: 24px; color:#111} h1{font-size:22px} h2{font-size:16px; margin-top:18px}</style></head><body>${parts.join(
+    )} Research</title><style>body{font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; padding: 24px; color:#111} h1{font-size:22px} h2{font-size:16px; margin-top:18px}</style></head><body>${parts.join(
       ""
     )}</body></html>`;
 

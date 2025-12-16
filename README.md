@@ -80,21 +80,29 @@ This README change exists to validate the CI pipeline via a simple PR.
 - **TypeScript** - Throughout the stack
 - **ESLint** - Code quality and consistency
 - **Vitest** - Unit and integration testing
-- **PowerShell** - Development automation scripts
+- **Node scripts** - Development automation scripts (cross-platform)
 
 ## Quick Start
 
 **Easiest way to run both frontend and server:**
 
-```powershell
-.\dev.ps1
+```bash
+node ./dev.mjs
 ```
 
-This PowerShell script automatically:
+This script automatically:
 
 - Starts the frontend dev server (http://localhost:5173)
 - Starts the backend server (http://localhost:8787)
 - Runs both in parallel with proper logging
+
+Works on Windows/macOS/Linux as long as Node + npm are installed.
+
+**Run all tests (server + frontend):**
+
+```bash
+node ./test.mjs
+```
 
 **URLs:**
 

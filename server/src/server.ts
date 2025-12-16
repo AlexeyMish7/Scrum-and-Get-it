@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * =============================================================
  * SERVER SETUP AND ROUTING
@@ -23,7 +25,7 @@
 import http from "http";
 import * as zlib from "zlib";
 import { URL } from "url";
-import fs from "fs";
+import * as fs from "fs";
 import path from "path";
 import {
   logSystemEvent,
@@ -35,6 +37,11 @@ import { ApiError, errorPayload } from "../utils/errors.js";
 import { getCorsHeaders, handleCorsPreflight } from "./middleware/cors.js";
 import { createRequestContext } from "./middleware/logging.js";
 import { requireAuth, tryAuth } from "./middleware/auth.js";
+import {
+  applySecurityHeaders,
+  enforceBrowserOriginOrThrow,
+  enforceIpRateLimitOrThrow,
+} from "./middleware/security.js";
 import { getMetricsSnapshot } from "./observability/metrics.js";
 import {
   captureException,
@@ -92,9 +99,11 @@ export function loadEnvFromFiles() {
     ];
 
     for (const envPath of candidates) {
-      if (!fs.existsSync(envPath)) continue;
+      // Why: Some TS editor contexts resolve `fs` without Node sync helpers.
+      // Casting avoids a false-positive diagnostic; runtime behavior is unchanged.
+      if (!(fs as any).existsSync(envPath)) continue;
 
-      const content = fs.readFileSync(envPath, "utf8");
+      const content = (fs as any).readFileSync(envPath, "utf8");
       for (const line of content.split(/\r?\n/)) {
         // Skip blank lines and comments
         if (!line || /^\s*#/.test(line)) continue;
@@ -346,6 +355,9 @@ async function handleRequest(
   const ctx = createRequestContext(req);
 
   try {
+    // Apply baseline security headers for every response.
+    applySecurityHeaders(req, res);
+
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       handleCorsPreflight(req, res);
@@ -356,6 +368,10 @@ async function handleRequest(
     const url = new URL(req.url!, `http://${req.headers.host}`);
     const pathname = url.pathname;
     const method = req.method || "GET";
+
+    // Production hardening: basic browser-origin guard + per-IP rate limiting.
+    enforceBrowserOriginOrThrow(req, pathname);
+    enforceIpRateLimitOrThrow(req, res, pathname);
 
     // ------------------------------------------------------------------
     // HEALTH CHECK ENDPOINT (public)
